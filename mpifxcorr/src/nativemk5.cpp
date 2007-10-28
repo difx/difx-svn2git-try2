@@ -239,7 +239,7 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 	bytes &= ~7;
 
 	a = start >> 32;
-	b = start & 0xFFFFFFFF; //% (1LL << 32);
+	b = start & 0xFFFFFFFF; 
 
 	waitForBuffer(buffersegment);
 
@@ -247,6 +247,7 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 
 	if(xlrRC != XLR_SUCCESS)
 	{
+		cerr << "XXX:" << a << ":" << b << "  rp = " << readpointer << endl;
 		xlrEC = XLRGetLastError();
 		XLRGetErrorMessage(errStr, xlrEC);
 		cerr << "NativeMk5DataStream " << mpiid << 

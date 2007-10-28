@@ -95,9 +95,7 @@ int setup_net(char *hostname, int port, int window_size, int *sock) {
 int main(int argc, char *argv[])
 {
   MPI_Comm world, return_comm;
-  MPI_Status status;
   int numprocs, myID, numdatastreams, numcores;
-  int mkvcontrol[2];
   double t1, t2;
   Configuration * config;
   FxManager * manager;
@@ -108,7 +106,7 @@ int main(int argc, char *argv[])
   bool monitor = false;
   string monitoropt;
   char * hostname = new char[128];
-  int port, monitor_skip;
+  int port=0, monitor_skip=0;
 
 
   cout << "About to run MPIInit" << endl;
@@ -133,7 +131,7 @@ int main(int argc, char *argv[])
     if(colindex2 == string::npos)
     {
       port = atoi(monitoropt.substr(colindex1 + 1).c_str());
-      monitor_skip == 1;
+      monitor_skip = 1;
     }
     else
     {

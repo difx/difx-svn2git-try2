@@ -160,7 +160,7 @@ public:
   inline bool isMkV(int datastreamindex) { return datastreamtable[configs[0].datastreamindices[datastreamindex]].format == MKV_MKIV || datastreamtable[configs[0].datastreamindices[datastreamindex]].format == MKV_VLBA; }
   inline bool isNativeMkV(int datastreamindex) { return datastreamtable[configs[0].datastreamindices[datastreamindex]].format == NATIVE_MKV_MKIV || datastreamtable[configs[0].datastreamindices[datastreamindex]].format == NATIVE_MKV_VLBA; }
   inline int getFrameBytes(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framebytes; }
-  inline int setFrameBytes(int configindex, int configdatastreamindex, int framebytes) { datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framebytes = framebytes; }
+  inline void setFrameBytes(int configindex, int configdatastreamindex, int framebytes) { datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framebytes = framebytes; }
   inline int getFanout(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].fanout; }
   inline double getConfigBandwidth(int configindex) 
     { return freqtable[datastreamtable[configs[configindex].datastreamindices[0]].freqtableindices[0]].bandwidth; }

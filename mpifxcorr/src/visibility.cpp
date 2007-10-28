@@ -144,7 +144,7 @@ void Visibility::updateTime()
 //setup monitoring socket
 int Visibility::openMonitorSocket(char *hostname, int port, int window_size, int *sock) {
   int status;
-  int * err;
+  int *err=0;
   unsigned long ip_addr;
   struct hostent     *hostptr;
   struct linger      linger = {1, 1};
@@ -627,15 +627,10 @@ void Visibility::writerpfits()
 
 void Visibility::writedifx()
 {
-  DIR * difxdir;
-  struct dirent * difxfile;
   ofstream output;
   char filename[256];
-  int intmjd, intseconds, numvispoints, dumpmjd, binloop, sourceindex, freqindex, numpolproducts, firstpolindex, baselinenumber;
-  double dumpseconds, filemjd, latestmjd = -1.0;
-  int status = 0;
-  int flag = 0;
-  int bin = 0;
+  int dumpmjd, binloop, sourceindex, freqindex, numpolproducts, firstpolindex, baselinenumber;
+  double dumpseconds;
   int count = 0;
   float buvw[3]; //the u,v and w for this baseline at this time
   char polpair[3]; //the polarisation eg RR, LL

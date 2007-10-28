@@ -80,6 +80,8 @@ Configuration::Configuration(const char * configfile)
         }
         processNetworkTable(input);
         break;
+      default:
+        break;
     }
     currentheader = getSectionHeader(input);
   }
@@ -368,8 +370,7 @@ bool Configuration::stationUsed(int telescopeindex)
 
 void Configuration::findMkVFormat(int configindex, int configdatastreamindex)
 {
-  long long maxoffset;
-  int lastoffset;
+  int lastoffset = 0;
   int mboffset = 0;
   bool lastok = false;
   bool beforelastok = false;
@@ -478,10 +479,10 @@ Mode* Configuration::getMode(int configindex, int datastreamindex)
     case NATIVE_MKV_VLBA:
       return new Mk5Mode(this, configindex, datastreamindex, stream.fanout, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, stream.numbits, stream.filterbank, conf.pulsarbin, conf.scrunchoutput, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, stream.framebytes);
       break;
+    default:
+      cerr << "Error - unknown Mode!!!" << endl;
+      return NULL;
   }
-
-  cerr << "Error - unknown Mode!!!" << endl;
-  return NULL;
 }
 
 Configuration::sectionheader Configuration::getSectionHeader(ifstream * input)

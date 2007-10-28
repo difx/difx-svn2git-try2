@@ -114,8 +114,6 @@ protected:
   */
   virtual void initialiseFile(int configindex, int fileindex);
 
-  static const int MAX_MKV_SKIP = 640000;
-
   struct mark5_stream * vs;
   int framebytes, fanout, headerbytes, numbits;
   bool isVLBA;

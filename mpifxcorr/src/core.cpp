@@ -260,7 +260,7 @@ void Core::execute()
 
 void Core::pulsarScale(int index)
 {
-  int status, findex, currentoutputbands, resultindex = 0;
+  int status, resultindex = 0;
   
   //do the pulsar scaling
   for(int i=0;i<numbaselines;i++)
@@ -304,20 +304,22 @@ void * Core::launchNewProcessThread(void * tdata)
 {
   processthreadinfo * mydata = (processthreadinfo *)tdata;
   (mydata->thiscore)->loopprocess(mydata->processthreadid);
+
+  return 0;
 }
 
 void Core::loopprocess(int threadid)
 {
-  int perr, numprocessed, startblock, numblocks, lastconfigindex, numpolycos, numbins, numchan, maxbins, maxchan, maxpolycos, maxfreqs, status;
+  int perr, numprocessed, startblock, numblocks, lastconfigindex, numpolycos,  numchan, maxbins, maxchan, maxpolycos, maxfreqs;
   bool pulsarbin, somepulsarbin, scrunch = false;
-  Polyco ** polycos;
-  Polyco * currentpolyco;
+  Polyco ** polycos=0;
+  Polyco * currentpolyco=0;
   Mode ** modes;
   s32 ** bins;
   cf32 * threadresults = vectorAlloc_cf32(maxresultlength);
-  cf32 * pulsarscratchspace;
-  cf32 ***** pulsaraccumspace;
-  cf32*** scrunchscale;
+  cf32 * pulsarscratchspace=0;
+  cf32 ***** pulsaraccumspace=0;
+  cf32*** scrunchscale=0;
   
   pulsarbin = false;
   somepulsarbin = false;
@@ -531,7 +533,7 @@ void Core::receivedata(int index, bool * terminate)
 
 void Core::processdata(int index, int threadid, int startblock, int numblocks, Mode ** modes, Polyco * currentpolyco, cf32 * threadresults, s32 ** bins, cf32* pulsarscratchspace, cf32***** pulsaraccumspace, cf32*** scrunchscale)
 {
-  int status, perr, resultindex, currentnumoutputbands, cindex, maxproducts;
+  int status, perr, resultindex=0, currentnumoutputbands, cindex, maxproducts;
   double offsetmins;
   float binweight, currentblockspersendfloat;
   int * numgoodresults = new int[numdatastreams];

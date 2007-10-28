@@ -295,7 +295,7 @@ void FxManager::sendData(int data[], int coreindex)
 void FxManager::receiveData(bool resend)
 {
   MPI_Status mpistatus;
-  int sourcecore, sourceid, visindex, perr;
+  int sourcecore, sourceid=0, visindex, perr;
   bool viscomplete;
   double time;
 
@@ -378,6 +378,8 @@ void * FxManager::launchNewWriteThread(void * thismanager)
   me->initialiseOutput();
   me->loopwrite();
   me->finaliseOutput();
+
+  return 0;
 }
 
 void FxManager::initialiseOutput()
@@ -571,8 +573,7 @@ void FxManager::writeheader()
 int FxManager::locateVisIndex(int coreid)
 {
   bool tooold = true;
-  bool found = false;
-  int oldestindex, perr, count;
+  int perr, count;
   double difference;
 
   for(int i=0;i<=(newestlockedvis-oldestlockedvis+VISBUFFER_LENGTH)%VISBUFFER_LENGTH;i++)

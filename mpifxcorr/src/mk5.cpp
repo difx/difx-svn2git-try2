@@ -110,83 +110,34 @@ void Mk5DataStream::updateConfig(int segmentindex)
 
 void Mk5DataStream::initialiseFile(int configindex, int fileindex)
 {
-  bool beforelastok, lastok;
-  int frameday, skipbytes, mboffset, lastoffset, offsetbefore;
-  double frameseconds;
-  char skipbuffer[MAX_MKV_SKIP];
+  int offset;
 
-  //check every MB into the file for 10 MB until we get two in a row that agree - this handles the case of possible sync errors at the start of a Mk5 file
-  lastok = false;
-  mboffset = 0;
-  while(mboffset < 10 && !(lastok && beforelastok))
-  {
-    if(mboffset > 1)
-      cout << "About to open file " << fileindex << " at mboffset " << mboffset << endl;
-    beforelastok = lastok;
-    offsetbefore = lastoffset;
-
-    //open the file with mark5access
-    vs = mark5_stream_open(datafilenames[configindex][fileindex].c_str(), numbits, fanout, mboffset*1048576/*offset*/);
-    if(vs != 0 && (vs->format == MK5_FORMAT_VLBA || vs->format == MK5_FORMAT_MARK4)) //sync was found successfully
-    {
-      lastok = true;
-      if(beforelastok && (((mboffset*1048576 + vs->frameoffset - lastoffset) % vs->framebytes) != 0))
-        //the two offsets do not agree - must still be syncing up
-        beforelastok = false;
-
-      lastoffset = mboffset*1048576 + vs->frameoffset;
-    }
-    else
-      lastok = false;
-    mboffset++;
-    if(vs != 0)
-      delete_mark5_stream(vs);
-  }
-
-  //check to see if we found good data
-  if(!beforelastok || !lastok) //obviously didn't
-  {
-    cerr << "File " << datafilenames[configindex][fileindex] << " could not find consistent sync in first 10 MB - aborting!!!" << endl;
-    dataremaining = false;
-  }
-
-  //check for consistency - open file back up at right spot
-
-  vs = mark5_stream_open(datafilenames[configindex][fileindex].c_str(), numbits, fanout, offsetbefore);
+  vs = mark5_stream_open(datafilenames[configindex][fileindex].c_str(), numbits, fanout, 0);
   if(vs->nchan != config->getDNumInputBands(configindex, streamnum))
   {
     cerr << "Error - number of input bands for datastream " << streamnum << " (" << config->getDNumInputBands(configindex, streamnum) << ") does not match with MkV file " << datafilenames[configindex][fileindex] << " (" << vs->nchan << "), will be ignored!!!" << endl;
   }
 
-  //set date
-  skipbytes = offsetbefore;
-  frameday = int(vs->mjd);
-  if(vs->format == MK5_FORMAT_VLBA)
-  {
-    int deltaday;
-    deltaday = corrstartday - (corrstartday % 1000);
-    isVLBA = true;
-    frameday += deltaday;
-  }
-  else
-    isVLBA = false;
-  frameseconds = vs->sec;
+  // resolve any day ambiguities
+  mark5_stream_fix_mjd(vs, corrstartday);
 
-  readseconds = 86400*(frameday-corrstartday) + int(frameseconds-corrstartseconds) + intclockseconds;
-  if(frameseconds < corrstartseconds) //handle rounding error for negative numbers
-    readseconds--;
-  readnanoseconds = int(1000000000.0*(frameseconds-int(frameseconds)) + 0.5);
-  cout << "The frame start day is " << frameday << ", the frame start seconds is " << frameseconds << ", readseconds is " << readseconds << ", readnanoseconds is " << readnanoseconds << endl;
+  offset = vs->frameoffset;
+
+  if(vs->format == MK5_FORMAT_VLBA)
+    isVLBA = 1;
+  else
+    isVLBA = 0;
+
+  readseconds = 86400*(vs->mjd-corrstartday) + vs->sec-corrstartseconds + intclockseconds;
+  readnanoseconds = vs->ns;
+  cout << "The frame start day is " << vs->mjd << ", the frame start seconds is " << vs->sec << ", the frame start ns is " << vs->ns << ", readseconds is " << readseconds << ", readnanoseconds is " << readnanoseconds << endl;
 
   //close mark5stream
   delete_mark5_stream(vs);
 
-  cout << "About to read " << skipbytes << " bytes to get to the first frame" << endl;
+  cout << "About to seek to byte " << offset << " to get to the first frame" << endl;
 
-  //skip the bytes before the first sync word
-  for(int i=0;i<skipbytes/MAX_MKV_SKIP;i++)
-    input.read(skipbuffer, MAX_MKV_SKIP);
-  input.read(skipbuffer, skipbytes - (skipbytes/MAX_MKV_SKIP)*MAX_MKV_SKIP);
+  input.seekg(offset);
 
   //update all the configs - to ensure that the nsincs and headerbytes are correct
   for(int i=0;i<numdatasegments;i++)

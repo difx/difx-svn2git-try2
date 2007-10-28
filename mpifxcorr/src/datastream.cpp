@@ -309,8 +309,7 @@ void DataStream::initialiseFile(int configindex, int fileindex)
 //the returned value MUST be between 0 and bufferlength
 int DataStream::calculateControlParams(int offsetsec, int offsetns)
 {
-  double geometricdelay;
-  int geometricsampledelay, currentgeometricsampledelay, intdelayseconds, firstoffsetns, lastoffsetns, bufferindex, perr, blockbytes;
+  int intdelayseconds, firstoffsetns, lastoffsetns, bufferindex, perr, blockbytes;
 
   //work out the first delay and the last delay and place in control buffer
   intdelayseconds = ((offsetsec + corrstartseconds) - delaystartseconds) + 86400*(corrstartday - delaystartday);
@@ -466,7 +465,7 @@ void DataStream::initialiseMemoryBuffer()
 void DataStream::calculateQuadraticParameters(int intdelayseconds, int offsetns)
 {
   int snindex;
-  double offset, delayoffsetseconds;
+  double delayoffsetseconds;
 
   delayoffsetseconds = intdelayseconds + double(offsetns)/1000000000.0;
   snindex = static_cast<int>((delayoffsetseconds*1000)/delayincms);
@@ -525,12 +524,16 @@ void * DataStream::launchNewFileReadThread(void * thisstream)
 {
   DataStream * me = (DataStream *)thisstream;
   me->loopfileread();
+
+  return 0;
 }
 
 void * DataStream::launchNewNetworkReadThread(void * thisstream)
 {
   DataStream * me = (DataStream *)thisstream;
   me->loopnetworkread();
+
+  return 0;
 }
 
 void DataStream::loopfileread()
