@@ -13,8 +13,8 @@
 #include <mpi.h>
 #include <string.h>
 #include <stdlib.h>
-#include "nativemk5.h"
 #include "config.h"
+#include "nativemk5.h"
 
 #define u32 uint32_t
 
