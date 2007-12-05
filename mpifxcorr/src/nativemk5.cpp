@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "nativemk5.h"
+#include "config.h"
 
 #define u32 uint32_t
 

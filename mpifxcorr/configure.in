@@ -1,6 +1,6 @@
-AC_INIT(configure.in)
+AC_INIT(src/nativemk5.h)
 
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS(config.h)
 AM_INIT_AUTOMAKE(mpifxcorr, 0.1)
 
 AC_LANG_CPLUSPLUS
@@ -22,7 +22,9 @@ else
 fi
 
 ss_enabled=true
-AC_CHECK_HEADER(xlrapi.h,,[ss_enabled=false])
+AC_CHECK_HEADER([xlrapi.h],
+                [AC_DEFINE([HAVE_XLRAPI_H], 1, [1=has SS])],
+		[ss_enabled=false])
 
 if test ${ss_enabled} = true; then
 SS_LIBS="-lwdapi801 -lssapi"
@@ -38,5 +40,7 @@ CXXFLAGS="${CXXFLAGS} ${M5ACCESS_CFLAGS} ${IPP_CFLAGS}"
 
 echo "LIBS = ${LIBS}"
 echo "CXXFLAGS = ${CXXFLAGS}"
+
+AC_SUBST(has_ss)
 
 AC_OUTPUT(Makefile src/Makefile)

@@ -1,4 +1,8 @@
+#include <mpi.h>
+#include <string.h>
+#include <stdlib.h>
 #include "nativemk5.h"
+#include "config.h"
 
 NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
         int id, int ncores, int * cids, int bufferfactor, int numsegments) :

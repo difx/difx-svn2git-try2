@@ -23,5 +23,4 @@ noinst_HEADERS = fxmanager.h core.h datastream.h architecture.h visibility.h \
 
 mpifxcorr_LDADD = \
 	-L/opt/intel/ipp/5.1/ia32/sharedlib/ -L../../rpfits/linux/ \
-	-lwdapi801 -lssapi -lipps -lguide \
-	-lippvm -lrpfits -lg2c
+	-lipps -lguide -lippvm -lrpfits -lg2c

@@ -16,7 +16,9 @@
 #include "mode.h"
 #include "datastream.h"
 #include "mark5access.h"
+#ifdef HAVE_XLRAPI_H
 #include "mark5dir.h"
+#endif
 #include "mk5.h"
 
 
@@ -32,12 +34,14 @@ public:
 protected:
 	void moduleToMemory(int buffersegment);
 
+#ifdef HAVE_XLRAPI_H
 private:
 	struct Mark5Module module;
 	struct Mark5Scan *scan;
 	long long readpointer;
 	SSHANDLE xlrDevice;
 	long long zeros;	/* if >0 send this many zeros */
+#endif
 };
 
 #endif
