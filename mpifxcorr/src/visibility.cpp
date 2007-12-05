@@ -430,9 +430,12 @@ void Visibility::writedata()
           if(divisor > 0.0)
           {
             scale = config->getDTsys(currentconfigindex, i)/divisor;
-            status = vectorMulC_f32_I(scale, (f32*)(&(results[count])), 2*(numchannels+1));
-            if(status != vecNoErr)
-              cerr << "Error trying to amplitude calibrate the datastream data!!!" << endl;
+	    if(scale > 0.0)
+	    {
+              status = vectorMulC_f32_I(scale, (f32*)(&(results[count])), 2*(numchannels+1));
+              if(status != vecNoErr)
+                cerr << "Error trying to amplitude calibrate the datastream data!!!" << endl;
+            }
           }
           count += numchannels+1;
         }

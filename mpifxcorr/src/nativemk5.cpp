@@ -12,6 +12,7 @@
 
 #include <mpi.h>
 #include <string.h>
+#include <stdlib.h>
 #include "nativemk5.h"
 
 #define u32 uint32_t
@@ -60,14 +61,20 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	double scanstart, scanend;
 	int v, i, n;
 	int doUpdate = 0;
+	char *mk5dirpath;
+
+	mk5dirpath = getenv("MARK5_DIR_PATH");
+	if(mk5dirpath == 0)
+	{
+		mk5dirpath = ".";
+	}
 
 	if(module.nscans < 0)
 	{
 		doUpdate = 1;
 		cout << "getting module info" << endl;
 		v = getCachedMark5Module(&module, xlrDevice, corrstartday, 
-			datafilenames[configindex][fileindex].c_str(),
-			"/home/parallax/difx/directories");
+			datafilenames[configindex][fileindex].c_str(), mk5dirpath);
 
 		if(v < 0)
 		{
@@ -213,8 +220,11 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 	long long start;
 	unsigned long *buf;
 	unsigned long a, b;
+	int i, t;
+	S_READDESC      xlrRD;
 	XLR_RETURN_CODE xlrRC;
 	XLR_ERROR_CODE  xlrEC;
+	XLR_READ_STATUS xlrRS;
 	int bytes;
 	char errStr[XLR_ERROR_LENGTH];
 
@@ -243,8 +253,76 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 
 	waitForBuffer(buffersegment);
 
-	xlrRC = XLRReadData(xlrDevice, buf, a, b, bytes);
+	// xlrRC = XLRReadData(xlrDevice, buf, a, b, bytes);
 
+	xlrRD.AddrHi = a;
+	xlrRD.AddrLo = b;
+	xlrRD.XferLength = bytes;
+	xlrRD.BufferAddr = buf;
+
+	for(t = 0; t < 2; t++)
+	{
+		XLRReadImmed(xlrDevice, &xlrRD);
+		
+		/* Wait up to 10 seconds for a return */
+		for(i = 1; i < 10000; i++)
+		{
+			xlrRS = XLRReadStatus(0);
+			if(xlrRS == XLR_READ_COMPLETE)
+			{
+				break;
+			}
+			else if(xlrRS == XLR_READ_ERROR)
+			{
+				cerr << "XXX:" << a << ":" << b << "  rp = " << readpointer << endl;
+				xlrEC = XLRGetLastError();
+				XLRGetErrorMessage(errStr, xlrEC);
+				cerr << "NativeMk5DataStream " << mpiid << 
+					" XLRReadData error: " << errStr << endl; 
+				dataremaining = false;
+				keepreading = false;
+				bufferinfo[buffersegment].validbytes = 0;
+				return;
+			}
+			if(i % 1000 == 0)
+			{
+				cout << "[" << mpiid << "] Waited " << i << " ms   state = "; 
+				if(xlrRS == XLR_READ_WAITING)
+				{
+					cout << "XLR_READ_WAITING" << endl;
+				}
+				if(xlrRS == XLR_READ_RUNNING)
+				{
+					cout << "XLR_READ_RUNNING" << endl;
+				}
+				else
+				{
+					cout << "XLR_READ_OTHER " << endl;
+				}
+			}
+			usleep(1000);
+		}
+		if(xlrRS == XLR_READ_COMPLETE)
+		{
+			break;
+		}
+		else if(t == 0)
+		{
+			cout << "[" << mpiid << "]  XLRClose() being called!" << endl;
+			XLRClose(xlrDevice);
+			
+			cout << "[" << mpiid << "]  XLRCardReset() being called!" << endl;
+			xlrRC = XLRCardReset(1);
+			cout << "[" << mpiid << "]  XLRCardReset() called! " << xlrRC << endl;
+
+			cout << "[" << mpiid << "]  XLROpen() being called!" << endl;
+			xlrRC = XLROpen(1, &xlrDevice);
+			cout << "[" << mpiid << "]  XLROpen() called! " << xlrRC << endl;
+
+		}
+	}
+
+#if 0
 	if(xlrRC != XLR_SUCCESS)
 	{
 		cerr << "XXX:" << a << ":" << b << "  rp = " << readpointer << endl;
@@ -252,6 +330,16 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		XLRGetErrorMessage(errStr, xlrEC);
 		cerr << "NativeMk5DataStream " << mpiid << 
 			" XLRReadData error: " << errStr << endl; 
+		dataremaining = false;
+		keepreading = false;
+		bufferinfo[buffersegment].validbytes = 0;
+		return;
+	}
+#endif
+	if(xlrRS != XLR_READ_COMPLETE)
+	{
+		cerr << "XXX:" << a << ":" << b << "  rp = " << readpointer << endl;
+		cerr << "[" << mpiid << "] Waited 10 seconds for a read and gave up" << endl;
 		dataremaining = false;
 		keepreading = false;
 		bufferinfo[buffersegment].validbytes = 0;

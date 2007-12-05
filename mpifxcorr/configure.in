@@ -7,8 +7,36 @@ AC_LANG_CPLUSPLUS
 AC_PROG_CXX
 AM_PROG_LIBTOOL
 
+
+AC_ARG_WITH(ipp-prefix,
+[  --with-ipp-prefix=PREFIX
+                      ipp base is PREFIX (optional)],
+ipp_prefix="$withval", ipp_prefix="")
+
+if test x"$ipp_prefix" != "x"; then
+	IPP_LIBS=" -L$ipp_prefix/sharedlib"
+	IPP_CFLAGS=" -I$ipp_prefix/include"
+else
+	IPP_LIBS=""
+	IPP_CFLAGS=""
+fi
+
+ss_enabled=true
+AC_CHECK_HEADER(xlrapi.h,,[ss_enabled=false])
+
+if test ${ss_enabled} = true; then
+SS_LIBS="-lwdapi801 -lssapi"
+else
+SS_LIBS=""
+fi
+
+AM_CONDITIONAL(WITH_SS, $ss_enabled)
+
 PKG_CHECK_MODULES(M5ACCESS, mark5access)
-LIBS="${M5ACCESS_LIBS}"
-CXXFLAGS="${CXXFLAGS} ${M5ACCESS_CFLAGS}"
+LIBS="${M5ACCESS_LIBS} ${SS_LIBS} ${IPP_LIBS}"
+CXXFLAGS="${CXXFLAGS} ${M5ACCESS_CFLAGS} ${IPP_CFLAGS}"
+
+echo "LIBS = ${LIBS}"
+echo "CXXFLAGS = ${CXXFLAGS}"
 
 AC_OUTPUT(Makefile src/Makefile)
