@@ -1,11 +1,11 @@
 Example installation guide.  Assumes mpi c++ compiler is 
-/home/parallax/openmpi/bin/mpicxx and ipp prefix is as listed
+/data1/wbrisken/bin/mpicxx 
 
 svn co []
 aclocal
 autoheader
 automake -a
 autoconf
-./configure --prefix=/data1/wbrisken --with-ipp-prefix=/opt/intel/ipp/5.1/ia32/ CXX=/home/parallax/openmpi/bin/mpicxx
+./configure --prefix=/data1/wbrisken  CXX=/data1/wbrisken/bin/mpicxx
 make
 make install
