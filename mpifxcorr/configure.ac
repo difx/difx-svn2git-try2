@@ -13,11 +13,11 @@ AC_ARG_WITH(ipp-root, [  --with-ipp-root=ROOT
 		          IPPROOT otherwise.],
 ipp_root="$withval", ipp_root="")
 if test x"$ipp_root" != "x"; then
-	IPP_LIBS=" -L$ipp_root/sharedlib"
-	IPP_CFLAGS=" -I$ipp_root/include"
+	IPP_CFLAGS="-I$ipp_root/include"
+	IPP_LIBS="-L$ipp_root/sharedlib"
 else
-	IPP_LIBS=" -L$IPPROOT/sharedlib"
-	IPP_CFLAGS=" -I$IPPROOT/include"
+	IPP_CFLAGS="-I$IPPROOT/include"
+	IPP_LIBS="-L$IPPROOT/sharedlib"
 fi
 dnl **********************************************************
 
@@ -40,15 +40,25 @@ dnl **********************************************************
 
 
 dnl **********************************************************
+dnl **** Look for RPFITS                                  ****
+dnl **********************************************************
+PWD=`pwd`
+RPFITS_CFLAGS="-I$PWD/../rpfits/code"
+RPFITS_LIBS="-L$PWD/../rpfits/linux -lrpfits"
+dnl **********************************************************
+
+
+dnl **********************************************************
 dnl **** Find mark5access library                         ****
 dnl **********************************************************
 PKG_CHECK_MODULES(M5ACCESS, mark5access)
-LIBS="${M5ACCESS_LIBS} ${SS_LIBS} ${IPP_LIBS}"
-CXXFLAGS="${CXXFLAGS} ${M5ACCESS_CFLAGS} ${IPP_CFLAGS}"
 dnl **********************************************************
 
 
-echo "LIBS = ${LIBS}"
+CXXFLAGS="${CXXFLAGS} ${M5ACCESS_CFLAGS} ${IPP_CFLAGS} ${RPFITS_CFLAGS}"
+LIBS="${M5ACCESS_LIBS} ${SS_LIBS} ${IPP_LIBS} ${RPFITS_LIBS}"
+
 echo "CXXFLAGS = ${CXXFLAGS}"
+echo "LIBS = ${LIBS}"
 AC_SUBST(has_ss)
 AC_OUTPUT(Makefile src/Makefile)
