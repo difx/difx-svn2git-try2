@@ -370,44 +370,28 @@ bool Configuration::stationUsed(int telescopeindex)
 
 void Configuration::findMkVFormat(int configindex, int configdatastreamindex)
 {
-  int lastoffset = 0;
-  int mboffset = 0;
-  bool lastok = false;
-  bool beforelastok = false;
-  mark5_stream * vs;
+  mark5_stream * ms;
   datastreamdata * ds = &(datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]]);
 
   if(ds->numdatafiles > 0) //open up a file and sort some stuff out
   {
-    //check every MB into the file for 10 MB until we get two in a row that agree - handles the case of possible sync errors
-    while(mboffset < 10 && !(lastok && beforelastok))
+    ms = mark5_stream_open((ds->datafilenames[0]).c_str(), ds->numbits, ds->fanout, 0);
+    if(ms != 0) //found the sync
     {
-      beforelastok = lastok;
-      vs = mark5_stream_open((ds->datafilenames[0]).c_str(), ds->numbits, ds->fanout, mboffset*1048576/*offset*/);
-      if(vs != 0) //found the sync
+      mark5_stream_print(ms);
+      if(ms->format == MK5_FORMAT_VLBA)
+        ds->format = MKV_VLBA;
+      else if(ms->format == MK5_FORMAT_MARK4)
+        ds->format = MKV_MKIV;
+      if(ds->format == MKV_VLBA || ds->format == MKV_MKIV)
       {
-        lastok = true;
-        if(vs->format == MK5_FORMAT_VLBA)
-          ds->format = MKV_VLBA;
-        else if(vs->format == MK5_FORMAT_MARK4)
-          ds->format = MKV_MKIV;
-        if(ds->format == MKV_VLBA || ds->format == MKV_MKIV)
-        {
-          ds->framebytes = vs->framebytes;
-          if(((mboffset*1048576 + vs->frameoffset - lastoffset) % vs->framebytes) != 0)
-            beforelastok = false;
-
-          lastoffset = mboffset*1048576 + vs->frameoffset;
-        }
-        delete_mark5_stream(vs);
+        ds->framebytes = ms->framebytes;
       }
-      else
-        lastok = false;
-      mboffset++;
+      delete_mark5_stream(ms);
     }
-    if(!lastok || !beforelastok)
+    else
     {
-      cerr << "Error opening MkV style file " << ds->datafilenames[0] << " for datastream " << configdatastreamindex << " - could not find sync in first 10 MB - aborting!!!";
+      cerr << "Error opening MkV style file " << ds->datafilenames[0] << " for datastream " << configdatastreamindex << " - could not find sync in first 1 MB - aborting!!!";
       exit(1);
     }
   }

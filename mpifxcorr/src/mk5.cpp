@@ -15,10 +15,6 @@
 Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int fanout, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool pbin, bool pscrunch, bool postffringe, bool quaddelayinterp, bool cacorrs, int fbytes)
  : Mode(conf, confindex, dsindex, nchan, bpersend, gblocks, nfreqs, bw, freqclkoffsets, ninputbands, noutputbands, nbits, PAYLOADSIZE*fanout+nchan*2, fbank, pbin, pscrunch, postffringe, quaddelayinterp, cacorrs, bw*2)
 {
-  //work out the number of bytes and samples in a frame
-  framesamples = PAYLOADSIZE*fanout;
-  framebytes = fbytes;
-
   //create the VLBA_format struct used for unpacking
   if(conf->getMkVFormat(confindex, dsindex) == MK5_FORMAT_VLBA)
   {
@@ -32,6 +28,9 @@ Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int fanout, i
       new_mark5_stream_unpacker(0),
       new_mark5_format_mark4(0, numinputbands, numbits, fanout) );
   }
+
+  framesamples = vf->framesamples;
+  framebytes   = vf->framebytes;
 }
 
 
@@ -120,6 +119,8 @@ void Mk5DataStream::initialiseFile(int configindex, int fileindex)
 
   // resolve any day ambiguities
   mark5_stream_fix_mjd(vs, corrstartday);
+
+  mark5_stream_print(vs);
 
   offset = vs->frameoffset;
 
