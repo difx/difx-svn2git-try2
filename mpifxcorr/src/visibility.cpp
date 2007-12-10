@@ -17,7 +17,9 @@
 #include <string>
 #include <string.h>
 #include <stdio.h>
+#ifdef HAVE_RPFITS
 #include <RPFITS.h>
+#endif
 #include <iomanip>
 #include <errno.h>
 #include <fcntl.h>
@@ -531,6 +533,8 @@ void Visibility::writeascii()
 
 void Visibility::writerpfits()
 {
+#ifdef HAVE_RPFITS
+
   int baselinenumber, freqnumber, sourcenumber, numpolproducts, binloop;
   int firstpolindex;
   int count = 0;
@@ -626,7 +630,10 @@ void Visibility::writerpfits()
   }
   if(status != 0)
     cerr << "Error trying to write visibilities for " << currentstartseconds << " seconds plus " << currentstartsamples << " samples" << endl;
+
+#endif
 }
+
 
 void Visibility::writedifx()
 {

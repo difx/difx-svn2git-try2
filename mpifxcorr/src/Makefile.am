@@ -16,4 +16,4 @@ noinst_HEADERS = fxmanager.h core.h datastream.h architecture.h visibility.h \
 	configuration.h uvw.h mk5.h polyco.h mark5dir.h nativemk5.h
 
 mpifxcorr_LDADD = \
-	-lipps -lguide -lippvm -lg2c
+	-lipps -lguide -lippvm 

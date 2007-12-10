@@ -18,7 +18,9 @@
 #include <unistd.h>    /* standard unix functions, like getpid()         */
 #include <sys/types.h> /* various type definitions, like pid_t           */
 #include <signal.h>
+#ifdef HAVE_RPFITS
 #include <RPFITS.h>
+#endif
 //includes for socket stuff - for monitoring
 //#include <sys/socket.h>
 //#include <netdb.h>
@@ -387,6 +389,7 @@ void FxManager::initialiseOutput()
   int flag = -2; //open a new file
   if(config->getOutputFormat() == Configuration::RPFITS)  //if its RPFITS output create the file
   {
+#ifdef HAVE_RPFITS
     writeheader();
     rpfitsout_(&flag, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     if(flag < 0)
@@ -394,6 +397,10 @@ void FxManager::initialiseOutput()
       cerr << "Error - could not open output file " << config->getOutputFilename() << " - aborting!!!" << endl;
       exit(1);
     }
+#else
+    cerr << "RPFITS not compiled in.  quitting" << endl;
+    exit(1);
+#endif
   }
   else if(config->getOutputFormat() == Configuration::DIFX)
   {
@@ -411,8 +418,10 @@ void FxManager::finaliseOutput()
   int flag = 1;
   if(config->getOutputFormat() == Configuration::RPFITS)  //only if its RPFITS output do we need to do anything
   {
+#ifdef HAVE_RPFITS
     //close the RPFits file
     rpfitsout_(&flag, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+#endif
   }
 }
 
@@ -442,7 +451,9 @@ void FxManager::loopwrite()
     if(visbuffer[atsegment]->getCurrentConfig() != lastconfigindex)
     {
       lastconfigindex = visbuffer[atsegment]->getCurrentConfig();
+#ifdef HAVE_RPFITS
       param_.intbase = float(config->getIntTime(lastconfigindex));
+#endif
     }
     visbuffer[atsegment]->writedata();
     visbuffer[atsegment]->increment();
@@ -461,6 +472,7 @@ void FxManager::loopwrite()
 
 void FxManager::writeheader()
 {
+#ifdef HAVE_RPFITS
   int numproducts, maxfrequencies, year, month, day, uindex;
   char obsdate[12];
   
@@ -568,6 +580,7 @@ void FxManager::writeheader()
 
   //set up the proper motion
   proper_.pm_epoch = 2000.0;
+#endif
 }
 
 int FxManager::locateVisIndex(int coreid)
