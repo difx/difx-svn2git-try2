@@ -44,7 +44,9 @@ dnl **** Look for RPFITS                                  ****
 dnl **********************************************************
 PWD=`pwd`
 RPFITS_CFLAGS="-I$PWD/../rpfits/code"
-RPFITS_LIBS="-L$PWD/../rpfits/linux -lrpfits"
+RPFITS_LIBS="-L$PWD/../rpfits/linux -lrpfits -lg2c"
+RPFITS_CFLAGS=""
+RPFITS_LIBS=""
 dnl **********************************************************
 
 
