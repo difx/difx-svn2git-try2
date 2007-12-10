@@ -49,7 +49,7 @@ void Mk5Mode::unpack(int sampleoffset)
 
   //unpack one frame plus one FFT size worth of samples
   status = mark5_unpack(vf, data + framesin*framebytes, unpackedarrays, unpacksamples);
-  if(status != 0)
+  if(status < 0)
     cerr << "Error trying to unpack MkV format data at sampleoffset " << sampleoffset << " from buffer seconds " << bufferseconds << " plus " << buffermicroseconds << " microseconds!!!" << endl;
 }
 
