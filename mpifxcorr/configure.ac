@@ -28,7 +28,7 @@ dnl **** cause native Mark5 to be built if found.         ****
 dnl **********************************************************
 ss_enabled=true
 AC_CHECK_HEADER([xlrapi.h],
-                [AC_DEFINE([HAVE_XLRAPI_H], 1, [1=has SS])],
+		[AC_DEFINE([HAVE_XLRAPI_H], 1, [1=has SS])],
 		[ss_enabled=false])
 if test ${ss_enabled} = true; then
 	SS_LIBS="-lwdapi801 -lssapi"
@@ -42,11 +42,18 @@ dnl **********************************************************
 dnl **********************************************************
 dnl **** Look for RPFITS                                  ****
 dnl **********************************************************
-PWD=`pwd`
-RPFITS_CFLAGS="-I$PWD/../rpfits/code"
-RPFITS_LIBS="-L$PWD/../rpfits/linux -lrpfits -lg2c"
+rpfits_enabled=false
+AC_CHECK_HEADER([../rpfits/code/rpfits.h],
+		[AC_DEFINE([HAVE_RPFITS], 1, [1=has RPFITS])],
+		[rpfits_enabled=false])
+if test ${rpfits_enabled} = true; then
+	PWD=`pwd`
+	RPFITS_CFLAGS="-I$PWD/../rpfits/code"
+	RPFITS_LIBS="-L$PWD/../rpfits/linux -lrpfits -lg2c"
+else
 RPFITS_CFLAGS=""
 RPFITS_LIBS=""
+fi
 dnl **********************************************************
 
 
@@ -62,5 +69,4 @@ LIBS="${M5ACCESS_LIBS} ${SS_LIBS} ${IPP_LIBS} ${RPFITS_LIBS}"
 
 echo "CXXFLAGS = ${CXXFLAGS}"
 echo "LIBS = ${LIBS}"
-AC_SUBST(has_ss)
 AC_OUTPUT(Makefile src/Makefile)
