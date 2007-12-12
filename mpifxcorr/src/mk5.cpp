@@ -15,18 +15,28 @@
 Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int fanout, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool pbin, bool pscrunch, bool postffringe, bool quaddelayinterp, bool cacorrs, int fbytes)
  : Mode(conf, confindex, dsindex, nchan, bpersend, gblocks, nfreqs, bw, freqclkoffsets, ninputbands, noutputbands, nbits, PAYLOADSIZE*fanout+nchan*2, fbank, pbin, pscrunch, postffringe, quaddelayinterp, cacorrs, bw*2)
 {
-  //create the VLBA_format struct used for unpacking
-  if(conf->getMkVFormat(confindex, dsindex) == MK5_FORMAT_VLBA)
+  int format;
+  
+  format = conf->getMkVFormat(confindex, dsindex);
+  
+  //create the mark5_stream used for unpacking
+  switch(format)
   {
+  case MK5_FORMAT_VLBA:
     vf = new_mark5_stream(
       new_mark5_stream_unpacker(0),
       new_mark5_format_vlba(0, numinputbands, numbits, fanout) );
-  }
-  else if(conf->getMkVFormat(confindex, dsindex) == MK5_FORMAT_MARK4)
-  {
+    break;
+  case MK5_FORMAT_MARK4:
     vf = new_mark5_stream(
       new_mark5_stream_unpacker(0),
       new_mark5_format_mark4(0, numinputbands, numbits, fanout) );
+    break;
+  case MK5_FORMAT_MARK5B:
+    vf = new_mark5_stream(
+      new_mark5_stream_unpacker(0),
+      new_mark5_format_mark5b(0, numinputbands, numbits) );
+    break;
   }
 
   framesamples = vf->framesamples;
@@ -58,7 +68,6 @@ Mk5DataStream::Mk5DataStream(Configuration * conf, int snum, int id, int ncores,
  : DataStream(conf, snum, id, ncores, cids, bufferfactor, numsegments)
 {
   //each data buffer segment contains an integer number of frames, because thats the way config determines max bytes
-  
 }
 
 Mk5DataStream::~Mk5DataStream()
@@ -89,6 +98,7 @@ void Mk5DataStream::updateConfig(int segmentindex)
     return;
 
   framebytes = config->getFrameBytes(bufferinfo[segmentindex].configindex, streamnum);
+  headerbytes = config->getHeaderBytes(bufferinfo[segmentindex].configindex, streamnum);
   fanout = config->getFanout(bufferinfo[segmentindex].configindex, streamnum);
   numbits = config->getDNumBits(bufferinfo[segmentindex].configindex, streamnum);
 
@@ -98,13 +108,6 @@ void Mk5DataStream::updateConfig(int segmentindex)
   //take care of the case where an integral number of frames is not an integral number of blockspersend - ensure sendbytes is long enough
   bufferinfo[segmentindex].sendbytes = int(((((double)bufferinfo[segmentindex].sendbytes)* ((double)config->getBlocksPerSend(bufferinfo[segmentindex].configindex)))/(config->getBlocksPerSend(bufferinfo[segmentindex].configindex) + config->getGuardBlocks(bufferinfo[segmentindex].configindex)) + 0.99));
 
-  //if its inserted headers (VLBA), work out the headerbytes
-  if(isVLBA) {
-    headerbytes = (framebytes/VLBA_FRAMESIZE)*(VLBA_FRAMESIZE-PAYLOADSIZE);
-  }
-  else {
-    headerbytes = 0;
-  }
 }
 
 void Mk5DataStream::initialiseFile(int configindex, int fileindex)
@@ -123,11 +126,6 @@ void Mk5DataStream::initialiseFile(int configindex, int fileindex)
   mark5_stream_print(vs);
 
   offset = vs->frameoffset;
-
-  if(vs->format == MK5_FORMAT_VLBA)
-    isVLBA = 1;
-  else
-    isVLBA = 0;
 
   readseconds = 86400*(vs->mjd-corrstartday) + vs->sec-corrstartseconds + intclockseconds;
   readnanoseconds = vs->ns;

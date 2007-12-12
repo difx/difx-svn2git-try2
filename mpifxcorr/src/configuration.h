@@ -157,9 +157,20 @@ public:
   inline int getSourceIndex(int mjd, int sec) { return uvw->getSourceIndex(mjd, sec); }
   inline bool isReadFromFile(int configindex, int configdatastreamindex) 
     { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].readfromfile; }
-  inline bool isMkV(int datastreamindex) { return datastreamtable[configs[0].datastreamindices[datastreamindex]].format == MKV_MKIV || datastreamtable[configs[0].datastreamindices[datastreamindex]].format == MKV_VLBA; }
-  inline bool isNativeMkV(int datastreamindex) { return datastreamtable[configs[0].datastreamindices[datastreamindex]].format == NATIVE_MKV_MKIV || datastreamtable[configs[0].datastreamindices[datastreamindex]].format == NATIVE_MKV_VLBA; }
+  inline bool isMkV(int datastreamindex) 
+  {
+    enum dataformat f;
+    f = datastreamtable[configs[0].datastreamindices[datastreamindex]].format;
+    return (f == MKV_MKIV || f == MKV_VLBA || f == MKV_B); 
+  }
+  inline bool isNativeMkV(int datastreamindex) 
+  { 
+    enum dataformat f;
+    f = datastreamtable[configs[0].datastreamindices[datastreamindex]].format;
+    return (f == NATIVE_MKV_MKIV || f == NATIVE_MKV_VLBA || f == NATIVE_MKV_B); 
+  }
   inline int getFrameBytes(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framebytes; }
+  inline int getHeaderBytes(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].headerbytes; }
   inline void setFrameBytes(int configindex, int configdatastreamindex, int framebytes) { datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framebytes = framebytes; }
   inline int getFanout(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].fanout; }
   inline double getConfigBandwidth(int configindex) 
@@ -194,7 +205,6 @@ public:
   * @param configindex The index of the configuration being used (from the table in the input file)
   * @param configdatastreamindex The index of the datastream in order for that configuration (from the table in the input file)
   */
-  void findMkVFormat(int configindex, int configdatastreamindex);
 
  /**
   * Returns the kind of MkV format (MkIV or VLBA) being used for a given datastream configuration.  Checks a valid value
@@ -203,13 +213,6 @@ public:
   * @param configdatastreamindex The index of the datastream in order for that configuration (from the table in the input file)
   */
   int getMkVFormat(int configindex, int configdatastreamindex);
-
- /**
-  * Sets the MkV format (MkIV or VLBA) for a given datastream configuration.  Checks that a valid value is supplied
-  * @param configindex The index of the configuration being used (from the table in the input file)
-  * @param configdatastreamindex The index of the datastream in order for that configuration (from the table in the input file)
-  */
-  void setMkVFormat(int configindex, int configdatastreamindex, int format);
 
  /**
   * @param offsetseconds The offset from the start of the correlation in seconds
@@ -351,7 +354,7 @@ private:
   enum sectionheader {COMMON, CONFIG, FREQ, TELESCOPE, DATASTREAM, BASELINE, DATA, NETWORK, INPUT_EOF, UNKNOWN};
 
   ///Supported types of recorded data format
-  enum dataformat {LBASTD, LBAVSOP, MKV_MKIV, MKV_VLBA, NATIVE_MKV_MKIV, NATIVE_MKV_VLBA, NZ, K5};
+  enum dataformat {LBASTD, LBAVSOP, MKV_MKIV, MKV_VLBA, NATIVE_MKV_MKIV, NATIVE_MKV_VLBA, NZ, K5, MKV_B, NATIVE_MKV_B};
 
   ///Storage struct for data from the frequency table of the input file
   typedef struct {
@@ -410,6 +413,7 @@ private:
     int bytespersampledenom;
     int fanout;
     int framebytes;
+    int headerbytes;
     bool filterbank;
     bool readfromfile;
     int numfreqs;

@@ -159,15 +159,6 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 		cout << "Scan info. start = " << scan->start << " off = " << scan->frameoffset << " size = " << scan->framebytes << endl;
 	}
 
-	if(scan->format == MK5_FORMAT_VLBA)
-	{
-		isVLBA = true;
-	}
-	else
-	{
-		isVLBA = false;
-	}
-
 	cout << "The frame start day is " << scan->mjd << 
 		", the frame start seconds is " << (scan->sec+scan->ns*1.e-9)
 		<< ", readseconds is " << readseconds << 

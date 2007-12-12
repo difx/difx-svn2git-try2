@@ -116,7 +116,6 @@ protected:
 
   struct mark5_stream * vs;
   int framebytes, fanout, headerbytes, numbits;
-  bool isVLBA;
 };
 
 #endif
