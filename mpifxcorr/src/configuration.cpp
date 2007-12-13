@@ -10,6 +10,7 @@
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                  *
  ***************************************************************************/
 #include <mpi.h>
+#include "mark5access.h"
 #include "configuration.h"
 #include "mode.h"
 #include "datastream.h"
@@ -430,6 +431,8 @@ Mode* Configuration::getMode(int configindex, int datastreamindex)
     case MKV_VLBA:
     case NATIVE_MKV_MKIV:
     case NATIVE_MKV_VLBA:
+    case MK5_FILE:
+    case MK5_MODULE:
       return new Mk5Mode(this, configindex, datastreamindex, stream.fanout, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, stream.numbits, stream.filterbank, conf.pulsarbin, conf.scrunchoutput, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, stream.framebytes);
       break;
     default:
@@ -649,6 +652,8 @@ void Configuration::processConfig(ifstream * input)
 void Configuration::processDatastreamTable(ifstream * input)
 {
   string line;
+  int numbits = 0;
+  struct mark5_format *mf;
 
   getinputline(input, &line, "DATASTREAM ENTRIES");
   datastreamtablelength = atoi(line.c_str());
@@ -670,6 +675,7 @@ void Configuration::processDatastreamTable(ifstream * input)
 
   for(int i=0;i<datastreamtablelength;i++)
   {
+    numbits = 0;
     //read all the info for this datastream
     getinputline(input, &line, "TELESCOPE INDEX");
     datastreamtable[i].telescopeindex = atoi(line.c_str());
@@ -731,16 +737,47 @@ void Configuration::processDatastreamTable(ifstream * input)
       datastreamtable[i].headerbytes = 16;
     }
     else if(line == "NZ")
+    {
       datastreamtable[i].format = NZ;
+    }
     else if(line == "K5")
+    {
       datastreamtable[i].format = K5;
+    }
+    // Check for formats that can be transparently decoded by mark5access
+    else if( (mf = new_mark5_format_from_name(line.c_str())) != 0)
+    {
+      datastreamtable[i].formatname = line;
+      getinputline(input, &line, "DATA SOURCE");
+      if(line == "MODULE")
+      {
+        datastreamtable[i].format = MK5_MODULE;
+      }
+      else if(line == "FILE")
+      {
+        datastreamtable[i].format = MK5_FILE;
+      }
+      else
+      {
+        cerr << "DATA SOURCE [" << line << "] not allowed.  Assuming FILE" << endl;
+        datastreamtable[i].format = MK5_FILE;
+      }
+      datastreamtable[i].fanout = mf->fanout;
+      datastreamtable[i].framebytes = mf->framebytes;
+      datastreamtable[i].headerbytes = mf->framebytes - mf->databytes;
+      datastreamtable[i].numbits = numbits = mf->nbit;
+      delete_mark5_format(mf);
+    }
     else
     {
       cerr << "Unnkown data format " << line << " (case sensitive choices are LBASTD, LBAVSOP, MARK4, VLBA, MARK5B, NZ and K5) - assuming LBASTD!!!" << endl;
       datastreamtable[i].format = LBASTD;
     }
-    getinputline(input, &line, "QUANTISATION BITS");
-    datastreamtable[i].numbits = atoi(line.c_str());
+    if(numbits == 0)
+    {
+      getinputline(input, &line, "QUANTISATION BITS");
+      datastreamtable[i].numbits = atoi(line.c_str());
+    }
     getinputline(input, &line, "FILTERBANK USED");
     datastreamtable[i].filterbank = ((line == "TRUE") || (line == "T") || (line == "true") || (line == "t"))?true:false;
     if(datastreamtable[i].filterbank)

@@ -161,17 +161,18 @@ public:
   {
     enum dataformat f;
     f = datastreamtable[configs[0].datastreamindices[datastreamindex]].format;
-    return (f == MKV_MKIV || f == MKV_VLBA || f == MKV_B); 
+    return (f == MKV_MKIV || f == MKV_VLBA || f == MKV_B || f == MK5_FILE); 
   }
   inline bool isNativeMkV(int datastreamindex) 
   { 
     enum dataformat f;
     f = datastreamtable[configs[0].datastreamindices[datastreamindex]].format;
-    return (f == NATIVE_MKV_MKIV || f == NATIVE_MKV_VLBA || f == NATIVE_MKV_B); 
+    return (f == NATIVE_MKV_MKIV || f == NATIVE_MKV_VLBA || f == NATIVE_MKV_B || f == MK5_MODULE); 
   }
   inline int getFrameBytes(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framebytes; }
-  inline int getHeaderBytes(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].headerbytes; }
   inline void setFrameBytes(int configindex, int configdatastreamindex, int framebytes) { datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framebytes = framebytes; }
+  inline int getHeaderBytes(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].headerbytes; }
+  inline string getFormatName(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].formatname; }
   inline int getFanout(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].fanout; }
   inline double getConfigBandwidth(int configindex) 
     { return freqtable[datastreamtable[configs[configindex].datastreamindices[0]].freqtableindices[0]].bandwidth; }
@@ -354,7 +355,7 @@ private:
   enum sectionheader {COMMON, CONFIG, FREQ, TELESCOPE, DATASTREAM, BASELINE, DATA, NETWORK, INPUT_EOF, UNKNOWN};
 
   ///Supported types of recorded data format
-  enum dataformat {LBASTD, LBAVSOP, MKV_MKIV, MKV_VLBA, NATIVE_MKV_MKIV, NATIVE_MKV_VLBA, NZ, K5, MKV_B, NATIVE_MKV_B};
+  enum dataformat {LBASTD, LBAVSOP, MKV_MKIV, MKV_VLBA, NATIVE_MKV_MKIV, NATIVE_MKV_VLBA, NZ, K5, MKV_B, NATIVE_MKV_B, MK5_FILE, MK5_MODULE};
 
   ///Storage struct for data from the frequency table of the input file
   typedef struct {
@@ -414,6 +415,7 @@ private:
     int fanout;
     int framebytes;
     int headerbytes;
+    string formatname;
     bool filterbank;
     bool readfromfile;
     int numfreqs;

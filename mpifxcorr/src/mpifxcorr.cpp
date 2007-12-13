@@ -151,14 +151,6 @@ int main(int argc, char *argv[])
   config = new Configuration(argv[1]);
   numdatastreams = config->getNumDataStreams();
 
-#if 0
-  if(myID >= FxManager::FIRSTTELESCOPEID && myID < FxManager::FIRSTTELESCOPEID + numdatastreams) //I'm a datastream
-  {
-    if(config->isMkV(myID-1))
-      config->findMkVFormat(0, myID-1);
-  }
-#endif
-  
   numcores = numprocs - (FxManager::FIRSTTELESCOPEID + numdatastreams);
   if(numcores < 1)
   {

@@ -15,28 +15,41 @@
 Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int fanout, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool pbin, bool pscrunch, bool postffringe, bool quaddelayinterp, bool cacorrs, int fbytes)
  : Mode(conf, confindex, dsindex, nchan, bpersend, gblocks, nfreqs, bw, freqclkoffsets, ninputbands, noutputbands, nbits, PAYLOADSIZE*fanout+nchan*2, fbank, pbin, pscrunch, postffringe, quaddelayinterp, cacorrs, bw*2)
 {
-  int format;
+  string formatname;
   
-  format = conf->getMkVFormat(confindex, dsindex);
-  
+  formatname = conf->getFormatName(confindex, dsindex);
+
   //create the mark5_stream used for unpacking
-  switch(format)
+  if(formatname != "")
   {
-  case MK5_FORMAT_VLBA:
+    cout << "FormatName = " << formatname << endl;
     vf = new_mark5_stream(
       new_mark5_stream_unpacker(0),
-      new_mark5_format_vlba(0, numinputbands, numbits, fanout) );
-    break;
-  case MK5_FORMAT_MARK4:
-    vf = new_mark5_stream(
-      new_mark5_stream_unpacker(0),
-      new_mark5_format_mark4(0, numinputbands, numbits, fanout) );
-    break;
-  case MK5_FORMAT_MARK5B:
-    vf = new_mark5_stream(
-      new_mark5_stream_unpacker(0),
-      new_mark5_format_mark5b(0, numinputbands, numbits) );
-    break;
+      new_mark5_format_generic_from_string(formatname.c_str()) );
+    mark5_stream_print(vf);
+  }
+  else  // This part goes away soon!
+  {
+    int format;
+    format = conf->getMkVFormat(confindex, dsindex);
+    switch(format)
+    {
+    case MK5_FORMAT_VLBA:
+      vf = new_mark5_stream(
+        new_mark5_stream_unpacker(0),
+        new_mark5_format_vlba(0, numinputbands, numbits, fanout) );
+      break;
+    case MK5_FORMAT_MARK4:
+      vf = new_mark5_stream(
+        new_mark5_stream_unpacker(0),
+        new_mark5_format_mark4(0, numinputbands, numbits, fanout) );
+      break;
+    case MK5_FORMAT_MARK5B:
+      vf = new_mark5_stream(
+        new_mark5_stream_unpacker(0),
+        new_mark5_format_mark5b(0, numinputbands, numbits) );
+      break;
+    }
   }
 
   framesamples = vf->framesamples;
