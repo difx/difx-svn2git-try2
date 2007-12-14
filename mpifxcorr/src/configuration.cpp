@@ -285,7 +285,7 @@ int Configuration::getDataBytes(int configindex, int datastreamindex)
 {
   datastreamdata currentds = datastreamtable[configs[configindex].datastreamindices[datastreamindex]];
   int validlength = (configs[configindex].blockspersend*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
-  if(currentds.format == MKV_MKIV || currentds.format == MKV_VLBA || currentds.format == NATIVE_MKV_VLBA || currentds.format == NATIVE_MKV_MKIV)
+  if(currentds.format == MKV_MKIV || currentds.format == MKV_VLBA || currentds.format == NATIVE_MKV_VLBA || currentds.format == NATIVE_MKV_MKIV || currentds.format == MKV_B || currentds.format == NATIVE_MKV_B || currentds.format == MK5_FILE || currentds.format == MK5_MODULE)
   {
     //must be an integer number of frames, with enough margin for overlap on either side
     validlength += (configs[configindex].guardblocks*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
@@ -429,8 +429,10 @@ Mode* Configuration::getMode(int configindex, int datastreamindex)
       break;
     case MKV_MKIV:
     case MKV_VLBA:
+    case MKV_B:
     case NATIVE_MKV_MKIV:
     case NATIVE_MKV_VLBA:
+    case NATIVE_MKV_B:
     case MK5_FILE:
     case MK5_MODULE:
       return new Mk5Mode(this, configindex, datastreamindex, stream.fanout, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, stream.numbits, stream.filterbank, conf.pulsarbin, conf.scrunchoutput, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, stream.framebytes);

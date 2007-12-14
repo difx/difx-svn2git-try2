@@ -170,8 +170,8 @@ public:
     return (f == NATIVE_MKV_MKIV || f == NATIVE_MKV_VLBA || f == NATIVE_MKV_B || f == MK5_MODULE); 
   }
   inline int getFrameBytes(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framebytes; }
-  inline void setFrameBytes(int configindex, int configdatastreamindex, int framebytes) { datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framebytes = framebytes; }
   inline int getHeaderBytes(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].headerbytes; }
+  inline int getFrameNS(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framens; }
   inline string getFormatName(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].formatname; }
   inline int getFanout(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].fanout; }
   inline double getConfigBandwidth(int configindex) 
@@ -415,6 +415,7 @@ private:
     int fanout;
     int framebytes;
     int headerbytes;
+    int framens;
     string formatname;
     bool filterbank;
     bool readfromfile;

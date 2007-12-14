@@ -115,6 +115,7 @@ void Mk5DataStream::updateConfig(int segmentindex)
   fanout = config->getFanout(bufferinfo[segmentindex].configindex, streamnum);
   numbits = config->getDNumBits(bufferinfo[segmentindex].configindex, streamnum);
 
+  // FIXME -- below is wrong for Mark5B!!!
   //correct the nsinc - should be number of frames*frame time
   bufferinfo[segmentindex].nsinc = int(((bufferbytes/numdatasegments)/framebytes)*bufferinfo[segmentindex].sampletimens*PAYLOADSIZE*fanout);
 
