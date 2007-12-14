@@ -31,7 +31,6 @@ public:
   * @param conf The configuration object, containing all information about the duration and setup of this correlation
   * @param confindex The index of the configuration this Mode is for
   * @param dsindex The index of the datastream this Mode is for
-  * @param fanout The number of tracks divided by the number of bands (ie number of time samples per clockout)
   * @param nchan The number of channels per subband
   * @param bpersend The number of FFT blocks to be processed in a message
   * @param gblocks The number of additional guard blocks at the end of a message
@@ -47,9 +46,9 @@ public:
   * @param postffringe Whether fringe rotation takes place after channelisation
   * @param quaddelayinterp Whether delay interpolataion from FFT start to FFT end is quadratic (if false, linear is used)
   * @param cacorrs Whether cross-polarisation autocorrelations are to be calculated
-  * @param fbytes The number of bytes in a frame (= number of tracks * (20000 + 160 if VLBA) )
+  * @param fsamples The number of samples in a frame per channel
   */
-  Mk5Mode(Configuration * conf, int confindex, int dsindex, int fanout, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool pbin, bool pscrunch, bool postffringe, bool quaddelayinterp, bool cacorrs, int fbytes);
+  Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool pbin, bool pscrunch, bool postffringe, bool quaddelayinterp, bool cacorrs, int fsamples);
   virtual ~Mk5Mode();
 
 protected:
@@ -115,7 +114,7 @@ protected:
   virtual void initialiseFile(int configindex, int fileindex);
 
   struct mark5_stream * vs;
-  int framebytes, fanout, headerbytes, numbits;
+  int framebytes, headerbytes, numbits, framens;
 };
 
 #endif

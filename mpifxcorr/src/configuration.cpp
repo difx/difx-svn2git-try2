@@ -285,7 +285,7 @@ int Configuration::getDataBytes(int configindex, int datastreamindex)
 {
   datastreamdata currentds = datastreamtable[configs[configindex].datastreamindices[datastreamindex]];
   int validlength = (configs[configindex].blockspersend*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
-  if(currentds.format == MKV_MKIV || currentds.format == MKV_VLBA || currentds.format == NATIVE_MKV_VLBA || currentds.format == NATIVE_MKV_MKIV || currentds.format == MKV_B || currentds.format == NATIVE_MKV_B || currentds.format == MK5_FILE || currentds.format == MK5_MODULE)
+  if(currentds.format == MK5_FILE || currentds.format == MK5_MODULE)
   {
     //must be an integer number of frames, with enough margin for overlap on either side
     validlength += (configs[configindex].guardblocks*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
@@ -369,25 +369,6 @@ bool Configuration::stationUsed(int telescopeindex)
   return toreturn;
 }
 
-int Configuration::getMkVFormat(int configindex, int configdatastreamindex)
-{
-  switch(datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].format)
-  {
-    case MKV_VLBA:
-    case NATIVE_MKV_VLBA:
-      return MK5_FORMAT_VLBA;
-    case MKV_MKIV:
-    case NATIVE_MKV_MKIV:
-      return MK5_FORMAT_MARK4;
-    case MKV_B:
-    case NATIVE_MKV_B:
-      return MK5_FORMAT_MARK5B;
-    default:
-      cerr << "Error trying to retrieve MkV format for configindex " << configindex << ", datastream " << configdatastreamindex << ": had not been updated from general MkV!!" << endl;
-      exit(1);
-  }
-}
-
 int Configuration::getConfigIndex(int offsetseconds)
 {
   int currentconfigindex;
@@ -427,15 +408,9 @@ Mode* Configuration::getMode(int configindex, int datastreamindex)
         cerr << "ERROR! All LBASTD Modes must have 2 bit sampling - overriding input specification!!!" << endl;
       return new LBAMode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, 2/*bits*/, stream.filterbank, conf.pulsarbin, conf.scrunchoutput, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, LBAMode::vsopunpackvalues);
       break;
-    case MKV_MKIV:
-    case MKV_VLBA:
-    case MKV_B:
-    case NATIVE_MKV_MKIV:
-    case NATIVE_MKV_VLBA:
-    case NATIVE_MKV_B:
     case MK5_FILE:
     case MK5_MODULE:
-      return new Mk5Mode(this, configindex, datastreamindex, stream.fanout, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, stream.numbits, stream.filterbank, conf.pulsarbin, conf.scrunchoutput, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, stream.framebytes);
+      return new Mk5Mode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, stream.numbits, stream.filterbank, conf.pulsarbin, conf.scrunchoutput, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, stream.framesamples);
       break;
     default:
       cerr << "Error - unknown Mode!!!" << endl;
@@ -688,56 +663,6 @@ void Configuration::processDatastreamTable(ifstream * input)
       datastreamtable[i].format = LBASTD;
     else if(line == "LBAVSOP")
       datastreamtable[i].format = LBAVSOP;
-    else if(line == "VLBA")
-    {
-      datastreamtable[i].format = MKV_VLBA;
-      getinputline(input, &line, "FANOUT");
-      datastreamtable[i].fanout = atoi(line.c_str());
-      getinputline(input, &line, "TRACKS");
-      datastreamtable[i].framebytes = (atoi(line.c_str())/8)*VLBA_FRAMESIZE;
-      datastreamtable[i].headerbytes = (datastreamtable[i].framebytes/VLBA_FRAMESIZE)*(VLBA_FRAMESIZE-PAYLOADSIZE);
-    }
-    else if(line == "MARK4" || line == "MKIV")
-    {
-      datastreamtable[i].format = MKV_MKIV;
-      getinputline(input, &line, "FANOUT");
-      datastreamtable[i].fanout = atoi(line.c_str());
-      getinputline(input, &line, "TRACKS");
-      datastreamtable[i].framebytes = (atoi(line.c_str())/8)*MARK4_FRAMESIZE;
-      datastreamtable[i].headerbytes = 0;
-    }
-    else if(line == "MARK5B")
-    {
-      datastreamtable[i].format = MKV_B;
-      datastreamtable[i].fanout = 1;
-      datastreamtable[i].framebytes = 10016; /* always for mark5b */
-      datastreamtable[i].headerbytes = 16;
-    }
-    else if(line == "NATIVE_MKV_VLBA")
-    {
-      datastreamtable[i].format = NATIVE_MKV_VLBA;
-      getinputline(input, &line, "FANOUT");
-      datastreamtable[i].fanout = atoi(line.c_str());
-      getinputline(input, &line, "TRACKS");
-      datastreamtable[i].framebytes = (atoi(line.c_str())/8)*VLBA_FRAMESIZE;
-      datastreamtable[i].headerbytes = (datastreamtable[i].framebytes/VLBA_FRAMESIZE)*(VLBA_FRAMESIZE-PAYLOADSIZE);
-    }
-    else if(line == "NATIVE_MKV_MARK4" || line == "NATIVE_MKV_MKIV")
-    {
-      datastreamtable[i].format = NATIVE_MKV_MKIV;
-      getinputline(input, &line, "FANOUT");
-      datastreamtable[i].fanout = atoi(line.c_str());
-      getinputline(input, &line, "TRACKS");
-      datastreamtable[i].framebytes = (atoi(line.c_str())/8)*MARK4_FRAMESIZE;
-      datastreamtable[i].headerbytes = 0;
-    }
-    else if(line == "NATIVE_MKV_MARK5B")
-    {
-      datastreamtable[i].format = NATIVE_MKV_B;
-      datastreamtable[i].fanout = 1;
-      datastreamtable[i].framebytes = 10016; /* always for mark5b */
-      datastreamtable[i].headerbytes = 16;
-    }
     else if(line == "NZ")
     {
       datastreamtable[i].format = NZ;
@@ -764,15 +689,16 @@ void Configuration::processDatastreamTable(ifstream * input)
         cerr << "DATA SOURCE [" << line << "] not allowed.  Assuming FILE" << endl;
         datastreamtable[i].format = MK5_FILE;
       }
-      datastreamtable[i].fanout = mf->fanout;
       datastreamtable[i].framebytes = mf->framebytes;
       datastreamtable[i].headerbytes = mf->framebytes - mf->databytes;
       datastreamtable[i].numbits = numbits = mf->nbit;
+      datastreamtable[i].framens = mf->framens;
+      datastreamtable[i].framesamples = mf->databytes*8/(mf->nbit*mf->nchan);
       delete_mark5_format(mf);
     }
     else
     {
-      cerr << "Unnkown data format " << line << " (case sensitive choices are LBASTD, LBAVSOP, MARK4, VLBA, MARK5B, NZ and K5) - assuming LBASTD!!!" << endl;
+      cerr << "Unnkown data format " << line << " (case sensitive choices are LBASTD, LBAVSOP, NZ, K5," << mark5_stream_list_formats() << ") - assuming LBASTD!!!" << endl;
       datastreamtable[i].format = LBASTD;
     }
     if(numbits == 0)

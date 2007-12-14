@@ -161,19 +161,18 @@ public:
   {
     enum dataformat f;
     f = datastreamtable[configs[0].datastreamindices[datastreamindex]].format;
-    return (f == MKV_MKIV || f == MKV_VLBA || f == MKV_B || f == MK5_FILE); 
+    return (f == MK5_FILE); 
   }
   inline bool isNativeMkV(int datastreamindex) 
   { 
     enum dataformat f;
     f = datastreamtable[configs[0].datastreamindices[datastreamindex]].format;
-    return (f == NATIVE_MKV_MKIV || f == NATIVE_MKV_VLBA || f == NATIVE_MKV_B || f == MK5_MODULE); 
+    return (f == MK5_MODULE); 
   }
   inline int getFrameBytes(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framebytes; }
   inline int getHeaderBytes(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].headerbytes; }
   inline int getFrameNS(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framens; }
   inline string getFormatName(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].formatname; }
-  inline int getFanout(int configindex, int configdatastreamindex) { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].fanout; }
   inline double getConfigBandwidth(int configindex) 
     { return freqtable[datastreamtable[configs[configindex].datastreamindices[0]].freqtableindices[0]].bandwidth; }
   inline string getTelescopeName(int telescopeindex)
@@ -206,14 +205,6 @@ public:
   * @param configindex The index of the configuration being used (from the table in the input file)
   * @param configdatastreamindex The index of the datastream in order for that configuration (from the table in the input file)
   */
-
- /**
-  * Returns the kind of MkV format (MkIV or VLBA) being used for a given datastream configuration.  Checks a valid value
-  * is being returned
-  * @param configindex The index of the configuration being used (from the table in the input file)
-  * @param configdatastreamindex The index of the datastream in order for that configuration (from the table in the input file)
-  */
-  int getMkVFormat(int configindex, int configdatastreamindex);
 
  /**
   * @param offsetseconds The offset from the start of the correlation in seconds
@@ -355,7 +346,7 @@ private:
   enum sectionheader {COMMON, CONFIG, FREQ, TELESCOPE, DATASTREAM, BASELINE, DATA, NETWORK, INPUT_EOF, UNKNOWN};
 
   ///Supported types of recorded data format
-  enum dataformat {LBASTD, LBAVSOP, MKV_MKIV, MKV_VLBA, NATIVE_MKV_MKIV, NATIVE_MKV_VLBA, NZ, K5, MKV_B, NATIVE_MKV_B, MK5_FILE, MK5_MODULE};
+  enum dataformat {LBASTD, LBAVSOP, NZ, K5, MK5_FILE, MK5_MODULE};
 
   ///Storage struct for data from the frequency table of the input file
   typedef struct {
@@ -412,7 +403,7 @@ private:
     int numbits;
     int bytespersamplenum;
     int bytespersampledenom;
-    int fanout;
+    int framesamples;
     int framebytes;
     int headerbytes;
     int framens;

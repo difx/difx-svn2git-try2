@@ -12,8 +12,8 @@
 #include <mpi.h>
 #include "mk5.h"
 
-Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int fanout, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool pbin, bool pscrunch, bool postffringe, bool quaddelayinterp, bool cacorrs, int fbytes)
- : Mode(conf, confindex, dsindex, nchan, bpersend, gblocks, nfreqs, bw, freqclkoffsets, ninputbands, noutputbands, nbits, PAYLOADSIZE*fanout+nchan*2, fbank, pbin, pscrunch, postffringe, quaddelayinterp, cacorrs, bw*2)
+Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool pbin, bool pscrunch, bool postffringe, bool quaddelayinterp, bool cacorrs, int fsamples)
+ : Mode(conf, confindex, dsindex, nchan, bpersend, gblocks, nfreqs, bw, freqclkoffsets, ninputbands, noutputbands, nbits, fsamples+nchan*2, fbank, pbin, pscrunch, postffringe, quaddelayinterp, cacorrs, bw*2)
 {
   string formatname;
   
@@ -22,34 +22,19 @@ Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int fanout, i
   //create the mark5_stream used for unpacking
   if(formatname != "")
   {
-    cout << "FormatName = " << formatname << endl;
     vf = new_mark5_stream(
       new_mark5_stream_unpacker(0),
       new_mark5_format_generic_from_string(formatname.c_str()) );
-    mark5_stream_print(vf);
   }
-  else  // This part goes away soon!
+  else
   {
-    int format;
-    format = conf->getMkVFormat(confindex, dsindex);
-    switch(format)
-    {
-    case MK5_FORMAT_VLBA:
-      vf = new_mark5_stream(
-        new_mark5_stream_unpacker(0),
-        new_mark5_format_vlba(0, numinputbands, numbits, fanout) );
-      break;
-    case MK5_FORMAT_MARK4:
-      vf = new_mark5_stream(
-        new_mark5_stream_unpacker(0),
-        new_mark5_format_mark4(0, numinputbands, numbits, fanout) );
-      break;
-    case MK5_FORMAT_MARK5B:
-      vf = new_mark5_stream(
-        new_mark5_stream_unpacker(0),
-        new_mark5_format_mark5b(0, numinputbands, numbits) );
-      break;
-    }
+    cerr << "FormatName == ''" << endl;
+    exit(1);
+  }
+  if(fsamples != vf->framesamples)
+  {
+    cerr << "Mk5Mode::Mk5Mode : framesamples inconsistent" << endl;
+    exit(1);
   }
 
   framesamples = vf->framesamples;
@@ -88,13 +73,14 @@ Mk5DataStream::~Mk5DataStream()
 
 int Mk5DataStream::calculateControlParams(int offsetsec, int offsetsamples)
 {
-  int bufferindex, framesin, vlbaoffset, payloadbytesperframe;
+  int bufferindex, framesin, vlbaoffset, payloadbytesperframe, framens;
   
   bufferindex = DataStream::calculateControlParams(offsetsec, offsetsamples);
   
   //do the necessary correction to start from a frame boundary - work out the offset from the start of this segment
   vlbaoffset = bufferindex - atsegment*readbytes;
-  payloadbytesperframe = (PAYLOADSIZE*fanout*bufferinfo[atsegment].bytespersamplenum)/bufferinfo[atsegment].bytespersampledenom;
+  payloadbytesperframe = framebytes - headerbytes;
+
   framesin = vlbaoffset/payloadbytesperframe;
 
   bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] = bufferinfo[atsegment].seconds + (double(bufferinfo[atsegment].nanoseconds) + double(((framesin*(framebytes-headerbytes))*bufferinfo[atsegment].bytespersampledenom)/bufferinfo[atsegment].bytespersamplenum)* bufferinfo[atsegment].sampletimens)/1000000000.0;
@@ -112,12 +98,11 @@ void Mk5DataStream::updateConfig(int segmentindex)
 
   framebytes = config->getFrameBytes(bufferinfo[segmentindex].configindex, streamnum);
   headerbytes = config->getHeaderBytes(bufferinfo[segmentindex].configindex, streamnum);
-  fanout = config->getFanout(bufferinfo[segmentindex].configindex, streamnum);
   numbits = config->getDNumBits(bufferinfo[segmentindex].configindex, streamnum);
+  framens = config->getFrameNS(bufferinfo[segmentindex].configindex, streamnum);
 
-  // FIXME -- below is wrong for Mark5B!!!
   //correct the nsinc - should be number of frames*frame time
-  bufferinfo[segmentindex].nsinc = int(((bufferbytes/numdatasegments)/framebytes)*bufferinfo[segmentindex].sampletimens*PAYLOADSIZE*fanout);
+  bufferinfo[segmentindex].nsinc = int(((bufferbytes/numdatasegments)/framebytes)*framens);
 
   //take care of the case where an integral number of frames is not an integral number of blockspersend - ensure sendbytes is long enough
   bufferinfo[segmentindex].sendbytes = int(((((double)bufferinfo[segmentindex].sendbytes)* ((double)config->getBlocksPerSend(bufferinfo[segmentindex].configindex)))/(config->getBlocksPerSend(bufferinfo[segmentindex].configindex) + config->getGuardBlocks(bufferinfo[segmentindex].configindex)) + 0.99));
@@ -127,8 +112,13 @@ void Mk5DataStream::updateConfig(int segmentindex)
 void Mk5DataStream::initialiseFile(int configindex, int fileindex)
 {
   int offset;
+  string formatname;
 
-  vs = mark5_stream_open(datafilenames[configindex][fileindex].c_str(), numbits, fanout, 0);
+  formatname = config->getFormatName(configindex, streamnum);
+
+  vs = new_mark5_stream(
+    new_mark5_stream_file(datafilenames[configindex][fileindex].c_str(), 0),
+    new_mark5_format_generic_from_string(formatname.c_str()) );
   if(vs->nchan != config->getDNumInputBands(configindex, streamnum))
   {
     cerr << "Error - number of input bands for datastream " << streamnum << " (" << config->getDNumInputBands(configindex, streamnum) << ") does not match with MkV file " << datafilenames[configindex][fileindex] << " (" << vs->nchan << "), will be ignored!!!" << endl;
