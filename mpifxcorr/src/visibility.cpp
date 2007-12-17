@@ -347,8 +347,18 @@ void Visibility::writedata()
 {
   f32 scale, divisor;
   int status, ds1, ds2, ds1bandindex, ds2bandindex, binloop;
+  int dumpmjd;
+  double dumpseconds;
 
   cout << "Visibility " << visID << " is starting to write out data" << endl;
+
+  dumpmjd = expermjd + (experseconds + currentstartseconds)/86400;
+  dumpseconds = double((experseconds + currentstartseconds)%86400) + double((currentstartsamples+integrationsamples/2)/(2000000.0*config->getDBandwidth(currentconfigindex,0,0)));
+  
+  if((dumpmjd-expermjd)*86400.0+(dumpseconds-experseconds) >= executeseconds)
+  {
+  	return;
+  }
 
   if (monitor && currentblocks == 0) //nothing to write out
   {

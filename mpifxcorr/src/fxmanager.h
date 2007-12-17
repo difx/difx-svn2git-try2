@@ -58,7 +58,7 @@ public:
   /// The MPI ID that is always used for the first Datastream
   static const int FIRSTTELESCOPEID = 1;
   /// The number of Visibility objects employed to allow buffering of returning results from the Core at an uneven rate
-  static const int VISBUFFER_LENGTH = 10;
+  static const int VISBUFFER_LENGTH = 200;
 
 protected:
  /** 
