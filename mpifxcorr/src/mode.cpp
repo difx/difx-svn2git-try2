@@ -142,7 +142,7 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bper
 Mode::~Mode()
 {
   int status;
-  cout << "Starting a mode destructor" << endl;
+//  cout << "Starting a mode destructor" << endl;
 
   for(int i=0;i<numinputbands;i++)
   {
@@ -194,7 +194,7 @@ Mode::~Mode()
   }
   delete [] autocorrelations;
 
-  cout << "Ending a mode destructor" << endl;
+//  cout << "Ending a mode destructor" << endl;
 }
 
 void Mode::unpack(int sampleoffset)

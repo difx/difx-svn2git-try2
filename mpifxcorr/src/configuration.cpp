@@ -94,7 +94,7 @@ Configuration::Configuration(const char * configfile)
   input->close();
   delete input;
   consistencyCheck();
-  cout << "Finished processing input file!!!" << endl;
+//  cout << "Finished processing input file!!!" << endl;
 }
 
 
@@ -620,7 +620,7 @@ void Configuration::processConfig(ifstream * input)
   }
   if(defaultconfigindex < 0)
   {
-    cerr << "Warning - no default config found - sources which were not specified will not be correlated!!!" << endl;
+//    cerr << "Warning - no default config found - sources which were not specified will not be correlated!!!" << endl;
   }
 
   configread = true;

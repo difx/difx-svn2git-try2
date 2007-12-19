@@ -33,7 +33,7 @@ Visibility::Visibility(Configuration * conf, int id, int numvis, int eseconds, i
 {
   int status;
 
-  cout << "About to create visibility " << id << "/" << numvis << endl;
+//  cout << "About to create visibility " << id << "/" << numvis << endl;
 
   if(visID == 0)
     *mon_socket = -1;
@@ -350,7 +350,7 @@ void Visibility::writedata()
   int dumpmjd;
   double dumpseconds;
 
-  cout << "Visibility " << visID << " is starting to write out data" << endl;
+//  cout << "Visibility " << visID << " is starting to write out data" << endl;
 
   dumpmjd = expermjd + (experseconds + currentstartseconds)/86400;
   dumpseconds = double((experseconds + currentstartseconds)%86400) + double((currentstartsamples+integrationsamples/2)/(2000000.0*config->getDBandwidth(currentconfigindex,0,0)));
@@ -472,7 +472,7 @@ void Visibility::writedata()
     }
   }
 
-  cout << "Visibility has finished writing data" << endl;
+// cout << "Visibility has finished writing data" << endl;
 }
 
 void Visibility::writeascii()
@@ -805,7 +805,7 @@ void Visibility::changeConfig(int configindex)
   integrationsamples = int(2000000*config->getDBandwidth(configindex, 0, 0)*config->getIntTime(configindex) + 0.5);
   blocksamples = config->getBlocksPerSend(configindex)*numchannels*2;
   offsetperintegration = integrationsamples%blocksamples;
-  cout << "For Visibility " << visID << ", offsetperintegration is " << offsetperintegration << ", blocksamples is " << blocksamples << ", and configindex is " << configindex << endl;
+//  cout << "For Visibility " << visID << ", offsetperintegration is " << offsetperintegration << ", blocksamples is " << blocksamples << ", and configindex is " << configindex << endl;
   resultlength = config->getResultLength(configindex);
   for(int i=0;i<numdatastreams;i++)
     autocorrcalibs[i] = new cf32[config->getDNumOutputBands(configindex, i)];
@@ -841,7 +841,7 @@ void Visibility::changeConfig(int configindex)
   //do the same for the datastreams, so we can order things properly in the rpfits array
   for(int i=0;i<numdatastreams;i++)
   {
-    cout << "Creating datastreampolbandoffsets, length " << config->getDNumFreqs(configindex,i) << endl;
+//    cout << "Creating datastreampolbandoffsets, length " << config->getDNumFreqs(configindex,i) << endl;
     datastreampolbandoffsets[i] = new int*[config->getDNumFreqs(configindex,i)];
     for(int j=0;j<config->getDNumFreqs(configindex, i);j++)
     {

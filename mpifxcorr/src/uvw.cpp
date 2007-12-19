@@ -70,7 +70,7 @@ Uvw::Uvw(Configuration * config, string uvwfilename, bool nameonly)
   if(uvwread) //only create the uvw information if we've been asked to, otherwise save time and memory
     uvw = new double***[numscans];
 
-  cout << "Scan information has been read in - numscans is " << numscans << endl;
+//  cout << "Scan information has been read in - numscans is " << numscans << endl;
 
   for(int i=0;i<numscans;i++)
   {

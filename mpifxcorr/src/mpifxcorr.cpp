@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  cout << "About to process the input file.." << endl;
+//  cout << "About to process the input file.." << endl;
   //process the input file to get all the info we need
   config = new Configuration(argv[1]);
   numdatastreams = config->getNumDataStreams();

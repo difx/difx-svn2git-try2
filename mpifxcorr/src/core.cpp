@@ -218,7 +218,7 @@ void Core::execute()
   }
 
   //Run through the shutdown sequence
-  cout << "Core " << mpiid << " commencing termination sequence" << endl;
+//  cout << "Core " << mpiid << " commencing termination sequence" << endl;
   for(int i=0;i<numprocessthreads;i++)
   {
     //Unlock the mutex we are currently holding for this thread
@@ -230,7 +230,7 @@ void Core::execute()
   //ensure all the results we have sitting around have been sent
   for(int i=1;i<RECEIVE_RING_LENGTH-1;i++)
   {
-    cout << "Core " << mpiid << " about to send final values from section " << i << endl;
+//    cout << "Core " << mpiid << " about to send final values from section " << i << endl;
     for(int j=0;j<numprocessthreads;j++)
     {
       //Lock and unlock first to ensure the threads have finished working on this slot
@@ -245,7 +245,7 @@ void Core::execute()
     MPI_Ssend(procslots[(numreceived+i)%RECEIVE_RING_LENGTH].results, procslots[(numreceived+i)%RECEIVE_RING_LENGTH].resultlength*2, MPI_FLOAT, FxManager::MANAGERID, procslots[numreceived%RECEIVE_RING_LENGTH].resultsvalid, return_comm);
   }
 
-  cout << "CORE " << mpiid << " is about to join the processthreads" << endl;
+//  cout << "CORE " << mpiid << " is about to join the processthreads" << endl;
 
   //join the process threads, they have to already be finished anyway
   for(int i=0;i<numprocessthreads;i++)
@@ -255,7 +255,7 @@ void Core::execute()
       cerr << "Error in Core " << mpiid << " attempt to join processthread " << i << endl;  
   }
 
-  cout << "CORE " << mpiid << " terminating" << endl;
+//  cout << "CORE " << mpiid << " terminating" << endl;
 }
 
 void Core::pulsarScale(int index)
@@ -374,7 +374,7 @@ void Core::loopprocess(int threadid)
     polycos = new Polyco*[maxpolycos];
   updateconfig(lastconfigindex, lastconfigindex, threadid, startblock, numblocks, numpolycos, pulsarbin, modes, polycos, true, &bins);
   numprocessed = 0;
-  cout << "Core thread id " << threadid << " will be processing from block " << startblock << ", length " << numblocks << endl;
+//  cout << "Core thread id " << threadid << " will be processing from block " << startblock << ", length " << numblocks << endl;
 
   //lock the end section
   perr = pthread_mutex_lock(&(procslots[RECEIVE_RING_LENGTH-1].slotlocks[threadid]));
@@ -424,7 +424,7 @@ void Core::loopprocess(int threadid)
   }
 
   //fallen out of loop, so must be finished.  Unlock held mutex
-  cout << "PROCESS " << mpiid << "/" << threadid << " process thread about to free resources and exit" << endl;
+//  cout << "PROCESS " << mpiid << "/" << threadid << " process thread about to free resources and exit" << endl;
   perr = pthread_mutex_unlock(&(procslots[numprocessed % RECEIVE_RING_LENGTH].slotlocks[threadid]));
   if (perr != 0)
     cerr << "PROCESSTHREAD " << mpiid << "/" << threadid << " error trying unlock mutex " << (numprocessed)%RECEIVE_RING_LENGTH << endl;;
@@ -481,7 +481,7 @@ void Core::receivedata(int index, bool * terminate)
   if(mpistatus.MPI_TAG == CR_TERMINATE)
   {
     *terminate = true;
-    cout << "Core " << mpiid << " has received a terminate signal!!!" << endl;
+//    cout << "Core " << mpiid << " has received a terminate signal!!!" << endl;
     procslots[index].keepprocessing = false;
     return; //note return here!!!
   }

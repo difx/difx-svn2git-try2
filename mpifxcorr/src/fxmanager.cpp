@@ -337,7 +337,7 @@ void FxManager::receiveData(bool resend)
       viscomplete = visbuffer[visindex]->addData(resultbuffer);
       if(viscomplete)
       {
-        cout << "FXMANAGER telling visbuffer[" << visindex << "] to write out - this refers to time " << visbuffer[visindex]->getTime() << " - the previous buffer has time " << visbuffer[(visindex-1+VISBUFFER_LENGTH)%VISBUFFER_LENGTH]->getTime() << ", and the next one has " << visbuffer[(visindex +1)%VISBUFFER_LENGTH]->getTime() << endl;
+        cout << "FXMANAGER telling visbuffer[" << visindex << "] to write time " << visbuffer[visindex]->getTime() << "/" << executetimeseconds << "  (" << visbuffer[(visindex-1+VISBUFFER_LENGTH)%VISBUFFER_LENGTH]->getTime() << ",  " << visbuffer[(visindex +1)%VISBUFFER_LENGTH]->getTime() << ")" << endl;
         cout << "Newestlockedvis is " << newestlockedvis << ", while oldestlockedvis is " << oldestlockedvis << endl;
         //better make sure we have at least locked the next section
         if(visindex == newestlockedvis)
