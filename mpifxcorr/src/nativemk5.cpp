@@ -60,7 +60,8 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 {
 	double startmjd;
 	double scanstart, scanend;
-	int v, i, n;
+	int v, i;
+	long long n;
 	int doUpdate = 0;
 	char *mk5dirpath;
 
@@ -112,7 +113,7 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 		readnanoseconds = scan->ns;
 		cout << "After[" << mpiid << "]  rs = " << readseconds << "  rns = " << readnanoseconds << endl;
 	}
-	else 
+	else	/* first time this project */
 	{
 		n = 0;
 		for(i = 0; i < module.nscans; i++)
@@ -135,7 +136,7 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 			{
 				cout << "NM5 : scan found(2) : " << i << endl;
 				readpointer = scan->start + scan->frameoffset;
-				n = (int)((((corrstartday - scan->mjd)*86400 
+				n = (long long)((((corrstartday - scan->mjd)*86400 
 			+ (corrstartseconds - (scan->sec + scan->ns*1.e-9)))
 					/ (scan->framens*1.e-9)) + 0.5);
 				readpointer += n*scan->framebytes;
