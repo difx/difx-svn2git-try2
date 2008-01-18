@@ -679,15 +679,18 @@ void Configuration::processDatastreamTable(ifstream * input)
       if(line == "MODULE")
       {
         datastreamtable[i].format = MK5_MODULE;
+	datastreamtable[i].readfromfile = false;
       }
       else if(line == "FILE")
       {
         datastreamtable[i].format = MK5_FILE;
+	datastreamtable[i].readfromfile = true;
       }
       else
       {
         cerr << "DATA SOURCE [" << line << "] not allowed.  Assuming FILE" << endl;
         datastreamtable[i].format = MK5_FILE;
+	datastreamtable[i].readfromfile = true;
       }
       datastreamtable[i].framebytes = mf->framebytes;
       datastreamtable[i].headerbytes = mf->framebytes - mf->databytes;
@@ -710,8 +713,6 @@ void Configuration::processDatastreamTable(ifstream * input)
     datastreamtable[i].filterbank = ((line == "TRUE") || (line == "T") || (line == "true") || (line == "t"))?true:false;
     if(datastreamtable[i].filterbank)
       cerr << "Error - filterbank not yet supported!!!" << endl;
-    getinputline(input, &line, "READ FROM FILE");
-    datastreamtable[i].readfromfile = ((line == "TRUE") || (line == "T") || (line == "true") || (line == "t"))?true:false;
     getinputline(input, &line, "NUM FREQS");
     datastreamtable[i].numfreqs = atoi(line.c_str());
     datastreamtable[i].freqpols = new int[datastreamtable[i].numfreqs];
