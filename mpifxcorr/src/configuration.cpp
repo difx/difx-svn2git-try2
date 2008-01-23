@@ -679,7 +679,7 @@ void Configuration::processDatastreamTable(ifstream * input)
       if(line == "MODULE")
       {
         datastreamtable[i].format = MK5_MODULE;
-	datastreamtable[i].readfromfile = false;
+	datastreamtable[i].readfromfile = true;
       }
       else if(line == "FILE")
       {

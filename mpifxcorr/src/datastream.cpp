@@ -670,7 +670,7 @@ void DataStream::loopnetworkread()
   if(perr != 0)
     cerr << "Error in telescope readthread unlock of buffer section!!!" << lastvalidsegment << endl;
 
-  cout << "DATASTREAM " << mpiid << "'s networkreadthread is exiting!!! Keepreading was " << keepreading << ", framebyesremaining was " << framebytesremaining << endl;
+  cout << "DATASTREAM " << mpiid << "'s networkreadthread is exiting!!! Keepreading was " << keepreading << ", framebytesremaining was " << framebytesremaining << endl;
 }
 
 void DataStream::openstream(int portnumber, int tcpwindowsizebytes)
