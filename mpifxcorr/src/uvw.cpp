@@ -251,7 +251,7 @@ void Uvw::getSourceName(int mjd, int sec, string & toset)
 //utility routine which returns an integer which FITS expects based on the type of mount
 int Uvw::getMountInt(string mount)
 {
-  if(mount.compare("azel") == 0) //its an azel mount
+  if(mount.compare("azel") == 0 || mount.compare("altz") == 0 ) //its an azel mount
     return 0;
     
   if(mount.compare("equa") == 0 || mount.compare("hadec") == 0) //equatorial mount
