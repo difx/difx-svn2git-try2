@@ -159,10 +159,10 @@ int main(int argc, char *argv[])
   //process the input file to get all the info we need
   config = new Configuration(argv[1]);
   numdatastreams = config->getNumDataStreams();
-  numcores = numprocs - (fxcorr.FIRSTTELESCOPEID + numdatastreams);
+  numcores = numprocs - (fxcorr::FIRSTTELESCOPEID + numdatastreams);
   if(numcores < 1)
   {
-    cerr << "Error - must be invoked with at least " << fxcorr.FIRSTTELESCOPEID + numdatastreams + 1 << " processors (was invoked with " << numprocs << " processors) - aborting!!!" << endl;
+    cerr << "Error - must be invoked with at least " << fxcorr::FIRSTTELESCOPEID + numdatastreams + 1 << " processors (was invoked with " << numprocs << " processors) - aborting!!!" << endl;
     return EXIT_FAILURE;
   }
 
@@ -170,10 +170,10 @@ int main(int argc, char *argv[])
   coreids = new int[numcores];
   datastreamids = new int[numdatastreams];
   for(int i=0;i<numcores;i++)
-    coreids[i] = fxcorr.FIRSTTELESCOPEID + numdatastreams + i;
+    coreids[i] = fxcorr::FIRSTTELESCOPEID + numdatastreams + i;
 
   for(int i=0;i<numdatastreams;i++)
-    datastreamids[i] = fxcorr.FIRSTTELESCOPEID + i;
+    datastreamids[i] = fxcorr::FIRSTTELESCOPEID + i;
 
   //wait until everyone has caught up
   MPI_Barrier(world);
@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
   try
   {
     //work out what process we are and run accordingly
-    if(myID == fxcorr.MANAGERID) //im the manager
+    if(myID == fxcorr::MANAGERID) //im the manager
     {
       manager = new FxManager(config, numcores, datastreamids, coreids, myID, return_comm, monitor, monhostname, port, monitor_skip);
       MPI_Barrier(world);
@@ -190,9 +190,9 @@ int main(int argc, char *argv[])
       t2 = MPI_Wtime();
       cout << "Total wallclock time was **" << t2 - t1 << "** seconds" << endl;
     }
-    else if (myID >= fxcorr.FIRSTTELESCOPEID && myID < fxcorr.FIRSTTELESCOPEID + numdatastreams) //im a datastream
+    else if (myID >= fxcorr::FIRSTTELESCOPEID && myID < fxcorr::FIRSTTELESCOPEID + numdatastreams) //im a datastream
     {
-      int datastreamnum = myID - fxcorr.FIRSTTELESCOPEID;
+      int datastreamnum = myID - fxcorr::FIRSTTELESCOPEID;
       if(config->isMkV(datastreamnum))
         stream = new Mk5DataStream(config, datastreamnum, myID, numcores, coreids, config->getDDataBufferFactor(), config->getDNumDataSegments());
       else

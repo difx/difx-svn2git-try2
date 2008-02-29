@@ -24,7 +24,7 @@ Core::Core(int id, Configuration * conf, int * dids, MPI_Comm rcomm)
   numdatastreams = config->getNumDataStreams();
   numbaselines = config->getNumBaselines();
   maxresultlength = config->getMaxResultLength();
-  numprocessthreads = config->getCNumProcessThreads(mpiid - numdatastreams - FxManager::FIRSTTELESCOPEID);
+  numprocessthreads = config->getCNumProcessThreads(mpiid - numdatastreams - fxcorr::FIRSTTELESCOPEID);
   currentconfigindex = 0;
   startmjd = config->getStartMJD();
   startseconds = config->getStartSeconds();
@@ -204,7 +204,7 @@ void Core::execute()
     receivedata(numreceived++ % RECEIVE_RING_LENGTH, &terminate);
     
     //send the results back
-    MPI_Ssend(procslots[numreceived%RECEIVE_RING_LENGTH].results, procslots[numreceived%RECEIVE_RING_LENGTH].resultlength*2, MPI_FLOAT, fxcorr.MANAGERID, procslots[numreceived%RECEIVE_RING_LENGTH].resultsvalid, return_comm);
+    MPI_Ssend(procslots[numreceived%RECEIVE_RING_LENGTH].results, procslots[numreceived%RECEIVE_RING_LENGTH].resultlength*2, MPI_FLOAT, fxcorr::MANAGERID, procslots[numreceived%RECEIVE_RING_LENGTH].resultsvalid, return_comm);
 
     //zero the results buffer for this slot and set the status back to valid
     status = vectorZero_cf32(procslots[numreceived%RECEIVE_RING_LENGTH].results, procslots[numreceived%RECEIVE_RING_LENGTH].resultlength);
@@ -238,7 +238,7 @@ void Core::execute()
         cerr << "Error in Core " << mpiid << " attempt to unlock mutex" << (numreceived+i) % RECEIVE_RING_LENGTH << " of thread " << j << endl;
     }
     //send the results
-    MPI_Ssend(procslots[(numreceived+i)%RECEIVE_RING_LENGTH].results, procslots[(numreceived+i)%RECEIVE_RING_LENGTH].resultlength*2, MPI_FLOAT, fxcorr.MANAGERID, procslots[numreceived%RECEIVE_RING_LENGTH].resultsvalid, return_comm);
+    MPI_Ssend(procslots[(numreceived+i)%RECEIVE_RING_LENGTH].results, procslots[(numreceived+i)%RECEIVE_RING_LENGTH].resultlength*2, MPI_FLOAT, fxcorr::MANAGERID, procslots[numreceived%RECEIVE_RING_LENGTH].resultsvalid, return_comm);
   }
 
 //  cout << "CORE " << mpiid << " is about to join the processthreads" << endl;
@@ -412,7 +412,7 @@ void Core::receivedata(int index, bool * terminate)
     return; //don't try to read, we've already finished
 
   //Get the instructions on the time offset from the FxManager node
-  MPI_Recv(&(procslots[index].offsets), 2, MPI_INT, fxcorr.MANAGERID, MPI_ANY_TAG, return_comm, &mpistatus);
+  MPI_Recv(&(procslots[index].offsets), 2, MPI_INT, fxcorr::MANAGERID, MPI_ANY_TAG, return_comm, &mpistatus);
   if(mpistatus.MPI_TAG == CR_TERMINATE)
   {
     *terminate = true;

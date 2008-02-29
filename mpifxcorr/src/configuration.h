@@ -43,7 +43,7 @@ public:
   enum dataformat {LBASTD, LBAVSOP, NZ, K5, MKIV, VLBA, MARK5B};
 
   /// Supported sources of data
-  enum datasource {UNIXFILE, MK5MODULE, EVLBI}
+  enum datasource {UNIXFILE, MK5MODULE, EVLBI};
 
   /// Constant for the TCP window size for monitoring
   static const int MONITOR_TCP_WINDOWBYTES = 65536;
@@ -164,13 +164,13 @@ public:
     { return datastreamtable[0].inputbandpols[0] == 'R' || datastreamtable[0].inputbandpols[0] == 'L'; }
   inline int getSourceIndex(int mjd, int sec) { return uvw->getSourceIndex(mjd, sec); }
   inline bool isReadFromFile(int configindex, int configdatastreamindex) 
-    { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].readfromfile; }
+    { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].source != EVLBI; }
   inline bool isMkV(int datastreamindex) 
   {
     dataformat f;
     datasource s;
     f = datastreamtable[configs[0].datastreamindices[datastreamindex]].format;
-    s = datastreamtable[configs[0].datastreamindices[datastreamindex]].format;
+    s = datastreamtable[configs[0].datastreamindices[datastreamindex]].source;
     return ((f == MKIV || f == VLBA || f == MARK5B) && s == UNIXFILE); 
   }
   inline bool isNativeMkV(int datastreamindex) 
@@ -178,15 +178,15 @@ public:
     dataformat f;
     datasource s;
     f = datastreamtable[configs[0].datastreamindices[datastreamindex]].format;
-    s = datastreamtable[configs[0].datastreamindices[datastreamindex]].format;
-    return ((f == MKIV || f == VLBA || f == MARK5B) && s == MODULE); 
+    s = datastreamtable[configs[0].datastreamindices[datastreamindex]].source;
+    return ((f == MKIV || f == VLBA || f == MARK5B) && s == MK5MODULE); 
   }
   inline int getFrameBytes(int configindex, int configdatastreamindex)
     { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].framebytes; }
   inline dataformat getDataFormat(int configindex, int configdatastreamindex)
-    { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].dataformat; }
+    { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].format; }
   inline datasource getDataSource(int configindex, int configdatastreamindex)
-    { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].datasource; }
+    { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].source; }
   inline double getConfigBandwidth(int configindex) 
     { return freqtable[datastreamtable[configs[configindex].datastreamindices[0]].freqtableindices[0]].bandwidth; }
   inline string getTelescopeName(int telescopeindex)
