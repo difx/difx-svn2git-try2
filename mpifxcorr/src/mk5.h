@@ -20,7 +20,7 @@
  @class Mk5Mode 
  @brief A mode for Mk4 formatted or VLBA formatted Mk5 data
 
- A mode for Mk4 formatted or VLBA formatted Mk5 data.  All types of band setup should be supported.
+ A mode for MkIV, VLBA, or Mark5B formatted Mk5 data.  All types of band setup should be supported.
  @author Adam Deller
  */
 class Mk5Mode : public Mode
@@ -41,14 +41,12 @@ public:
   * @param noutputbands The total number of subbands after prefiltering - not currently used (must be = numinputbands)
   * @param nbits The number of bits per sample
   * @param fbank Whether to use a polyphase filterbank to channelise (instead of FFT)
-  * @param pbin Whether this Mode is using pulsar binning
-  * @param pscrunch Whether pulsar bins are to be scrunched (weighted added)
   * @param postffringe Whether fringe rotation takes place after channelisation
   * @param quaddelayinterp Whether delay interpolataion from FFT start to FFT end is quadratic (if false, linear is used)
   * @param cacorrs Whether cross-polarisation autocorrelations are to be calculated
   * @param fsamples The number of samples in a frame per channel
   */
-  Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool pbin, bool pscrunch, bool postffringe, bool quaddelayinterp, bool cacorrs, int fsamples);
+  Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool postffringe, bool quaddelayinterp, bool cacorrs, int framebytes, int framesamples, Configuration::dataformat format);
   virtual ~Mk5Mode();
 
 protected:
@@ -59,7 +57,7 @@ protected:
   virtual void unpack(int sampleoffset);
 
   int framesamples, framebytes;
-  struct mark5_stream * vf;
+  struct mark5_stream *mark5stream;
 };
 
 /**
@@ -113,8 +111,7 @@ protected:
   */
   virtual void initialiseFile(int configindex, int fileindex);
 
-  struct mark5_stream * vs;
-  int framebytes, headerbytes, numbits, framens;
+  int framebytes, payloadbytes, framens;
 };
 
 #endif

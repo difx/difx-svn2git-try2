@@ -10,7 +10,6 @@
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                  *
  ***************************************************************************/
 #include <mpi.h>
-#include "mark5access.h"
 #include "configuration.h"
 #include "mode.h"
 #include "datastream.h"
@@ -148,6 +147,41 @@ Configuration::~Configuration()
   delete [] baselinetable;
   delete [] numprocessthreads;
   delete [] firstnaturalconfigindices;
+}
+
+int Configuration::getFramePayloadBytes(int configindex, int configdatastreamindex)
+{
+  int framebytes = getFrameBytes(configindex, configdatastreamindex);
+  switch(f)
+  {
+    case VLBA:
+      payloadsize = (framebytes/2520)*2500;
+      break;
+    case MARK5B:
+      payloadsize = framebytes - 16;
+      break;
+    default:
+      payloadsize = framebytes;
+  }
+}
+
+void Configuration::getFrameInc(int configindex, int configdatastreamindex, int &sec, int &ns)
+{
+  int nchan, qb;
+  dataformat f;
+  int payloadsize;
+  double samplerate; /* in Hz */
+  double seconds;
+
+  nchan = DNumInputBands(configindex, configdatastreamindex);
+  f = getDataFormat(configindex, configdatastreamindex);
+  samplerate = 2.0e6*getDBandwidth(configindex, configdatastreamindex, 0);
+  qb = getDNumBits(configindex, configdatastreamindex);
+  payloadsize = getFramePayloadBytes(configindex, configdatastreamindex);
+
+  seconds = nchan*payloadsize*8/(samplerate*qb);
+  sec = int(seconds);
+  ns = 1.0e9*(seconds - sec);
 }
 
 int Configuration::getMaxResultLength()
@@ -395,6 +429,7 @@ Mode* Configuration::getMode(int configindex, int datastreamindex)
 {
   configdata conf = configs[configindex];
   datastreamdata stream = datastreamtable[conf.datastreamindices[datastreamindex]];
+  int framesamples;
 
   switch(stream.format)
   {
@@ -408,9 +443,11 @@ Mode* Configuration::getMode(int configindex, int datastreamindex)
         cerr << "ERROR! All LBASTD Modes must have 2 bit sampling - overriding input specification!!!" << endl;
       return new LBAMode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, 2/*bits*/, stream.filterbank, conf.pulsarbin, conf.scrunchoutput, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, LBAMode::vsopunpackvalues);
       break;
-    case MK5_FILE:
-    case MK5_MODULE:
-      return new Mk5Mode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, stream.numbits, stream.filterbank, conf.pulsarbin, conf.scrunchoutput, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, stream.framesamples);
+    case MKIV:
+    case VLBA:
+    case MARK5B:
+      framesamples = getFramePayloadSize(configindex, datastreamindex)*8/getDNumBits(configindex, datastreamindex);
+      return new Mk5Mode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, stream.numbits, stream.filterbank, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, conf.framebytes, framesamples, stream.format);
       break;
     default:
       cerr << "Error - unknown Mode!!!" << endl;
@@ -516,20 +553,21 @@ void Configuration::processCommon(ifstream * input)
   executeseconds = atoi(line.c_str());
   getinputline(input, &line, "START MJD");
   startmjd = atoi(line.c_str());
-  getinputline(input, &line, "START SECONDS");
+  getinputline(input, &line, "START SECONDS");  // FIXME -- look for fractional seconds -> startns
   startseconds = atoi(line.c_str());
+  startns = 0;
   getinputline(input, &line, "ACTIVE DATASTREAMS");
   numdatastreams = atoi(line.c_str());
   getinputline(input, &line, "ACTIVE BASELINES");
   numbaselines = atoi(line.c_str());
-  getinputline(input, &line, "DATA HEADER O/RIDE");
-  dataoverride = ((line == "TRUE") || (line == "T") || (line == "true") || (line == "t"))?true:false;
+  getinputline(input, &line, "VIS BUFFER LENGTH");
+  visbufferlength = atoi(line.c_str());
   getinputline(input, &line, "OUTPUT FORMAT");
   if(line == "RPFITS")
   {
     outformat = RPFITS;
   }
-  else if(line == "SWIN")
+  else if(line == "SWIN" || line == "DIFX")
   {
     outformat = DIFX;
   }
@@ -629,8 +667,6 @@ void Configuration::processConfig(ifstream * input)
 void Configuration::processDatastreamTable(ifstream * input)
 {
   string line;
-  int numbits = 0;
-  struct mark5_format *mf;
 
   getinputline(input, &line, "DATASTREAM ENTRIES");
   datastreamtablelength = atoi(line.c_str());
@@ -652,7 +688,6 @@ void Configuration::processDatastreamTable(ifstream * input)
 
   for(int i=0;i<datastreamtablelength;i++)
   {
-    numbits = 0;
     //read all the info for this datastream
     getinputline(input, &line, "TELESCOPE INDEX");
     datastreamtable[i].telescopeindex = atoi(line.c_str());
@@ -664,51 +699,39 @@ void Configuration::processDatastreamTable(ifstream * input)
     else if(line == "LBAVSOP")
       datastreamtable[i].format = LBAVSOP;
     else if(line == "NZ")
-    {
       datastreamtable[i].format = NZ;
-    }
     else if(line == "K5")
-    {
       datastreamtable[i].format = K5;
-    }
-    // Check for formats that can be transparently decoded by mark5access
-    else if( (mf = new_mark5_format_from_name(line.c_str())) != 0)
-    {
-      datastreamtable[i].formatname = line;
-      getinputline(input, &line, "DATA SOURCE");
-      if(line == "MODULE")
-      {
-        datastreamtable[i].format = MK5_MODULE;
-	datastreamtable[i].readfromfile = true;
-      }
-      else if(line == "FILE")
-      {
-        datastreamtable[i].format = MK5_FILE;
-	datastreamtable[i].readfromfile = true;
-      }
-      else
-      {
-        cerr << "DATA SOURCE [" << line << "] not allowed.  Assuming FILE" << endl;
-        datastreamtable[i].format = MK5_FILE;
-	datastreamtable[i].readfromfile = true;
-      }
-      datastreamtable[i].framebytes = mf->framebytes;
-      datastreamtable[i].headerbytes = mf->framebytes - mf->databytes;
-      datastreamtable[i].numbits = numbits = mf->nbit;
-      datastreamtable[i].framens = mf->framens;
-      datastreamtable[i].framesamples = mf->databytes*8/(mf->nbit*mf->nchan);
-      delete_mark5_format(mf);
-    }
+    else if(line == "MKIV")
+      datastreamtable[i].format = MKIV;
+    else if(line == "VLBA")
+      datastreamtable[i].format = VLBA;
+    else if(line == "MARK5B")
+      datastreamtable[i].format = MARK5B;
     else
     {
-      cerr << "Unnkown data format " << line << " (case sensitive choices are LBASTD, LBAVSOP, NZ, K5," << mark5_stream_list_formats() << ") - assuming LBASTD!!!" << endl;
-      datastreamtable[i].format = LBASTD;
+      cerr << "Unnkown data format " << line << " (case sensitive choices are LBASTD, LBAVSOP, NZ, K5, MKIV, VLBA, and MARK5B)" << endl;
+      exit(1);
     }
-    if(numbits == 0)
+    getinputline(input, &line, "QUANTISATION BITS");
+    datastreamtable[i].numbits = atoi(line.c_str());
+
+    getinputline(input, &line, "DATA FRAME SIZE");
+    datastreamtable[i].framebytes = atoi(line.c_str());
+
+    getinputline(input, &line, "DATA SOURCE");
+    if(line == "FILE")
+      datastreamtable[i].source = UNIXFILE;
+    else if(line == "MODULE")
+      datastreamtable[i].source = MK5MODULE;
+    else if(line == "EVLBI")
+      datastreamtable[i].source = EVLBI;
+    else
     {
-      getinputline(input, &line, "QUANTISATION BITS");
-      datastreamtable[i].numbits = atoi(line.c_str());
+      cerr << "Unnkown data source << line << " (case sensitive choices are FILE, MODULE and EVLBI)" << endl;
+      exit(1);
     }
+
     getinputline(input, &line, "FILTERBANK USED");
     datastreamtable[i].filterbank = ((line == "TRUE") || (line == "T") || (line == "true") || (line == "t"))?true:false;
     if(datastreamtable[i].filterbank)
@@ -777,8 +800,16 @@ void Configuration::processDatastreamTable(ifstream * input)
     getline(coreinput, line);
     for(int i=0;i<maxlines;i++)
     {
-      numprocessthreads[numcoreconfs++] = atoi(line.c_str());
-      getline(coreinput, line);
+      if(coreinput.eof())
+      {
+        cerr << "Warning - hit the end of the file! Setting the numthread for Core " << i << " to 1" << endl;
+        numprocessthreads[numcoreconfs++] = 1;
+      }
+      else
+      {
+        numprocessthreads[numcoreconfs++] = atoi(line.c_str());
+        getline(coreinput, line);
+      }
     }
   }
   coreinput.close();
@@ -1052,7 +1083,6 @@ void Configuration::processPulsarConfig(string filename, int configindex)
 
 void Configuration::setPolycoFreqInfo(int configindex)
 {
-  datastreamdata d = datastreamtable[getMaxNumFreqDatastreamIndex(configindex)];
   double * frequencies = new double[d.numfreqs];
   double bandwidth = freqtable[d.freqtableindices[0]].bandwidth;
   for(int i=0;i<d.numfreqs;i++)
@@ -1064,6 +1094,20 @@ void Configuration::setPolycoFreqInfo(int configindex)
   for(int i=0;i<configs[configindex].numpolycos;i++)
   {
     configs[configindex].polycos[i]->setFrequencyValues(d.numfreqs, frequencies, bandwidth);
+  }
+  delete [] frequencies;*/
+  datastreamdata d = datastreamtable[getMaxNumFreqDatastreamIndex(configindex)];
+  double * frequencies = new double[datastreamtablelength];
+  double bandwidth = freqtable[d.freqtableindices[0]].bandwidth;
+  for(int i=0;i<datastreamtablelength;i++)
+  {
+    frequencies[i] = freqtable[i].bandedgefreq;
+    if(freqtable[i].lowersideband)
+      frequencies[i] -= freqtable[i].bandwidth;
+  }
+  for(int i=0;i<configs[configindex].numpolycos;i++)
+  {
+    configs[configindex].polycos[i]->setFrequencyValues(freqtablelength, frequencies, bandwidth);
   }
   delete [] frequencies;
 }
