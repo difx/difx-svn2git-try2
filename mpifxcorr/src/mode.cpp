@@ -19,8 +19,8 @@
 //using namespace std;
 const float Mode::TINY = 0.000000001;
 
-Mode::Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, int unpacksamp, bool fbank, bool pbin, bool pscrunch, bool postffringe, bool quaddelayinterp, bool cacorrs, double bclock)
-  : config(conf), configindex(confindex), datastreamindex(dsindex), numchannels(nchan), blockspersend(bpersend), guardblocks(gblocks), twicenumchannels(nchan*2), numfreqs(nfreqs), bandwidth(bw), freqclockoffsets(freqclkoffsets), numinputbands(ninputbands), numoutputbands(noutputbands), numbits(nbits), unpacksamples(unpacksamp), filterbank(fbank), pulsarbin(pbin), scrunchpulsaroutputs(pscrunch), postffringerot(postffringe), quadraticdelayinterp(quaddelayinterp), calccrosspolautocorrs(cacorrs), blockclock(bclock)
+Mode::Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, int unpacksamp, bool fbank, bool postffringe, bool quaddelayinterp, bool cacorrs, double bclock)
+  : config(conf), configindex(confindex), datastreamindex(dsindex), numchannels(nchan), blockspersend(bpersend), guardblocks(gblocks), twicenumchannels(nchan*2), numfreqs(nfreqs), bandwidth(bw), freqclockoffsets(freqclkoffsets), numinputbands(ninputbands), numoutputbands(noutputbands), numbits(nbits), unpacksamples(unpacksamp), filterbank(fbank), postffringerot(postffringe), quadraticdelayinterp(quaddelayinterp), calccrosspolautocorrs(cacorrs), blockclock(bclock)
 {
   int status;
 
@@ -497,8 +497,8 @@ void Mode::setData(u8 * d, int dbytes, double btime)
 const float Mode::decorrelationpercentage[] = {0.63662, 0.88, 0.94, 0.96, 0.98, 0.99, 0.996, 0.998}; //note these are just approximate!!!
 
 
-LBAMode::LBAMode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool pbin, bool pscrunch, bool postffringe, bool quaddelayinterp, bool cacorrs, const s16* unpackvalues)
-    : Mode(conf,confindex,dsindex,nchan,bpersend,gblocks,nfreqs,bw,freqclkoffsets,ninputbands,noutputbands,nbits,nchan*2,fbank,pbin,pscrunch,postffringe,quaddelayinterp,cacorrs,(bw<16.0)?bw*2.0:32.0)
+LBAMode::LBAMode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool postffringe, bool quaddelayinterp, bool cacorrs, const s16* unpackvalues)
+    : Mode(conf,confindex,dsindex,nchan,bpersend,gblocks,nfreqs,bw,freqclkoffsets,ninputbands,noutputbands,nbits,nchan*2,fbank,postffringe,quaddelayinterp,cacorrs,(bw<16.0)?bw*2.0:32.0)
 {
   int shift, outputshift;
   int count = 0;

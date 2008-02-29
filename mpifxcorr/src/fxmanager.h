@@ -53,13 +53,6 @@ public:
   */
   void execute();
 
-  /// The MPI ID that is always used for the manager
-  static const int MANAGERID = 0;
-  /// The MPI ID that is always used for the first Datastream
-  static const int FIRSTTELESCOPEID = 1;
-  /// The number of Visibility objects employed to allow buffering of returning results from the Core at an uneven rate
-  static const int VISBUFFER_LENGTH = 200;
-
 protected:
  /** 
   * Launches a new writing thread, that will loop through the Visibility array as fast as possible, writing out results as soon as it is allowed
@@ -126,7 +119,7 @@ private:
 
   //variables
   MPI_Comm return_comm;
-  int numdatastreams, numcores, mpiid, startmjd, startseconds, executetimeseconds, resultlength, numbaselines, nsincrement, currentconfigindex, newestlockedvis, oldestlockedvis, skipseconds;
+  int numdatastreams, numcores, mpiid, startmjd, startseconds, startns, executetimeseconds, resultlength, numbaselines, nsincrement, currentconfigindex, newestlockedvis, oldestlockedvis, skipseconds;
   double inttime, halfsampleseconds;
   bool keepwriting, circularpols, writethreadinitialised;
   int senddata[3]; //targetcoreid, offsetseconds, offsetnanoseconds

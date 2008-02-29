@@ -51,7 +51,7 @@ public:
 protected:
  /** 
   * Launches a new processing thread, which will work on a portion of the time slice every time an element in the circular buffer is processed
-  * @param tdata Pointer to a processthreadinfo strcucture, describing which number thread this will be for this Core
+  * @param tdata Pointer to a processthreadinfo structure, describing which number thread this will be for this Core
   */
   static void * launchNewProcessThread(void * tdata);
 
@@ -92,12 +92,6 @@ private:
   void createPulsarAccumSpace(cf32***** pulsaraccumspace, int newconfigindex, int oldconfigindex);
 
  /**
-  * Amplitude calibrates the baseline visibilities when pulsar binning without scrunching, based on how many accumulations were performed for each bin
-  * @param index The index in the circular send/receive buffer to be scaled
-  */
-  void pulsarScale(int index);
-
- /**
   * While the correlation is continuing, processes the given thread's share of the next element in the send/receive circular buffer
   * @param threadid The id of the thread which is doing the processing, which tells us which section of the time slice this call will process
   */
@@ -122,9 +116,8 @@ private:
   * @param bins Pre-allocated space for the bins for each subband/channel combination - null if not pulsar binning
   * @param pulsarscratchspace Room to perform the pulsar binning if required - null if not pulsar binning (numchannels + 1 long)
   * @param pulsaraccumspace Room in which to accumulate the binned results ([#baselines][#frequencies][#polproducts][#bins][#channels+1])
-  * @param scrunchscale Room to store the scaling results if scrunching pulsar bins ([#freqs][#bins][#channels+1]) - null if not pulsar binning AND scrunching
   */
-  void processdata(int index, int threadid, int startblock, int numblocks, Mode ** modes, Polyco * currentpolyco, cf32 * threadresults, s32 ** bins, cf32* pulsarscratchspace, cf32***** pulsaraccumspace, cf32*** scrunchscale);
+  void processdata(int index, int threadid, int startblock, int numblocks, Mode ** modes, Polyco * currentpolyco, cf32 * threadresults, s32 ** bins, cf32* pulsarscratchspace, cf32***** pulsaraccumspace);
 
  /**
   * Updates all the parameters for processing thread when the configuration changes
@@ -148,7 +141,6 @@ private:
   MPI_Status * msgstatuses;
   int mpiid, numdatastreams, numbaselines, databytes, controllength, numreceived, currentconfigindex, numprocessthreads, maxresultlength, startmjd, startseconds;
   int * datastreamids;
-  f32 * pulsarscale;
   processslot * procslots;
   pthread_t * processthreads;
   pthread_cond_t * processconds;

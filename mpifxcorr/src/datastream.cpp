@@ -12,6 +12,7 @@
 #include "datastream.h"
 #include "core.h"
 #include "fxmanager.h"
+#include "mpifxcorr.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -136,7 +137,7 @@ void DataStream::execute()
   initialiseMemoryBuffer();
 
   //get the first instruction on where to send data, and how much of it (three ints in a row - core index, seconds offset, samplesoffset)
-  MPI_Irecv(receiveinfo, 3, MPI_INT, FxManager::MANAGERID, MPI_ANY_TAG, MPI_COMM_WORLD, &msgrequest);
+  MPI_Irecv(receiveinfo, 3, MPI_INT, fxcorr.MANAGERID, MPI_ANY_TAG, MPI_COMM_WORLD, &msgrequest);
   
   while(status == vecNoErr)
   {
@@ -150,7 +151,7 @@ void DataStream::execute()
     offsetns = receiveinfo[2];
 
     //now get another instruction while we process
-    MPI_Irecv(receiveinfo, 3, MPI_INT, FxManager::MANAGERID, MPI_ANY_TAG, MPI_COMM_WORLD, &msgrequest);
+    MPI_Irecv(receiveinfo, 3, MPI_INT, fxcorr.MANAGERID, MPI_ANY_TAG, MPI_COMM_WORLD, &msgrequest);
 
     if(action == DS_PROCESS) //send the appropriate data to the core specified
     {

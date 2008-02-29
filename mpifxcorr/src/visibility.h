@@ -35,13 +35,14 @@ public:
   * @param numvis The number of Visibilities in the array
   * @param eseconds The length of the correlation, in seconds
   * @param skipseconds The number of seconds to skip from the start of the correlation, due to the first source(s) not being correlated
+  * @param startns The number of nanoseconds to skip from the start of the correlation
   * @param pnames The names of the polarisation products eg {RR, LL, RL, LR} or {XX, YY, XY, YX}
   * @param mon Whether to send visibility data down a monitor socket
   * @param port The port number to send down
   * @param hname The socket to send monitor data down
   * @param monskip Only send 1 in every monskip visibilities to the monitor
   */
-  Visibility(Configuration * conf, int id, int numvis, int eseconds, int skipseconds, const string * pnames, bool mon, int port, char * hname, int * sock, int monskip);
+  Visibility(Configuration * conf, int id, int numvis, int eseconds, int skipseconds, int startns, const string * pnames, bool mon, int port, char * hname, int * sock, int monskip);
 
   ~Visibility();
 

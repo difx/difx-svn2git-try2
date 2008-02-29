@@ -49,14 +49,12 @@ public:
   * @param nbits The number of bits per sample
   * @param unpacksamp The number of samples to unpack in one hit
   * @param fbank Whether to use a polyphase filterbank to channelise (instead of FFT)
-  * @param pbin Whether this Mode is using pulsar binning
-  * @param pscrunch Whether pulsar bins are to be scrunched (weighted added)
   * @param postffringe Whether fringe rotation takes place after channelisation
   * @param quaddelayinterp Whether delay interpolataion from FFT start to FFT end is quadratic (if false, linear is used)
   * @param cacorrs Whether cross-polarisation autocorrelations are to be calculated
   * @param bclock The recorder clock-out frequency in MHz ("block clock")
   */
-  Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, int unpacksamp, bool fbank, bool pbin, bool pscrunch, bool postffringe, bool quaddelayinterp, bool cacorrs, double bclock);
+  Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, int unpacksamp, bool fbank, bool postffringe, bool quaddelayinterp, bool cacorrs, double bclock);
 
  /**
   * Stores the delay information for the current block series
@@ -146,7 +144,7 @@ protected:
   double bandwidth, blockclock, sampletime, processtime, a, b, c, centredelay, toaddfirst, toaddlast; //MHz, microseconds
   double buffermicroseconds;
   int samplesperblock, samplesperlookup, numlookups, delaylength, autocorrwidth;
-  bool filterbank, pulsarbin, scrunchpulsaroutputs, calccrosspolautocorrs, postffringerot, fractionalLoFreq, quadraticdelayinterp, dolinearinterp;
+  bool filterbank, calccrosspolautocorrs, postffringerot, fractionalLoFreq, quadraticdelayinterp, dolinearinterp;
   Configuration * config;
   double * freqclockoffsets;
   u8 * data;
@@ -209,14 +207,12 @@ public:
   * @param noutputbands The total number of subbands after prefiltering - not currently used (must be = numinputbands)
   * @param nbits The number of bits per sample
   * @param fbank Whether to use a polyphase filterbank to channelise (instead of FFT)
-  * @param pbin Whether this Mode is using pulsar binning
-  * @param pscrunch Whether pulsar bins are to be scrunched (weighted added)
   * @param postffringe Whether fringe rotation takes place after channelisation
   * @param quaddelayinterp Whether delay interpolataion from FFT start to FFT end is quadratic (if false, linear is used)
   * @param cacorrs Whether cross-polarisation autocorrelations are to be calculated
   * @param unpackvalues 4 element array containing floating point unpack values for the four possible two bit values
   */
-    LBAMode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool pbin, bool pscrunch, bool postffringe, bool quaddelayinterp, bool cacorrs, const s16* unpackvalues);
+    LBAMode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool postffringe, bool quaddelayinterp, bool cacorrs, const s16* unpackvalues);
 
     ///unpack mapping for "standard" recording modes
     static const s16 stdunpackvalues[];

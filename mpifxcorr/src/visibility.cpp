@@ -28,7 +28,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-Visibility::Visibility(Configuration * conf, int id, int numvis, int eseconds, int skipseconds, const string * pnames, bool mon, int port, char * hname, int * sock, int monskip)
+Visibility::Visibility(Configuration * conf, int id, int numvis, int eseconds, int skipseconds, int startns, const string * pnames, bool mon, int port, char * hname, int * sock, int monskip)
   : config(conf), visID(id), numvisibilities(numvis), executeseconds(eseconds), polnames(pnames), monitor(mon), portnum(port), hostname(hname), mon_socket(sock), monitor_skip(monskip)
 {
   int status;
@@ -54,7 +54,7 @@ Visibility::Visibility(Configuration * conf, int id, int numvis, int eseconds, i
 
   //set up the initial time period this Visibility will be responsible for
   offset = 0;
-  currentstartsamples = 0;
+  currentstartsamples = (int)((((double)startns)/1000000000.0)*((double)samplespersecond) + 0.5);
   currentstartseconds = skipseconds;
   offset = offset+offsetperintegration;
   blocksthisintegration = integrationsamples/blocksamples;
@@ -180,7 +180,6 @@ void Visibility::updateTime()
   }
   if(configindex != currentconfigindex && currentstartseconds < executeseconds)
   {
-    currentconfigindex = configindex;  // FIXME!!! Removeme but look at function below first
     changeConfig(currentconfigindex);
   }
 }
@@ -506,6 +505,8 @@ void Visibility::writedata()
     double fftminutes = double(config->getNumChannels(currentconfigindex))/(60000000.0*config->getDBandwidth(currentconfigindex,0,0));
     polyco = Polyco::getCurrentPolyco(currentconfigindex, mjd, mjdfrac, config->getPolycos(currentconfigindex), config->getNumPolycos(currentconfigindex));
     double * binweights = polyco->getBinWeights();
+
+    //SOMEWHERE IN HERE, CHECK THE AMPLITUDE SCALING FOR MULTIPLE SCRUNCHED BINS!
 
     numblocks = integrationsamples/blocksamples;
     if(offset + offsetperintegration >= blocksamples/2) numblocks++;
@@ -875,6 +876,9 @@ void Visibility::changeConfig(int configindex)
     autocorrcalibs = new cf32*[numdatastreams];
     baselinepoloffsets = new int**[numbaselines];
     datastreampolbandoffsets = new int**[numdatastreams];
+    binweightsums = new f32**[config->getFreqTableLength()];
+    binscales = new cf32**[config->getFreqTableLength()];
+    pulsarbins = new s32*[config->getFreqTableLength()];
   }
   else
   {
@@ -900,7 +904,7 @@ void Visibility::changeConfig(int configindex)
       for(int i=0;i<config->getFreqTableLength();i++) {
         for(int j=0;j<config->getNumChannels(currentconfigindex)+1;j++)
           vectorFree(binweightsums[i][j]);
-        for(int j=0;j<config->scrunchOutputOn(configindex)?1:config->getNumPulsarBins(configindex);j++)
+        for(int j=0;j<config->scrunchOutputOn(currentconfigindex)?1:config->getNumPulsarBins(currentconfigindex);j++)
           vectorFree(binscales[i][j]);
         vectorFree(pulsarbins[i]);
         delete [] binweightsums[i];
