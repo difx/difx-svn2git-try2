@@ -20,24 +20,44 @@
 Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool postffringe, bool quaddelayinterp, bool cacorrs, int framebytes, int framesamples, Configuration::dataformat format)
  : Mode(conf, confindex, dsindex, nchan, bpersend, gblocks, nfreqs, bw, freqclkoffsets, ninputbands, noutputbands, nbits, framesamples+nchan*2, fbank, postffringe, quaddelayinterp, cacorrs, bw*2)
 {
-  string formatname;
+  char formatname[64];
+  int fanout, mbps;
 
-// FIXME -- need to construct format name from available information
-  
-  formatname = conf->getFormatName(confindex, dsindex);
+  mbps = 2*ninputbands*bw*nbits;
+
+  switch(format)
+  {
+    case MKIV:
+      fanout = framebytes*8/(20000*nbits*ninputbands);
+      if(fanout*20000*nbits*ninputbands != framebytes*8)
+      {
+        cerr << "Mk5Mode : MKIV format : framebytes = " << framebytes << " is not allowed\n");
+        exit(1);
+      }
+      sprintf(formatname, "MKIV1_%d-%d-%d-%d", fanout, mbps, ninputbands, nbits);
+      break;
+    case VLBA:
+      fanout = framebytes*8/(20160*nbits*ninputbands);
+      if(fanout*20160*nbits*ninputbands != framebytes*8)
+      {
+        cerr << "Mk5Mode : MKIV format : framebytes = " << framebytes << " is not allowed\n");
+        exit(1);
+      }
+      sprintf(formatname, "MKIV1_%d-%d-%d-%d", fanout, mbps, ninputbands, nbits);
+      break;
+    case MARK5B:
+      sprintf(formatname, "Mark5B-%d-%d-%d", mbps, ninputbands, nbits);
+      break;
+    default:
+      cerr << "Mk5Mode : unsupported format encoutnered\n" << endl;
+      exit(1);
+  }
 
   //create the mark5_stream used for unpacking
-  if(formatname != "")
-  {
-    mark5stream = new_mark5_stream(
+  mark5stream = new_mark5_stream(
       new_mark5_stream_unpacker(0),
-      new_mark5_format_generic_from_string(formatname.c_str()) );
-  }
-  else
-  {
-    cerr << "FormatName == ''" << endl;
-    exit(1);
-  }
+      new_mark5_format_generic_from_string(formatname) );
+
   if(fsamples != mark5stream->framesamples)
   {
     cerr << "Mk5Mode::Mk5Mode : framesamples inconsistent" << endl;
