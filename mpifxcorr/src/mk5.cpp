@@ -13,6 +13,40 @@
 #include "mk5.h"
 
 
+static void genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, char *formatname)
+{
+  int fanout, mbps;
+
+  mbps = int(2*nchan*bw*nbits + 0.5);
+
+  switch(format)
+  {
+    case Configuration::MKIV:
+      fanout = framebytes*8/(20000*nbits*nchan);
+      if(fanout*20000*nbits*nchan != framebytes*8)
+      {
+        cerr << "genFormatName : MKIV format : framebytes = " << framebytes << " is not allowed\n";
+        exit(1);
+      }
+      sprintf(formatname, "MKIV1_%d-%d-%d-%d", fanout, mbps, nchan, nbits);
+      break;
+    case Configuration::VLBA:
+      fanout = framebytes*8/(20160*nbits*nchan);
+      if(fanout*20160*nbits*nchan != framebytes*8)
+      {
+        cerr << "genFormatName : VLBA format : framebytes = " << framebytes << " is not allowed\n";
+        exit(1);
+      }
+      sprintf(formatname, "VLBA1_%d-%d-%d-%d", fanout, mbps, nchan, nbits);
+      break;
+    case Configuration::MARK5B:
+      sprintf(formatname, "Mark5B-%d-%d-%d", mbps, nchan, nbits);
+      break;
+    default:
+      cerr << "genFormatName : unsupported format encountered\n" << endl;
+      exit(1);
+  }
+}
 
 /// Mk5DataMode ---------------------------------------------------------
 
@@ -21,44 +55,15 @@ Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, in
  : Mode(conf, confindex, dsindex, nchan, bpersend, gblocks, nfreqs, bw, freqclkoffsets, ninputbands, noutputbands, nbits, framesamples+nchan*2, fbank, postffringe, quaddelayinterp, cacorrs, bw*2)
 {
   char formatname[64];
-  int fanout, mbps;
 
-  mbps = 2*ninputbands*bw*nbits;
-
-  switch(format)
-  {
-    case MKIV:
-      fanout = framebytes*8/(20000*nbits*ninputbands);
-      if(fanout*20000*nbits*ninputbands != framebytes*8)
-      {
-        cerr << "Mk5Mode : MKIV format : framebytes = " << framebytes << " is not allowed\n");
-        exit(1);
-      }
-      sprintf(formatname, "MKIV1_%d-%d-%d-%d", fanout, mbps, ninputbands, nbits);
-      break;
-    case VLBA:
-      fanout = framebytes*8/(20160*nbits*ninputbands);
-      if(fanout*20160*nbits*ninputbands != framebytes*8)
-      {
-        cerr << "Mk5Mode : MKIV format : framebytes = " << framebytes << " is not allowed\n");
-        exit(1);
-      }
-      sprintf(formatname, "MKIV1_%d-%d-%d-%d", fanout, mbps, ninputbands, nbits);
-      break;
-    case MARK5B:
-      sprintf(formatname, "Mark5B-%d-%d-%d", mbps, ninputbands, nbits);
-      break;
-    default:
-      cerr << "Mk5Mode : unsupported format encoutnered\n" << endl;
-      exit(1);
-  }
+  genFormatName(format, ninputbands, bw, nbits, framebytes, formatname);
 
   //create the mark5_stream used for unpacking
   mark5stream = new_mark5_stream(
       new_mark5_stream_unpacker(0),
       new_mark5_format_generic_from_string(formatname) );
 
-  if(fsamples != mark5stream->framesamples)
+  if(framesamples != mark5stream->framesamples)
   {
     cerr << "Mk5Mode::Mk5Mode : framesamples inconsistent" << endl;
     exit(1);
@@ -140,14 +145,23 @@ void Mk5DataStream::updateConfig(int segmentindex)
 void Mk5DataStream::initialiseFile(int configindex, int fileindex)
 {
   int offset;
-  string formatname;
+  char formatname[64];
   struct mark5_stream *mark5stream;
+  int nbits, ninputbands, framebytes;
+  Configuration::dataformat format;
+  double bw;
 
-  formatname = config->getFormatName(configindex, streamnum);
+  format = config->getDataFormat(configindex, streamnum);
+  nbits = config->getDNumBits(configindex, streamnum);
+  ninputbands = config->getDNumInputBands(configindex, streamnum);
+  framebytes = config->getFrameBytes(configindex, streamnum);
+  bw = config->getConfigBandwidth(configindex);
+
+  genFormatName(format, ninputbands, bw, nbits, framebytes, formatname);
 
   mark5stream = new_mark5_stream(
     new_mark5_stream_file(datafilenames[configindex][fileindex].c_str(), 0),
-    new_mark5_format_generic_from_string(formatname.c_str()) );
+    new_mark5_format_generic_from_string(formatname) );
   if(mark5stream->nchan != config->getDNumInputBands(configindex, streamnum))
   {
     cerr << "Error - number of input bands for datastream " << streamnum << " (" << config->getDNumInputBands(configindex, streamnum) << ") does not match with MkV file " << datafilenames[configindex][fileindex] << " (" << mark5stream->nchan << "), will be ignored!!!" << endl;

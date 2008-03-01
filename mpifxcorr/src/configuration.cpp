@@ -151,8 +151,11 @@ Configuration::~Configuration()
 
 int Configuration::getFramePayloadBytes(int configindex, int configdatastreamindex)
 {
+  int payloadsize;
   int framebytes = getFrameBytes(configindex, configdatastreamindex);
-  switch(f)
+  dataformat format = getDataFormat(configindex, configdatastreamindex);
+  
+  switch(format)
   {
     case VLBA:
       payloadsize = (framebytes/2520)*2500;
@@ -163,6 +166,8 @@ int Configuration::getFramePayloadBytes(int configindex, int configdatastreamind
     default:
       payloadsize = framebytes;
   }
+
+  return payloadsize;
 }
 
 void Configuration::getFrameInc(int configindex, int configdatastreamindex, int &sec, int &ns)
@@ -173,7 +178,7 @@ void Configuration::getFrameInc(int configindex, int configdatastreamindex, int 
   double samplerate; /* in Hz */
   double seconds;
 
-  nchan = DNumInputBands(configindex, configdatastreamindex);
+  nchan = getDNumInputBands(configindex, configdatastreamindex);
   f = getDataFormat(configindex, configdatastreamindex);
   samplerate = 2.0e6*getDBandwidth(configindex, configdatastreamindex, 0);
   qb = getDNumBits(configindex, configdatastreamindex);
@@ -181,7 +186,7 @@ void Configuration::getFrameInc(int configindex, int configdatastreamindex, int 
 
   seconds = nchan*payloadsize*8/(samplerate*qb);
   sec = int(seconds);
-  ns = 1.0e9*(seconds - sec);
+  ns = int(1.0e9*(seconds - sec));
 }
 
 int Configuration::getMaxResultLength()
@@ -319,7 +324,7 @@ int Configuration::getDataBytes(int configindex, int datastreamindex)
 {
   datastreamdata currentds = datastreamtable[configs[configindex].datastreamindices[datastreamindex]];
   int validlength = (configs[configindex].blockspersend*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
-  if(currentds.format == MK5_FILE || currentds.format == MK5_MODULE)
+  if(currentds.format == MKIV || currentds.format == VLBA || currentds.format == MARK5B)
   {
     //must be an integer number of frames, with enough margin for overlap on either side
     validlength += (configs[configindex].guardblocks*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
@@ -429,25 +434,26 @@ Mode* Configuration::getMode(int configindex, int datastreamindex)
 {
   configdata conf = configs[configindex];
   datastreamdata stream = datastreamtable[conf.datastreamindices[datastreamindex]];
-  int framesamples;
+  int framesamples, framebytes;
 
   switch(stream.format)
   {
     case LBASTD:
       if(stream.numbits != 2)
         cerr << "ERROR! All LBASTD Modes must have 2 bit sampling - overriding input specification!!!" << endl;
-      return new LBAMode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, 2/*bits*/, stream.filterbank, conf.pulsarbin, conf.scrunchoutput, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, LBAMode::stdunpackvalues);
+      return new LBAMode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, 2/*bits*/, stream.filterbank, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, LBAMode::stdunpackvalues);
       break;
     case LBAVSOP:
       if(stream.numbits != 2)
         cerr << "ERROR! All LBASTD Modes must have 2 bit sampling - overriding input specification!!!" << endl;
-      return new LBAMode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, 2/*bits*/, stream.filterbank, conf.pulsarbin, conf.scrunchoutput, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, LBAMode::vsopunpackvalues);
+      return new LBAMode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, 2/*bits*/, stream.filterbank, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, LBAMode::vsopunpackvalues);
       break;
     case MKIV:
     case VLBA:
     case MARK5B:
-      framesamples = getFramePayloadSize(configindex, datastreamindex)*8/getDNumBits(configindex, datastreamindex);
-      return new Mk5Mode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, stream.numbits, stream.filterbank, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, conf.framebytes, framesamples, stream.format);
+      framesamples = getFramePayloadBytes(configindex, datastreamindex)*8/(getDNumBits(configindex, datastreamindex)*getDNumInputBands(configindex, datastreamindex));
+      framebytes = getFrameBytes(configindex, datastreamindex);
+      return new Mk5Mode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, stream.numbits, stream.filterbank, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, framebytes, framesamples, stream.format);
       break;
     default:
       cerr << "Error - unknown Mode!!!" << endl;
@@ -728,7 +734,7 @@ void Configuration::processDatastreamTable(ifstream * input)
       datastreamtable[i].source = EVLBI;
     else
     {
-      cerr << "Unnkown data source << line << " (case sensitive choices are FILE, MODULE and EVLBI)" << endl;
+      cerr << "Unnkown data source " << line << " (case sensitive choices are UNIXFILE, MK5MODULE and EVLBI)" << endl;
       exit(1);
     }
 
@@ -1083,19 +1089,6 @@ void Configuration::processPulsarConfig(string filename, int configindex)
 
 void Configuration::setPolycoFreqInfo(int configindex)
 {
-  double * frequencies = new double[d.numfreqs];
-  double bandwidth = freqtable[d.freqtableindices[0]].bandwidth;
-  for(int i=0;i<d.numfreqs;i++)
-  {
-    frequencies[i] = freqtable[d.freqtableindices[i]].bandedgefreq;
-    if(freqtable[d.freqtableindices[i]].lowersideband)
-      frequencies[i] -= bandwidth;
-  }
-  for(int i=0;i<configs[configindex].numpolycos;i++)
-  {
-    configs[configindex].polycos[i]->setFrequencyValues(d.numfreqs, frequencies, bandwidth);
-  }
-  delete [] frequencies;*/
   datastreamdata d = datastreamtable[getMaxNumFreqDatastreamIndex(configindex)];
   double * frequencies = new double[datastreamtablelength];
   double bandwidth = freqtable[d.freqtableindices[0]].bandwidth;
