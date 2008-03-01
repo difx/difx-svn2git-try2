@@ -164,7 +164,7 @@ void Mk5DataStream::initialiseFile(int configindex, int fileindex)
     new_mark5_format_generic_from_string(formatname) );
   if(mark5stream->nchan != config->getDNumInputBands(configindex, streamnum))
   {
-    cerr << "Error - number of input bands for datastream " << streamnum << " (" << config->getDNumInputBands(configindex, streamnum) << ") does not match with MkV file " << datafilenames[configindex][fileindex] << " (" << mark5stream->nchan << "), will be ignored!!!" << endl;
+    cerr << "Error - number of input bands for datastream " << streamnum << " (" << ninputbands << ") does not match with MkV file " << datafilenames[configindex][fileindex] << " (" << mark5stream->nchan << "), will be ignored!!!" << endl;
   }
 
   // resolve any day ambiguities
