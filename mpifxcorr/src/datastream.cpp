@@ -64,6 +64,10 @@ void DataStream::initialise()
       overflowbytes = currentoverflowbytes;
   }
   databuffer = vectorAlloc_u8(bufferbytes + overflowbytes);
+  if(databuffer == NULL) {
+    cerr << "Error - datastream " << mpiid << " could not allocate databuffer (length " << bufferbytes + overflowbytes << ")! Aborting correlation" << endl;
+    exit(1);
+  }
   int mindatabytes = config->getDataBytes(0, streamnum);
   for(int i=1;i<config->getNumConfigs();i++)
   {

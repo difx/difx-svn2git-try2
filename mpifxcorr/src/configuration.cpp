@@ -92,7 +92,7 @@ Configuration::Configuration(const char * configfile)
   }
   input->close();
   delete input;
-  consistencyCheck();
+  consistencyok = consistencyCheck();
 //  cout << "Finished processing input file!!!" << endl;
 }
 
@@ -887,7 +887,7 @@ void Configuration::processNetworkTable(ifstream * input)
   }
 }
 
-void Configuration::consistencyCheck()
+bool Configuration::consistencyCheck()
 {
   int tindex, count;
   double bandwidth, sampletimens, ffttime, nsincrement;
@@ -899,7 +899,7 @@ void Configuration::consistencyCheck()
     if(datastreamtable[i].telescopeindex < 0 || datastreamtable[i].telescopeindex >= telescopetablelength)
     {
       cerr << "Error!!! Datastream table entry " << i << " has a telescope index that refers outside the telescope table range (" << datastreamtable[i].telescopeindex << ")- aborting!!!" << endl;
-      exit(1);
+      return false;
     }
 
     //check the local freq indices are all ok
@@ -908,7 +908,7 @@ void Configuration::consistencyCheck()
       if(datastreamtable[i].inputbandlocalfreqindices[j] < 0 || datastreamtable[i].inputbandlocalfreqindices[j] >= datastreamtable[i].numfreqs)
       {
         cerr << "Error!!! Datastream table entry " << i << " has an input band local frequency index (band " << j << ") that refers outside the local frequency table range (" << datastreamtable[i].inputbandlocalfreqindices[j] << ")- aborting!!!" << endl;
-        exit(1);
+        return false;
       }
     }
 
@@ -919,12 +919,12 @@ void Configuration::consistencyCheck()
       if(datastreamtable[i].freqtableindices[j] < 0 || datastreamtable[i].freqtableindices[j] >= freqtablelength)
       {
         cerr << "Error!!! Datastream table entry " << i << " has a frequency index (freq " << j << ") that refers outside the frequency table range (" << datastreamtable[i].freqtableindices[j] << ")- aborting!!!" << endl;
-        exit(1);
+        return false;
       }
       if(bandwidth != freqtable[datastreamtable[i].freqtableindices[j]].bandwidth)
       {
         cerr << "Error - all bandwidths for a given datastream must be equal - Aborting!!!!" << endl;
-        exit(1);
+        return false;
       }
     }
   }
@@ -938,7 +938,7 @@ void Configuration::consistencyCheck()
       if(tindex != datastreamtable[configs[0].datastreamindices[i]].telescopeindex)
       {
         cerr << "Error - all configs must have the same telescopes!  Config " << j << " datastream " << i << " refers to different telescopes - aborting!!!" << endl;
-        exit(1);
+        return false;
       }
     }
   }
@@ -960,7 +960,7 @@ void Configuration::consistencyCheck()
     if(count != numdatastreams)
     {
       cerr << "Error - not all datastreams accounted for in the datastream table for config " << i << endl;
-      exit(1);
+      return false;
     }
 
     //check that number of channels * sample time yields a whole number of nanoseconds for every datastream
@@ -972,12 +972,12 @@ void Configuration::consistencyCheck()
       if(ffttime - (int)(ffttime+0.5) > 0.00000001 || ffttime - (int)(ffttime+0.5) < -0.000000001)
       {
         cerr << "Error - FFT chunk time for config " << i << ", datastream " << j << " is not a whole number of nanoseconds (" << ffttime << ") - aborting!!!" << endl;
-        exit(1);
+        return false;
       }
       if(nsincrement > ((1 << (sizeof(int)*8 - 1)) - 1))
       {
         cerr << "Error - increment per read in nanoseconds is " << nsincrement << " - too large to fit in an int.  ABORTING" << endl;
-        exit(1);
+        return false;
       }
     }
 
@@ -989,12 +989,12 @@ void Configuration::consistencyCheck()
       if(b < 0 || b >= baselinetablelength) //bad index
       {
         cerr << "Error - config " << i << " baseline index " << j << " refers to baseline " << b << " which is outside the range of the baseline table - aborting!!!" << endl;
-        exit(1);
+        return false;
       }
       if(datastreamtable[baselinetable[b].datastream2index].telescopeindex < lastt2 && datastreamtable[baselinetable[b].datastream1index].telescopeindex <= lastt1)
       {
         cerr << "Error - config " << i << " baseline index " << j << " refers to baseline " << datastreamtable[baselinetable[b].datastream2index].telescopeindex << "-" << datastreamtable[baselinetable[b].datastream1index].telescopeindex << " which is out of order with the previous baseline " << lastt1 << "-" << lastt2 << " - aborting!!!" << endl;
-        exit(1);
+        return false;
       }
       lastt1 = datastreamtable[baselinetable[b].datastream1index].telescopeindex;
       lastt2 = datastreamtable[baselinetable[b].datastream2index].telescopeindex;
@@ -1008,7 +1008,7 @@ void Configuration::consistencyCheck()
     if(baselinetable[i].datastream1index < 0 || baselinetable[i].datastream2index < 0 || baselinetable[i].datastream1index >= datastreamtablelength || baselinetable[i].datastream2index >= datastreamtablelength)
     {
       cerr << "Error - baseline table entry " << i << " has a datastream index outside the datastream table range! Its two indices are " << baselinetable[i].datastream1index << ", " << baselinetable[i].datastream2index << ".  ABORTING" << endl;
-      exit(1);
+      return false;
     }
 
     //check the band indices
@@ -1019,12 +1019,12 @@ void Configuration::consistencyCheck()
         if(baselinetable[i].datastream1bandindex[j][k] < 0 || baselinetable[i].datastream1bandindex[j][k] >= datastreamtable[baselinetable[i].datastream1index].numinputbands)
         {
           cerr << "Error! Baseline table entry " << i << ", frequency " << j << ", polarisation product " << k << " for datastream 1 refers to a band outside datastream 1's range (" << baselinetable[i].datastream1bandindex[j][k] << ") - aborting!!!" << endl;
-          exit(1);
+          return false;
         }
         if(baselinetable[i].datastream2bandindex[j][k] < 0 || baselinetable[i].datastream2bandindex[j][k] >= datastreamtable[baselinetable[i].datastream2index].numinputbands)
         {
           cerr << "Error! Baseline table entry " << i << ", frequency " << j << ", polarisation product " << k << " for datastream 2 refers to a band outside datastream 2's range (" << baselinetable[i].datastream2bandindex[j][k] << ") - aborting!!!" << endl;
-          exit(1);
+          return false;
         }
       }
     }
@@ -1033,8 +1033,10 @@ void Configuration::consistencyCheck()
   if(databufferfactor % numdatasegments != 0)
   {
     cerr << "Error - there must be an integer number of sends per datasegment.  Presently databufferfactor is " << databufferfactor << ", and numdatasegments is " << numdatasegments << ".  ABORTING" << endl;
-    exit(1);
+    return false;
   }
+
+  return true;
 }
 
 void Configuration::processPulsarConfig(string filename, int configindex)

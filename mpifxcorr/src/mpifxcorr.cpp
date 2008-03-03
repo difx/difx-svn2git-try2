@@ -158,6 +158,13 @@ int main(int argc, char *argv[])
   cout << "About to process the input file.." << endl;
   //process the input file to get all the info we need
   config = new Configuration(argv[1]);
+  if(!config->consistencyOK())
+  {
+    //There was a problem with the input file, so shut down gracefully
+    cerr << "Config encountered inconsistent setup in config file - aborting correlation" << endl;
+    MPI_Finalize();
+    return EXIT_FAILURE;
+  }
   numdatastreams = config->getNumDataStreams();
   numcores = numprocs - (fxcorr::FIRSTTELESCOPEID + numdatastreams);
   if(numcores < 1)

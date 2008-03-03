@@ -61,6 +61,7 @@ public:
   */
 //@{
   inline int getVisBufferLength() { return visbufferlength; }
+  inline bool consistencyOK() {return consistencyok; }
   inline int getNumConfigs() { return numconfigs; }
   inline int getNumIndependentChannelConfigs() { return numindependentchannelconfigs; }
   inline int getFirstNaturalConfigIndex(int independentchannelindex) { return firstnaturalconfigindices[independentchannelindex]; }
@@ -457,8 +458,9 @@ private:
 
  /**
   * Checks a loaded file for consistency - ensuring all frequencies for a given datastream have the same bandwidth etc
+  * @return If the configuration file was parsed without problems, true, else false
   */
-  void consistencyCheck();
+  bool consistencyCheck();
 
  /**
   * Loads the baseline table from the file into memory
@@ -525,7 +527,7 @@ private:
   static const int HEADER_LENGTH = 21;
 
   char header[HEADER_LENGTH];
-  bool commonread, configread, datastreamread;
+  bool commonread, configread, datastreamread, consistencyok;
   int visbufferlength;
   int executeseconds, startmjd, startseconds, startns, numdatastreams, numbaselines, numconfigs, defaultconfigindex, baselinetablelength, telescopetablelength, datastreamtablelength, freqtablelength, databufferfactor, numdatasegments, numcoreconfs, maxnumchannels, maxnumpulsarbins, numindependentchannelconfigs;
   string delayfilename, uvwfilename, coreconffilename, outputfilename;
