@@ -135,12 +135,15 @@ private:
   void writeDiFXHeader(ofstream * output, int baselinenum, int dumpmjd, double dumpseconds, int configindex, int sourceindex, int freqindex, const char polproduct[3], int pulsarbin, int flag, int writeweights, float buvw[3]);
 
   int visID, expermjd, experseconds, integrationsamples, currentstartseconds, currentstartsamples, offset, offsetperintegration, blocksthisintegration, blocksamples, numvisibilities, numdatastreams, numbaselines, numchannels, currentblocks, resultlength, currentconfigindex, samplespersecond, maxproducts, executeseconds, autocorrincrement;
+  double floatblocksperintegration;
   bool first, monitor, pulsarbinon;
   int * mon_socket;
   int monitor_skip;
   int portnum;
   char * hostname;
   cf32 ** autocorrcalibs;
+  f32 *** autocorrweights;
+  f32 *** baselineweights;
   std::string * telescopenames;
   //cf32 *** results;
   cf32 * results;

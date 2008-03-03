@@ -468,20 +468,19 @@ void Core::receivedata(int index, bool * terminate)
 
 void Core::processdata(int index, int threadid, int startblock, int numblocks, Mode ** modes, Polyco * currentpolyco, cf32 * threadresults, s32 ** bins, cf32* pulsarscratchspace, cf32***** pulsaraccumspace)
 {
-  int status, perr, resultindex=0, currentnumoutputbands, cindex, maxproducts;
+  int status, perr, resultindex=0, currentnumoutputbands, cindex, maxproducts, ds1index, ds2index;
   double offsetmins;
   float binweight, currentblockspersendfloat;
-  int * numgoodresults = new int[numdatastreams];
+  int * dsweights = new int[numdatastreams];
   Mode * m1, * m2;
   s32 *** polycobincounts;
   cf32 * vis1;
   cf32 * vis2;
   bool writecrossautocorrs;
-  for(int i=0;i<numdatastreams;i++)
-    numgoodresults[i] = 0;
 
   writecrossautocorrs = modes[0]->writeCrossAutoCorrs();
   maxproducts = config->getMaxProducts();
+  currentblockspersendfloat = (float)(config->getBlocksPerSend(procslots[index].configindex));
 
   //set up the mode objects that will do the station-based processing
   for(int j=0;j<numdatastreams;j++)
@@ -505,7 +504,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
     //do the station-based processing for this FFT chunk
     for(int j=0;j<numdatastreams;j++)
     {
-      numgoodresults[j] += modes[j]->process(i);
+      dsweights[j] = modes[j]->process(i);
     }
 
     //if necessary, work out the pulsar bins
@@ -519,8 +518,10 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
     for(int j=0;j<numbaselines;j++)
     {
       //get the two modes that contribute to this baseline
-      m1 = modes[config->getBOrderedDataStream1Index(procslots[index].configindex, j)];
-      m2 = modes[config->getBOrderedDataStream2Index(procslots[index].configindex, j)];
+      ds1index = config->getBOrderedDataStream1Index(procslots[index].configindex, j);
+      ds2index = config->getBOrderedDataStream2Index(procslots[index].configindex, j);
+      m1 = modes[ds1index];
+      m2 = modes[ds2index];
 
       //add the desired results into the resultsbuffer
       for(int k=0;k<config->getBNumFreqs(procslots[index].configindex, j);k++)
@@ -546,6 +547,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
                 pulsaraccumspace[j][k][p][bins[config->getBFreqIndex(procslots[index].configindex, j, k)][l]][l].re += pulsarscratchspace[l].re;
                 pulsaraccumspace[j][k][p][bins[config->getBFreqIndex(procslots[index].configindex, j, k)][l]][l].im += pulsarscratchspace[l].im;
               }
+              pulsaraccumspace[j][k][p][0][numchannels].im += dsweights[ds1index]*dsweights[ds2index];
             }
             else
             {
@@ -555,6 +557,8 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
                 threadresults[cindex].re += pulsarscratchspace[l].re;
                 threadresults[cindex].im += pulsarscratchspace[l].im;
               }
+              cindex = resultindex + p*(procslots[index].numchannels+1) + procslots[index].numchannels;
+              threadresults[cindex].im += dsweights[ds1index]*dsweights[ds2index];
             }
           }
           else
@@ -564,6 +568,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
             if(status != vecNoErr)
               cerr << "Error trying to xmac baseline " << j << " frequency " << k << " polarisation product " << p << ", status " << status << endl;
             resultindex += procslots[index].numchannels+1;
+            threadresults[resultindex-1].im += dsweights[ds1index]*dsweights[ds2index];
           }
         }
         if(procslots[index].pulsarbin && !procslots[index].scrunchoutput)
@@ -592,6 +597,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
         {
           for(int k=0;k<config->getBNumPolProducts(procslots[index].configindex,i,j);k++)
           {
+            float baselineweight = pulsaraccumspace[i][j][k][numchannels].im;
             for(int l=0;l<procslots[index].numpulsarbins;l++)
             {
               //Scale the accumulation space, and scrunch it into the results vector
@@ -607,6 +613,8 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
               if(status != vecNoErr)
                 cerr << "Error trying to zero pulsaraccumspace!!!" << endl;
             }
+            //store the correct weight
+            threadresults[resultindex + numchannels].im = baselineweight;
             resultindex += procslots[index].numchannels+1;
           }
         }
@@ -620,6 +628,9 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
               status = vectorMulC_f32_I((f32)(binweights[k]), (f32*)(&(threadresults[resultindex])), 2*procslots[index].numchannels+2);
               if(status != vecNoErr)
                 cerr << "Error trying to scale pulsar binned (non-scrunched) results!!!" << endl;
+              if(k==0)
+                //renormalise the weight
+                threadresults[resultindex + procslots[index].numchannels].im /= binweights[k];
               resultindex += procslots[index].numchannels+1;
             }
           }
@@ -680,7 +691,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
   perr = pthread_mutex_unlock(&(procslots[index].slotlocks[threadid]));
   if(perr != 0)
     cerr << "PROCESSTHREAD " << mpiid << "/" << threadid << " error trying unlock mutex " << index; 
-  delete [] numgoodresults;
+  delete [] dsweights;
 }
 
 void Core::createPulsarAccumSpace(cf32***** pulsaraccumspace, int newconfigindex, int oldconfigindex)

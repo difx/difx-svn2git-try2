@@ -197,7 +197,7 @@ Mode::~Mode()
   cout << "Ending a mode destructor" << endl;
 }
 
-void Mode::unpack(int sampleoffset)
+int Mode::unpack(int sampleoffset)
 {
   int status, leftoversamples, stepin = 0;
 
@@ -214,24 +214,31 @@ void Mode::unpack(int sampleoffset)
   for(int i=0;i<numlookups;i++)
   {
     status = vectorCopy_s16(&lookup[packed[i]*samplesperlookup], &linearunpacked[i*samplesperlookup], samplesperlookup);
-    if(status != vecNoErr)
+    if(status != vecNoErr) {
       cerr << "Error in lookup for unpacking!!!" << status << endl;
+      return 0;
+    }
   }
 
   //split the linear unpacked array into the separate subbands
   status = vectorSplitScaled_s16f32(&(linearunpacked[stepin*numinputbands]), unpackedarrays, numinputbands, unpacksamples);
-  if(status != vecNoErr)
+  if(status != vecNoErr) {
     cerr << "Error in splitting linearunpacked!!!" << status << endl;
+    return 0;
+  }
+
+  return unpacksamples;
 }
 
-int Mode::process(int index)  //frac sample error, fringedelay and wholemicroseconds are in microseconds 
+float Mode::process(int index)  //frac sample error, fringedelay and wholemicroseconds are in microseconds 
 {
   double phaserotation, averagedelay, nearestsampletime, starttime, finaloffset, lofreq, distance;
   f32 phaserotationfloat, fracsampleerror;
-  int status, count, nearestsample, integerdelay;
+  int status, count, nearestsample, integerdelay, goodsamples;
   cf32* fftptr;
   f32* currentchannelfreqptr;
   int indices[10];
+  float fftweight;
   
   if(delays[index] < 0 || delays[index+1] < 0)
   {
@@ -260,12 +267,16 @@ int Mode::process(int index)  //frac sample error, fringedelay and wholemicrosec
   if(nearestsample == -1)
   {
     nearestsample = 0;
-    unpack(nearestsample);
+    goodsamples = unpack(nearestsample);
   }
   else if(nearestsample < unpackstartsamples || nearestsample > unpackstartsamples + unpacksamples - twicenumchannels)
     //need to unpack more data
-    unpack(nearestsample);
+    goodsamples = unpack(nearestsample);
 
+  if(goodsamples == 0)
+    return 0;
+
+  fftweight = ((float)goodsamples)/((float)unpacksamples);
   nearestsampletime = nearestsample*sampletime;
   fracsampleerror = float(starttime - nearestsampletime);
 
@@ -428,6 +439,9 @@ int Mode::process(int index)  //frac sample error, fringedelay and wholemicrosec
         status = vectorAddProduct_cf32(fftoutputs[j], conjfftoutputs[j], autocorrelations[0][j], numchannels+1);
         if(status != vecNoErr)
           cerr << "Error in autocorrelation!!!" << status << endl;
+
+        //Add the weight in magic location (imaginary part of Nyquist channel)
+        autocorrelations[0][j][numchannels].im += fftweight;
       }
     }
 
@@ -441,10 +455,12 @@ int Mode::process(int index)  //frac sample error, fringedelay and wholemicrosec
       status = vectorAddProduct_cf32(fftoutputs[indices[1]], conjfftoutputs[indices[0]], autocorrelations[1][indices[1]], numchannels+1);
       if(status != vecNoErr)
         cerr << "Error in cross-polar autocorrelation!!!" << status << endl;
+      //add the weight in magic location (imaginary part of Nyquist channel)
+        autocorrelations[1][j][numchannels].im += fftweight;
     }
   }
 
-  return 1;
+  return fftweight;
 }
 
 void Mode::zeroAutocorrelations()

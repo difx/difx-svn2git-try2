@@ -73,9 +73,9 @@ public:
  /**
   * Calculates fringe rotation and fractional sample correction arrays and FFTs, and autocorrelates
   * @param index The index of the FFT chunk to process
-  * @return 1 = Success, 0 = Failure
+  * @return Fraction of samples that were good for this FFT
   */
-  int process(int index);
+  float process(int index);
 
  /**
   * Sets the autocorrelation arrays to contain 0's
@@ -135,10 +135,13 @@ public:
 
 protected:
  /** 
-  * Uses lookup table to unpack data to float arrays
+  * Unpacks quantised data to float arrays.  The floating point values filled should
+  * be in the range 0.0->1.0, and set appropriately to the expected input levels such that
+  * the mean autocorrelation level at nominal sampler statistics is 0.??
   * @param sampleoffset The offset in number of time samples into the data array
+  * @return The number of good samples unpacked
   */
-  virtual void unpack(int sampleoffset);
+  virtual int unpack(int sampleoffset);
   
   int configindex, datastreamindex, numfreqs, numinputbands, numoutputbands, numchannels, blockspersend, guardblocks, twicenumchannels, numbits, bytesperblocknumerator, bytesperblockdenominator, offsetseconds, offsetns, order, flag, fftbuffersize, unpacksamples, bufferseconds, unpackstartsamples, datalengthbytes;
   double bandwidth, blockclock, sampletime, processtime, a, b, c, centredelay, toaddfirst, toaddlast; //MHz, microseconds
