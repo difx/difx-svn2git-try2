@@ -617,6 +617,10 @@ void Configuration::processConfig(ifstream * input)
     configs[i].inttime = atof(line.c_str());
     getinputline(input, &line, "NUM CHANNELS");
     configs[i].numchannels = atoi(line.c_str());
+    getinputline(input, &line, "CHANNELS TO AVERAGE");
+    configs[i].channelstoaverage = atof(line.c_str());
+    getinputline(input, &line, "OVERSAMPLE FACTOR");
+    configs[i].oversamplefactor = atoi(line.c_str());
     configs[i].independentchannelindex = i;
     for(int j=numindependentchannelconfigs-1;j>=0;j--)
     {

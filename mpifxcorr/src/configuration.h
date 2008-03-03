@@ -398,6 +398,8 @@ private:
     string sourcename;
     double inttime;
     int numchannels;
+    int channelstoaverage;
+    int oversamplefactor;
     int independentchannelindex;
     int blockspersend;
     int guardblocks;
