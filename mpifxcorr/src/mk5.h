@@ -52,9 +52,10 @@ public:
 protected:
  /** 
   * Uses mark5access library to unpack multiplexed, quantised data into the separate float arrays
+  * @return The fraction of samples returned
   * @param sampleoffset The offset in number of time samples into the data array
   */
-  virtual void unpack(int sampleoffset);
+  virtual float unpack(int sampleoffset);
 
   int framesamples, framebytes;
   struct mark5_stream *mark5stream;
@@ -111,7 +112,7 @@ protected:
   */
   virtual void initialiseFile(int configindex, int fileindex);
 
-  int framebytes, payloadbytes, framens;
+  int framebytes, payloadbytes, framens, samplestounpack;
 };
 
 #endif

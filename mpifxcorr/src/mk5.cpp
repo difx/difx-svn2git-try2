@@ -13,7 +13,7 @@
 #include "mk5.h"
 
 
-static void genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, char *formatname)
+static int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, char *formatname)
 {
   int fanout, mbps;
 
@@ -46,17 +46,23 @@ static void genFormatName(Configuration::dataformat format, int nchan, double bw
       cerr << "genFormatName : unsupported format encountered\n" << endl;
       exit(1);
   }
+
+  return fanout;
 }
 
 /// Mk5DataMode ---------------------------------------------------------
 
 
 Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool postffringe, bool quaddelayinterp, bool cacorrs, int framebytes, int framesamples, Configuration::dataformat format)
- : Mode(conf, confindex, dsindex, nchan, bpersend, gblocks, nfreqs, bw, freqclkoffsets, ninputbands, noutputbands, nbits, framesamples+nchan*2, fbank, postffringe, quaddelayinterp, cacorrs, bw*2)
+ : Mode(conf, confindex, dsindex, nchan, bpersend, gblocks, nfreqs, bw, freqclkoffsets, ninputbands, noutputbands, nbits, nchan*2, fbank, postffringe, quaddelayinterp, cacorrs, bw*2)
 {
   char formatname[64];
+  int fanout;
 
-  genFormatName(format, ninputbands, bw, nbits, framebytes, formatname);
+  fanout = genFormatName(format, ninputbands, bw, nbits, framebytes, formatname);
+  samplestounpack = nchan*2;
+  if(fanout > 1)
+    samplestounpack += fanout;
 
   //create the mark5_stream used for unpacking
   mark5stream = new_mark5_stream(
@@ -76,18 +82,33 @@ Mk5Mode::~Mk5Mode()
   delete_mark5_stream(mark5stream);
 }
 
-void Mk5Mode::unpack(int sampleoffset)
+float Mk5Mode::unpack(int sampleoffset)
 {
-  int status, framesin;
+  int goodsamples, framesin;
 
   //work out where to start from
   framesin = (sampleoffset/framesamples);
-  unpackstartsamples = framesin*framesamples;
+  unpackstartsamples = sampleoffset - (sampleoffset % fanout);
 
   //unpack one frame plus one FFT size worth of samples
-  status = mark5_unpack(mark5stream, data + framesin*framebytes, unpackedarrays, unpacksamples);
-  if(status < 0)
+  goodsamples = mark5_unpack_with_offset(mark5stream, data, sampleoffset, unpackedarrays, samplestounpack);
+  if(fanout > 1)
+  {
+    for(i = 0; i < sampleoffset % fanout; i++)
+      if(unpackedarrays[0][i] != 0.0)
+        goodsamples--;
+    for(i = unpacksamples + sampleoffset % fanout; i < samplestounpack; i++)
+      if(unpackedarrays[0][i] != 0.0)
+        goodsamples--;
+  }
+    
+  if(goodsamples < 0)
+  {
     cerr << "Error trying to unpack Mark5 format data at sampleoffset " << sampleoffset << " from buffer seconds " << bufferseconds << " plus " << buffermicroseconds << " microseconds!!!" << endl;
+    goodsamples = 0.0;
+  }
+
+  return goodsamples/(float)unpacksamples;
 }
 
 
