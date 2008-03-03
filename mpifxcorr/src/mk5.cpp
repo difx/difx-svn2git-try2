@@ -57,7 +57,6 @@ Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, in
  : Mode(conf, confindex, dsindex, nchan, bpersend, gblocks, nfreqs, bw, freqclkoffsets, ninputbands, noutputbands, nbits, nchan*2, fbank, postffringe, quaddelayinterp, cacorrs, bw*2)
 {
   char formatname[64];
-  int fanout;
 
   fanout = genFormatName(format, ninputbands, bw, nbits, framebytes, formatname);
   samplestounpack = nchan*2;
@@ -84,7 +83,7 @@ Mk5Mode::~Mk5Mode()
 
 float Mk5Mode::unpack(int sampleoffset)
 {
-  int goodsamples, framesin;
+  int framesin, goodsamples;
 
   //work out where to start from
   framesin = (sampleoffset/framesamples);
@@ -94,10 +93,10 @@ float Mk5Mode::unpack(int sampleoffset)
   goodsamples = mark5_unpack_with_offset(mark5stream, data, sampleoffset, unpackedarrays, samplestounpack);
   if(fanout > 1)
   {
-    for(i = 0; i < sampleoffset % fanout; i++)
+    for(int i = 0; i < sampleoffset % fanout; i++)
       if(unpackedarrays[0][i] != 0.0)
         goodsamples--;
-    for(i = unpacksamples + sampleoffset % fanout; i < samplestounpack; i++)
+    for(int i = unpacksamples + sampleoffset % fanout; i < samplestounpack; i++)
       if(unpackedarrays[0][i] != 0.0)
         goodsamples--;
   }
@@ -105,7 +104,7 @@ float Mk5Mode::unpack(int sampleoffset)
   if(goodsamples < 0)
   {
     cerr << "Error trying to unpack Mark5 format data at sampleoffset " << sampleoffset << " from buffer seconds " << bufferseconds << " plus " << buffermicroseconds << " microseconds!!!" << endl;
-    goodsamples = 0.0;
+    goodsamples = 0;
   }
 
   return goodsamples/(float)unpacksamples;

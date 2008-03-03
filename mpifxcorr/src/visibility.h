@@ -132,7 +132,7 @@ private:
 /**
   * Writes the ascii header for a visibility point in a DiFX format output file
   */
-  void writeDiFXHeader(ofstream * output, int baselinenum, int dumpmjd, double dumpseconds, int configindex, int sourceindex, int freqindex, const char polproduct[3], int pulsarbin, int flag, int writeweights, float buvw[3]);
+  void writeDiFXHeader(ofstream * output, int baselinenum, int dumpmjd, double dumpseconds, int configindex, int sourceindex, int freqindex, const char polproduct[3], int pulsarbin, int flag, float weight, float buvw[3]);
 
   int visID, expermjd, experseconds, integrationsamples, currentstartseconds, currentstartsamples, offset, offsetperintegration, blocksthisintegration, blocksamples, numvisibilities, numdatastreams, numbaselines, numchannels, currentblocks, resultlength, currentconfigindex, samplespersecond, maxproducts, executeseconds, autocorrincrement;
   double floatblocksperintegration;

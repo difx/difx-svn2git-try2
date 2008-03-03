@@ -450,9 +450,12 @@ void Visibility::writedata()
     }
     if(config->writeAutoCorrs(currentconfigindex) && autocorrincrement > 1)  { 
       //need to grab weights for the cross autocorrs that are also present in the array
-      autocorrweights[i][j][1] = results[skip+count+numchannels].im/floatblocksperintegration;
-      results[skip+count+numchannels].im = 0.0;
-      count += numchannels + 1;
+      for(int j=0;j<config->getDNumOutputBands(currentconfigindex, i); j++)
+      {
+        autocorrweights[i][j][1] = results[skip+count+numchannels].im/floatblocksperintegration;
+        results[skip+count+numchannels].im = 0.0;
+        count += numchannels + 1;
+      }
     }
   }
   count = 0;
@@ -867,7 +870,7 @@ void Visibility::writedifx()
               {
                 //open, write the header and close
                 output.open(filename, ios::app);
-                writeDiFXHeader(&output, baselinenumber, dumpmjd, dumpseconds, currentconfigindex, sourceindex, freqindex, polnames[k].c_str(), 0, 0, autocorrweights[i][datastreampolbandoffstes[i][j][k]][a], buvw);
+                writeDiFXHeader(&output, baselinenumber, dumpmjd, dumpseconds, currentconfigindex, sourceindex, freqindex, polnames[k].c_str(), 0, 0, autocorrweights[i][datastreampolbandoffsets[i][j][k]][a], buvw);
                 output.close();
 
                 //open, write the binary data and close
@@ -942,7 +945,7 @@ void Visibility::changeConfig(int configindex)
         delete [] baselineweights[i][j];
       }
       delete [] baselinepoloffsets[i];
-      delete [] baselineweights[i]
+      delete [] baselineweights[i];
     }
 #ifdef HAVE_RPFITS
     vectorFree(rpfitsarray);

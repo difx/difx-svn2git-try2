@@ -57,7 +57,7 @@ protected:
   */
   virtual float unpack(int sampleoffset);
 
-  int framesamples, framebytes;
+  int framesamples, framebytes, samplestounpack, fanout;
   struct mark5_stream *mark5stream;
 };
 
@@ -112,7 +112,7 @@ protected:
   */
   virtual void initialiseFile(int configindex, int fileindex);
 
-  int framebytes, payloadbytes, framens, samplestounpack;
+  int framebytes, payloadbytes, framens;
 };
 
 #endif

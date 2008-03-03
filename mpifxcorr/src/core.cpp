@@ -471,7 +471,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
   int status, perr, resultindex=0, currentnumoutputbands, cindex, maxproducts, ds1index, ds2index;
   double offsetmins;
   float binweight, currentblockspersendfloat;
-  int * dsweights = new int[numdatastreams];
+  float * dsweights = new float[numdatastreams];
   Mode * m1, * m2;
   s32 *** polycobincounts;
   cf32 * vis1;
@@ -547,7 +547,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
                 pulsaraccumspace[j][k][p][bins[config->getBFreqIndex(procslots[index].configindex, j, k)][l]][l].re += pulsarscratchspace[l].re;
                 pulsaraccumspace[j][k][p][bins[config->getBFreqIndex(procslots[index].configindex, j, k)][l]][l].im += pulsarscratchspace[l].im;
               }
-              pulsaraccumspace[j][k][p][0][numchannels].im += dsweights[ds1index]*dsweights[ds2index];
+              pulsaraccumspace[j][k][p][0][procslots[index].numchannels].im += dsweights[ds1index]*dsweights[ds2index];
             }
             else
             {
@@ -597,7 +597,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
         {
           for(int k=0;k<config->getBNumPolProducts(procslots[index].configindex,i,j);k++)
           {
-            float baselineweight = pulsaraccumspace[i][j][k][numchannels].im;
+            float baselineweight = pulsaraccumspace[i][j][k][0][procslots[index].numchannels].im;
             for(int l=0;l<procslots[index].numpulsarbins;l++)
             {
               //Scale the accumulation space, and scrunch it into the results vector
@@ -614,7 +614,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
                 cerr << "Error trying to zero pulsaraccumspace!!!" << endl;
             }
             //store the correct weight
-            threadresults[resultindex + numchannels].im = baselineweight;
+            threadresults[resultindex + procslots[index].numchannels].im = baselineweight;
             resultindex += procslots[index].numchannels+1;
           }
         }

@@ -197,7 +197,7 @@ Mode::~Mode()
   cout << "Ending a mode destructor" << endl;
 }
 
-int Mode::unpack(int sampleoffset)
+float Mode::unpack(int sampleoffset)
 {
   int status, leftoversamples, stepin = 0;
 
@@ -227,18 +227,17 @@ int Mode::unpack(int sampleoffset)
     return 0;
   }
 
-  return unpacksamples;
+  return 1.0;
 }
 
 float Mode::process(int index)  //frac sample error, fringedelay and wholemicroseconds are in microseconds 
 {
   double phaserotation, averagedelay, nearestsampletime, starttime, finaloffset, lofreq, distance;
-  f32 phaserotationfloat, fracsampleerror;
-  int status, count, nearestsample, integerdelay, goodsamples;
+  f32 phaserotationfloat, fracsampleerror, dataweight;
+  int status, count, nearestsample, integerdelay;
   cf32* fftptr;
   f32* currentchannelfreqptr;
   int indices[10];
-  float fftweight;
   
   if(delays[index] < 0 || delays[index+1] < 0)
   {
@@ -251,7 +250,7 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
       if(status != vecNoErr)
         cerr << "Error trying to zero fftoutputs when data is bad!" << endl;
     }
-    return 0; //don't process crap data
+    return 0.0; //don't process crap data
   }
     
   averagedelay = (delays[index] + delays[index+1])/2.0;
@@ -262,21 +261,20 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
   if(nearestsample < -1 || (((nearestsample + twicenumchannels)/samplesperblock)*bytesperblocknumerator)/bytesperblockdenominator > datalengthbytes)
   {
     cerr << "MODE error - trying to process data outside range - aborting!!! nearest sample was " << nearestsample << ", the max bytes should be " << datalengthbytes << ".  bufferseconds was " << bufferseconds << ", offsetseconds was " << offsetseconds << ", buffermicroseconds was " << buffermicroseconds << ", offsetns was " << offsetns << ", index was " << index << ", average delay was " << averagedelay << endl;
-    return 0;
+    return 0.0;
   }
   if(nearestsample == -1)
   {
     nearestsample = 0;
-    goodsamples = unpack(nearestsample);
+    dataweight = unpack(nearestsample);
   }
   else if(nearestsample < unpackstartsamples || nearestsample > unpackstartsamples + unpacksamples - twicenumchannels)
     //need to unpack more data
-    goodsamples = unpack(nearestsample);
+    dataweight = unpack(nearestsample);
 
-  if(goodsamples == 0)
-    return 0;
+  if(!(dataweight > 0.0))
+    return 0.0;
 
-  fftweight = ((float)goodsamples)/((float)unpacksamples);
   nearestsampletime = nearestsample*sampletime;
   fracsampleerror = float(starttime - nearestsampletime);
 
@@ -441,7 +439,7 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
           cerr << "Error in autocorrelation!!!" << status << endl;
 
         //Add the weight in magic location (imaginary part of Nyquist channel)
-        autocorrelations[0][j][numchannels].im += fftweight;
+        autocorrelations[0][j][numchannels].im += dataweight;
       }
     }
 
@@ -456,11 +454,12 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
       if(status != vecNoErr)
         cerr << "Error in cross-polar autocorrelation!!!" << status << endl;
       //add the weight in magic location (imaginary part of Nyquist channel)
-        autocorrelations[1][j][numchannels].im += fftweight;
+      autocorrelations[1][indices[0]][numchannels].im += dataweight;
+      autocorrelations[1][indices[1]][numchannels].im += dataweight;
     }
   }
 
-  return fftweight;
+  return dataweight;
 }
 
 void Mode::zeroAutocorrelations()
