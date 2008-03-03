@@ -139,9 +139,10 @@ protected:
   * be in the range 0.0->1.0, and set appropriately to the expected input levels such that
   * the mean autocorrelation level at nominal sampler statistics is 0.??
   * @param sampleoffset The offset in number of time samples into the data array
-  * @return The number of good samples unpacked
+  * @return The number of good samples unpacked scaled by the number of samples asked to unpack
+  *         ie a weight in the range 0.0 to 1.0
   */
-  virtual int unpack(int sampleoffset);
+  virtual float unpack(int sampleoffset);
   
   int configindex, datastreamindex, numfreqs, numinputbands, numoutputbands, numchannels, blockspersend, guardblocks, twicenumchannels, numbits, bytesperblocknumerator, bytesperblockdenominator, offsetseconds, offsetns, order, flag, fftbuffersize, unpacksamples, bufferseconds, unpackstartsamples, datalengthbytes;
   double bandwidth, blockclock, sampletime, processtime, a, b, c, centredelay, toaddfirst, toaddlast; //MHz, microseconds
