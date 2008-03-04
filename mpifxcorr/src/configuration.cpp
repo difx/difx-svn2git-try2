@@ -184,7 +184,7 @@ void Configuration::getFrameInc(int configindex, int configdatastreamindex, int 
   qb = getDNumBits(configindex, configdatastreamindex);
   payloadsize = getFramePayloadBytes(configindex, configdatastreamindex);
 
-  seconds = nchan*payloadsize*8/(samplerate*qb);
+  seconds = payloadsize*8/(samplerate*nchan*qb);
   sec = int(seconds);
   ns = int(1.0e9*(seconds - sec));
 }

@@ -136,9 +136,12 @@ Mk5DataStream::~Mk5DataStream()
 
 int Mk5DataStream::calculateControlParams(int offsetsec, int offsetsamples)
 {
-  int bufferindex, framesin, vlbaoffset, framens;
+  int bufferindex, framesin, vlbaoffset;
   
   bufferindex = DataStream::calculateControlParams(offsetsec, offsetsamples);
+
+  if(bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] < 0.0)
+    return 0;
   
   //do the necessary correction to start from a frame boundary - work out the offset from the start of this segment
   vlbaoffset = bufferindex - atsegment*readbytes;
@@ -146,7 +149,7 @@ int Mk5DataStream::calculateControlParams(int offsetsec, int offsetsamples)
   framesin = vlbaoffset/payloadbytes;
 
   bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] = bufferinfo[atsegment].seconds + (double(bufferinfo[atsegment].nanoseconds) + double(((framesin*payloadbytes)*bufferinfo[atsegment].bytespersampledenom)/bufferinfo[atsegment].bytespersamplenum)* bufferinfo[atsegment].sampletimens)/1000000000.0;
-
+  
   //go back to nearest frame
   return atsegment*readbytes + framesin*framebytes;
 }
@@ -214,8 +217,4 @@ void Mk5DataStream::initialiseFile(int configindex, int fileindex)
   cout << "About to seek to byte " << offset << " to get to the first frame" << endl;
 
   input.seekg(offset);
-
-  //update all the configs - to ensure that the nsincs and payloadbytes are correct
-  for(int i=0;i<numdatasegments;i++)
-    updateConfig(i);
 }

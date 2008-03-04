@@ -470,7 +470,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
 {
   int status, perr, resultindex=0, currentnumoutputbands, cindex, maxproducts, ds1index, ds2index;
   double offsetmins;
-  float binweight, currentblockspersendfloat;
+  float binweight;
   float * dsweights = new float[numdatastreams];
   Mode * m1, * m2;
   s32 *** polycobincounts;
@@ -480,7 +480,6 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
 
   writecrossautocorrs = modes[0]->writeCrossAutoCorrs();
   maxproducts = config->getMaxProducts();
-  currentblockspersendfloat = (float)(config->getBlocksPerSend(procslots[index].configindex));
 
   //set up the mode objects that will do the station-based processing
   for(int j=0;j<numdatastreams;j++)
