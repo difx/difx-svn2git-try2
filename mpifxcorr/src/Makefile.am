@@ -17,3 +17,7 @@ noinst_HEADERS = fxmanager.h core.h datastream.h architecture.h visibility.h \
 
 mpifxcorr_LDADD = \
 	-lipps -lguide -lippvm 
+
+lib_LIBRARIES = libmpifxcorr.a
+libmpifxcorr_a_SOURCES = configuration.cpp mode.cpp core.cpp datastream.cpp polyco.cpp \
+	mk5.cpp fxmanager.cpp uvw.cpp visibility.cpp`

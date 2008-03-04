@@ -48,10 +48,10 @@ public:
 
  /**
   * Adds one sub-integration to the accumulator
-  * @param blockresult The sub-integration to be added
+  * @param subintresults The sub-integration to be added
   * @return Whether this integration period is now complete
   */
-  bool addData(cf32* blockresult);
+  bool addData(cf32* subintresults);
 
  /**
   * Writes this Visibility's integrated results to disk, after amplitude calibration
@@ -75,7 +75,7 @@ public:
   * @return Difference between specified time and centre of current integration period, in seconds
   */
   inline double timeDifference(int seconds, int ns)
-    { return double(seconds-currentstartseconds) + double(ns)/1000000000.0 - double(currentstartsamples - blocksamples/2)/samplespersecond; }
+    { return double(seconds-currentstartseconds) + double(ns)/1000000000.0 - double(currentstartsamples - subintsamples/2)/samplespersecond; }
 
  /**
   * @return The time at the start of the current integration period
@@ -134,8 +134,8 @@ private:
   */
   void writeDiFXHeader(ofstream * output, int baselinenum, int dumpmjd, double dumpseconds, int configindex, int sourceindex, int freqindex, const char polproduct[3], int pulsarbin, int flag, float weight, float buvw[3]);
 
-  int visID, expermjd, experseconds, integrationsamples, currentstartseconds, currentstartsamples, offset, offsetperintegration, blocksthisintegration, blocksamples, numvisibilities, numdatastreams, numbaselines, numchannels, currentblocks, resultlength, currentconfigindex, samplespersecond, maxproducts, executeseconds, autocorrincrement;
-  double floatblocksperintegration;
+  int visID, expermjd, experseconds, integrationsamples, currentstartseconds, currentstartsamples, offset, offsetperintegration, subintsthisintegration, subintsamples, numvisibilities, numdatastreams, numbaselines, numchannels, currentsubints, resultlength, currentconfigindex, samplespersecond, maxproducts, executeseconds, autocorrincrement;
+  double fftsperintegration;
   bool first, monitor, pulsarbinon;
   int * mon_socket;
   int monitor_skip;

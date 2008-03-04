@@ -40,7 +40,7 @@ Visibility::Visibility(Configuration * conf, int id, int numvis, int eseconds, i
   maxproducts = config->getMaxProducts();
   autocorrincrement = (maxproducts>1)?2:1;
   first = true;
-  currentblocks = 0;
+  currentsubints = 0;
   numdatastreams = config->getNumDataStreams();
   resultlength = config->getMaxResultLength();
   results = vectorAlloc_cf32(resultlength);
@@ -58,11 +58,11 @@ Visibility::Visibility(Configuration * conf, int id, int numvis, int eseconds, i
   currentstartsamples = (int)((((double)startns)/1000000000.0)*((double)samplespersecond) + 0.5);
   currentstartseconds = skipseconds;
   offset = offset+offsetperintegration;
-  blocksthisintegration = integrationsamples/blocksamples;
-  if(offset >= blocksamples/2)
+  subintsthisintegration = integrationsamples/subintsamples;
+  if(offset >= subintsamples/2)
   {
-    offset -= blocksamples;
-    blocksthisintegration++;
+    offset -= subintsamples;
+    subintsthisintegration++;
   }
   for(int i=0;i<visID;i++)
     updateTime();
@@ -110,24 +110,24 @@ Visibility::~Visibility()
   }
 }
 
-bool Visibility::addData(cf32* blockresult)
+bool Visibility::addData(cf32* subintresults)
 {
   int status;
 
-  status = vectorAdd_cf32_I(blockresult, results, resultlength);
+  status = vectorAdd_cf32_I(subintresults, results, resultlength);
   if(status != vecNoErr)
     cerr << "Error copying results in visibility ID " << visID << endl;
-  currentblocks++;
+  currentsubints++;
 
-  return (currentblocks==blocksthisintegration); //are we finished integrating?
+  return (currentsubints==subintsthisintegration); //are we finished integrating?
 }
 
 void Visibility::increment()
 {
   int status;
-  cout << "VISIBILITY " << visID << " IS INCREMENTING, SINCE CURRENTBLOCKS = " << currentblocks << endl;
+  cout << "VISIBILITY " << visID << " IS INCREMENTING, SINCE CURRENTBLOCKS = " << currentsubints << endl;
 
-  currentblocks = 0;
+  currentsubints = 0;
   for(int i=0;i<numvisibilities;i++) //adjust the start time and offset
     updateTime();
 
@@ -157,11 +157,11 @@ void Visibility::updateTime()
 {
   int configindex;
   offset = offset+offsetperintegration;
-  blocksthisintegration = integrationsamples/blocksamples;
-  if(offset >= blocksamples/2)
+  subintsthisintegration = integrationsamples/subintsamples;
+  if(offset >= subintsamples/2)
   {
-    offset -= blocksamples;
-    blocksthisintegration++;
+    offset -= subintsamples;
+    subintsthisintegration++;
   }
   currentstartsamples += integrationsamples;
   currentstartseconds += currentstartsamples/samplespersecond;
@@ -172,11 +172,11 @@ void Visibility::updateTime()
     configindex = config->getConfigIndex(++currentstartseconds);
     currentstartsamples = 0;
     offset = offsetperintegration;
-    blocksthisintegration = integrationsamples/blocksamples;
-    if(offset >= blocksamples/2)
+    subintsthisintegration = integrationsamples/subintsamples;
+    if(offset >= subintsamples/2)
     {
-      offset -= blocksamples;
-      blocksthisintegration++;
+      offset -= subintsamples;
+      subintsthisintegration++;
     }
   }
   if(configindex != currentconfigindex && currentstartseconds < executeseconds)
@@ -402,7 +402,7 @@ void Visibility::writedata()
     return; //NOTE EXIT HERE!!!
   }
 
-  if(currentblocks == 0) //nothing to write out
+  if(currentsubints == 0) //nothing to write out
   {
     //if required, send a message to the monitor not to expect any data this integration - 
     //if we can't get through to the monitor, close the socket
@@ -427,7 +427,7 @@ void Visibility::writedata()
     //that cheekily used Nyquist channel imaginary component of the results array
     for(int j=0;j<config->getBNumFreqs(currentconfigindex,i);j++) {
       for(int k=0;k<config->getBNumPolProducts(currentconfigindex, i, j);k++) {
-        baselineweights[i][j][k] = results[skip + numchannels].im/floatblocksperintegration;
+        baselineweights[i][j][k] = results[skip + numchannels].im/fftsperintegration;
         results[skip + numchannels].im = 0.0;
         skip += numchannels+1;
       }
@@ -439,7 +439,7 @@ void Visibility::writedata()
     for(int j=0;j<config->getDNumOutputBands(currentconfigindex, i); j++)
     {
       //Grab the weight for this band and then remove it from the resultsarray
-      autocorrweights[i][j] = results[skip+count+numchannels].im/floatblocksperintegration;
+      autocorrweights[i][j] = results[skip+count+numchannels].im/fftsperintegration;
       results[skip+count+numchannels].im = 0.0;
       
       //work out the band average, for use in calibration (allows us to calculate fractional correlation)
@@ -452,7 +452,7 @@ void Visibility::writedata()
       //need to grab weights for the cross autocorrs that are also present in the array
       for(int j=0;j<config->getDNumOutputBands(currentconfigindex, i); j++)
       {
-        autocorrweights[i][j+config->getDNumOutputBands(currentconfigindex, i)] = results[skip+count+numchannels].im/floatblocksperintegration;
+        autocorrweights[i][j+config->getDNumOutputBands(currentconfigindex, i)] = results[skip+count+numchannels].im/fftsperintegration;
         results[skip+count+numchannels].im = 0.0;
         count += numchannels + 1;
       }
@@ -489,7 +489,7 @@ void Visibility::writedata()
             //samples rather than datastream tsys and decorrelation correction
             if(baselineweights[i][j][k] > 0.0)
             {
-              scale = 1.0/((float)(blocksthisintegration*config->getBlocksPerSend(currentconfigindex)*2*numchannels));
+              scale = 1.0/(((float)(subintsthisintegration))*((float)(config->getBlocksPerSend(currentconfigindex)*2*numchannels)));
               status = vectorMulC_f32_I(scale, (f32*)(&(results[count])), 2*(numchannels+1));
               if(status != vecNoErr)
                 cerr << "Error trying to amplitude calibrate the baseline data!!!" << endl;
@@ -524,12 +524,12 @@ void Visibility::writedata()
             {
               //We want normalised correlation coefficients, so scale by number of contributing            
               //samples rather than datastream tsys and decorrelation correction            
-              if(baselineweights[i][j][k] > 0.0)
+              if(autocorrweights[i][k+j*config->getDNumOutputBands(currentconfigindex, i)] > 0.0)
               {
-                scale = 1.0/((float)(blocksthisintegration*config->getBlocksPerSend(currentconfigindex)*2*numchannels));
+                scale = 1.0/(((float)(subintsthisintegration))*((float)(config->getBlocksPerSend(currentconfigindex)*2*numchannels)));
                 status = vectorMulC_f32_I(scale, (f32*)(&(results[count])), 2*(numchannels+1));
                 if(status != vecNoErr)
-                  cerr << "Error trying to amplitude calibrate the baseline data!!!" << endl;
+                  cerr << "Error trying to amplitude calibrate the datastream data for the correlation coefficient case!!!" << endl;
               }
             }
           }
@@ -541,7 +541,7 @@ void Visibility::writedata()
 
   //if necessary, work out the scaling factors for pulsar binning
   if(pulsarbinon) {
-    int numblocks;
+    int numsubints;
     int mjd = expermjd + (experseconds + currentstartseconds)/86400;
     double mjdfrac = (double((experseconds + currentstartseconds)%86400) + double((currentstartsamples)/(2000000.0*config->getDBandwidth(currentconfigindex,0,0))))/86400.0;
     double fftminutes = double(config->getNumChannels(currentconfigindex))/(60000000.0*config->getDBandwidth(currentconfigindex,0,0));
@@ -550,10 +550,10 @@ void Visibility::writedata()
 
     //SOMEWHERE IN HERE, CHECK THE AMPLITUDE SCALING FOR MULTIPLE SCRUNCHED BINS!
 
-    numblocks = integrationsamples/blocksamples;
-    if(offset + offsetperintegration >= blocksamples/2) numblocks++;
+    numsubints = integrationsamples/subintsamples;
+    if(offset + offsetperintegration >= subintsamples/2) numsubints++;
     polyco->setTime(mjd, mjdfrac);
-    for(int i=0;i<numblocks*config->getBlocksPerSend(currentconfigindex);i++) {
+    for(int i=0;i<numsubints*config->getBlocksPerSend(currentconfigindex);i++) {
       polyco->getBins(i*fftminutes, pulsarbins);
       for(int j=0;j<config->getFreqTableLength();j++) {
         for(int k=0;k<config->getNumChannels(currentconfigindex)+1;k++) {
@@ -968,10 +968,10 @@ void Visibility::changeConfig(int configindex)
   numchannels = config->getNumChannels(configindex);
   samplespersecond = int(2000000*config->getDBandwidth(configindex, 0, 0) + 0.5);
   integrationsamples = int(2000000*config->getDBandwidth(configindex, 0, 0)*config->getIntTime(configindex) + 0.5);
-  blocksamples = config->getBlocksPerSend(configindex)*numchannels*2;
-  offsetperintegration = integrationsamples%blocksamples;
-  floatblocksperintegration = ((double)integrationsamples)/((double)blocksamples);
-  cout << "For Visibility " << visID << ", offsetperintegration is " << offsetperintegration << ", blocksamples is " << blocksamples << ", and configindex is " << configindex << endl;
+  subintsamples = config->getBlocksPerSend(configindex)*numchannels*2;
+  offsetperintegration = integrationsamples%subintsamples;
+  fftsperintegration = ((double)integrationsamples)/((double)subintsamples*config->getBlocksPerSend(configindex));
+  cout << "For Visibility " << visID << ", offsetperintegration is " << offsetperintegration << ", subintsamples is " << subintsamples << ", and configindex is " << configindex << endl;
   resultlength = config->getResultLength(configindex);
   for(int i=0;i<numdatastreams;i++)
     autocorrcalibs[i] = new cf32[config->getDNumOutputBands(configindex, i)];
