@@ -415,10 +415,15 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
             cerr << "Error in FFT!!!" << status << endl;
 
           //assemble complex from the real and imaginary
-          if(config->getDLowerSideband(configindex, datastreamindex, i))
+          if(config->getDLowerSideband(configindex, datastreamindex, i)) {
+            //updated to include "DC" channel at upper end of LSB band
             status = vectorRealToComplex_f32(&realfftd[numchannels], &imagfftd[numchannels], fftoutputs[j], numchannels);
+            fftoutputs[j][numchannels].re = realfftd[0];
+            fftoutputs[j][numchannels].im = imagfftd[0];
+          }
           else
-            status = vectorRealToComplex_f32(realfftd, imagfftd, fftoutputs[j], numchannels);
+            //updated to include "Nyquist" channel
+            status = vectorRealToComplex_f32(realfftd, imagfftd, fftoutputs[j], numchannels+1);
           if(status != vecNoErr)
             cerr << "Error assembling complex fft result" << endl;
         }
