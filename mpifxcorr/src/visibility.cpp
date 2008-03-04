@@ -38,6 +38,7 @@ Visibility::Visibility(Configuration * conf, int id, int numvis, int eseconds, i
   if(visID == 0)
     *mon_socket = -1;
   maxproducts = config->getMaxProducts();
+  autocorrincrement = (maxproducts>1)?2:1;
   first = true;
   currentblocks = 0;
   numdatastreams = config->getNumDataStreams();
@@ -415,7 +416,6 @@ void Visibility::writedata()
 
   int skip = 0;
   int count = 0;
-  autocorrincrement = (maxproducts>1)?2:1;
   if(config->pulsarBinOn(currentconfigindex) && !config->scrunchOutputOn(currentconfigindex))
     binloop = config->getNumPulsarBins(currentconfigindex);
   else
@@ -439,7 +439,7 @@ void Visibility::writedata()
     for(int j=0;j<config->getDNumOutputBands(currentconfigindex, i); j++)
     {
       //Grab the weight for this band and then remove it from the resultsarray
-      autocorrweights[i][j][0] = results[skip+count+numchannels].im/floatblocksperintegration;
+      autocorrweights[i][j] = results[skip+count+numchannels].im/floatblocksperintegration;
       results[skip+count+numchannels].im = 0.0;
       
       //work out the band average, for use in calibration (allows us to calculate fractional correlation)
@@ -452,7 +452,7 @@ void Visibility::writedata()
       //need to grab weights for the cross autocorrs that are also present in the array
       for(int j=0;j<config->getDNumOutputBands(currentconfigindex, i); j++)
       {
-        autocorrweights[i][j][1] = results[skip+count+numchannels].im/floatblocksperintegration;
+        autocorrweights[i][j+config->getDNumOutputBands(currentconfigindex, i)] = results[skip+count+numchannels].im/floatblocksperintegration;
         results[skip+count+numchannels].im = 0.0;
         count += numchannels + 1;
       }
@@ -851,40 +851,38 @@ void Visibility::writedifx()
     for(int i=0;i<numdatastreams;i++)
     {
       baselinenumber = 257*(config->getDTelescopeIndex(currentconfigindex, i)+1);
-      for(int a=0;a<autocorrincrement;a++) {
-        for(int j=0;j<config->getDNumFreqs(currentconfigindex, i); j++)
+      for(int j=0;j<config->getDNumFreqs(currentconfigindex, i); j++)
+      {
+        firstpolindex = -1;
+        //find a product that is active, so we know where to look to work out which frequency this is
+        for(int k=maxproducts-1;k>=0;k--) {
+          if(datastreampolbandoffsets[i][j][k] >= 0)
+            firstpolindex = k;
+        }
+        if(firstpolindex >= 0)
         {
-          firstpolindex = -1;
-          //find a product that is active, so we know where to look to work out which frequency this is
-          for(int k=maxproducts-1;k>=0;k--) {
-            if(datastreampolbandoffsets[i][j][k] >= 0)
-              firstpolindex = k;
-          }
-          if(firstpolindex >= 0)
+          freqindex = config->getDFreqIndex(currentconfigindex, i, datastreampolbandoffsets[i][j][firstpolindex]%config->getDNumOutputBands(currentconfigindex, i));
+
+          for(int k=0;k<maxproducts; k++)
           {
-            freqindex = config->getDFreqIndex(currentconfigindex, i, datastreampolbandoffsets[i][j][firstpolindex]%config->getDNumOutputBands(currentconfigindex, i));
-
-            for(int k=0;k<(maxproducts>2?2:maxproducts); k++)
+            if(datastreampolbandoffsets[i][j][k] >= 0)
             {
-              if(datastreampolbandoffsets[i][j][k] >= 0)
-              {
-                //open, write the header and close
-                output.open(filename, ios::app);
-                writeDiFXHeader(&output, baselinenumber, dumpmjd, dumpseconds, currentconfigindex, sourceindex, freqindex, polnames[k].c_str(), 0, 0, autocorrweights[i][datastreampolbandoffsets[i][j][k]][a], buvw);
-                output.close();
+              //open, write the header and close
+              output.open(filename, ios::app);
+              writeDiFXHeader(&output, baselinenumber, dumpmjd, dumpseconds, currentconfigindex, sourceindex, freqindex, polnames[k].c_str(), 0, 0, autocorrweights[i][datastreampolbandoffsets[i][j][k]], buvw);
+              output.close();
 
-                //open, write the binary data and close
-                output.open(filename, ios::app|ios::binary);
-                output.write((char*)(results + (count+datastreampolbandoffsets[i][j][k])*(numchannels+1)), numchannels*sizeof(cf32));
-                output.close();
-              }
+              //open, write the binary data and close
+              output.open(filename, ios::app|ios::binary);
+              output.write((char*)(results + (count+datastreampolbandoffsets[i][j][k])*(numchannels+1)), numchannels*sizeof(cf32));
+              output.close();
             }
           }
-          else
-            cerr << "WARNING - did not find any bands for frequency " << j << " of datastream " << i << endl;
         }
-        count += config->getDNumOutputBands(currentconfigindex, i);
+        else
+          cerr << "WARNING - did not find any bands for frequency " << j << " of datastream " << i << endl;
       }
+      count += config->getDNumOutputBands(currentconfigindex, i);
     }
   }
 }
@@ -918,7 +916,7 @@ void Visibility::changeConfig(int configindex)
     //can just allocate without freeing all the old stuff
     first = false;
     autocorrcalibs = new cf32*[numdatastreams];
-    autocorrweights = new f32**[numdatastreams];
+    autocorrweights = new f32*[numdatastreams];
     baselineweights = new f32**[numbaselines];
     baselinepoloffsets = new int**[numbaselines];
     datastreampolbandoffsets = new int**[numdatastreams];
@@ -930,13 +928,13 @@ void Visibility::changeConfig(int configindex)
   {
     //need to delete the old arrays before allocating the new ones
     for(int i=0;i<numdatastreams;i++) {
-      for(int j=0;j<config->getDNumOutputBands(currentconfigindex, i);j++)
-        delete [] autocorrweights[i][j];
       for(int j=0;j<config->getDNumFreqs(currentconfigindex, i);j++)
         delete [] datastreampolbandoffsets[i][j];
       delete [] datastreampolbandoffsets[i];
-      delete [] autocorrweights[i];
       delete [] autocorrcalibs[i];
+    }
+    for(int i=0;i<autocorrincrement*config->getDNumFreqs(currentconfigindex, i);i++) {
+      delete [] autocorrweights[i];
     }
     for(int i=0;i<numbaselines;i++)
     {
@@ -1012,9 +1010,7 @@ void Visibility::changeConfig(int configindex)
   for(int i=0;i<numdatastreams;i++)
   {
     autocorrcalibs[i] = new cf32[config->getDNumOutputBands(configindex, i)];
-    autocorrweights[i] = new f32*[config->getDNumOutputBands(configindex, i)];
-    for(int j=0;j<config->getDNumOutputBands(configindex, i);j++)
-      autocorrweights[i][j] = new f32[2];
+    autocorrweights[i] = new f32[autocorrincrement*config->getDNumOutputBands(configindex, i)];
     cout << "Creating datastreampolbandoffsets, length " << config->getDNumFreqs(configindex,i) << endl;
     datastreampolbandoffsets[i] = new int*[config->getDNumFreqs(configindex,i)];
     for(int j=0;j<config->getDNumFreqs(configindex, i);j++)

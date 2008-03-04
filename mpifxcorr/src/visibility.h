@@ -142,7 +142,7 @@ private:
   int portnum;
   char * hostname;
   cf32 ** autocorrcalibs;
-  f32 *** autocorrweights;
+  f32 ** autocorrweights;
   f32 *** baselineweights;
   std::string * telescopenames;
   //cf32 *** results;
