@@ -100,7 +100,7 @@ float Mk5Mode::unpack(int sampleoffset)
   unpackstartsamples = sampleoffset - (sampleoffset % fanout);
 
   //unpack one frame plus one FFT size worth of samples
-  goodsamples = mark5_unpack_with_offset(mark5stream, data, sampleoffset, unpackedarrays, samplestounpack);
+  goodsamples = mark5_unpack_with_offset(mark5stream, data, unpackstartsamples, unpackedarrays, samplestounpack);
   if(fanout > 1)
   {
     for(int i = 0; i < sampleoffset % fanout; i++)
