@@ -3,7 +3,7 @@ AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
 AC_LANG_CPLUSPLUS
 AC_PROG_CXX
-
+AC_PROG_RANLIB
 
 dnl **********************************************************
 dnl **** Set path for Intel Performance Primitive library ****
@@ -14,10 +14,10 @@ AC_ARG_WITH(ipp-root, [  --with-ipp-root=ROOT
 ipp_root="$withval", ipp_root="")
 if test x"$ipp_root" != "x"; then
 	IPP_CFLAGS="-I$ipp_root/include"
-	IPP_LIBS="-L$ipp_root/sharedlib"
+	IPP_LIBS="-L$ipp_root/sharedlib -L$ipp_root/sharedlib/linux32"
 else
 	IPP_CFLAGS="-I$IPPROOT/include"
-	IPP_LIBS="-L$IPPROOT/sharedlib"
+	IPP_LIBS="-L$IPPROOT/sharedlib -L$IPPROOT/sharedlib/linux32"
 fi
 dnl **********************************************************
 
