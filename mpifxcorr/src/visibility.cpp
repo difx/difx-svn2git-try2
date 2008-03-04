@@ -398,7 +398,7 @@ void Visibility::writedata()
   
   if((dumpmjd-expermjd)*86400.0+(dumpseconds-experseconds) >= executeseconds)
   {
-  	return; //NOTE EXIT HERE!!!
+    return; //NOTE EXIT HERE!!!
   }
 
   if(currentblocks == 0) //nothing to write out
@@ -843,7 +843,7 @@ void Visibility::writedifx()
   }
 
   //now each autocorrelation visibility point if necessary
-  if(config->writeAutoCorrs(currentconfigindex))
+  if(config->writeAutoCorrs(currentconfigindex)) // FIXME -- bug lurks within
   {
     buvw[0] = 0.0;
     buvw[1] = 0.0;
@@ -864,7 +864,7 @@ void Visibility::writedifx()
           {
             freqindex = config->getDFreqIndex(currentconfigindex, i, datastreampolbandoffsets[i][j][firstpolindex]%config->getDNumOutputBands(currentconfigindex, i));
 
-            for(int k=0;k<maxproducts; k++)
+            for(int k=0;k<(maxproducts>2?2:maxproducts); k++)
             {
               if(datastreampolbandoffsets[i][j][k] >= 0)
               {

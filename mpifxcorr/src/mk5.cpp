@@ -54,11 +54,16 @@ static int genFormatName(Configuration::dataformat format, int nchan, double bw,
 
 
 Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bpersend, int gblocks, int nfreqs, double bw, double * freqclkoffsets, int ninputbands, int noutputbands, int nbits, bool fbank, bool postffringe, bool quaddelayinterp, bool cacorrs, int framebytes, int framesamples, Configuration::dataformat format)
- : Mode(conf, confindex, dsindex, nchan, bpersend, gblocks, nfreqs, bw, freqclkoffsets, ninputbands, noutputbands, nbits, nchan*2, fbank, postffringe, quaddelayinterp, cacorrs, bw*2)
+ : Mode(conf, confindex, dsindex, nchan, bpersend, gblocks, nfreqs, bw, freqclkoffsets, ninputbands, noutputbands, nbits, nchan*2+4, fbank, postffringe, quaddelayinterp, cacorrs, bw*2)
 {
   char formatname[64];
 
   fanout = genFormatName(format, ninputbands, bw, nbits, framebytes, formatname);
+
+  // since we allocated the max amount of space needed above, we need to change
+  // this to the number actually needed.
+  unpacksamples = nchan*2;
+
   samplestounpack = nchan*2;
   if(fanout > 1)
     samplestounpack += fanout;
@@ -67,6 +72,11 @@ Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, in
   mark5stream = new_mark5_stream(
       new_mark5_stream_unpacker(0),
       new_mark5_format_generic_from_string(formatname) );
+
+  if(mark5stream == 0)
+  {
+    cerr << "Mk5Mode::Mk5Mode : mark5stream is null " << endl;
+  }
 
   if(framesamples != mark5stream->framesamples)
   {
