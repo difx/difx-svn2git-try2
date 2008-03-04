@@ -882,7 +882,7 @@ void Visibility::writedifx()
         else
           cerr << "WARNING - did not find any bands for frequency " << j << " of datastream " << i << endl;
       }
-      count += config->getDNumOutputBands(currentconfigindex, i);
+      count += autocorrincrement*config->getDNumOutputBands(currentconfigindex, i);
     }
   }
 }
