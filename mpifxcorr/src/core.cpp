@@ -468,7 +468,7 @@ void Core::receivedata(int index, bool * terminate)
 
 void Core::processdata(int index, int threadid, int startblock, int numblocks, Mode ** modes, Polyco * currentpolyco, cf32 * threadresults, s32 ** bins, cf32* pulsarscratchspace, cf32***** pulsaraccumspace)
 {
-  int status, perr, resultindex=0, currentnumoutputbands, cindex, maxproducts, ds1index, ds2index;
+  int status, perr, resultindex=0, currentnumoutputbands, cindex, maxproducts, ds1index, ds2index, nyquistchannel;
   double offsetmins;
   float binweight;
   float * dsweights = new float[numdatastreams];
@@ -525,6 +525,13 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
       //add the desired results into the resultsbuffer
       for(int k=0;k<config->getBNumFreqs(procslots[index].configindex, j);k++)
       {
+        //the Nyquist channel referred to here is for the *first* datastream of the baseline, in the event
+        //that one datastream has USB and the other has LSB
+        nyquistchannel = procslots[index].numchannels;
+        if(config->getFreqTableLowerSideband(config->getBFreqIndex(procslots[index].configindex, j, k)))
+          nyquistchannel = 0;
+
+        //loop through each polarisation for this frequency
         for(int p=0;p<config->getBNumPolProducts(procslots[index].configindex,j,k);p++)
         {
           if(procslots[index].pulsarbin)
@@ -546,7 +553,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
                 pulsaraccumspace[j][k][p][bins[config->getBFreqIndex(procslots[index].configindex, j, k)][l]][l].re += pulsarscratchspace[l].re;
                 pulsaraccumspace[j][k][p][bins[config->getBFreqIndex(procslots[index].configindex, j, k)][l]][l].im += pulsarscratchspace[l].im;
               }
-              pulsaraccumspace[j][k][p][0][procslots[index].numchannels].im += dsweights[ds1index]*dsweights[ds2index];
+              pulsaraccumspace[j][k][p][0][nyquistchannel].im += dsweights[ds1index]*dsweights[ds2index];
             }
             else
             {
@@ -556,7 +563,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
                 threadresults[cindex].re += pulsarscratchspace[l].re;
                 threadresults[cindex].im += pulsarscratchspace[l].im;
               }
-              cindex = resultindex + p*(procslots[index].numchannels+1) + procslots[index].numchannels;
+              cindex = resultindex + p*(procslots[index].numchannels+1) + nyquistchannel;
               threadresults[cindex].im += dsweights[ds1index]*dsweights[ds2index];
             }
           }
@@ -566,8 +573,8 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
             status = vectorAddProduct_cf32(m1->getFreqs(config->getBDataStream1BandIndex(procslots[index].configindex, j, k, p)), m2->getConjugatedFreqs(config->getBDataStream2BandIndex(procslots[index].configindex, j, k, p)), &(threadresults[resultindex]), procslots[index].numchannels+1);
             if(status != vecNoErr)
               cerr << "Error trying to xmac baseline " << j << " frequency " << k << " polarisation product " << p << ", status " << status << endl;
+            threadresults[resultindex+nyquistchannel].im += dsweights[ds1index]*dsweights[ds2index];
             resultindex += procslots[index].numchannels+1;
-            threadresults[resultindex-1].im += dsweights[ds1index]*dsweights[ds2index];
           }
         }
         if(procslots[index].pulsarbin && !procslots[index].scrunchoutput)
@@ -592,11 +599,16 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
     {
       for(int j=0;j<config->getBNumFreqs(procslots[index].configindex, i);j++)
       {
+        //the Nyquist channel referred to here is for the *first* datastream of the baseline, in the event
+        //that one datastream has USB and the other has LSB
+        nyquistchannel = procslots[index].numchannels;
+        if(config->getFreqTableLowerSideband(config->getBFreqIndex(procslots[index].configindex, i, j)))
+          nyquistchannel = 0;
         if(procslots[index].scrunchoutput)
         {
           for(int k=0;k<config->getBNumPolProducts(procslots[index].configindex,i,j);k++)
           {
-            float baselineweight = pulsaraccumspace[i][j][k][0][procslots[index].numchannels].im;
+            float baselineweight = pulsaraccumspace[i][j][k][0][nyquistchannel].im;
             for(int l=0;l<procslots[index].numpulsarbins;l++)
             {
               //Scale the accumulation space, and scrunch it into the results vector
@@ -613,7 +625,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
                 cerr << "Error trying to zero pulsaraccumspace!!!" << endl;
             }
             //store the correct weight
-            threadresults[resultindex + procslots[index].numchannels].im = baselineweight;
+            threadresults[resultindex + nyquistchannel].im = baselineweight;
             resultindex += procslots[index].numchannels+1;
           }
         }
@@ -629,7 +641,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
                 cerr << "Error trying to scale pulsar binned (non-scrunched) results!!!" << endl;
               if(k==0)
                 //renormalise the weight
-                threadresults[resultindex + procslots[index].numchannels].im /= binweights[k];
+                threadresults[resultindex + nyquistchannel].im /= binweights[k];
               resultindex += procslots[index].numchannels+1;
             }
           }

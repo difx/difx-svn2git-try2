@@ -102,10 +102,18 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bper
     status = vectorGetFFTBufSizeC_f32(pFFTSpecC, &fftbuffersize);
     if(status != vecNoErr)
       cerr << "Error in FFT buffer size calculation!!!" << status << endl;
+    //zero the Nyquist channel for every band - that is where the weight will be stored on all
+    //baselines (the imag part) so the datastream channel for it must be zeroed
     for(int i=0;i<numinputbands;i++)
     {
-      fftoutputs[i][numchannels].re = 0.0;
-      fftoutputs[i][numchannels].im = 0.0;
+      if(config->getDLowerSideband(configindex, datastreamindex, i)) {
+        fftoutputs[i][0].re = 0.0;
+        fftoutputs[i][0].im = 0.0;
+      }
+      else {
+        fftoutputs[i][numchannels].re = 0.0;
+        fftoutputs[i][numchannels].im = 0.0;
+      }
     }
   }
   fftbuffer = vectorAlloc_u8(fftbuffersize);
@@ -234,7 +242,7 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
 {
   double phaserotation, averagedelay, nearestsampletime, starttime, finaloffset, lofreq, distance;
   f32 phaserotationfloat, fracsampleerror, dataweight;
-  int status, count, nearestsample, integerdelay;
+  int status, count, nearestsample, integerdelay, sidebandoffset;
   cf32* fftptr;
   f32* currentchannelfreqptr;
   int indices[10];
@@ -417,13 +425,14 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
           //assemble complex from the real and imaginary
           if(config->getDLowerSideband(configindex, datastreamindex, i)) {
             //updated to include "DC" channel at upper end of LSB band
-            status = vectorRealToComplex_f32(&realfftd[numchannels], &imagfftd[numchannels], fftoutputs[j], numchannels);
+            status = vectorRealToComplex_f32(&realfftd[numchannels+1], &imagfftd[numchannels+1], &(fftoutputs[j][1]), numchannels-1);
             fftoutputs[j][numchannels].re = realfftd[0];
             fftoutputs[j][numchannels].im = imagfftd[0];
           }
-          else
+          else {
             //updated to include "Nyquist" channel
-            status = vectorRealToComplex_f32(realfftd, imagfftd, fftoutputs[j], numchannels+1);
+            status = vectorRealToComplex_f32(realfftd, imagfftd, fftoutputs[j], numchannels);
+          }
           if(status != vecNoErr)
             cerr << "Error assembling complex fft result" << endl;
         }
@@ -438,13 +447,18 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
         if(status != vecNoErr)
           cerr << "Error in conjugate!!!" << status << endl;
 
-        //do the autocorrelation
-        status = vectorAddProduct_cf32(fftoutputs[j], conjfftoutputs[j], autocorrelations[0][j], numchannels+1);
+        //updated so that Nyquist channel is not accumulated for either USB or LSB data
+        sidebandoffset = 0;
+        if(config->getDLowerSideband(configindex, datastreamindex, i))
+          sidebandoffset = 1;
+
+        //do the autocorrelation (skipping Nyquist channel)
+        status = vectorAddProduct_cf32(fftoutputs[j]+sidebandoffset, conjfftoutputs[j]+sidebandoffset, autocorrelations[0][j]+sidebandoffset, numchannels);
         if(status != vecNoErr)
           cerr << "Error in autocorrelation!!!" << status << endl;
 
         //Add the weight in magic location (imaginary part of Nyquist channel)
-        autocorrelations[0][j][numchannels].im += dataweight;
+        autocorrelations[0][j][numchannels*(1-sidebandoffset)].im += dataweight;
       }
     }
 
@@ -452,15 +466,15 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
     if(calccrosspolautocorrs && count > 1)
     {
       //cout << "For frequency " << i << ", datastream " << datastreamindex << " has chosen bands " << indices[0] << " and " << indices[1] << endl; 
-      status = vectorAddProduct_cf32(fftoutputs[indices[0]], conjfftoutputs[indices[1]], autocorrelations[1][indices[0]], numchannels+1);
+      status = vectorAddProduct_cf32(fftoutputs[indices[0]]+sidebandoffset, conjfftoutputs[indices[1]]+sidebandoffset, autocorrelations[1][indices[0]]+sidebandoffset, numchannels);
       if(status != vecNoErr)
         cerr << "Error in cross-polar autocorrelation!!!" << status << endl;
-      status = vectorAddProduct_cf32(fftoutputs[indices[1]], conjfftoutputs[indices[0]], autocorrelations[1][indices[1]], numchannels+1);
+      status = vectorAddProduct_cf32(fftoutputs[indices[1]]+sidebandoffset, conjfftoutputs[indices[0]]+sidebandoffset, autocorrelations[1][indices[1]]+sidebandoffset, numchannels);
       if(status != vecNoErr)
         cerr << "Error in cross-polar autocorrelation!!!" << status << endl;
       //add the weight in magic location (imaginary part of Nyquist channel)
-      autocorrelations[1][indices[0]][numchannels].im += dataweight;
-      autocorrelations[1][indices[1]][numchannels].im += dataweight;
+      autocorrelations[1][indices[0]][numchannels*(1-sidebandoffset)].im += dataweight;
+      autocorrelations[1][indices[1]][numchannels*(1-sidebandoffset)].im += dataweight;
     }
   }
 

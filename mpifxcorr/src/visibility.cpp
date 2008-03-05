@@ -416,6 +416,7 @@ void Visibility::writedata()
 
   int skip = 0;
   int count = 0;
+  int nyquistchannel;
   if(config->pulsarBinOn(currentconfigindex) && !config->scrunchOutputOn(currentconfigindex))
     binloop = config->getNumPulsarBins(currentconfigindex);
   else
@@ -426,9 +427,14 @@ void Visibility::writedata()
     //skip through the baseline visibilities, grabbing the weights as you go and zeroing
     //that cheekily used Nyquist channel imaginary component of the results array
     for(int j=0;j<config->getBNumFreqs(currentconfigindex,i);j++) {
+      //the Nyquist channel referred to here is for the *first* datastream of the baseline, in the event 
+      //that one datastream has USB and the other has LSB
+      nyquistchannel = numchannels;
+      if(config->getFreqTableLowerSideband(config->getBFreqIndex(currentconfigindex, i, j)))
+        nyquistchannel = 0;
       for(int k=0;k<config->getBNumPolProducts(currentconfigindex, i, j);k++) {
-        baselineweights[i][j][k] = results[skip + numchannels].im/fftsperintegration;
-        results[skip + numchannels].im = 0.0;
+        baselineweights[i][j][k] = results[skip + nyquistchannel].im/fftsperintegration;
+        results[skip + nyquistchannel].im = 0.0;
         skip += numchannels+1;
       }
       skip += (numchannels+1)*config->getBNumPolProducts(currentconfigindex, i, j)*(binloop-1);
@@ -438,12 +444,15 @@ void Visibility::writedata()
   {
     for(int j=0;j<config->getDNumOutputBands(currentconfigindex, i); j++)
     {
+      nyquistchannel = numchannels;
+      if(config->getDLowerSideband(currentconfigindex, i, config->getDLocalFreqIndex(currentconfigindex, i, j)))
+        nyquistchannel = 0;
       //Grab the weight for this band and then remove it from the resultsarray
-      autocorrweights[i][j] = results[skip+count+numchannels].im/fftsperintegration;
-      results[skip+count+numchannels].im = 0.0;
+      autocorrweights[i][j] = results[skip+count+nyquistchannel].im/fftsperintegration;
+      results[skip+count+nyquistchannel].im = 0.0;
       
       //work out the band average, for use in calibration (allows us to calculate fractional correlation)
-      status = vectorMean_cf32(&results[skip + count], numchannels, &autocorrcalibs[i][j], vecAlgHintFast);
+      status = vectorMean_cf32(&results[skip + count], numchannels+1, &autocorrcalibs[i][j], vecAlgHintFast);
       if(status != vecNoErr)
         cerr << "Error in getting average of autocorrelation!!!" << status << endl;
       count += numchannels + 1;
@@ -452,8 +461,11 @@ void Visibility::writedata()
       //need to grab weights for the cross autocorrs that are also present in the array
       for(int j=0;j<config->getDNumOutputBands(currentconfigindex, i); j++)
       {
-        autocorrweights[i][j+config->getDNumOutputBands(currentconfigindex, i)] = results[skip+count+numchannels].im/fftsperintegration;
-        results[skip+count+numchannels].im = 0.0;
+        nyquistchannel = numchannels;
+        if(config->getDLowerSideband(currentconfigindex, i, config->getDLocalFreqIndex(currentconfigindex, i, j)))
+          nyquistchannel = 0;
+        autocorrweights[i][j+config->getDNumOutputBands(currentconfigindex, i)] = results[skip+count+nyquistchannel].im/fftsperintegration;
+        results[skip+count+nyquistchannel].im = 0.0;
         count += numchannels + 1;
       }
     }
@@ -790,7 +802,7 @@ void Visibility::writedifx()
 {
   ofstream output;
   char filename[256];
-  int dumpmjd, binloop, sourceindex, freqindex, numpolproducts, firstpolindex, baselinenumber;
+  int dumpmjd, binloop, sourceindex, freqindex, numpolproducts, firstpolindex, baselinenumber, lsboffset;
   double dumpseconds;
   int count = 0;
   float buvw[3]; //the u,v and w for this baseline at this time
@@ -819,6 +831,9 @@ void Visibility::writedifx()
     {
       freqindex = config->getBFreqIndex(currentconfigindex, i, j);
       numpolproducts = config->getBNumPolProducts(currentconfigindex, i, j);
+      lsboffset = 0;
+      if(config->getFreqTableLowerSideband(config->getBFreqIndex(currentconfigindex, i, j)))
+        lsboffset = 1;
 
       for(int b=0;b<binloop;b++)
       {
@@ -833,7 +848,10 @@ void Visibility::writedifx()
           //close, reopen in binary and write the binary data, then close again
           output.close();
           output.open(filename, ios::app|ios::binary);
-          output.write((char*)(results + (count*(numchannels+1))), numchannels*sizeof(cf32));
+          //For both USB and LSB data, the Nyquist channel is excised.  Thus, the numchannels that are written out represent the
+          //the valid part of the band in both cases, and run from lowest frequency to highest frequency in both cases.  For USB
+          //data, the first channel is the DC - for LSB data, the last channel is the DC
+          output.write((char*)(results + (count*(numchannels+1))) + lsboffset, numchannels*sizeof(cf32));
           output.close();
 
           count++;
@@ -854,6 +872,9 @@ void Visibility::writedifx()
       for(int j=0;j<config->getDNumFreqs(currentconfigindex, i); j++)
       {
         firstpolindex = -1;
+        lsboffset = 0;
+        if(config->getDLowerSideband(currentconfigindex, i, j))
+          lsboffset = 1;
         //find a product that is active, so we know where to look to work out which frequency this is
         for(int k=maxproducts-1;k>=0;k--) {
           if(datastreampolbandoffsets[i][j][k] >= 0)
@@ -874,7 +895,8 @@ void Visibility::writedifx()
 
               //open, write the binary data and close
               output.open(filename, ios::app|ios::binary);
-              output.write((char*)(results + (count+datastreampolbandoffsets[i][j][k])*(numchannels+1)), numchannels*sizeof(cf32));
+              //see baseline writing section for description of treatment of USB/LSB data and the Nyquist channel
+              output.write((char*)(results + lsboffset + (count+datastreampolbandoffsets[i][j][k])*(numchannels+1)), numchannels*sizeof(cf32));
               output.close();
             }
           }
