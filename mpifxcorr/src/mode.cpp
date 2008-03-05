@@ -106,7 +106,7 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bper
     //baselines (the imag part) so the datastream channel for it must be zeroed
     for(int i=0;i<numinputbands;i++)
     {
-      if(config->getDLowerSideband(configindex, datastreamindex, i)) {
+      if(config->getDLowerSideband(configindex, datastreamindex, config->getDLocalFreqIndex(configindex, datastreamindex, i))) {
         fftoutputs[i][0].re = 0.0;
         fftoutputs[i][0].im = 0.0;
       }
