@@ -135,7 +135,7 @@ private:
   void writeDiFXHeader(ofstream * output, int baselinenum, int dumpmjd, double dumpseconds, int configindex, int sourceindex, int freqindex, const char polproduct[3], int pulsarbin, int flag, float weight, float buvw[3]);
 
   int visID, expermjd, experseconds, integrationsamples, currentstartseconds, currentstartsamples, offset, offsetperintegration, subintsthisintegration, subintsamples, numvisibilities, numdatastreams, numbaselines, numchannels, currentsubints, resultlength, currentconfigindex, samplespersecond, maxproducts, executeseconds, autocorrincrement;
-  double fftsperintegration;
+  double fftsperintegration, meansubintsperintegration;
   bool first, monitor, pulsarbinon;
   int * mon_socket;
   int monitor_skip;

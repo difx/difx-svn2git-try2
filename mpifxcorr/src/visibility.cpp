@@ -501,7 +501,8 @@ void Visibility::writedata()
             //samples rather than datastream tsys and decorrelation correction
             if(baselineweights[i][j][k] > 0.0)
             {
-              scale = 1.0/(((float)(subintsthisintegration))*((float)(config->getBlocksPerSend(currentconfigindex)*2*numchannels)));
+              //scale = 1.0/(((float)(subintsthisintegration))*((float)(config->getBlocksPerSend(currentconfigindex)*2*numchannels)));
+              scale = 1.0/(baselineweights[i][j][k]*meansubintsperintegration*((float)(config->getBlocksPerSend(currentconfigindex)*2*numchannels)));
               status = vectorMulC_f32_I(scale, (f32*)(&(results[count])), 2*(numchannels+1));
               if(status != vecNoErr)
                 cerr << "Error trying to amplitude calibrate the baseline data!!!" << endl;
@@ -538,7 +539,8 @@ void Visibility::writedata()
               //samples rather than datastream tsys and decorrelation correction            
               if(autocorrweights[i][k+j*config->getDNumOutputBands(currentconfigindex, i)] > 0.0)
               {
-                scale = 1.0/(((float)(subintsthisintegration))*((float)(config->getBlocksPerSend(currentconfigindex)*2*numchannels)));
+                //scale = 1.0/(((float)(subintsthisintegration))*((float)(config->getBlocksPerSend(currentconfigindex)*2*numchannels)));
+                scale = 1.0/(autocorrweights[i][k+j*config->getDNumOutputBands(currentconfigindex, i)]*meansubintsperintegration*((float)(config->getBlocksPerSend(currentconfigindex)*2*numchannels)));
                 status = vectorMulC_f32_I(scale, (f32*)(&(results[count])), 2*(numchannels+1));
                 if(status != vecNoErr)
                   cerr << "Error trying to amplitude calibrate the datastream data for the correlation coefficient case!!!" << endl;
@@ -993,6 +995,7 @@ void Visibility::changeConfig(int configindex)
   subintsamples = config->getBlocksPerSend(configindex)*numchannels*2;
   offsetperintegration = integrationsamples%subintsamples;
   fftsperintegration = ((double)integrationsamples)*config->getBlocksPerSend(configindex)/((double)subintsamples);
+  meansubintsperintegration = fftsperintegration/config->getBlocksPerSend(configindex);
   cout << "For Visibility " << visID << ", offsetperintegration is " << offsetperintegration << ", subintsamples is " << subintsamples << ", and configindex is " << configindex << endl;
   resultlength = config->getResultLength(configindex);
   for(int i=0;i<numdatastreams;i++)
