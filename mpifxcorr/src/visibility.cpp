@@ -992,7 +992,7 @@ void Visibility::changeConfig(int configindex)
   integrationsamples = int(2000000*config->getDBandwidth(configindex, 0, 0)*config->getIntTime(configindex) + 0.5);
   subintsamples = config->getBlocksPerSend(configindex)*numchannels*2;
   offsetperintegration = integrationsamples%subintsamples;
-  fftsperintegration = ((double)integrationsamples)/((double)subintsamples*config->getBlocksPerSend(configindex));
+  fftsperintegration = ((double)integrationsamples)*config->getBlocksPerSend(configindex)/((double)subintsamples);
   cout << "For Visibility " << visID << ", offsetperintegration is " << offsetperintegration << ", subintsamples is " << subintsamples << ", and configindex is " << configindex << endl;
   resultlength = config->getResultLength(configindex);
   for(int i=0;i<numdatastreams;i++)
