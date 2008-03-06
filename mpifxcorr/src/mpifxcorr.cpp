@@ -131,6 +131,8 @@ int main(int argc, char *argv[])
     if(!(argv[2][0]=='-' && argv[2][1]=='M'))
     {
       std::cerr << "Error - invoke with mpifxcorr <inputfilename> [-M<monhostname>:port[:monitor_skip]]" << endl;
+      MPI_Barrier(world);
+      MPI_Finalize();
       return EXIT_FAILURE;
     }
     monitor = true;
@@ -152,6 +154,8 @@ int main(int argc, char *argv[])
   else if(argc != 2)
   {
     std::cerr << "Error - invoke with mpifxcorr <inputfilename> [-M<monhostname>:port[:monitor_skip]]" << endl;
+    MPI_Barrier(world);
+    MPI_Finalize();
     return EXIT_FAILURE;
   }
 
@@ -162,6 +166,7 @@ int main(int argc, char *argv[])
   {
     //There was a problem with the input file, so shut down gracefully
     cerr << "Config encountered inconsistent setup in config file - aborting correlation" << endl;
+    MPI_Barrier(world);
     MPI_Finalize();
     return EXIT_FAILURE;
   }

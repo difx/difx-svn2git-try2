@@ -27,6 +27,8 @@
 //#include <netinet/in.h>
 //#include <arpa/inet.h>
 
+bool terminatenow;
+
 /* first, here is the signal handler */
 void catch_pipe(int sig_num)
 {
@@ -51,6 +53,7 @@ FxManager::FxManager(Configuration * conf, int ncores, int * dids, int * cids, i
   /* set the PIPE signal handler to 'catch_pipe' */
   signal(SIGPIPE, catch_pipe);
 
+  terminatenow = false;
   numdatastreams = config->getNumDataStreams();
   startmjd = config->getStartMJD();
   startseconds = config->getStartSeconds();
@@ -172,7 +175,20 @@ FxManager::~FxManager()
   delete [] bufferlock;
 }
 
+void interrupthandler(int sig)
+{
+	cout << "FXMANAGER caught a signal and is going to shut down the correlator" << endl;
+	terminatenow = true;
+}
 
+void FxManager::terminate()
+{
+  cout << "FXMANAGER: Sending terminate signals" << endl;
+  for(int i=0;i<numcores;i++)
+    MPI_Send(senddata, 1, MPI_INT, coreids[i], CR_TERMINATE, return_comm);
+  for(int i=0;i<numdatastreams;i++)
+    MPI_Send(senddata, 3, MPI_INT, datastreamids[i], DS_TERMINATE, MPI_COMM_WORLD);
+}
 /*!
     \fn FxManager::execute()
  */
@@ -194,20 +210,18 @@ void FxManager::execute()
     }
   }
   
+  signal(SIGINT, &interrupthandler);
+  
   //now receive and send until there are no more jobs to send
   //for(long long i=0;i<runto;i++)
-  while(senddata[1] < executetimeseconds)
+  while(senddata[1] < executetimeseconds && terminatenow == false)
   {
     //receive from any core, and send data straight back
     receiveData(true);
   }
 
   //now send the terminate signal to each datastream and each core
-  cout << "FXMANAGER: Sending terminate signals" << endl;
-  for(int i=0;i<numcores;i++)
-    MPI_Send(senddata, 1, MPI_INT, coreids[i], CR_TERMINATE, return_comm);
-  for(int i=0;i<numdatastreams;i++)
-    MPI_Send(senddata, 3, MPI_INT, datastreamids[i], DS_TERMINATE, MPI_COMM_WORLD);
+  terminate();
   
   //now receive the final data from each core
   for(int i=0;i<Core::RECEIVE_RING_LENGTH;i++)

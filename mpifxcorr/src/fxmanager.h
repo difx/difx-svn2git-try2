@@ -49,6 +49,11 @@ public:
   ~FxManager();
 
  /**
+  * Sends terminate signals to all cores and datastreams
+  */
+  void terminate();
+
+ /**
   * Runs the correlation from the start time to end time
   */
   void execute();
