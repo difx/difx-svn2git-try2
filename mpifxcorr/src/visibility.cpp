@@ -853,7 +853,7 @@ void Visibility::writedifx()
           //For both USB and LSB data, the Nyquist channel is excised.  Thus, the numchannels that are written out represent the
           //the valid part of the band in both cases, and run from lowest frequency to highest frequency in both cases.  For USB
           //data, the first channel is the DC - for LSB data, the last channel is the DC
-          output.write((char*)(results + (count*(numchannels+1))) + lsboffset, numchannels*sizeof(cf32));
+          output.write((char*)(results + (count*(numchannels+1)) + lsboffset), numchannels*sizeof(cf32));
           output.close();
 
           count++;
