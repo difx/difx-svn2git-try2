@@ -397,7 +397,7 @@ void Visibility::writedata()
   dumpmjd = expermjd + (experseconds + currentstartseconds)/86400;
   dumpseconds = double((experseconds + currentstartseconds)%86400) + double((currentstartsamples+integrationsamples/2)/(2000000.0*config->getDBandwidth(currentconfigindex,0,0)));
   
-  if((dumpmjd-expermjd)*86400.0+(dumpseconds-experseconds) >= executeseconds)
+  if(currentstartseconds >= executeseconds)
   {
     return; //NOTE EXIT HERE!!!
   }

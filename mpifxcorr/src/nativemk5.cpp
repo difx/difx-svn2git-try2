@@ -246,8 +246,6 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 
 	waitForBuffer(buffersegment);
 
-	// xlrRC = XLRReadData(xlrDevice, buf, a, b, bytes);
-
 	xlrRD.AddrHi = a;
 	xlrRD.AddrLo = b;
 	xlrRD.XferLength = bytes;
@@ -315,23 +313,9 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		}
 	}
 
-#if 0
-	if(xlrRC != XLR_SUCCESS)
-	{
-		cerr << "XXX:" << a << ":" << b << "  rp = " << readpointer << endl;
-		xlrEC = XLRGetLastError();
-		XLRGetErrorMessage(errStr, xlrEC);
-		cerr << "NativeMk5DataStream " << mpiid << 
-			" XLRReadData error: " << errStr << endl; 
-		dataremaining = false;
-		keepreading = false;
-		bufferinfo[buffersegment].validbytes = 0;
-		return;
-	}
-#endif
 	if(xlrRS != XLR_READ_COMPLETE)
 	{
-		cerr << "XXX:" << a << ":" << b << "  rp = " << readpointer << endl;
+		cerr << "Native Mark5 Error at:" << a << ":" << b << "  rp = " << readpointer << endl;
 		cerr << "[" << mpiid << "] Waited 10 seconds for a read and gave up" << endl;
 		dataremaining = false;
 		keepreading = false;
@@ -378,7 +362,6 @@ void NativeMk5DataStream::loopfileread()
   lastvalidsegment = (numread-1)%numdatasegments;
   while((bufferinfo[lastvalidsegment].configindex < 0 || filesread[bufferinfo[lastvalidsegment].configindex] <= confignumfiles[bufferinfo[lastvalidsegment].configindex]) && keepreading)
   {
-    cout << "[" << mpiid << "] Entering while loop" << endl;
     while(dataremaining && keepreading)
     {
       lastvalidsegment = (lastvalidsegment + 1)%numdatasegments;
@@ -397,31 +380,23 @@ void NativeMk5DataStream::loopfileread()
       moduleToMemory(lastvalidsegment);
       numread++;
     }
-    cout << "Out of while loop: " << mpiid << endl;
     if(keepreading)
     {
       //if we need to, change the config
       int nextconfigindex = config->getConfigIndex(readseconds);
       cout << "old config[" << mpiid << "] = " << nextconfigindex << endl;
       while(nextconfigindex < 0 && readseconds < config->getExecuteSeconds())
-      {
         nextconfigindex = config->getConfigIndex(++readseconds);
-      }
-      cout << "new config[" << mpiid << "] = " << nextconfigindex << endl;
       if(readseconds == config->getExecuteSeconds())
       {
-        cout << "Condition1 : " << mpiid << endl;
         bufferinfo[(lastvalidsegment+1)%numdatasegments].seconds = config->getExecuteSeconds();
         bufferinfo[(lastvalidsegment+1)%numdatasegments].nanoseconds = 0;
         keepreading = false;
       }
       else
       {
-        cout << "Condition2 : " << mpiid << endl;
         if(config->getConfigIndex(readseconds) != bufferinfo[(lastvalidsegment + 1)%numdatasegments].configindex)
-	{
           updateConfig((lastvalidsegment + 1)%numdatasegments);
-        }
 	//if the datastreams for two or more configs are common, they'll all have the same 
         //files.  Therefore work with the lowest one
         int lowestconfigindex = bufferinfo[(lastvalidsegment+1)%numdatasegments].configindex;
@@ -431,7 +406,6 @@ void NativeMk5DataStream::loopfileread()
             lowestconfigindex = i;
         }
         openfile(lowestconfigindex, filesread[lowestconfigindex]);
-	cout << "Condition2 : " << mpiid << "  Restarting loop" << endl;
       }
     }
   }
