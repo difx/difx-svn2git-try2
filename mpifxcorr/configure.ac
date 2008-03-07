@@ -1,4 +1,4 @@
-AC_INIT([mpifxcorr], [0.2], [Adam Deller <adeller@astro.swin.edu.au>])
+AC_INIT([mpifxcorr], [1.5], [Adam Deller <adeller@astro.swin.edu.au>])
 AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
 AC_LANG_CPLUSPLUS

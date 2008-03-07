@@ -9,6 +9,7 @@
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                  *
  ***************************************************************************/
+#include "config.h"
 #include "fxmanager.h"
 #include <iostream>
 #include "datastream.h"
@@ -49,6 +50,8 @@ FxManager::FxManager(Configuration * conf, int ncores, int * dids, int * cids, i
 {
   int perr;
   const string * polnames;
+
+  cout << "STARTING " << PACKAGE_NAME << " version " << VERSION << endl;
 
   /* set the PIPE signal handler to 'catch_pipe' */
   signal(SIGPIPE, catch_pipe);
