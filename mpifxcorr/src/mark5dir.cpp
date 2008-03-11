@@ -98,7 +98,6 @@ int getMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice, int mjdref)
 	XLR_RETURN_CODE xlrRC;
 	Mark5Directory m5dir;
 	int len, i, n;
-	mark5_stream *vs = 0;
 	struct mark5_format *mf;
 	Mark5Scan *scan;
 	unsigned long a, b;

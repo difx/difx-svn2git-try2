@@ -15,7 +15,7 @@
 
 static int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, char *formatname)
 {
-  int fanout, mbps;
+  int fanout=1, mbps;
 
   mbps = int(2*nchan*bw*nbits + 0.5);
 

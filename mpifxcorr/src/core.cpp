@@ -470,7 +470,6 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
 {
   int status, perr, resultindex=0, currentnumoutputbands, cindex, maxproducts, ds1index, ds2index, nyquistchannel;
   double offsetmins;
-  float binweight;
   float * dsweights = new float[numdatastreams];
   Mode * m1, * m2;
   s32 *** polycobincounts;
