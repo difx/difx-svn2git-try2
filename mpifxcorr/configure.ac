@@ -23,6 +23,18 @@ dnl **********************************************************
 
 
 dnl **********************************************************
+dnl **** Look for difxmessage libraries                   ****
+dnl **********************************************************
+dm_enabled=true
+PKG_CHECK_MODULES(DIFXMESSAGE, 
+	difxmessage,
+	[AC_DEFINE([HAVE_DIFXMESSAGE], 1, [1=has DIFXMESSAGE])], 
+	dm_enabled=false)
+AM_CONDITIONAL(WITH_DIFXMESSAGE, $dm_enabled)
+dnl **********************************************************
+
+
+dnl **********************************************************
 dnl **** Look for StreamStor libraries                    ****
 dnl **** cause native Mark5 to be built if found.         ****
 dnl **********************************************************
@@ -31,7 +43,7 @@ AC_CHECK_HEADER([xlrapi.h],
 		[AC_DEFINE([HAVE_XLRAPI_H], 1, [1=has SS])],
 		[ss_enabled=false])
 if test ${ss_enabled} = true; then
-	SS_LIBS="-lwdapi801 -lssapi"
+	SS_LIBS="-lwdapi910 -lssapi"
 else
 	SS_LIBS=""
 fi
@@ -64,8 +76,8 @@ PKG_CHECK_MODULES(M5ACCESS, mark5access)
 dnl **********************************************************
 
 
-CXXFLAGS="${CXXFLAGS} ${M5ACCESS_CFLAGS} ${IPP_CFLAGS} ${RPFITS_CFLAGS}"
-LIBS="${M5ACCESS_LIBS} ${SS_LIBS} ${IPP_LIBS} ${RPFITS_LIBS}"
+CXXFLAGS="${CXXFLAGS} ${M5ACCESS_CFLAGS} ${IPP_CFLAGS} ${RPFITS_CFLAGS} ${DIFXMESSAGE_CFLAGS}"
+LIBS="${M5ACCESS_LIBS} ${SS_LIBS} ${IPP_LIBS} ${RPFITS_LIBS} ${DIFXMESSAGE_LIBS}"
 
 echo "CXXFLAGS = ${CXXFLAGS}"
 echo "LIBS = ${LIBS}"
