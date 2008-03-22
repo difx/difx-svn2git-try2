@@ -22,6 +22,10 @@
 #ifdef HAVE_RPFITS
 #include <RPFITS.h>
 #endif
+#ifdef HAVE_DIFXMESSAGE
+#include <difxmessage.h>
+#endif
+
 //includes for socket stuff - for monitoring
 //#include <sys/socket.h>
 //#include <netdb.h>
@@ -180,8 +184,12 @@ FxManager::~FxManager()
 
 void interrupthandler(int sig)
 {
-	cout << "FXMANAGER caught a signal and is going to shut down the correlator" << endl;
-	terminatenow = true;
+  cout << "FXMANAGER caught a signal and is going to shut down the correlator" << endl;
+  terminatenow = true;
+
+#ifdef HAVE_DIFXMESSAGE
+  difxMessageSendProcessState("SIGINT received");
+#endif
 }
 
 void FxManager::terminate()
@@ -354,6 +362,13 @@ void FxManager::receiveData(bool resend)
       viscomplete = visbuffer[visindex]->addData(resultbuffer);
       if(viscomplete)
       {
+#ifdef HAVE_DIFXMESSAGE
+	{
+	  char message[200];
+	  sprintf(message, "Writing visibility, T = %f", visbuffer[visindex]->getTime());
+          difxMessageSendProcessState(message);
+	}
+#endif
         cout << "FXMANAGER telling visbuffer[" << visindex << "] to write out - this refers to time " << visbuffer[visindex]->getTime() << " - the previous buffer has time " << visbuffer[(visindex-1+config->getVisBufferLength())%config->getVisBufferLength()]->getTime() << ", and the next one has " << visbuffer[(visindex +1)%config->getVisBufferLength()]->getTime() << endl;
         cout << "Newestlockedvis is " << newestlockedvis << ", while oldestlockedvis is " << oldestlockedvis << endl;
         //better make sure we have at least locked the next section

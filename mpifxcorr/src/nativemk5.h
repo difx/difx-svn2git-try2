@@ -40,7 +40,6 @@ private:
 	struct Mark5Scan *scan;
 	long long readpointer;
 	SSHANDLE xlrDevice;
-	long long zeros;	/* if >0 send this many zeros */
 #endif
 };
 

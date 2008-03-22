@@ -20,6 +20,11 @@
 #include <errno.h>
 #include <values.h>
 #include <math.h>
+#include "config.h"
+#ifdef HAVE_DIFXMESSAGE
+#include <difxmessage.h>
+#endif
+
 
 DataStream::DataStream(Configuration * conf, int snum, int id, int ncores, int * cids, int bufferfactor, int numsegments)
   : config(conf), streamnum(snum), mpiid(id), numcores(ncores), databufferfactor(bufferfactor), numdatasegments(numsegments)
@@ -948,19 +953,26 @@ int DataStream::readnetwork(int sock, char* ptr, int bytestoread, int* nread)
 void DataStream::waitForBuffer(int buffersegment)
 {
   int perr;
+  char message[200];
   bufferinfo[buffersegment].nanoseconds = readnanoseconds;
   bufferinfo[buffersegment].seconds = readseconds;
+
+  sprintf(message, "Wait %d %d", readseconds, readnanoseconds);
+  difxMessageSendProcessState(message);
 
   //if we need to, change the config
   if(config->getConfigIndex(readseconds) != bufferinfo[buffersegment].configindex)
     updateConfig(buffersegment);
     
+  sprintf(message, "Whiling %p", bufferlock);
+  difxMessageSendProcessState(message);
   //ensure all the sends from this index have actually been made
   while(bufferinfo[buffersegment].numsent > 0)
   {
     perr = pthread_cond_wait(&readcond, &(bufferlock[buffersegment]));
     if (perr != 0)
       cerr << "Error waiting on ok to read condition!!!!" << endl;
+    usleep(20);
   }
 }
 

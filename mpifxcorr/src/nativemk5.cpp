@@ -13,8 +13,12 @@
 #include <mpi.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include "config.h"
 #include "nativemk5.h"
+#ifdef HAVE_DIFXMESSAGE
+#include <difxmessage.h>
+#endif
 
 #define u32 uint32_t
 
@@ -38,6 +42,9 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 		XLRClose(xlrDevice);
 		cerr << "Error opening Streamstor device [" << mpiid << "]" << endl;
 		cerr << "Do you have permission +rw for /dev/windrvr6?" << endl;
+#ifdef HAVE_DIFXMESSAGE
+		difxMessageSendProcessState("Failure opening Streamstor device");
+#endif
 		exit(1);
 	}
 	else
@@ -48,11 +55,17 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 	module.nscans = -1;
 	readpointer = -1;
 	scan = 0;
+#ifdef HAVE_DIFXMESSAGE
+	difxMessageSendProcessState("Open Streamstor");
+#endif
 }
 
 NativeMk5DataStream::~NativeMk5DataStream()
 {
 	XLRClose(xlrDevice);
+#ifdef HAVE_DIFXMESSAGE
+	difxMessageSendProcessState("Close Streamstor");
+#endif
 }
 
 /* Here "File" is VSN */
@@ -64,12 +77,21 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	long long n;
 	int doUpdate = 0;
 	char *mk5dirpath;
+	char message[64];
 
 	mk5dirpath = getenv("MARK5_DIR_PATH");
 	if(mk5dirpath == 0)
 	{
 		mk5dirpath = ".";
 	}
+
+	startmjd = corrstartday + corrstartseconds/86400.0;
+
+#ifdef HAVE_DIFXMESSAGE
+		sprintf(message, "GetDir numScans=%d VSN=%s startMJD=%12.6f", 
+			module.nscans, datafilenames[configindex][fileindex].c_str(), startmjd);
+		difxMessageSendProcessState(message);
+#endif
 
 	if(module.nscans < 0)
 	{
@@ -87,10 +109,9 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 			return;
 		}
 	}
+	usleep(300000);
 
 	// find starting position
-  
-	startmjd = corrstartday + corrstartseconds/86400.0;
   
 	if(scan != 0)  /* just continue by reading next scan */
 	{
@@ -160,6 +181,10 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 		cout << "Scan info. start = " << scan->start << " off = " << scan->frameoffset << " size = " << scan->framebytes << endl;
 	}
 
+#ifdef HAVE_DIFXMESSAGE
+	sprintf(message, "Reading scan %d of %d", scan-module.scans, module.nscans);
+	difxMessageSendProcessState(message);
+#endif
 	cout << "The frame start day is " << scan->mjd << 
 		", the frame start seconds is " << (scan->sec+scan->ns*1.e-9)
 		<< ", readseconds is " << readseconds << 
@@ -170,11 +195,19 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	 */
 	if(doUpdate)
 	{
+#ifdef HAVE_DIFXMESSAGE
+		sprintf(message, "Starting config update");
+		difxMessageSendProcessState(message);
+#endif
 		cout << "Updating all configs [" << mpiid << "]" << endl;
 		for(i = 0; i < numdatasegments; i++)
 		{
 			updateConfig(i);
 		}
+#ifdef HAVE_DIFXMESSAGE
+		sprintf(message, "Finished config update");
+		difxMessageSendProcessState(message);
+#endif
 	}
 	else
 	{
@@ -220,6 +253,15 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 	XLR_READ_STATUS xlrRS;
 	int bytes;
 	char errStr[XLR_ERROR_LENGTH];
+	static int now = 0;
+	static long long lastpos = 0;
+	struct timeval tv;
+	char message[1000];
+
+	sprintf(message, "bseg=%d bbytes=%d nds=%d rbytes=%d rstart=%lld",
+		buffersegment, bufferbytes, numdatasegments, readbytes, readpointer);
+	difxMessageSendProcessState(message);
+
 
 	bytes = readbytes;
 	start = readpointer;
@@ -230,6 +272,7 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		start += 4;
 		buf++;
 	}
+	difxMessageSendProcessState("X");
 
 	if(start + bytes > scan->start + scan->length)
 	{
@@ -244,23 +287,31 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 	a = start >> 32;
 	b = start & 0xFFFFFFFF; 
 
+	difxMessageSendProcessState("Y");
 	waitForBuffer(buffersegment);
+	difxMessageSendProcessState("Z");
 
 	xlrRD.AddrHi = a;
 	xlrRD.AddrLo = b;
 	xlrRD.XferLength = bytes;
 	xlrRD.BufferAddr = buf;
 
+	sprintf(message, "a=%u b=%u l=%d, p=%p", a, b, bytes, buf);
+	difxMessageSendProcessState(message);
+
 	for(t = 0; t < 2; t++)
 	{
 		XLRReadImmed(xlrDevice, &xlrRD);
-		
+		difxMessageSendProcessState("Started read");
+
 		/* Wait up to 10 seconds for a return */
-		for(i = 1; i < 10000; i++)
+		for(i = 1; i < 100000; i++)
 		{
 			xlrRS = XLRReadStatus(0);
 			if(xlrRS == XLR_READ_COMPLETE)
 			{
+				sprintf(message, "Finished read in %d us", i*100);
+				difxMessageSendProcessState(message);
 				break;
 			}
 			else if(xlrRS == XLR_READ_ERROR)
@@ -275,9 +326,9 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 				bufferinfo[buffersegment].validbytes = 0;
 				return;
 			}
-			if(i % 1000 == 0)
+			if(i % 10000 == 0)
 			{
-				cout << "[" << mpiid << "] Waited " << i << " ms   state = "; 
+				cout << "[" << mpiid << "] Waited " << i << " microsec  state = "; 
 				if(xlrRS == XLR_READ_WAITING)
 				{
 					cout << "XLR_READ_WAITING" << endl;
@@ -291,7 +342,7 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 					cout << "XLR_READ_OTHER " << endl;
 				}
 			}
-			usleep(1000);
+			usleep(100);
 		}
 		if(xlrRS == XLR_READ_COMPLETE)
 		{
@@ -312,6 +363,22 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 
 		}
 	}
+
+#ifdef HAVE_DIFXMESSAGE
+	gettimeofday(&tv, 0);
+	if(tv.tv_sec > now)
+	{
+		now = tv.tv_sec;
+		if(lastpos > 0)
+		{
+			double rate;
+			rate = (double)(readpointer + bytes - lastpos)*8.0/1000000.0;
+			sprintf(message, "T = %u pos = %lld rate = %7.2f Mbps", now, readpointer + bytes, rate);
+			difxMessageSendProcessState(message);
+		}
+		lastpos = readpointer + bytes;
+	}
+#endif
 
 	if(xlrRS != XLR_READ_COMPLETE)
 	{
@@ -337,12 +404,15 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 			readpointer += bytes;
 		}
 	}
+
+	difxMessageSendProcessState("Leaving moduleToMemory");
 }
 
 void NativeMk5DataStream::loopfileread()
 {
   int perr;
   int numread = 0;
+  char message[1024];
 
   cout << "NM5 : loopfileread starting" << endl;
 
@@ -376,9 +446,13 @@ void NativeMk5DataStream::loopfileread()
       if(perr != 0)
         cerr << "Error in telescope readthread unlock of buffer section!!!" << (lastvalidsegment-1+numdatasegments)%numdatasegments << endl;
 
+sprintf(message, "About to moduleToMemory numread=%d lastvalidsegment=%d", numread, lastvalidsegment);
+difxMessageSendProcessState(message);
       //do the read
       moduleToMemory(lastvalidsegment);
       numread++;
+sprintf(message, "Finished moduleToMemory numread=%d lastvalidsegment=%d", numread, lastvalidsegment);
+difxMessageSendProcessState(message);
     }
     if(keepreading)
     {

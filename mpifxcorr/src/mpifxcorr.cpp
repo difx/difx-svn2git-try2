@@ -30,6 +30,9 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#ifdef HAVE_DIFXMESSAGE
+#include <difxmessage.h>
+#endif
 
 //setup monitoring socket
 int setup_net(char *monhostname, int port, int window_size, int *sock) {
@@ -92,6 +95,17 @@ int setup_net(char *monhostname, int port, int window_size, int *sock) {
   }
   return(0);
 } /* Setup Net */
+
+static void generateIdentifier(const char *inputfile, int myID, int numdatastreams, char *identifier)
+{
+  if(myID == 0)
+    sprintf(identifier, "Manager");
+  else if(myID <= numdatastreams)
+    sprintf(identifier, "Datastream_%d", myID-1);
+  else
+    sprintf(identifier, "Core_%d", myID-1-numdatastreams);
+}
+
 
 //main method - run by everyone
 int main(int argc, char *argv[])
@@ -190,6 +204,15 @@ int main(int argc, char *argv[])
   //wait until everyone has caught up
   MPI_Barrier(world);
 
+#ifdef HAVE_DIFXMESSAGE
+  {
+    char identifier[128];
+    generateIdentifier(argv[1], myID, numdatastreams, identifier);
+    difxMessageInit(identifier);
+    difxMessageSendProcessState("Starting");
+  }
+#endif
+
   try
   {
     //work out what process we are and run accordingly
@@ -231,6 +254,10 @@ int main(int argc, char *argv[])
   MPI_Finalize();
   delete [] coreids;
   delete [] datastreamids;
+
+#ifdef HAVE_DIFXMESSAGE
+  difxMessageSendProcessState("Stopping");
+#endif
 
   std::cout << myID << ": BYE!" << endl;
   return EXIT_SUCCESS;
