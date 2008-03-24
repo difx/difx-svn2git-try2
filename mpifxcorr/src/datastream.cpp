@@ -69,7 +69,7 @@ void DataStream::initialise()
       overflowbytes = currentoverflowbytes;
   }
   cout << "DATASTREAM " << mpiid << " about to allocate " << bufferbytes << " + " << overflowbytes << " bytes in databuffer" << endl;
-  databuffer = vectorAlloc_u8(bufferbytes + overflowbytes);
+  databuffer = vectorAlloc_u8(bufferbytes + overflowbytes + 4); // a couple extra for mark5 case
   if(databuffer == NULL) {
     cerr << "Error - datastream " << mpiid << " could not allocate databuffer (length " << bufferbytes + overflowbytes << ")! Aborting correlation" << endl;
     exit(1);

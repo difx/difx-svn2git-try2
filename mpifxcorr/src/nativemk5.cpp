@@ -258,11 +258,6 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 	struct timeval tv;
 	char message[1000];
 
-	sprintf(message, "bseg=%d bbytes=%d nds=%d rbytes=%d rstart=%lld",
-		buffersegment, bufferbytes, numdatasegments, readbytes, readpointer);
-	difxMessageSendProcessState(message);
-
-
 	bytes = readbytes;
 	start = readpointer;
 	buf = (unsigned long *)&databuffer[(buffersegment*bufferbytes)/
@@ -272,7 +267,17 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		start += 4;
 		buf++;
 	}
-	difxMessageSendProcessState("X");
+
+	// we're starting after the end of the scan.  Just set flags and return
+	if(start >= scan->start + scan->length)
+	{
+		bufferinfo[buffersegment].validbytes = 0;
+		dataremaining = false;
+#ifdef HAVE_DIFXMESSAGE
+		difxMessageSendProcessState("Leaving moduleToMemory early");
+#endif
+		return;
+	}
 
 	if(start + bytes > scan->start + scan->length)
 	{
@@ -287,22 +292,16 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 	a = start >> 32;
 	b = start & 0xFFFFFFFF; 
 
-	difxMessageSendProcessState("Y");
 	waitForBuffer(buffersegment);
-	difxMessageSendProcessState("Z");
 
 	xlrRD.AddrHi = a;
 	xlrRD.AddrLo = b;
 	xlrRD.XferLength = bytes;
 	xlrRD.BufferAddr = buf;
 
-	sprintf(message, "a=%u b=%u l=%d, p=%p", a, b, bytes, buf);
-	difxMessageSendProcessState(message);
-
 	for(t = 0; t < 2; t++)
 	{
 		XLRReadImmed(xlrDevice, &xlrRD);
-		difxMessageSendProcessState("Started read");
 
 		/* Wait up to 10 seconds for a return */
 		for(i = 1; i < 100000; i++)
@@ -310,8 +309,6 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 			xlrRS = XLRReadStatus(0);
 			if(xlrRS == XLR_READ_COMPLETE)
 			{
-				sprintf(message, "Finished read in %d us", i*100);
-				difxMessageSendProcessState(message);
 				break;
 			}
 			else if(xlrRS == XLR_READ_ERROR)
@@ -392,20 +389,18 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 	else
 	{
 		bufferinfo[buffersegment].validbytes = bytes;
+		readnanoseconds += bufferinfo[buffersegment].nsinc;
+		readseconds += readnanoseconds/1000000000;
+		readnanoseconds %= 1000000000;
 		if(bytes < readbytes)
 		{
 			dataremaining = false;
 		}
 		else
 		{
-			readnanoseconds += bufferinfo[buffersegment].nsinc;
-			readseconds += readnanoseconds/1000000000;
-			readnanoseconds %= 1000000000;
 			readpointer += bytes;
 		}
 	}
-
-	difxMessageSendProcessState("Leaving moduleToMemory");
 }
 
 void NativeMk5DataStream::loopfileread()
