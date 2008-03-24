@@ -957,15 +957,19 @@ void DataStream::waitForBuffer(int buffersegment)
   bufferinfo[buffersegment].nanoseconds = readnanoseconds;
   bufferinfo[buffersegment].seconds = readseconds;
 
+#ifdef HAVE_DIFXMESSAGE
   sprintf(message, "Wait %d %d", readseconds, readnanoseconds);
   difxMessageSendProcessState(message);
+#endif
 
   //if we need to, change the config
   if(config->getConfigIndex(readseconds) != bufferinfo[buffersegment].configindex)
     updateConfig(buffersegment);
     
+#ifdef HAVE_DIFXMESSAGE
   sprintf(message, "Whiling %p", bufferlock);
   difxMessageSendProcessState(message);
+#endif
   //ensure all the sends from this index have actually been made
   while(bufferinfo[buffersegment].numsent > 0)
   {
