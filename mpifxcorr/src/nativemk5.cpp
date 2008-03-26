@@ -109,7 +109,6 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 			return;
 		}
 	}
-	usleep(300000);
 
 	// find starting position
   
@@ -129,9 +128,9 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 		scanstart = scan->mjd + (scan->sec + scan->ns*1.e-9)/86400.0;
 		scanend = scanstart + scan->duration/86400.0;
 		readpointer = scan->start + scan->frameoffset;
-		readseconds = (scan->mjd-corrstartday)*86400 
-			+ scan->sec - corrstartseconds;
+		readseconds = (scan->mjd-corrstartday)*86400 + scan->sec - corrstartseconds;
 		readnanoseconds = scan->ns;
+
 		cout << "After[" << mpiid << "]  rs = " << readseconds << "  rns = " << readnanoseconds << endl;
 	}
 	else	/* first time this project */
@@ -284,6 +283,10 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		bytes = scan->start + scan->length - start;
 		cout << "[" << mpiid << "] shortening read to only " << bytes << " bytes ";
 		cout << "(was " << readbytes << ")" << endl;
+#ifdef HAVE_DIFXMESSAGE
+		sprintf(message, "Shortening read from %d to %d bytes", readbytes, bytes);
+		difxMessageSendProcessState(message);
+#endif
 	}
 
 	/* always read multiples of 8 bytes */
@@ -357,7 +360,6 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 			cout << "[" << mpiid << "]  XLROpen() being called!" << endl;
 			xlrRC = XLROpen(1, &xlrDevice);
 			cout << "[" << mpiid << "]  XLROpen() called! " << xlrRC << endl;
-
 		}
 	}
 
@@ -441,13 +443,9 @@ void NativeMk5DataStream::loopfileread()
       if(perr != 0)
         cerr << "Error in telescope readthread unlock of buffer section!!!" << (lastvalidsegment-1+numdatasegments)%numdatasegments << endl;
 
-sprintf(message, "About to moduleToMemory numread=%d lastvalidsegment=%d", numread, lastvalidsegment);
-difxMessageSendProcessState(message);
       //do the read
       moduleToMemory(lastvalidsegment);
       numread++;
-sprintf(message, "Finished moduleToMemory numread=%d lastvalidsegment=%d", numread, lastvalidsegment);
-difxMessageSendProcessState(message);
     }
     if(keepreading)
     {
@@ -456,7 +454,7 @@ difxMessageSendProcessState(message);
       cout << "old config[" << mpiid << "] = " << nextconfigindex << endl;
       while(nextconfigindex < 0 && readseconds < config->getExecuteSeconds())
         nextconfigindex = config->getConfigIndex(++readseconds);
-      if(readseconds == config->getExecuteSeconds())
+      if(readseconds >= config->getExecuteSeconds())
       {
         bufferinfo[(lastvalidsegment+1)%numdatasegments].seconds = config->getExecuteSeconds();
         bufferinfo[(lastvalidsegment+1)%numdatasegments].nanoseconds = 0;
