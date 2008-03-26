@@ -395,7 +395,8 @@ int DataStream::calculateControlParams(int offsetsec, int offsetns)
   }
   if(bufferindex < 0)
   {
-    bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] = -1;
+    for(int i=0;i<bufferinfo[atsegment].controllength;i++)
+      bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][i] = -1.0;
     return 0;
   }
 
@@ -953,23 +954,13 @@ int DataStream::readnetwork(int sock, char* ptr, int bytestoread, int* nread)
 void DataStream::waitForBuffer(int buffersegment)
 {
   int perr;
-  char message[200];
   bufferinfo[buffersegment].nanoseconds = readnanoseconds;
   bufferinfo[buffersegment].seconds = readseconds;
-
-#ifdef HAVE_DIFXMESSAGE
-  sprintf(message, "Wait %d %d", readseconds, readnanoseconds);
-  difxMessageSendProcessState(message);
-#endif
 
   //if we need to, change the config
   if(config->getConfigIndex(readseconds) != bufferinfo[buffersegment].configindex)
     updateConfig(buffersegment);
     
-#ifdef HAVE_DIFXMESSAGE
-  sprintf(message, "Whiling %p", bufferlock);
-  difxMessageSendProcessState(message);
-#endif
   //ensure all the sends from this index have actually been made
   while(bufferinfo[buffersegment].numsent > 0)
   {
