@@ -146,12 +146,13 @@ int Mk5DataStream::calculateControlParams(int offsetsec, int offsetsamples)
   //do the necessary correction to start from a frame boundary - work out the offset from the start of this segment
   vlbaoffset = bufferindex - atsegment*readbytes;
 
-  framesin = vlbaoffset/framebytes;
+  framesin = vlbaoffset/payloadbytes;
 
-  bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] = bufferinfo[atsegment].seconds + (double(bufferinfo[atsegment].nanoseconds) + double(((framesin*framebytes)*bufferinfo[atsegment].bytespersampledenom)/bufferinfo[atsegment].bytespersamplenum)* bufferinfo[atsegment].sampletimens)/1000000000.0;
+  // Note here a time is needed, so we only count payloadbyes
+  bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] = bufferinfo[atsegment].seconds + (double(bufferinfo[atsegment].nanoseconds) + double(((framesin*payloadbytes)*bufferinfo[atsegment].bytespersampledenom)/bufferinfo[atsegment].bytespersamplenum)* bufferinfo[atsegment].sampletimens)/1000000000.0;
 
-  //go back to nearest frame
-  return atsegment*readbytes + framesin*framebytes;
+  //go back to nearest frame -- here the total number of bytes matters
+  return atsegment*readbytes + ((int)(vlbaoffset/framebytes))*framebytes;
 }
 
 void Mk5DataStream::updateConfig(int segmentindex)
@@ -172,7 +173,8 @@ void Mk5DataStream::updateConfig(int segmentindex)
 
   //take care of the case where an integral number of frames is not an integral number of blockspersend - ensure sendbytes is long enough
 
-  bufferinfo[segmentindex].sendbytes = int(((((double)bufferinfo[segmentindex].sendbytes)* ((double)config->getBlocksPerSend(bufferinfo[segmentindex].configindex)))/(config->getBlocksPerSend(bufferinfo[segmentindex].configindex) + config->getGuardBlocks(bufferinfo[segmentindex].configindex)) + 0.999));
+  //note below, the math should produce a pure integer, but add 0.5 to make sure that the fuzziness of floats doesn't cause an off-by-one error
+  bufferinfo[segmentindex].sendbytes = int(((((double)bufferinfo[segmentindex].sendbytes)* ((double)config->getBlocksPerSend(bufferinfo[segmentindex].configindex)))/(config->getBlocksPerSend(bufferinfo[segmentindex].configindex) + config->getGuardBlocks(bufferinfo[segmentindex].configindex)) + 0.5));
 }
 
 void Mk5DataStream::initialiseFile(int configindex, int fileindex)
