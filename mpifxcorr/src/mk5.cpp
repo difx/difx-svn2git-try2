@@ -146,13 +146,26 @@ int Mk5DataStream::calculateControlParams(int offsetsec, int offsetsamples)
   //do the necessary correction to start from a frame boundary - work out the offset from the start of this segment
   vlbaoffset = bufferindex - atsegment*readbytes;
 
+  if(vlbaoffset < 0)
+  {
+    cout << "ERROR Mk5DataStream::calculateControlParams : vlbaoffset=" << vlbaoffset << endl;
+  }
+
+  // bufferindex was previously computed assuming no framing overhead
   framesin = vlbaoffset/payloadbytes;
 
-  // Note here a time is needed, so we only count payloadbyes
-  bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] = bufferinfo[atsegment].seconds + (double(bufferinfo[atsegment].nanoseconds) + double(((framesin*payloadbytes)*bufferinfo[atsegment].bytespersampledenom)/bufferinfo[atsegment].bytespersamplenum)* bufferinfo[atsegment].sampletimens)/1000000000.0;
+  // Note here a time is needed, so we only count payloadbytes
+  bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] = bufferinfo[atsegment].seconds + ((double)(bufferinfo[atsegment].nanoseconds) + ((double)framesin*framens))/1000000000.0;
 
   //go back to nearest frame -- here the total number of bytes matters
-  return atsegment*readbytes + ((int)(vlbaoffset/framebytes))*framebytes;
+  bufferindex = atsegment*readbytes + framesin*framebytes;
+  if(bufferindex >= bufferbytes)
+  {
+    cout << "Mk5DataStream::calculateControlParams : bufferindex=" << bufferindex << " >= bufferbytes=" << bufferbytes << endl;
+    bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] = -1.0;
+    return 0;
+  }
+  return bufferindex;
 }
 
 void Mk5DataStream::updateConfig(int segmentindex)
