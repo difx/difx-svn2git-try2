@@ -58,7 +58,7 @@ FxManager::FxManager(Configuration * conf, int ncores, int * dids, int * cids, i
   cout << "STARTING " << PACKAGE_NAME << " version " << VERSION << endl;
 
 #ifdef HAVE_DIFXMESSAGE
-  difxMessageSendProcessState("Starting " PACKAGE_NAME " version " VERSION);
+  difxMessageSendDifxStatus(DIFX_STATE_STARTING, "Version " VERSION, 0.0);
 #endif
 
   /* set the PIPE signal handler to 'catch_pipe' */
@@ -185,7 +185,14 @@ FxManager::~FxManager()
   delete [] bufferlock;
 
 #ifdef HAVE_DIFXMESSAGE
-  difxMessageSendProcessState("Ending " PACKAGE_NAME);
+  if(terminatenow)
+  {
+    difxMessageSendDifxStatus(DIFX_STATE_TERMINATED, "", 0.0);
+  }
+  else
+  {
+    difxMessageSendDifxStatus(DIFX_STATE_DONE, "", 0.0);
+  }
 #endif
 }
 
@@ -193,14 +200,20 @@ void interrupthandler(int sig)
 {
   cout << "FXMANAGER caught a signal and is going to shut down the correlator" << endl;
   terminatenow = true;
-
-#ifdef HAVE_DIFXMESSAGE
-  difxMessageSendProcessState("SIGINT received");
-#endif
 }
 
 void FxManager::terminate()
 {
+#ifdef HAVE_DIFXMESSAGE
+  if(terminatenow)
+  {
+    difxMessageSendDifxStatus(DIFX_STATE_TERMINATING, "", 0.0);
+  }
+  else
+  {
+    difxMessageSendDifxStatus(DIFX_STATE_ENDING, "", 0.0);
+  }
+#endif
   cout << "FXMANAGER: Sending terminate signals" << endl;
   for(int i=0;i<numcores;i++)
     MPI_Send(senddata, 1, MPI_INT, coreids[i], CR_TERMINATE, return_comm);
@@ -371,9 +384,9 @@ void FxManager::receiveData(bool resend)
       {
 #ifdef HAVE_DIFXMESSAGE
 	{
-	  char message[200];
-	  sprintf(message, "Writing visibility, T = %f", visbuffer[visindex]->getTime());
-          difxMessageSendProcessState(message);
+	  double mjd;
+	  mjd = config->getStartMJD() + (visbuffer[visindex]->getTime()+config->getStartSeconds())/86400.0;
+          difxMessageSendDifxStatus(DIFX_STATE_RUNNING, "", mjd);
 	}
 #endif
         cout << "FXMANAGER telling visbuffer[" << visindex << "] to write out - this refers to time " << visbuffer[visindex]->getTime() << " - the previous buffer has time " << visbuffer[(visindex-1+config->getVisBufferLength())%config->getVisBufferLength()]->getTime() << ", and the next one has " << visbuffer[(visindex +1)%config->getVisBufferLength()]->getTime() << endl;

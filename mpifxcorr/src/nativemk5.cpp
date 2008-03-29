@@ -34,7 +34,7 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 	 */
 
 #ifdef HAVE_DIFXMESSAGE
-	sendMark5State(MARK5_STATE_OPENING, 0, 0, 0.0, 0.0);
+	sendMark5Status(MARK5_STATE_OPENING, 0, 0, 0.0, 0.0);
 #endif
 
 	cout << "Opening Streamstor [" << mpiid << "]" << endl;
@@ -59,14 +59,14 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 	readpointer = -1;
 	scan = 0;
 #ifdef HAVE_DIFXMESSAGE
-	sendMark5State(MARK5_STATE_OPEN, 0, 0, 0.0, 0.0);
+	sendMark5Status(MARK5_STATE_OPEN, 0, 0, 0.0, 0.0);
 #endif
 }
 
 NativeMk5DataStream::~NativeMk5DataStream()
 {
 #ifdef HAVE_DIFXMESSAGE
-	sendMark5State(MARK5_STATE_CLOSE, 0, 0, 0.0, 0.0);
+	sendMark5Status(MARK5_STATE_CLOSE, 0, 0, 0.0, 0.0);
 #endif
 	XLRClose(xlrDevice);
 }
@@ -91,7 +91,7 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	startmjd = corrstartday + corrstartseconds/86400.0;
 
 #ifdef HAVE_DIFXMESSAGE
-	sendMark5State(MARK5_STATE_GETDIR, 0, 0, startmjd, 0.0);
+	sendMark5Status(MARK5_STATE_GETDIR, 0, 0, startmjd, 0.0);
 #endif
 
 	if(module.nscans < 0)
@@ -186,7 +186,7 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	}
 
 #ifdef HAVE_DIFXMESSAGE
-	sendMark5State(MARK5_STATE_GOTDIR, scan-module.scans+1, readpointer, startmjd, 0.0);
+	sendMark5Status(MARK5_STATE_GOTDIR, scan-module.scans+1, readpointer, startmjd, 0.0);
 #endif
 
 	cout << "The frame start day is " << scan->mjd << 
@@ -382,7 +382,7 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 			double mjd;
 			rate = (double)(readpointer + bytes - lastpos)*8.0/1000000.0;
 			mjd = corrstartday + (corrstartseconds + readseconds + (double)readnanoseconds/1000000000.0)/86400.0;
-			sendMark5State(MARK5_STATE_PLAY, scan-module.scans+1, readpointer, mjd, rate);
+			sendMark5Status(MARK5_STATE_PLAY, scan-module.scans+1, readpointer, mjd, rate);
 		}
 		lastpos = readpointer + bytes;
 	}
@@ -497,21 +497,21 @@ void NativeMk5DataStream::loopfileread()
 }
 
 #ifdef HAVE_DIFXMESSAGE
-int NativeMk5DataStream::sendMark5State(enum Mk5Status state, int scan, long long position, double dataMJD, float rate)
+int NativeMk5DataStream::sendMark5Status(enum Mk5State state, int scan, long long position, double dataMJD, float rate)
 {
 	int v = 0;
 	char message[1000];
 	S_BANKSTATUS A, B;
 	XLR_RETURN_CODE xlrRC;
-	DifxMessageMk5Status mk5state;
+	DifxMessageMk5Status mk5status;
 
-	mk5state.state = state;
-	mk5state.status = 0;
-	mk5state.activeBank = ' ';
-	mk5state.position = position;
-	mk5state.rate = rate;
-	mk5state.dataMJD = dataMJD;
-	mk5state.scanNumber = scan;
+	mk5status.state = state;
+	mk5status.status = 0;
+	mk5status.activeBank = ' ';
+	mk5status.position = position;
+	mk5status.rate = rate;
+	mk5status.dataMJD = dataMJD;
+	mk5status.scanNumber = scan;
 	if(state != MARK5_STATE_OPENING && state != MARK5_STATE_ERROR)
 	{
 		xlrRC = XLRGetBankStatus(xlrDevice, BANK_A, &A);
@@ -521,79 +521,79 @@ int NativeMk5DataStream::sendMark5State(enum Mk5Status state, int scan, long lon
 		}
 		if(xlrRC == XLR_SUCCESS)
 		{
-			strncpy(mk5state.vsnA, A.Label, 8);
-			mk5state.vsnA[8] = 0;
-			if(strncmp(mk5state.vsnA, "LABEL NO", 8) == 0)
+			strncpy(mk5status.vsnA, A.Label, 8);
+			mk5status.vsnA[8] = 0;
+			if(strncmp(mk5status.vsnA, "LABEL NO", 8) == 0)
 			{
-				strcpy(mk5state.vsnA, "none");
+				strcpy(mk5status.vsnA, "none");
 			}
-			strncpy(mk5state.vsnB, B.Label, 8);
-			mk5state.vsnB[8] = 0;
-			if(strncmp(mk5state.vsnB, "LABEL NO", 8) == 0)
+			strncpy(mk5status.vsnB, B.Label, 8);
+			mk5status.vsnB[8] = 0;
+			if(strncmp(mk5status.vsnB, "LABEL NO", 8) == 0)
 			{
-				strcpy(mk5state.vsnB, "none");
+				strcpy(mk5status.vsnB, "none");
 			}
 			if(A.Selected)
 			{
-				mk5state.activeBank = 'A';
-				mk5state.status |= 0x100000;
+				mk5status.activeBank = 'A';
+				mk5status.status |= 0x100000;
 			}
 			if(A.State == STATE_READY)
 			{
-				mk5state.status |= 0x200000;
+				mk5status.status |= 0x200000;
 			}
 			if(A.MediaStatus == MEDIASTATUS_FAULTED)
 			{
-				mk5state.status |= 0x400000;
+				mk5status.status |= 0x400000;
 			}
 			if(A.WriteProtected)
 			{
-				mk5state.status |= 0x800000;
+				mk5status.status |= 0x800000;
 			}
 			if(B.Selected)
 			{
-				mk5state.activeBank = 'B';
-				mk5state.status |= 0x1000000;
+				mk5status.activeBank = 'B';
+				mk5status.status |= 0x1000000;
 			}
 			if(B.State == STATE_READY)
 			{
-				mk5state.status |= 0x2000000;
+				mk5status.status |= 0x2000000;
 			}
 			if(B.MediaStatus == MEDIASTATUS_FAULTED)
 			{
-				mk5state.status |= 0x4000000;
+				mk5status.status |= 0x4000000;
 			}
 			if(B.WriteProtected)
 			{
-				mk5state.status |= 0x8000000;
+				mk5status.status |= 0x8000000;
 			}
 		}
 		if(xlrRC != XLR_SUCCESS)
 		{
-			mk5state.state = MARK5_STATE_ERROR;
+			mk5status.state = MARK5_STATE_ERROR;
 		}
 	}
 	else
 	{
-		sprintf(mk5state.vsnA, "???");
-		sprintf(mk5state.vsnB, "???");
+		sprintf(mk5status.vsnA, "???");
+		sprintf(mk5status.vsnB, "???");
 	}
-	switch(mk5state.state)
+	switch(mk5status.state)
 	{
 	case MARK5_STATE_PLAY:
-		mk5state.status |= 0x0100;
+		mk5status.status |= 0x0100;
 		break;
 	case MARK5_STATE_ERROR:
-		mk5state.status |= 0x0002;
+		mk5status.status |= 0x0002;
 		break;
 	case MARK5_STATE_IDLE:
-		mk5state.status |= 0x0001;
+		mk5status.status |= 0x0001;
 		break;
 	default:
 		break;
 	}
 
-	v = difxMessageSendMark5State(&mk5state);
+	v = difxMessageSendMark5Status(&mk5status);
 
 	return v;
 }

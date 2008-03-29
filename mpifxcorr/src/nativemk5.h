@@ -39,7 +39,7 @@ public:
 protected:
 	void moduleToMemory(int buffersegment);
 #ifdef HAVE_DIFXMESSAGE
-	int sendMark5State(enum Mk5Status state, int scanNumber, long long position, double dataMJD, float rate);
+	int sendMark5Status(enum Mk5State state, int scanNumber, long long position, double dataMJD, float rate);
 #endif
 
 #ifdef HAVE_XLRAPI_H
