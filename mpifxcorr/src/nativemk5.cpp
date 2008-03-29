@@ -22,7 +22,6 @@
 
 #define u32 uint32_t
 
-
 NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum, 
 	int id, int ncores, int * cids, int bufferfactor, int numsegments) :
 		Mk5DataStream(conf, snum, id, ncores, cids, bufferfactor, 
@@ -34,6 +33,10 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 	 * because thats the way config determines max bytes
 	 */
 
+#ifdef HAVE_DIFXMESSAGE
+	sendMark5State(MARK5_STATE_OPENING, 0, 0, 0.0, 0.0);
+#endif
+
 	cout << "Opening Streamstor [" << mpiid << "]" << endl;
 	xlrRC = XLROpen(1, &xlrDevice);
   
@@ -43,7 +46,7 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 		cerr << "Error opening Streamstor device [" << mpiid << "]" << endl;
 		cerr << "Do you have permission +rw for /dev/windrvr6?" << endl;
 #ifdef HAVE_DIFXMESSAGE
-		difxMessageSendProcessState("Failure opening Streamstor device");
+		difxMessageSendDifxError("Failure opening Streamstor device", 0);
 #endif
 		exit(1);
 	}
@@ -56,16 +59,16 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 	readpointer = -1;
 	scan = 0;
 #ifdef HAVE_DIFXMESSAGE
-	difxMessageSendProcessState("Open Streamstor");
+	sendMark5State(MARK5_STATE_OPEN, 0, 0, 0.0, 0.0);
 #endif
 }
 
 NativeMk5DataStream::~NativeMk5DataStream()
 {
-	XLRClose(xlrDevice);
 #ifdef HAVE_DIFXMESSAGE
-	difxMessageSendProcessState("Close Streamstor");
+	sendMark5State(MARK5_STATE_CLOSE, 0, 0, 0.0, 0.0);
 #endif
+	XLRClose(xlrDevice);
 }
 
 /* Here "File" is VSN */
@@ -88,9 +91,7 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	startmjd = corrstartday + corrstartseconds/86400.0;
 
 #ifdef HAVE_DIFXMESSAGE
-		sprintf(message, "GetDir numScans=%d VSN=%s startMJD=%12.6f", 
-			module.nscans, datafilenames[configindex][fileindex].c_str(), startmjd);
-		difxMessageSendProcessState(message);
+	sendMark5State(MARK5_STATE_GETDIR, 0, 0, startmjd, 0.0);
 #endif
 
 	if(module.nscans < 0)
@@ -105,6 +106,10 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 			cerr << "Module " << 
 				datafilenames[configindex][fileindex] << 
 				" not found in unit - aborting!!!" << endl;
+#ifdef HAVE_DIFXMESSAGE
+			sprintf(message, "Module %s not found in unit", datafilenames[configindex][fileindex].c_str());
+			difxMessageSendDifxError(message, 0);
+#endif
 			dataremaining = false;
 			return;
 		}
@@ -181,9 +186,9 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	}
 
 #ifdef HAVE_DIFXMESSAGE
-	sprintf(message, "Reading scan %d of %d", scan-module.scans, module.nscans);
-	difxMessageSendProcessState(message);
+	sendMark5State(MARK5_STATE_GOTDIR, scan-module.scans+1, readpointer, startmjd, 0.0);
 #endif
+
 	cout << "The frame start day is " << scan->mjd << 
 		", the frame start seconds is " << (scan->sec+scan->ns*1.e-9)
 		<< ", readseconds is " << readseconds << 
@@ -194,19 +199,11 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	 */
 	if(doUpdate)
 	{
-#ifdef HAVE_DIFXMESSAGE
-		sprintf(message, "Starting config update");
-		difxMessageSendProcessState(message);
-#endif
 		cout << "Updating all configs [" << mpiid << "]" << endl;
 		for(i = 0; i < numdatasegments; i++)
 		{
 			updateConfig(i);
 		}
-#ifdef HAVE_DIFXMESSAGE
-		sprintf(message, "Finished config update");
-		difxMessageSendProcessState(message);
-#endif
 	}
 	else
 	{
@@ -304,7 +301,13 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 
 	for(t = 0; t < 2; t++)
 	{
-		XLRReadImmed(xlrDevice, &xlrRD);
+		xlrRC = XLRReadImmed(xlrDevice, &xlrRD);
+
+		if(xlrRC != XLR_SUCCESS)
+		{
+			cout << "XLRReadImmed returns FAIL" << endl;
+			break;
+		}
 
 		/* Wait up to 10 seconds for a return */
 		for(i = 1; i < 100000; i++)
@@ -321,6 +324,11 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 				XLRGetErrorMessage(errStr, xlrEC);
 				cerr << "NativeMk5DataStream " << mpiid << 
 					" XLRReadData error: " << errStr << endl; 
+#ifdef HAVE_DIFXMESSAGE
+				sprintf(message, "Read error at position=%lld, length=%d, error=%s", readpointer, bytes, errStr);
+				difxMessageSendDifxError(message, 0);
+#endif
+
 				dataremaining = false;
 				keepreading = false;
 				bufferinfo[buffersegment].validbytes = 0;
@@ -371,9 +379,10 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		if(lastpos > 0)
 		{
 			double rate;
+			double mjd;
 			rate = (double)(readpointer + bytes - lastpos)*8.0/1000000.0;
-			sprintf(message, "T = %u pos = %lld rate = %7.2f Mbps", now, readpointer + bytes, rate);
-			difxMessageSendProcessState(message);
+			mjd = corrstartday + (corrstartseconds + readseconds + (double)readnanoseconds/1000000000.0)/86400.0;
+			sendMark5State(MARK5_STATE_PLAY, scan-module.scans+1, readpointer, mjd, rate);
 		}
 		lastpos = readpointer + bytes;
 	}
@@ -383,6 +392,10 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 	{
 		cerr << "Native Mark5 Error at:" << a << ":" << b << "  rp = " << readpointer << endl;
 		cerr << "[" << mpiid << "] Waited 10 seconds for a read and gave up" << endl;
+#ifdef HAVE_DIFXMESSAGE
+		sprintf(message, "Read error at position=%lld, length=%d.  Dropping out.", readpointer, bytes);
+		difxMessageSendDifxError(message, 0);
+#endif
 		dataremaining = false;
 		keepreading = false;
 		bufferinfo[buffersegment].validbytes = 0;
@@ -482,3 +495,106 @@ void NativeMk5DataStream::loopfileread()
 
   cout << "DATASTREAM " << mpiid << "'s readthread is exiting!!! Filecount was " << filesread[bufferinfo[lastvalidsegment].configindex] << ", confignumfiles was " << confignumfiles[bufferinfo[lastvalidsegment].configindex] << ", dataremaining was " << dataremaining << ", keepreading was " << keepreading << endl;
 }
+
+#ifdef HAVE_DIFXMESSAGE
+int NativeMk5DataStream::sendMark5State(enum Mk5Status state, int scan, long long position, double dataMJD, float rate)
+{
+	int v = 0;
+	char message[1000];
+	S_BANKSTATUS A, B;
+	XLR_RETURN_CODE xlrRC;
+	DifxMessageMk5Status mk5state;
+
+	mk5state.state = state;
+	mk5state.status = 0;
+	mk5state.activeBank = ' ';
+	mk5state.position = position;
+	mk5state.rate = rate;
+	mk5state.dataMJD = dataMJD;
+	mk5state.scanNumber = scan;
+	if(state != MARK5_STATE_OPENING && state != MARK5_STATE_ERROR)
+	{
+		xlrRC = XLRGetBankStatus(xlrDevice, BANK_A, &A);
+		if(xlrRC == XLR_SUCCESS)
+		{
+			xlrRC = XLRGetBankStatus(xlrDevice, BANK_B, &B);
+		}
+		if(xlrRC == XLR_SUCCESS)
+		{
+			strncpy(mk5state.vsnA, A.Label, 8);
+			mk5state.vsnA[8] = 0;
+			if(strncmp(mk5state.vsnA, "LABEL NO", 8) == 0)
+			{
+				strcpy(mk5state.vsnA, "none");
+			}
+			strncpy(mk5state.vsnB, B.Label, 8);
+			mk5state.vsnB[8] = 0;
+			if(strncmp(mk5state.vsnB, "LABEL NO", 8) == 0)
+			{
+				strcpy(mk5state.vsnB, "none");
+			}
+			if(A.Selected)
+			{
+				mk5state.activeBank = 'A';
+				mk5state.status |= 0x100000;
+			}
+			if(A.State == STATE_READY)
+			{
+				mk5state.status |= 0x200000;
+			}
+			if(A.MediaStatus == MEDIASTATUS_FAULTED)
+			{
+				mk5state.status |= 0x400000;
+			}
+			if(A.WriteProtected)
+			{
+				mk5state.status |= 0x800000;
+			}
+			if(B.Selected)
+			{
+				mk5state.activeBank = 'B';
+				mk5state.status |= 0x1000000;
+			}
+			if(B.State == STATE_READY)
+			{
+				mk5state.status |= 0x2000000;
+			}
+			if(B.MediaStatus == MEDIASTATUS_FAULTED)
+			{
+				mk5state.status |= 0x4000000;
+			}
+			if(B.WriteProtected)
+			{
+				mk5state.status |= 0x8000000;
+			}
+		}
+		if(xlrRC != XLR_SUCCESS)
+		{
+			mk5state.state = MARK5_STATE_ERROR;
+		}
+	}
+	else
+	{
+		sprintf(mk5state.vsnA, "???");
+		sprintf(mk5state.vsnB, "???");
+	}
+	switch(mk5state.state)
+	{
+	case MARK5_STATE_PLAY:
+		mk5state.status |= 0x0100;
+		break;
+	case MARK5_STATE_ERROR:
+		mk5state.status |= 0x0002;
+		break;
+	case MARK5_STATE_IDLE:
+		mk5state.status |= 0x0001;
+		break;
+	default:
+		break;
+	}
+
+	v = difxMessageSendMark5State(&mk5state);
+
+	return v;
+}
+#endif

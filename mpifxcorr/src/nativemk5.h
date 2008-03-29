@@ -16,11 +16,16 @@
 #include "mode.h"
 #include "datastream.h"
 #include "mark5access.h"
+
 #ifdef HAVE_XLRAPI_H
 #include "mark5dir.h"
 #endif
+
 #include "mk5.h"
 
+#ifdef HAVE_DIFXMESSAGE
+#include <difxmessage.h>
+#endif
 
 class NativeMk5DataStream : public Mk5DataStream
 {
@@ -33,6 +38,9 @@ public:
 
 protected:
 	void moduleToMemory(int buffersegment);
+#ifdef HAVE_DIFXMESSAGE
+	int sendMark5State(enum Mk5Status state, int scanNumber, long long position, double dataMJD, float rate);
+#endif
 
 #ifdef HAVE_XLRAPI_H
 private:
