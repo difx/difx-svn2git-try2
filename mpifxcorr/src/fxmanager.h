@@ -135,7 +135,7 @@ private:
   int * numsent;
   int * extrareceived;
   int *** coretimes;
-  int socket, monitorport, mon_socket;
+  int monitorport, mon_socket;
   char * hostname;
   bool monitor;
   cf32 * resultbuffer;

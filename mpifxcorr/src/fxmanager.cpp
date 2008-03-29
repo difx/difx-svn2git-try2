@@ -57,6 +57,10 @@ FxManager::FxManager(Configuration * conf, int ncores, int * dids, int * cids, i
 
   cout << "STARTING " << PACKAGE_NAME << " version " << VERSION << endl;
 
+#ifdef HAVE_DIFXMESSAGE
+  difxMessageSendProcessState("Starting " PACKAGE_NAME " version " VERSION);
+#endif
+
   /* set the PIPE signal handler to 'catch_pipe' */
   signal(SIGPIPE, catch_pipe);
 
@@ -160,7 +164,6 @@ FxManager::FxManager(Configuration * conf, int ncores, int * dids, int * cids, i
 
 FxManager::~FxManager()
 {
-  close(socket);
   for(int i=0;i<Core::RECEIVE_RING_LENGTH;i++)
   {
     for(int j=0;j<numcores;j++)
@@ -172,7 +175,7 @@ FxManager::~FxManager()
   delete [] datastreamids;
   delete [] coreids;
   delete [] extrareceived;
-  delete [] resultbuffer;
+  vectorFree(resultbuffer);
   for(int i=0;i<config->getVisBufferLength();i++)
     delete visbuffer[i];
   delete [] visbuffer;
@@ -180,6 +183,10 @@ FxManager::~FxManager()
   //delete [] fileopened;
   delete [] islocked;
   delete [] bufferlock;
+
+#ifdef HAVE_DIFXMESSAGE
+  difxMessageSendProcessState("Ending " PACKAGE_NAME);
+#endif
 }
 
 void interrupthandler(int sig)
