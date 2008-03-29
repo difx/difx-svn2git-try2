@@ -98,12 +98,20 @@ int setup_net(char *monhostname, int port, int window_size, int *sock) {
 
 static void generateIdentifier(const char *inputfile, int myID, int numdatastreams, char *identifier)
 {
-  if(myID == 0)
-    sprintf(identifier, "Manager");
-  else if(myID <= numdatastreams)
-    sprintf(identifier, "Datastream_%d", myID-1);
-  else
-    sprintf(identifier, "Core_%d", myID-1-numdatastreams);
+  int i, l;
+
+  strcpy(identifier, inputfile);
+  l = strlen(identifier);
+  
+  // strip off ".input"
+  for(i = l-1; i > 0; i--)
+  {
+    if(identifier[i] == '.')
+    {
+      identifier[i] = 0;
+      break;
+    }
+  }
 }
 
 
@@ -114,9 +122,9 @@ int main(int argc, char *argv[])
   int numprocs, myID, numdatastreams, numcores;
   double t1, t2;
   Configuration * config;
-  FxManager * manager;
-  Core * core;
-  DataStream * stream;
+  FxManager * manager = 0;
+  Core * core = 0;
+  DataStream * stream = 0;
   int * coreids;
   int * datastreamids;
   bool monitor = false;
@@ -156,7 +164,7 @@ int main(int argc, char *argv[])
     if(colindex2 == string::npos)
     {
       port = atoi(monitoropt.substr(colindex1 + 1).c_str());
-      monitor_skip = 1;	// NOTE THIS FIX
+      monitor_skip = 1;	
     }
     else
     {
@@ -208,8 +216,7 @@ int main(int argc, char *argv[])
   {
     char identifier[128];
     generateIdentifier(argv[1], myID, numdatastreams, identifier);
-    difxMessageInit(identifier);
-    difxMessageSendProcessState("Starting");
+    difxMessageInit(myID, identifier);
   }
 #endif
 
@@ -255,8 +262,11 @@ int main(int argc, char *argv[])
   delete [] coreids;
   delete [] datastreamids;
 
+  if(manager) delete manager;
+  if(stream) delete stream;
+  if(core) delete core;
+
 #ifdef HAVE_DIFXMESSAGE
-  difxMessageSendProcessState("Stopping");
 #endif
 
   std::cout << myID << ": BYE!" << endl;
