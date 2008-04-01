@@ -20,6 +20,8 @@
 #include <difxmessage.h>
 #endif
 
+#define FILL_PATTERN 0x11223344
+
 #define u32 uint32_t
 
 NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum, 
@@ -53,6 +55,24 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 	else
 	{
 		cerr << "Success opening Streamstor device [" << mpiid << "]" <<  endl;
+	}
+
+	xlrRC = XLRSetOption(xlrDevice, SS_OPT_SKIPCHECKDIR);
+	if(xlrRC == XLR_SUCCESS)
+	{
+		xlrRC = XLRSetOption(xlrDevice, SS_OPT_REALTIMEPLAYBACK);
+	}
+	if(xlrRC == XLR_SUCCESS)
+	{
+		xlrRC = XLRSetFillData(xlrDevice, FILL_PATTERN);
+	}
+	if(xlrRC == XLR_SUCCESS)
+	{
+		cout << "Set data replacement mode and fill pattern" << endl;
+	}
+	else
+	{
+		cerr << "Error setting data replacement mode / fill pattern" << endl;
 	}
 
 	module.nscans = -1;
