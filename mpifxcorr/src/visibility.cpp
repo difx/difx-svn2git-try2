@@ -9,6 +9,7 @@
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                  *
  ***************************************************************************/
+#include "config.h"
 #include "visibility.h"
 #include "core.h"
 #include "datastream.h"
