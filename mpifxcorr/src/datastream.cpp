@@ -99,6 +99,7 @@ void DataStream::initialise()
   while(currentconfigindex < 0)
     currentconfigindex = config->getConfigIndex(++readseconds);
   readfromfile = config->isReadFromFile(currentconfigindex, streamnum);
+
   for(int i=0;i<numdatasegments;i++)
   {
     pthread_mutex_init(&bufferlock[i], NULL);
@@ -733,7 +734,7 @@ void DataStream::openstream(int portnumber, int tcpwindowsizebytes)
   
   status = bind(serversock, (struct sockaddr *)&server, sizeof(server));
   if (status!=0) {
-    cerr << "Error binding socket" << endl;
+    cerr << "Datastream " << mpiid << ": Error binding socket" << endl;
     close(serversock);
   } 
   
@@ -741,17 +742,17 @@ void DataStream::openstream(int portnumber, int tcpwindowsizebytes)
      back log of 1 */
   status = listen(serversock,1);
   if (status!=0) {
-    cerr << "Error binding socket" << endl;
+    cerr << "Datastream " << mpiid << ": Error binding socket" << endl;
     close(serversock);
   }
 
-  cout << "Waiting for connection" << endl;
+  cout << "Datastream " << mpiid << ": Waiting for connection" << endl;
 
   /* Accept connection */
   client_len = sizeof(client);
   socketnumber = accept(serversock, (struct sockaddr *)&client, &client_len);
   if (socketnumber == -1) {
-    cerr << "Error connecting to client" << endl;
+    cerr << "Datastream " << mpiid << ": Error connecting to client" << endl;
     close(serversock);
   }
 

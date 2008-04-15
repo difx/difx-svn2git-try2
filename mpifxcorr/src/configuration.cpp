@@ -738,7 +738,7 @@ void Configuration::processDatastreamTable(ifstream * input)
       datastreamtable[i].source = EVLBI;
     else
     {
-      cerr << "Unnkown data source " << line << " (case sensitive choices are UNIXFILE, MK5MODULE and EVLBI)" << endl;
+      cerr << "Unnkown data source " << line << " (case sensitive choices are FILE, MK5MODULE and EVLBI)" << endl;
       exit(1);
     }
 

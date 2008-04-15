@@ -80,7 +80,8 @@ Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, in
 
   if(framesamples != mark5stream->framesamples)
   {
-    cerr << "Mk5Mode::Mk5Mode : framesamples inconsistent" << endl;
+    cerr << "Mk5Mode::Mk5Mode : framesamples inconsistent (" << framesamples 
+	 << "/" << mark5stream->framesamples << ")" << endl;
     exit(1);
   }
 
