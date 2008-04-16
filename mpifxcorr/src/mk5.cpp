@@ -234,3 +234,63 @@ void Mk5DataStream::initialiseFile(int configindex, int fileindex)
 
   input.seekg(offset);
 }
+
+void Mk5DataStream::networkToMemory(int buffersegment, int & framebytesremaining)
+{
+  DataStream::networkToMemory(buffersegment, framebytesremaining);
+  // This deadreckons readseconds from the last frame. This will not initially be set, and we really should 
+  // resync occasionally, so..
+  initialiseNetwork(configindex, fileindex);
+}
+
+// This is almost identical to initialiseFile. The two should probably be combined
+void Mk5DataStream::initialiseNetwork(int configindex, int fileindex)
+{
+  int offset;
+  char formatname[64];
+  struct mark5_stream *mark5stream;
+  int nbits, ninputbands, framebytes;
+  Configuration::dataformat format;
+  double bw;
+
+  format = config->getDataFormat(configindex, streamnum);
+  nbits = config->getDNumBits(configindex, streamnum);
+  ninputbands = config->getDNumInputBands(configindex, streamnum);
+  framebytes = config->getFrameBytes(configindex, streamnum);
+  bw = config->getConfigBandwidth(configindex);
+
+  genFormatName(format, ninputbands, bw, nbits, framebytes, formatname);
+
+  mark5stream = new_mark5_stream(
+    new_mark5_stream_memory(&databuffer[buffersegment*(bufferbytes/numdatasegments)], 
+			    bufferinfo[buffersegment].validbytes),
+    new_mark5_format_generic_from_string(formatname) );
+  if(mark5stream->nchan != config->getDNumInputBands(configindex, streamnum))
+  {
+    cerr << "Error - number of input bands for datastream " << streamnum << " (" << ninputbands << ") does not match with MkV file " << datafilenames[configindex][fileindex] << " (" << mark5stream->nchan << "), will be ignored!!!" << endl;
+  }
+
+  // resolve any day ambiguities
+  mark5_stream_fix_mjd(mark5stream, corrstartday);
+
+  mark5_stream_print(mark5stream);
+
+  // WALTER: Should we worry about this in eVLBI case?
+  //offset = mark5stream->frameoffset;
+
+  readseconds = 86400*(mark5stream->mjd-corrstartday) + mark5stream->sec-corrstartseconds + intclockseconds;
+  readnanoseconds = mark5stream->ns;
+  cout << "The frame start day is " << mark5stream->mjd << ", the frame start seconds is " << mark5stream->sec << ", the frame start ns is " << mark5stream->ns << ", readseconds is " << readseconds << ", readnanoseconds is " << readnanoseconds << endl;
+
+  //close mark5stream
+  delete_mark5_stream(mark5stream);
+
+}
+
+int Mk5DataStream::openframe()
+{
+
+  cout << "Mk5DataStream::openframe" << endl;
+  
+  return readbytes*10;  // Do 10 frames at a time
+}
