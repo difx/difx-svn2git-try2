@@ -717,21 +717,22 @@ void DataStream::openstream(int portnumber, int tcpwindowsizebytes)
   } 
   
   /* Set the TCP window size */
-  setsockopt(serversock, SOL_SOCKET, SO_SNDBUF,
-	     (char *) &tcpwindowsizebytes, sizeof(tcpwindowsizebytes));
-  if (status!=0) {
-    cerr << "Error setting socket options" << endl;
-    close(serversock);
-  } 
+  if (tcpwindowsizebytes!=0) {
+    setsockopt(serversock, SOL_SOCKET, SO_SNDBUF,
+	       (char *) &tcpwindowsizebytes, sizeof(tcpwindowsizebytes));
+    if (status!=0) {
+      cerr << "Error setting socket options" << endl;
+      close(serversock);
+    } 
 
-  setsockopt(serversock, SOL_SOCKET, SO_RCVBUF,
-	     (char *) &tcpwindowsizebytes, sizeof(tcpwindowsizebytes));
+    setsockopt(serversock, SOL_SOCKET, SO_RCVBUF,
+	       (char *) &tcpwindowsizebytes, sizeof(tcpwindowsizebytes));
 
-  if (status!=0) {
-    cerr << "Error setting socket options" << endl;
-    close(serversock);
-  } 
-  
+    if (status!=0) {
+      cerr << "Error setting socket options" << endl;
+      close(serversock);
+    } 
+  }
   status = bind(serversock, (struct sockaddr *)&server, sizeof(server));
   if (status!=0) {
     cerr << "Datastream " << mpiid << ": Error binding socket" << endl;
