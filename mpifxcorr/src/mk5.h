@@ -119,6 +119,8 @@ protected:
   virtual int openframe();
 
   int framebytes, payloadbytes, framens;
+
+  int lastconfig;
 };
 
 #endif

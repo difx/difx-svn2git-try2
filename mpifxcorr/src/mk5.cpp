@@ -130,6 +130,7 @@ Mk5DataStream::Mk5DataStream(Configuration * conf, int snum, int id, int ncores,
  : DataStream(conf, snum, id, ncores, cids, bufferfactor, numsegments)
 {
   //each data buffer segment contains an integer number of frames, because thats the way config determines max bytes
+  lastconfig = -1;
 }
 
 Mk5DataStream::~Mk5DataStream()
@@ -241,6 +242,11 @@ void Mk5DataStream::networkToMemory(int buffersegment, int & framebytesremaining
   // This deadreckons readseconds from the last frame. This will not initially be set, and we really should 
   // resync occasionally, so..
   initialiseNetwork(0, buffersegment);
+
+  readnanoseconds += bufferinfo[buffersegment].nsinc;
+  readseconds += readnanoseconds/1000000000;
+  readnanoseconds %= 1000000000;
+
 }
 
 // This is almost identical to initialiseFile. The two should probably be combined
@@ -274,7 +280,10 @@ void Mk5DataStream::initialiseNetwork(int configindex, int buffersegment)
   // resolve any day ambiguities
   mark5_stream_fix_mjd(mark5stream, corrstartday);
 
-  mark5_stream_print(mark5stream);
+  if (configindex != lastconfig) {
+    mark5_stream_print(mark5stream);
+    //lastconfig = configindex;
+  }
 
   // WALTER: Should we worry about this in eVLBI case?
   //offset = mark5stream->frameoffset;
