@@ -240,11 +240,11 @@ void Mk5DataStream::networkToMemory(int buffersegment, int & framebytesremaining
   DataStream::networkToMemory(buffersegment, framebytesremaining);
   // This deadreckons readseconds from the last frame. This will not initially be set, and we really should 
   // resync occasionally, so..
-  initialiseNetwork(configindex, fileindex);
+  initialiseNetwork(0, buffersegment);
 }
 
 // This is almost identical to initialiseFile. The two should probably be combined
-void Mk5DataStream::initialiseNetwork(int configindex, int fileindex)
+void Mk5DataStream::initialiseNetwork(int configindex, int buffersegment)
 {
   int offset;
   char formatname[64];
@@ -252,6 +252,7 @@ void Mk5DataStream::initialiseNetwork(int configindex, int fileindex)
   int nbits, ninputbands, framebytes;
   Configuration::dataformat format;
   double bw;
+
 
   format = config->getDataFormat(configindex, streamnum);
   nbits = config->getDNumBits(configindex, streamnum);
@@ -267,7 +268,7 @@ void Mk5DataStream::initialiseNetwork(int configindex, int fileindex)
     new_mark5_format_generic_from_string(formatname) );
   if(mark5stream->nchan != config->getDNumInputBands(configindex, streamnum))
   {
-    cerr << "Error - number of input bands for datastream " << streamnum << " (" << ninputbands << ") does not match with MkV file " << datafilenames[configindex][fileindex] << " (" << mark5stream->nchan << "), will be ignored!!!" << endl;
+    cerr << "Error - number of input bands for datastream " << streamnum << " (" << ninputbands << ") does not match with MkV data " << " (" << mark5stream->nchan << "), will be ignored!!!" << endl;
   }
 
   // resolve any day ambiguities
