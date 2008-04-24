@@ -254,6 +254,7 @@ void Mk5DataStream::initialiseNetwork(int configindex, int buffersegment)
 {
   int offset;
   char formatname[64];
+  char *ptr;
   struct mark5_stream *mark5stream;
   int nbits, ninputbands, framebytes;
   Configuration::dataformat format;
@@ -282,25 +283,51 @@ void Mk5DataStream::initialiseNetwork(int configindex, int buffersegment)
 
   if (configindex != lastconfig) {
     mark5_stream_print(mark5stream);
-    //lastconfig = configindex;
+    lastconfig = configindex;
   }
 
-  // WALTER: Should we worry about this in eVLBI case?
-  //offset = mark5stream->frameoffset;
+  offset = mark5stream->frameoffset;
+
+  // If offset is non-zero we need to shuffle the data in memory to align on a frame
+  // boundary. This is the equivalent of a seek in the file case.
+  if (offset>0) { 
+    ptr = (char*)&databuffer[buffersegment*(bufferbytes/numdatasegments)];
+
+    if (offset>bufferinfo[buffersegment].validbytes) {
+      cerr << "Datastream " << mpiid << ": ERROR Mark5 offset > segment size!!!" << endl;
+      keepreading=false;
+    } else {
+      int nread, status;
+      cout << "************Datastream " << mpiid << ": Seeking " << offset << " bytes into stream. " << endl;
+      memmove(ptr, ptr+offset, bufferinfo[buffersegment].validbytes-offset);
+      status = readnetwork(socketnumber, ptr+bufferinfo[buffersegment].validbytes-offset, offset, &nread);
+
+      // We *should not* update framebytes remaining (or validbyes). 
+
+      if (status==-1) { // Error reading socket
+	cerr << "Datastream " << mpiid << ": Error reading socket" << endl;
+	keepreading=false;
+      } else if (status==0) {  // Socket closed remotely
+	keepreading=false;
+      } else if (nread!=offset) {
+	cerr << "Datastream " << mpiid << ": Did not read enough bytes" << endl;
+	keepreading=false;
+      }
+    }
+  }
 
   readseconds = 86400*(mark5stream->mjd-corrstartday) + mark5stream->sec-corrstartseconds + intclockseconds;
   readnanoseconds = mark5stream->ns;
-  cout << "The frame start day is " << mark5stream->mjd << ", the frame start seconds is " << mark5stream->sec << ", the frame start ns is " << mark5stream->ns << ", readseconds is " << readseconds << ", readnanoseconds is " << readnanoseconds << endl;
+  //cout << "The frame start day is " << mark5stream->mjd << ", the frame start seconds is " << mark5stream->sec << ", the frame start ns is " << mark5stream->ns << ", readseconds is " << readseconds << ", readnanoseconds is " << readnanoseconds << endl;
 
-  //close mark5stream
   delete_mark5_stream(mark5stream);
 
 }
 
 int Mk5DataStream::openframe()
 {
-
-  cout << "Mk5DataStream::openframe" << endl;
-  
-  return readbytes*10;  // Do 10 frames at a time
+  // The number of segments per "frame" is arbitrary. Just set it to ~ 1sec
+  int nsegment;
+  nsegment = (int)(1.0e9/bufferinfo[0].nsinc+0.1);
+  return readbytes*nsegment;  
 }
