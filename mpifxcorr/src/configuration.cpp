@@ -189,6 +189,24 @@ void Configuration::getFrameInc(int configindex, int configdatastreamindex, int 
   ns = int(1.0e9*(seconds - sec));
 }
 
+int Configuration::getFramesPerSecond(int configindex, int configdatastreamindex)
+{
+  int nchan, qb;
+  dataformat f;
+  int payloadsize;
+  double samplerate; /* in Hz */
+  double seconds;
+
+  nchan = getDNumInputBands(configindex, configdatastreamindex);
+  f = getDataFormat(configindex, configdatastreamindex);
+  samplerate = 2.0e6*getDBandwidth(configindex, configdatastreamindex, 0);
+  qb = getDNumBits(configindex, configdatastreamindex);
+  payloadsize = getFramePayloadBytes(configindex, configdatastreamindex);
+
+  // This will always work out to be an integer 
+  return int(samplerate*nchan*qb/(8*payloadsize) + 0.5);
+}
+
 int Configuration::getMaxResultLength()
 {
   int length;

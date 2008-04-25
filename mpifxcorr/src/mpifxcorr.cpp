@@ -98,9 +98,22 @@ int setup_net(char *monhostname, int port, int window_size, int *sock) {
 
 static void generateIdentifier(const char *inputfile, int myID, int numdatastreams, char *identifier)
 {
-  int i, l;
+  int i, l, s=0;
 
-  strcpy(identifier, inputfile);
+  for(i = 0; inputfile[i]; i++)
+  {
+    if(inputfile[i] == '/')
+    {
+      s = i+1;
+    }
+  }
+
+  if(inputfile[s] == 0)
+  {
+    s = 0;
+  }
+
+  strcpy(identifier, inputfile+s);
   l = strlen(identifier);
   
   // strip off ".input"

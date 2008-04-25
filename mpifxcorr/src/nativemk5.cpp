@@ -97,6 +97,7 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	double startmjd;
 	double scanstart, scanend;
 	int v, i;
+	int scanns;
 	long long n;
 	int doUpdate = 0;
 	char *mk5dirpath;
@@ -149,12 +150,13 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 			keepreading = false;
 			return;
 		}
+		scanns = int(1000000000.0*scan->framenuminsecond/scan->framespersecond);
 		cout << "Before[" << mpiid << "] rs = " << readseconds << "  rns = " << readnanoseconds << endl;
-		scanstart = scan->mjd + (scan->sec + scan->ns*1.e-9)/86400.0;
+		scanstart = scan->mjd + (scan->sec + scanns*1.e-9)/86400.0;
 		scanend = scanstart + scan->duration/86400.0;
 		readpointer = scan->start + scan->frameoffset;
 		readseconds = (scan->mjd-corrstartday)*86400 + scan->sec - corrstartseconds;
-		readnanoseconds = scan->ns;
+		readnanoseconds = scanns;
 
 		cout << "After[" << mpiid << "]  rs = " << readseconds << "  rns = " << readnanoseconds << endl;
 	}
@@ -165,7 +167,8 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 		{
 			double scanstart, scanend;
 			scan = module.scans + i;
-			scanstart = scan->mjd + (scan->sec + scan->ns*1.e-9)/86400.0;
+			scanns = int(1000000000.0*scan->framenuminsecond/scan->framespersecond);
+			scanstart = scan->mjd + (scan->sec + scanns*1.e-9)/86400.0;
 			scanend = scanstart + scan->duration/86400.0;
 
 			if(startmjd < scanstart)  /* obs starts before data */
@@ -174,7 +177,7 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 				readpointer = scan->start + scan->frameoffset;
 				readseconds = (scan->mjd-corrstartday)*86400 
 					+ scan->sec - corrstartseconds;
-				readnanoseconds = scan->ns;
+				readnanoseconds = scanns;
 				break;
 			}
 			else if(startmjd < scanend) /* obs starts within data */
@@ -182,8 +185,8 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 				cout << "NM5 : scan found(2) : " << i << endl;
 				readpointer = scan->start + scan->frameoffset;
 				n = (long long)((((corrstartday - scan->mjd)*86400 
-			+ (corrstartseconds - (scan->sec + scan->ns*1.e-9)))
-					/ (scan->framens*1.e-9)) + 0.5);
+			+ (corrstartseconds - (scan->sec + scanns*1.e-9)))
+					*framespersecond) + 0.5);
 				readpointer += n*scan->framebytes;
 				readseconds = 0;
 				readnanoseconds = 0;
@@ -209,8 +212,10 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	sendMark5Status(MARK5_STATE_GOTDIR, scan-module.scans+1, readpointer, startmjd, 0.0);
 #endif
 
+	scanns = int(1000000000.0*scan->framenuminsecond/scan->framespersecond);
+
 	cout << "The frame start day is " << scan->mjd << 
-		", the frame start seconds is " << (scan->sec+scan->ns*1.e-9)
+		", the frame start seconds is " << (scan->sec+scanns*1.e-9)
 		<< ", readseconds is " << readseconds << 
 		", readnanoseconds is " << readnanoseconds << endl;
 
@@ -290,7 +295,7 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		bufferinfo[buffersegment].validbytes = 0;
 		dataremaining = false;
 #ifdef HAVE_DIFXMESSAGE
-		difxMessageSendProcessState("Leaving moduleToMemory early");
+		difxMessageSendDifxInfo("Leaving moduleToMemory early");
 #endif
 		return;
 	}
@@ -302,7 +307,7 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		cout << "(was " << readbytes << ")" << endl;
 #ifdef HAVE_DIFXMESSAGE
 		sprintf(message, "Shortening read from %d to %d bytes", readbytes, bytes);
-		difxMessageSendProcessState(message);
+		difxMessageSendDifxInfo(message);
 #endif
 	}
 
@@ -517,7 +522,7 @@ void NativeMk5DataStream::loopfileread()
 }
 
 #ifdef HAVE_DIFXMESSAGE
-int NativeMk5DataStream::sendMark5Status(enum Mk5State state, int scan, long long position, double dataMJD, float rate)
+int NativeMk5DataStream::sendMark5Status(enum Mk5State state, int scanNum, long long position, double dataMJD, float rate)
 {
 	int v = 0;
 	char message[1000];
@@ -531,7 +536,15 @@ int NativeMk5DataStream::sendMark5Status(enum Mk5State state, int scan, long lon
 	mk5status.position = position;
 	mk5status.rate = rate;
 	mk5status.dataMJD = dataMJD;
-	mk5status.scanNumber = scan;
+	mk5status.scanNumber = scanNum;
+	if(scan)
+	{
+		strcpy(mk5status.scanName, scan->name);
+	}
+	else
+	{
+		strcpy(mk5status.scanName, "none");
+	}
 	if(state != MARK5_STATE_OPENING && state != MARK5_STATE_ERROR)
 	{
 		xlrRC = XLRGetBankStatus(xlrDevice, BANK_A, &A);

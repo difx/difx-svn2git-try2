@@ -47,14 +47,13 @@ int XLR_get_modules(char *vsna, char *vsnb)
 	xlrRC = XLRGetBankStatus(xlrDevice, BANK_B, &bank_stat);
 	if(xlrRC != XLR_SUCCESS)
 	{
-		vsna[0] = 0;
+		vsnb[0] = 0;
 	}
 	else
 	{
-		strncpy(vsnb, bank_stat.Label, 16);
-		vsnb[15] = 0;
-		if(vsnb[8] == '/')
+		if(bank_stat.Label[8] == '/')
 		{
+			strncpy(vsnb, bank_stat.Label, 8);
 			vsnb[8] = 0;
 		}
 		else
@@ -70,10 +69,9 @@ int XLR_get_modules(char *vsna, char *vsnb)
 	}
 	else
 	{
-		strncpy(vsna, bank_stat.Label, 16);
-		vsna[15] = 0;
-		if(vsna[8] == '/')
+		if(bank_stat.Label[8] == '/')
 		{
+			strncpy(vsna, bank_stat.Label, 8);
 			vsna[8] = 0;
 		}
 		else
@@ -84,6 +82,8 @@ int XLR_get_modules(char *vsna, char *vsnb)
 
 	XLRClose(xlrDevice);
 
+	printf("%s %s\n", vsna, vsnb);
+
 	return 0;
 }
 
@@ -93,6 +93,10 @@ int Mark5A_get_modules(char *vsna, char *vsnb)
 	char line[512];
 	FILE *in;
 	int n;
+	char *vsn;
+	char junk[10];
+	char bank;
+	int i, ncolon;
 
 	vsna[0] = vsnb[0] = 0;
 
@@ -107,26 +111,37 @@ int Mark5A_get_modules(char *vsna, char *vsnb)
 	line[511] = 0;
 	fclose(in);
 
-	if(line[48] == 'A' && line[52] != '-')
+	ncolon = 0;
+	for(i = 0; line[i]; i++)
 	{
-		strncpy(vsna, line+52, 8);
-		vsna[8] = 0;
-	}
-	if(line[48] == 'B' && line[52] != '-')
-	{
-		strncpy(vsnb, line+52, 8);
-		vsnb[8] = 0;
-	}
-
-	if(line[73] == 'A' && line[77] != '-')
-	{
-		strncpy(vsna, line+77, 8);
-		vsna[8] = 0;
-	}
-	if(line[73] == 'B' && line[77] != '-')
-	{
-		strncpy(vsnb, line+77, 8);
-		vsnb[8] = 0;
+		if(line[i] == ':')
+		{
+			ncolon++;
+			if(ncolon == 1 || ncolon == 3)
+			{
+				bank = line[i+2];
+				if(bank == 'A' || bank == 'a')
+				{
+					vsn = vsna;
+				}
+				else if(bank == 'B' || bank == 'b')
+				{
+					vsn = vsnb;
+				}
+				else
+				{
+					vsn = junk;
+				}
+			}
+			else if(ncolon == 2 || ncolon == 4)
+			{
+				if(line[i+2] != '-')
+				{
+					strncpy(vsn, line+i+2, 8);
+					vsn[8] = 0;
+				}
+			}
+		}
 	}
 
 	return 0;
@@ -213,6 +228,42 @@ enum Mk5State getvsns(char *vsna, char *vsnb)
 	}
 }
 
+int resetStreamstor(DifxMessageMk5Status *dm)
+{
+	SSHANDLE xlrDevice;
+	XLR_RETURN_CODE xlrRC;
+	char hn[64];
+
+	gethostname(hn, 63);
+
+	if(running("SSErase")   ||
+	   running("SSReset")   ||
+	   running("ssopen")    ||
+	   running("mpifxcorr") ||
+	   running("Mark5A"))
+	{
+		printf("%s : Won't RESET -- Busy.\n", hn);
+		return 1;
+	}
+
+	dm->state = MARK5_STATE_RESETTING;
+	difxMessageSendMark5Status(dm);
+
+	printf("%s : Resetting\n", hn);
+	XLRCardReset(1);
+	printf("%s : Reset\n", hn);
+
+	printf("%s : Opening\n", hn);
+	xlrRC = XLROpen(1, &xlrDevice);
+	XLRClose(xlrDevice);
+	printf("%s : Open = %d\n", hn, xlrRC);
+
+	dm->state = MARK5_STATE_IDLE;
+	difxMessageSendMark5Status(dm);
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	int sock;
@@ -241,6 +292,8 @@ int main(int argc, char **argv)
 
 	for(;;)
 	{
+		dm.vsnA[0] = dm.vsnB[0] = 0;
+		dm.activeBank = ' ';
 		n = MultiCastReceive(sock, message, 999, from);
 		if(n < 0)
 		{
@@ -262,6 +315,20 @@ int main(int argc, char **argv)
 		else if(strncmp(message, "QUIT", 4) == 0)
 		{
 			break;
+		}
+		else if(strncmp(message, "REBOOT", 6) == 0)
+		{
+			dm.state = MARK5_STATE_REBOOTING;
+			system("/sbin/reboot");
+		}
+		else if(strncmp(message, "POWEROFF", 8) == 0)
+		{
+			dm.state = MARK5_STATE_POWEROFF;
+			system("/sbin/poweroff");
+		}
+		else if(strncmp(message, "RESET", 5) == 0)
+		{
+			resetStreamstor(&dm);
 		}
 	}
 

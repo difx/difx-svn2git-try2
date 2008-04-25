@@ -205,6 +205,13 @@ public:
   void getFrameInc(int configindex, int configdatastreamindex, int &sec, int &ns);
 
  /**
+  * @return The number of data frames per second, always an integer for Mark5 formats
+  * @param configindex The index of the configuration being used (from the table in the input file)
+  * @param datastreamindex The index of the datastream (from the table in the input file)
+  */
+  int getFramesPerSecond(int configindex, int configdatastreamindex);
+
+ /**
   * @return The number of payload bytes in a data frame
   * @param configindex The index of the configuration being used (from the table in the input file)
   * @param datastreamindex The index of the datastream (from the table in the input file)

@@ -156,7 +156,7 @@ int Mk5DataStream::calculateControlParams(int offsetsec, int offsetsamples)
   framesin = vlbaoffset/payloadbytes;
 
   // Note here a time is needed, so we only count payloadbytes
-  bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] = bufferinfo[atsegment].seconds + ((double)(bufferinfo[atsegment].nanoseconds) + ((double)framesin*framens))/1000000000.0;
+  bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] = bufferinfo[atsegment].seconds + double(bufferinfo[atsegment].nanoseconds)*1.0e-9 + (double)framesin/framespersecond;
 
   //go back to nearest frame -- here the total number of bytes matters
   bufferindex = atsegment*readbytes + framesin*framebytes;
@@ -171,8 +171,6 @@ int Mk5DataStream::calculateControlParams(int offsetsec, int offsetsamples)
 
 void Mk5DataStream::updateConfig(int segmentindex)
 {
-  int sec; // dummy for now
-
   //run the default update config, then add additional information specific to Mk5
   DataStream::updateConfig(segmentindex);
   if(bufferinfo[segmentindex].configindex < 0) //If the config < 0 we can skip this scan
@@ -180,10 +178,11 @@ void Mk5DataStream::updateConfig(int segmentindex)
 
   framebytes = config->getFrameBytes(bufferinfo[segmentindex].configindex, streamnum);
   payloadbytes = config->getFramePayloadBytes(bufferinfo[segmentindex].configindex, streamnum);
-  config->getFrameInc(bufferinfo[segmentindex].configindex, streamnum, sec, framens);
+
+  framespersecond = config->getFramesPerSecond(bufferinfo[segmentindex].configindex, streamnum);
 
   //correct the nsinc - should be number of frames*frame time
-  bufferinfo[segmentindex].nsinc = int(((bufferbytes/numdatasegments)/framebytes)*framens);
+  bufferinfo[segmentindex].nsinc = int(((bufferbytes/numdatasegments)/framebytes)*(1000000000.0/double(framespersecond)) + 0.5);
 
   //take care of the case where an integral number of frames is not an integral number of blockspersend - ensure sendbytes is long enough
 
@@ -224,7 +223,7 @@ void Mk5DataStream::initialiseFile(int configindex, int fileindex)
   offset = mark5stream->frameoffset;
 
   readseconds = 86400*(mark5stream->mjd-corrstartday) + mark5stream->sec-corrstartseconds + intclockseconds;
-  readnanoseconds = mark5stream->ns;
+  readnanoseconds = int(mark5stream->ns);
   cout << "The frame start day is " << mark5stream->mjd << ", the frame start seconds is " << mark5stream->sec << ", the frame start ns is " << mark5stream->ns << ", readseconds is " << readseconds << ", readnanoseconds is " << readnanoseconds << endl;
 
   //close mark5stream

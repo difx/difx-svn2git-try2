@@ -37,8 +37,9 @@ struct Mark5Scan
 	long long start;
 	long long length;
 	double duration;	/* scan duration in seconds */
-	int mjd, sec, ns;	/* timestamp of first frame */
-	int framens;		/* length of a frame in ns */
+	int mjd, sec;		/* timestamp of first frame */
+	int framenuminsecond;	/* frame number since last 1 second tick */
+	int framespersecond;	/* number of frames per second (always integer) */
 	int framebytes;		/* length of entire frame in bytes */
 	int frameoffset;	/* bytes to start of first frame */
 	int tracks;

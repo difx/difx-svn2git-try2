@@ -11,11 +11,15 @@
  ***************************************************************************/
 
 
+#include <iostream>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
 #include "mark5dir.h"
 #include "mark5access.h"
+
+using namespace std;
 
 /* returns active bank, or -1 if none */
 int Mark5BankGet(SSHANDLE xlrDevice)
@@ -57,16 +61,13 @@ int Mark5BankSetByVSN(SSHANDLE xlrDevice, const char *vsn)
 	xlrRC = XLRGetBankStatus(xlrDevice, BANK_A, &bank_stat);
 	if(xlrRC == XLR_SUCCESS)
 	{
-		if(strncmp(bank_stat.Label, vsn, 8) == 0)
+		if(strncasecmp(bank_stat.Label, vsn, 8) == 0)
 		{
 			b = 0;
-			if(!bank_stat.Selected)
+			xlrRC = XLRSelectBank(xlrDevice, BANK_A);
+			if(xlrRC != XLR_SUCCESS)
 			{
-				xlrRC = XLRSelectBank(xlrDevice, BANK_A);
-				if(xlrRC != XLR_SUCCESS)
-				{
-					b = -2;
-				}
+				b = -2;
 			}
 		}
 	}
@@ -75,16 +76,13 @@ int Mark5BankSetByVSN(SSHANDLE xlrDevice, const char *vsn)
 		xlrRC = XLRGetBankStatus(xlrDevice, BANK_B, &bank_stat);
 		if(xlrRC == XLR_SUCCESS)
 		{
-			if(strncmp(bank_stat.Label, vsn, 8) == 0)
+			if(strncasecmp(bank_stat.Label, vsn, 8) == 0)
 			{
 				b = 1;
-				if(!bank_stat.Selected)
+				xlrRC = XLRSelectBank(xlrDevice, BANK_B);
+				if(xlrRC != XLR_SUCCESS)
 				{
-					xlrRC = XLRSelectBank(xlrDevice, BANK_B);
-					if(xlrRC != XLR_SUCCESS)
-					{
-						b = -3;
-					}
+					b = -3;
 				}
 			}
 		}
@@ -177,17 +175,17 @@ int getMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice, int mjdref)
 		
 		scan->mjd = mf->mjd;
 		scan->sec = mf->sec;
-		scan->ns  = mf->ns;
 		n = (mjdref - scan->mjd + 500) / 1000;
 		scan->mjd += n*1000;
 		
 		scan->format      = mf->format;
 		scan->frameoffset = mf->frameoffset;
 		scan->tracks      = mf->ntrack;
-		scan->framens     = mf->framens;
+		scan->framespersecond = int(1000000000.0/mf->framens + 0.5);
+		scan->framenuminsecond = int(mf->ns/mf->framens + 0.5);
 		scan->framebytes  = mf->framebytes;
 		scan->duration    = (int)((scan->length - scan->frameoffset)
-			/ scan->framebytes) * (scan->framens*1.e-9);
+			/ scan->framebytes)/(double)(scan->framespersecond);
 		
 		delete_mark5_format(mf);
 
@@ -224,7 +222,7 @@ void printMark5Module(const struct Mark5Module *module)
 	{
 		scan = module->scans + i;
 	
-		printf("%3d %1d %-32s %13Ld %13Ld %5d %2d %5d %5d.%04d %10.4f %6.4f\n",
+		printf("%3d %1d %-32s %13Ld %13Ld %5d %2d %5d %5d+%d/%d %6.4f\n",
 			i+1,
 			scan->format,
 			scan->name,
@@ -234,9 +232,9 @@ void printMark5Module(const struct Mark5Module *module)
 			scan->tracks,
 			scan->mjd,
 			scan->sec,
-			scan->ns/100000,
-			scan->duration,
-			scan->framens*1.0e-9);
+			scan->framenuminsecond,
+			scan->framespersecond,
+			scan->duration);
 	}
 
 	printf("\n");
@@ -305,21 +303,19 @@ int loadMark5Module(struct Mark5Module *module, const char *filename)
 			return -1;
 		}
 		
-		sscanf(line, "%14Ld %14Ld %5d %10lf %6lf %10lf %6d %6d %2d %1d %64s",
+		sscanf(line, "%Ld%Ld%d%d%d%d%lf%d%d%d%d%63s",
 			&scan->start, 
 			&scan->length,
 			&scan->mjd,
-			&sec,
-			&framesec,
+			&scan->sec,
+			&scan->framenuminsecond,
+			&scan->framespersecond,
 			&scan->duration,
 			&scan->framebytes,
 			&scan->frameoffset,
 			&scan->tracks,
 			&scan->format,
 			scan->name);
-		scan->sec = (int)sec;
-		scan->ns = (int)((sec - scan->sec)*1e4 + 0.5)*100000;
-		scan->framens = (int)((framesec*1e4) + 0.5)*100000;
 	}
 
 	fclose(in);
@@ -352,13 +348,13 @@ int saveMark5Module(struct Mark5Module *module, const char *filename)
 	{
 		scan = module->scans + i;
 		
-		fprintf(out, "%14Ld %14Ld %5d %d.%04d %6.4f %10.4f %6d %6d %2d %1d %s\n",
+		fprintf(out, "%14Ld %14Ld %5d %d %d %d %12.6f %6d %6d %2d %1d %s\n",
 			scan->start, 
 			scan->length,
 			scan->mjd,
 			scan->sec,
-			scan->ns/100000,
-			scan->framens*1.0e-9,
+			scan->framenuminsecond,
+			scan->framespersecond,
 			scan->duration,
 			scan->framebytes,
 			scan->frameoffset,
@@ -385,6 +381,7 @@ int getCachedMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice,
 	curbank = Mark5BankSetByVSN(xlrDevice, vsn);
 	if(curbank < 0)
 	{
+		cout << "Mark5BankSetByVSN(" << vsn << ") returned " << curbank << endl;
 		return -1;
 	}
 	

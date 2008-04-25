@@ -112,7 +112,7 @@ protected:
   */
   virtual void initialiseFile(int configindex, int fileindex);
 
-  int framebytes, payloadbytes, framens;
+  int framebytes, payloadbytes, framespersecond;
 };
 
 #endif
