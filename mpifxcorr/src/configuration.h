@@ -69,6 +69,7 @@ public:
   inline int getNumChannels(int configindex) { return configs[configindex].numchannels; }
   inline int getBlocksPerSend(int configindex) { return configs[configindex].blockspersend; }
   inline int getGuardBlocks(int configindex) { return configs[configindex].guardblocks; }
+  inline int getOversampleFactor(int configindex) { return configs[configindex].oversamplefactor; }
   inline double getIntTime(int configindex) { return configs[configindex].inttime; }
   inline bool writeAutoCorrs(int configindex) { return configs[configindex].writeautocorrs; }
   inline outputformat getOutputFormat() { return outformat; }

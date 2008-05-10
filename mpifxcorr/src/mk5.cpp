@@ -13,7 +13,7 @@
 #include "mk5.h"
 
 
-static int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, int oversamplefactor char *formatname)
+static int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, int oversamplefactor, char *formatname)
 {
   int fanout=1, mbps;
 
@@ -58,7 +58,7 @@ Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, in
 {
   char formatname[64];
 
-  fanout = genFormatName(format, ninputbands, bw, nbits, framebytes, conf->oversamplefactor, formatname);
+  fanout = genFormatName(format, ninputbands, bw, nbits, framebytes, conf->getOversampleFactor(confindex), formatname);
 
   // since we allocated the max amount of space needed above, we need to change
   // this to the number actually needed.
@@ -209,7 +209,7 @@ void Mk5DataStream::initialiseFile(int configindex, int fileindex)
   framebytes = config->getFrameBytes(configindex, streamnum);
   bw = config->getConfigBandwidth(configindex);
 
-  genFormatName(format, ninputbands, bw, nbits, framebytes, formatname);
+  genFormatName(format, ninputbands, bw, nbits, framebytes, config->getOversampleFactor(configindex), formatname);
 
   mark5stream = new_mark5_stream(
     new_mark5_stream_file(datafilenames[configindex][fileindex].c_str(), 0),
