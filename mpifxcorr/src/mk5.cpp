@@ -150,6 +150,8 @@ int Mk5DataStream::calculateControlParams(int offsetsec, int offsetsamples)
   if(vlbaoffset < 0)
   {
     cout << "ERROR Mk5DataStream::calculateControlParams : vlbaoffset=" << vlbaoffset << endl;
+    bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] = -1.0;
+    return 0;
   }
 
   // bufferindex was previously computed assuming no framing overhead
