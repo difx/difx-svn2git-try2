@@ -469,7 +469,7 @@ Mode* Configuration::getMode(int configindex, int datastreamindex)
     case MKIV:
     case VLBA:
     case MARK5B:
-      framesamples = getFramePayloadBytes(configindex, datastreamindex)*8/(getDNumBits(configindex, datastreamindex)*getDNumInputBands(configindex, datastreamindex));
+      framesamples = getFramePayloadBytes(configindex, datastreamindex)*8/(getDNumBits(configindex, datastreamindex)*getDNumInputBands(configindex, datastreamindex)*conf.oversamplefactor);
       framebytes = getFrameBytes(configindex, datastreamindex);
       return new Mk5Mode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, stream.numbits, stream.filterbank, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, framebytes, framesamples, stream.format);
       break;

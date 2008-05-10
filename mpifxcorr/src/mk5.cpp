@@ -13,7 +13,7 @@
 #include "mk5.h"
 
 
-static int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, char *formatname)
+static int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, int oversamplefactor char *formatname)
 {
   int fanout=1, mbps;
 
@@ -28,7 +28,7 @@ static int genFormatName(Configuration::dataformat format, int nchan, double bw,
         cerr << "genFormatName : MKIV format : framebytes = " << framebytes << " is not allowed\n";
         exit(1);
       }
-      sprintf(formatname, "MKIV1_%d-%d-%d-%d", fanout, mbps, nchan, nbits);
+      sprintf(formatname, "MKIV%d_%d-%d-%d-%d", oversamplefactor, fanout, mbps, nchan, nbits);
       break;
     case Configuration::VLBA:
       fanout = framebytes*8/(20160*nbits*nchan);
@@ -37,7 +37,7 @@ static int genFormatName(Configuration::dataformat format, int nchan, double bw,
         cerr << "genFormatName : VLBA format : framebytes = " << framebytes << " is not allowed\n";
         exit(1);
       }
-      sprintf(formatname, "VLBA1_%d-%d-%d-%d", fanout, mbps, nchan, nbits);
+      sprintf(formatname, "VLBA%d_%d-%d-%d-%d", oversamplefactor, fanout, mbps, nchan, nbits);
       break;
     case Configuration::MARK5B:
       sprintf(formatname, "Mark5B-%d-%d-%d", mbps, nchan, nbits);
@@ -58,7 +58,7 @@ Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, in
 {
   char formatname[64];
 
-  fanout = genFormatName(format, ninputbands, bw, nbits, framebytes, formatname);
+  fanout = genFormatName(format, ninputbands, bw, nbits, framebytes, conf->oversamplefactor, formatname);
 
   // since we allocated the max amount of space needed above, we need to change
   // this to the number actually needed.
@@ -95,6 +95,8 @@ Mk5Mode::~Mk5Mode()
 float Mk5Mode::unpack(int sampleoffset)
 {
   int framesin, goodsamples;
+
+  // FIXME -- I think we can use mark5stream->samplegranularity instead of fanout below and fewer samples will be lost in those rare cases.  --WFB
 
   //work out where to start from
   framesin = (sampleoffset/framesamples);
