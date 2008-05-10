@@ -341,11 +341,11 @@ int Configuration::getResultLength(int configindex)
 int Configuration::getDataBytes(int configindex, int datastreamindex)
 {
   datastreamdata currentds = datastreamtable[configs[configindex].datastreamindices[datastreamindex]];
-  int validlength = (configs[configindex].blockspersend*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
+  int validlength = (configs[configindex].oversamplefactor*configs[configindex].blockspersend*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
   if(currentds.format == MKIV || currentds.format == VLBA || currentds.format == MARK5B)
   {
     //must be an integer number of frames, with enough margin for overlap on either side
-    validlength += (configs[configindex].guardblocks*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
+    validlength += (configs[configindex].oversamplefactor*configs[configindex].guardblocks*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
     return ((validlength/currentds.framebytes)+2)*currentds.framebytes;
   }
   else
@@ -716,6 +716,31 @@ void Configuration::processDatastreamTable(ifstream * input)
 
   for(int i=0;i<datastreamtablelength;i++)
   {
+    int configindex=-1;
+    int oversamp;
+
+    //get configuration index for this datastream
+    for(int c=0; c<numconfigs; c++)
+    {
+      for(int d=0; d<numdatastreams; d++)
+      {
+        if(configs[c].datastreamindices[d] == i)
+        {
+          configindex = c;
+          break;
+        }
+      }
+      if(configindex >= 0) break;
+    }
+
+    if(configindex < 0)
+    {
+      cerr << "Error - no config found for datastream " << i << endl;
+      exit(1);
+    }
+
+    oversamp = configs[configindex].oversamplefactor;
+
     //read all the info for this datastream
     getinputline(input, &line, "TELESCOPE INDEX");
     datastreamtable[i].telescopeindex = atoi(line.c_str());
@@ -780,11 +805,11 @@ void Configuration::processDatastreamTable(ifstream * input)
       datastreamtable[i].freqpols[j] = atoi(line.c_str());
       datastreamtable[i].numinputbands += datastreamtable[i].freqpols[j];
     }
-    datastreamtable[i].bytespersamplenum = (datastreamtable[i].numinputbands*datastreamtable[i].numbits)/8;
+    datastreamtable[i].bytespersamplenum = (datastreamtable[i].numinputbands*datastreamtable[i].numbits*oversamp)/8;
     if(datastreamtable[i].bytespersamplenum == 0)
     {
       datastreamtable[i].bytespersamplenum = 1;
-      datastreamtable[i].bytespersampledenom = 8/(datastreamtable[i].numinputbands*datastreamtable[i].numbits);
+      datastreamtable[i].bytespersampledenom = 8/(datastreamtable[i].numinputbands*datastreamtable[i].numbits*oversamp);
     }
     else
       datastreamtable[i].bytespersampledenom = 1;
