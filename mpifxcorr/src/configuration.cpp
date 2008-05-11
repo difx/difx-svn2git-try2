@@ -172,39 +172,37 @@ int Configuration::getFramePayloadBytes(int configindex, int configdatastreamind
 
 void Configuration::getFrameInc(int configindex, int configdatastreamindex, int &sec, int &ns)
 {
-  int nchan, qb;
-  dataformat f;
+  int nchan, qb, os;
   int payloadsize;
   double samplerate; /* in Hz */
   double seconds;
 
   nchan = getDNumInputBands(configindex, configdatastreamindex);
-  f = getDataFormat(configindex, configdatastreamindex);
   samplerate = 2.0e6*getDBandwidth(configindex, configdatastreamindex, 0);
   qb = getDNumBits(configindex, configdatastreamindex);
+  os = getOversampleFactor(configindex);
   payloadsize = getFramePayloadBytes(configindex, configdatastreamindex);
 
-  seconds = payloadsize*8/(samplerate*nchan*qb);
+  seconds = payloadsize*8/(samplerate*nchan*qb*os);
   sec = int(seconds);
   ns = int(1.0e9*(seconds - sec));
 }
 
 int Configuration::getFramesPerSecond(int configindex, int configdatastreamindex)
 {
-  int nchan, qb;
-  dataformat f;
+  int nchan, qb, os;
   int payloadsize;
   double samplerate; /* in Hz */
   double seconds;
 
   nchan = getDNumInputBands(configindex, configdatastreamindex);
-  f = getDataFormat(configindex, configdatastreamindex);
   samplerate = 2.0e6*getDBandwidth(configindex, configdatastreamindex, 0);
   qb = getDNumBits(configindex, configdatastreamindex);
+  os = getOversampleFactor(configindex);
   payloadsize = getFramePayloadBytes(configindex, configdatastreamindex);
 
   // This will always work out to be an integer 
-  return int(samplerate*nchan*qb/(8*payloadsize) + 0.5);
+  return int(samplerate*nchan*qb*os/(8*payloadsize) + 0.5);
 }
 
 int Configuration::getMaxResultLength()

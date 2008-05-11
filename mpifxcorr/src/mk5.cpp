@@ -40,7 +40,10 @@ static int genFormatName(Configuration::dataformat format, int nchan, double bw,
       sprintf(formatname, "VLBA%d_%d-%d-%d-%d", oversamplefactor, fanout, mbps, nchan, nbits);
       break;
     case Configuration::MARK5B:
-      sprintf(formatname, "Mark5B-%d-%d-%d", mbps, nchan, nbits);
+      if(oversamplefactor > 1)
+        sprintf(formatname, "Mark5B%d-%d-%d-%d", oversamplefactor, mbps, nchan, nbits);
+      else
+        sprintf(formatname, "Mark5B-%d-%d-%d", mbps, nchan, nbits);
       break;
     default:
       cerr << "genFormatName : unsupported format encountered\n" << endl;
