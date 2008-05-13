@@ -12,6 +12,12 @@
 #include <mpi.h>
 #include "mk5.h"
 
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
+#define MAXPACKETSIZE 10000
+#define MARK5FILL 0x11223344;
 
 static int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, char *formatname)
 {
@@ -136,6 +142,44 @@ Mk5DataStream::Mk5DataStream(Configuration * conf, int snum, int id, int ncores,
 Mk5DataStream::~Mk5DataStream()
 {}
 
+void Mk5DataStream::initialise()
+{
+  DataStream::initialise();
+
+  if (!readfromfile && !tcp) {
+    if (sizeof(long long)!=8) {
+      cerr << "Warning: DataStream assumes long long is 8 bytes, it is " << sizeof(long long) << " bytes" << endl;
+      // Should exit here
+    }
+    udpsize = abs(tcpwindowsizebytes)-20-2*4-sizeof(long long); // IP header is 20 bytes, UDP is 4x2 bytes
+    if (udpsize<=0) {
+      cerr << "Datastream " << mpiid << ":" << " Warning implied UDP packet size is negative!! " << endl;
+      // Should exit here
+    }
+    udpsize &= ~ 0x7;  // Ensures udpsize multiple of 64 bits
+    udp_offset = 0;
+    packet_framestart = 0;
+    packet_head = 0;
+    udp_buf = new char[MAXPACKETSIZE];
+    packets_arrived.resize(readbytes/udpsize+2);
+    
+    invalid_buf = new char[udpsize];
+        unsigned long *tmp = (unsigned long*)invalid_buf;
+    for (int i=0; i<udpsize/4; i++) {
+      tmp[i] = MARK5FILL;
+    }
+
+    // UDP statistics
+    packet_drop = 0;
+    packet_oo = 0;
+    packet_duplicate = 0;
+    npacket = 0;
+    packet_sum = 0;
+  }
+
+}
+
+
 int Mk5DataStream::calculateControlParams(int offsetsec, int offsetsamples)
 {
   int bufferindex, framesin, vlbaoffset;
@@ -239,6 +283,7 @@ void Mk5DataStream::initialiseFile(int configindex, int fileindex)
 void Mk5DataStream::networkToMemory(int buffersegment, int & framebytesremaining)
 {
   DataStream::networkToMemory(buffersegment, framebytesremaining);
+
   // This deadreckons readseconds from the last frame. This will not initially be set, and we really should 
   // resync occasionally, so..
   initialiseNetwork(0, buffersegment);
@@ -246,10 +291,185 @@ void Mk5DataStream::networkToMemory(int buffersegment, int & framebytesremaining
   readnanoseconds += bufferinfo[buffersegment].nsinc;
   readseconds += readnanoseconds/1000000000;
   readnanoseconds %= 1000000000;
-
 }
 
-// This is almost identical to initialiseFile. The two should probably be combined
+
+
+/****
+ ASSUMPTIONS
+
+ udp_offset is left containing number of bytes still to be consumned from last UDP packet. If
+ first packet from next frame is missing then udp_offset points to END of initial data. It is
+ assumed only udpsize bytes are available though.
+
+*****/
+
+
+int Mk5DataStream::readnetwork(int sock, char* ptr, int bytestoread, int* nread)
+{
+  ssize_t nr;
+
+  cout << "DataStream " << mpiid << ": Mk5DataStream::readnetwork" << endl;
+
+  if (tcp) {
+    DataStream::readnetwork(sock, ptr, bytestoread, nread);
+  } else { // UDP
+    bool done;
+    long long packet_index, packet_frameend;
+    unsigned long long sequence;
+    struct msghdr msg;
+    struct iovec iov[2];
+
+    memset(&msg, 0, sizeof(msg));
+    iov[0].iov_base = &sequence;
+    iov[0].iov_len = sizeof(sequence);
+    iov[1].iov_base = udp_buf;
+    iov[1].iov_len = MAXPACKETSIZE;
+
+    packet_frameend = packet_framestart+(bytestoread-(udp_offset%udpsize)-1)/udpsize+1;
+    cout << "****** readnetwork will read packets " << packet_framestart << " to " << packet_frameend << endl;
+    cout << "****** udp_offset = " << udp_offset << endl;
+
+    if (packet_frameend-packet_framestart+1>packets_arrived.size()) {
+      cerr << "Mk5DataStream::readnetwork  bytestoreed too large (" << bytestoread << ")" << endl;
+      exit(1);
+    } 
+    
+    for (int i=0; i<=packet_frameend-packet_framestart; i++) {
+      packets_arrived[i] = false;
+    }
+    *nread = -1;
+    done = 0;
+
+    // First copy left over bytes from last packet
+    if (udp_offset>0) {
+      packet_index = (udp_offset-1)/udpsize;
+      udp_offset = (udp_offset-1)%udpsize+1;
+      cout "*** DataStream " << mpiid << ": packet_index=" << packet_index << " udp_offset=" << udp_offset << endl;
+      if (packet_index<=packet_frameend) // Check not out of range
+	packets_arrived[packet_index] = true;
+
+      if (bytestoread<udp_offset+packet_index*udpsize) {
+	if (packet_index==0) {
+	  memcpy(ptr, udp_buf, bytestoread);
+	  packet_sum += bytestoread;
+	  npacket++;
+	  udp_offset -= bytestoread;
+	  memmove(udp_buf, udp_buf+bytestoread, udp_offset);
+	} else if (packet_index>packet_frameend) {
+	  // NEED TO SETUP FRAMEHEAD AND OFFSET ETC
+	  done = 1;
+	  cerr << "CORNER UDP CASE NOT IMPLEMENTED YET!!!!! " << endl;
+	} else {
+	  int bytes = (bytestoread-udp_offset)%udpsize;
+	  memcpy(ptr+udp_offset+(packet_index-1)*udpsize, udp_buf, bytes);  
+	  packet_sum += bytes;
+	  npacket++;
+	  memmove(udp_buf,udp_buf+bytes, udpsize-bytes);
+	  udp_offset = udpsize-bytes;
+	  packet_framestart = packet_head;  // CHECK THIS IS CORRECT
+	}
+	done = 1;
+
+      } else {
+	if (packet_index==0) { // Partial packet
+	  memcpy(ptr, udp_buf, udp_offset);
+	  packet_sum += udp_offset;
+	  npacket++;
+	} else {
+	  memcpy(ptr+udp_offset+(packet_index-1)*udpsize, udp_buf, udpsize);
+	  npacket++;
+	  packet_sum += udpsize;
+	}
+      } 
+      udp_offset %= udp_size;
+    }      
+
+    while (!done) {
+      nr = recvmsg(sock,&msg,MSG_WAITALL);
+      if (nr==-1) { // Error reading socket
+	if (errno == EINTR) continue;
+	return(nr);
+      } else if (nr==0) {  // Socket closed remotely
+	return(nr);
+      } else if (nr!=udpsize+sizeof(long long)) {
+	cerr << "DataStream " << mpiid << ": Expected " << udpsize+sizeof(long long) << " bytes, got " << nr << "bytes. Quiting" << endl;
+	exit(1);
+      } else {
+	// Check this is a sensible packet
+	packet_index = sequence-packet_framestart;
+	if (packet_index<0) {
+	  // If this was much smaller we really should assume the sequence has got screwed up and 
+	  // Resync
+	  packet_oo++;  // This could be duplicate but we cannot tell
+	} else if (packet_index==packet_frameend) { 
+	  int bytes = (bytestoread-udp_offset-1)%udpsize+1;
+	  // Consistence check
+	  if (bytes<0) {
+	    cerr << "Datastream " << mpiid << ": Error read too many UDP packets!!" << endl;
+	    exit(1);
+	  } else if (bytes > udpsize) {
+	    cerr << "Datastream " << mpiid << ": Error have not read enough UDP packets!!" << endl;
+	    exit(1);
+	  }
+	  memcpy(ptr+udp_offset+(packet_index-1)*udpsize,udp_buf,bytes);
+	  packet_sum += bytes;
+	  memmove(udp_buf,udp_buf+bytes, udpsize-bytes);
+	  udp_offset = udpsize-bytes;
+	  if (udp_offset==0) {
+	    packet_framestart = sequence; 
+	    npacket++;
+	  } else
+	    packet_framestart = sequence+1; 
+	  packet_head = sequence;
+	  *nread = bytestoread;
+	  done = 1;
+	} else if (packet_index>packet_frameend) { 
+	  udp_offset = udpsize-(bytestoread-udp_offset)%udpsize+udpsize*(packet_index-packet_frameend);
+	  if (udp_offset==0) 
+	    packet_framestart = packet_frameend+1;
+	  else
+	    packet_framestart = packet_frameend;
+	  packet_head = sequence;
+	    *nread = bytestoread;
+	    done = 1;
+	} else if (packets_arrived[packet_index]) {
+	  packet_duplicate++;
+	} else {
+	  // This must be good data finally!
+	  packets_arrived[packet_index] = true;
+	  memcpy(ptr+udp_offset+(packet_index-1)*udpsize,udp_buf,udpsize);
+	  packet_sum += udpsize;
+	  nread += udpsize;
+	  
+	  // Do packet statistics
+	  if (sequence<packet_head) { // Got a packet earlier than the head
+	    packet_oo++;
+	    } else {
+	    packet_head = sequence;
+	    }
+	  npacket++;
+	}
+      }
+    }
+    // Replace missing packets with fill data
+    for (int i=0; i<=packet_frameend-packet_framestart; i++) {
+      if (!packets_arrived[i]) {
+	packet_drop++; // Will generally count dropped first packet twice
+	if (i==0) {
+	  memcpy(ptr, invalid_buf, udp_offset); // CHECK INITIAL FULL OR EMPTY BUFFER
+	} else if (i=packet_frameend-packet_framestart) {
+	  memcpy(ptr+udp_offset+(i-1)*udpsize,invalid_buf,(bytestoread-udp_offset)%udpsize);	  
+	} else {
+	  memcpy(ptr+udp_offset+(i-1)*udpsize,invalid_buf,udpsize);	  
+	}
+      }
+    }
+  }
+  return(1);
+}
+
+// This is almost identical to initialiseFile. The two should maybe be combined
 void Mk5DataStream::initialiseNetwork(int configindex, int buffersegment)
 {
   int offset;
@@ -324,10 +544,48 @@ void Mk5DataStream::initialiseNetwork(int configindex, int buffersegment)
 
 }
 
+double tim(void) {
+  struct timeval tv;
+  double t;
+
+  gettimeofday(&tv, NULL);
+  t = (double)tv.tv_sec + (double)tv.tv_usec/1000000.0;
+
+  return t;
+}
+
 int Mk5DataStream::openframe()
 {
   // The number of segments per "frame" is arbitrary. Just set it to ~ 1sec
   int nsegment;
   nsegment = (int)(1.0e9/bufferinfo[0].nsinc+0.1);
+
+  if (!tcp) {
+    // Print statistics. 
+    double delta, t2;
+    float dropped, oo, dup, rate;
+
+    t2 = tim();
+    delta = t2-t1;
+    t1 = t2;
+    
+    dropped = (float)packet_drop*100.0/(float)npacket;
+    oo = (float)packet_oo*100.0/(float)npacket;
+    dup = (float)packet_duplicate*100.0/(float)npacket;
+    rate = packet_sum/delta*8/1e6;
+    
+    cout << fixed << setprecision(2);
+    cout << "Datastream " << mpiid << ": Packets=" << npacket << "  Dropped=" << dropped
+	 << "  Duplicated=" << dup << "  Out-of-order=" << oo << "  Rate=" << rate << " Mbps" << endl;
+    cout << "test " << 1 << 1.1 << endl;
+
+    packet_drop = 0;
+    packet_oo = 0;
+    packet_duplicate = 0;
+    npacket = 0;
+    packet_sum = 0;
+  }
+
+
   return readbytes*nsegment;  
 }

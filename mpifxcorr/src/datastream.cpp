@@ -531,6 +531,10 @@ void DataStream::updateConfig(int segmentindex)
   bufferinfo[segmentindex].nsinc = int((bufferinfo[segmentindex].sampletimens*(bufferbytes/numdatasegments)*bufferinfo[segmentindex].bytespersampledenom)/(bufferinfo[segmentindex].bytespersamplenum) + 0.5);
   portnumber = config->getDPortNumber(bufferinfo[segmentindex].configindex, streamnum);
   tcpwindowsizebytes = config->getDTCPWindowSizeKB(bufferinfo[segmentindex].configindex, streamnum)*1024;
+  tcp = 1;
+  if (tcpwindowsizebytes<0) {
+    tcp = 0;
+  }
 }
 
 void * DataStream::launchNewFileReadThread(void * thisstream)
@@ -691,7 +695,6 @@ void DataStream::openstream(int portnumber, int tcpwindowsizebytes)
   //okay - this has no counterpart in the disk case.  Just gets the socket open
   int serversock, status;
   socklen_t client_len;
-  struct linger      linger = {1, 1};
   struct sockaddr_in server, client;    /* Socket address */
 
   /* Open a server connection for reading */
@@ -702,62 +705,67 @@ void DataStream::openstream(int portnumber, int tcpwindowsizebytes)
   server.sin_addr.s_addr = htonl(INADDR_ANY); /* Anyone can connect */
   server.sin_port = htons((unsigned short)portnumber); /* Which port number to use */
 
-  /* Create a server to listen with */
-  serversock = socket(AF_INET,SOCK_STREAM,0); 
-  if (serversock==-1) 
-    cerr << "Error creating socket" << endl;
+  if (tcp) { // TCP socket
+    /* Create a server to listen with */
+    serversock = socket(AF_INET,SOCK_STREAM,0); 
+    if (serversock==-1) 
+      cerr << "Error creating socket" << endl;
 
-  /* Set the linger option so that if we need to send a message and
-     close the socket, the message shouldn't get lost */
-  status = setsockopt(serversock, SOL_SOCKET,SO_LINGER, (char *)&linger,
-		      sizeof(struct linger));
-  if (status!=0) {
-    cerr << "Error setting socket options" << endl;
-    close(serversock);
-  } 
-  
-  /* Set the TCP window size */
-  if (tcpwindowsizebytes!=0) {
-    setsockopt(serversock, SOL_SOCKET, SO_SNDBUF,
-	       (char *) &tcpwindowsizebytes, sizeof(tcpwindowsizebytes));
-    if (status!=0) {
-      cerr << "Error setting socket options" << endl;
-      close(serversock);
-    } 
+    /* Set the TCP window size */
+    if (tcpwindowsizebytes>0) {
+      setsockopt(serversock, SOL_SOCKET, SO_SNDBUF,
+		 (char *) &tcpwindowsizebytes, sizeof(tcpwindowsizebytes));
+      if (status!=0) {
+	cerr << "Error setting socket options" << endl;
+	close(serversock);
+      } 
 
-    setsockopt(serversock, SOL_SOCKET, SO_RCVBUF,
-	       (char *) &tcpwindowsizebytes, sizeof(tcpwindowsizebytes));
+      setsockopt(serversock, SOL_SOCKET, SO_RCVBUF,
+		 (char *) &tcpwindowsizebytes, sizeof(tcpwindowsizebytes));
 
-    if (status!=0) {
-      cerr << "Error setting socket options" << endl;
-      close(serversock);
-    } 
+      if (status!=0) {
+	cerr << "Error setting socket options" << endl;
+	close(serversock);
+      } 
+    }
+  } else { // UDP socket  
+    serversock = socket(AF_INET,SOCK_DGRAM,0); 
+    if (serversock==-1) 
+      cerr << "Error creating UDP socket" << endl;
+    // Should exit here on error
+
   }
-  status = bind(serversock, (struct sockaddr *)&server, sizeof(server));
-  if (status!=0) {
-    cerr << "Datastream " << mpiid << ": Error binding socket" << endl;
-    close(serversock);
-  } 
-  
-  /* We are willing to receive conections, using the maximum
-     back log of 1 */
-  status = listen(serversock,1);
+
+    status = bind(serversock, (struct sockaddr *)&server, sizeof(server));
   if (status!=0) {
     cerr << "Datastream " << mpiid << ": Error binding socket" << endl;
     close(serversock);
+  } 
+  
+  if (tcp) { // TCP
+
+    /* We are willing to receive conections, using the maximum
+       back log of 1 */
+    status = listen(serversock,1);
+    if (status!=0) {
+      cerr << "Datastream " << mpiid << ": Error binding socket" << endl;
+      close(serversock);
+    }
+
+    cout << "Datastream " << mpiid << ": Waiting for connection" << endl;
+
+    /* Accept connection */
+    client_len = sizeof(client);
+    socketnumber = accept(serversock, (struct sockaddr *)&client, &client_len);
+    if (socketnumber == -1) {
+      cerr << "Datastream " << mpiid << ": Error connecting to client" << endl;
+      close(serversock);
+    }
+    cout << "Datastream " << mpiid << " got a connection from " << inet_ntoa(client.sin_addr) << endl;
+  } else {  // UDP
+    socketnumber = serversock;
+    cout << "Datastream " << mpiid << ": Ready to receive UDP data" << endl;
   }
-
-  cout << "Datastream " << mpiid << ": Waiting for connection" << endl;
-
-  /* Accept connection */
-  client_len = sizeof(client);
-  socketnumber = accept(serversock, (struct sockaddr *)&client, &client_len);
-  if (socketnumber == -1) {
-    cerr << "Datastream " << mpiid << ": Error connecting to client" << endl;
-    close(serversock);
-  }
-
-  cout << "Datastream " << mpiid << " got a connection from " << inet_ntoa(client.sin_addr) << endl;
 }
 
 void DataStream::closestream()
