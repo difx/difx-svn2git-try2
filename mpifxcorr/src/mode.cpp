@@ -23,7 +23,7 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bper
   : config(conf), configindex(confindex), datastreamindex(dsindex), numchannels(nchan), blockspersend(bpersend), guardblocks(gblocks), twicenumchannels(nchan*2), numfreqs(nfreqs), bandwidth(bw), freqclockoffsets(freqclkoffsets), numinputbands(ninputbands), numoutputbands(noutputbands), numbits(nbits), unpacksamples(unpacksamp), filterbank(fbank), postffringerot(postffringe), quadraticdelayinterp(quaddelayinterp), calccrosspolautocorrs(cacorrs), blockclock(bclock)
 {
   int status;
-  int oversamp = config->getOversampleFactor(configindex);
+  int decimationfactor = config->getDecimationFactor(configindex);
 
   sampletime = 1.0/(2.0*bandwidth); //microseconds
   processtime = twicenumchannels*sampletime; //microseconds
@@ -38,11 +38,11 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bper
   samplesperblock = int(bandwidth*2/blockclock);
   if(samplesperblock == 0)
     cerr << "Error!!! Samplesperblock is < 1, current implementation cannot handle this situation.  Aborting!" << endl;
-  bytesperblocknumerator = (numinputbands*samplesperblock*numbits*oversamp)/8;
+  bytesperblocknumerator = (numinputbands*samplesperblock*numbits*decimationfactor)/8;
   if(bytesperblocknumerator == 0)
   {
     bytesperblocknumerator = 1;
-    bytesperblockdenominator = 8/(numinputbands*samplesperblock*numbits*oversamp);
+    bytesperblockdenominator = 8/(numinputbands*samplesperblock*numbits*decimationfactor);
     unpacksamples += bytesperblockdenominator*sizeof(u16)*samplesperblock;
   }
   else

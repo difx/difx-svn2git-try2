@@ -13,7 +13,7 @@
 #include "mk5.h"
 
 
-static int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, int oversamplefactor, char *formatname)
+static int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, int decimationfactor, char *formatname)
 {
   int fanout=1, mbps;
 
@@ -28,8 +28,8 @@ static int genFormatName(Configuration::dataformat format, int nchan, double bw,
         cerr << "genFormatName : MKIV format : framebytes = " << framebytes << " is not allowed\n";
         exit(1);
       }
-      if(oversamplefactor > 1)
-        sprintf(formatname, "MKIV1_%d-%d-%d-%d/%d", fanout, mbps, nchan, nbits, oversamplefactor);
+      if(decimationfactor > 1)	// Note, this conditional is to ensure compatibility with older mark5access versions
+        sprintf(formatname, "MKIV1_%d-%d-%d-%d/%d", fanout, mbps, nchan, nbits, decimationfactor);
       else
         sprintf(formatname, "MKIV1_%d-%d-%d-%d", fanout, mbps, nchan, nbits);
       break;
@@ -40,14 +40,14 @@ static int genFormatName(Configuration::dataformat format, int nchan, double bw,
         cerr << "genFormatName : VLBA format : framebytes = " << framebytes << " is not allowed\n";
         exit(1);
       }
-      if(oversamplefactor > 1)
-        sprintf(formatname, "VLBA1_%d-%d-%d-%d/%d", fanout, mbps, nchan, nbits, oversamplefactor);
+      if(decimationfactor > 1)
+        sprintf(formatname, "VLBA1_%d-%d-%d-%d/%d", fanout, mbps, nchan, nbits, decimationfactor);
       else
         sprintf(formatname, "VLBA1_%d-%d-%d-%d", fanout, mbps, nchan, nbits);
       break;
     case Configuration::MARK5B:
-      if(oversamplefactor > 1)
-        sprintf(formatname, "Mark5B-%d-%d-%d/%d", mbps, nchan, nbits, oversamplefactor);
+      if(decimationfactor > 1)
+        sprintf(formatname, "Mark5B-%d-%d-%d/%d", mbps, nchan, nbits, decimationfactor);
       else
         sprintf(formatname, "Mark5B-%d-%d-%d", mbps, nchan, nbits);
       break;
@@ -67,7 +67,7 @@ Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, in
 {
   char formatname[64];
 
-  fanout = genFormatName(format, ninputbands, bw, nbits, framebytes, conf->getOversampleFactor(confindex), formatname);
+  fanout = genFormatName(format, ninputbands, bw, nbits, framebytes, conf->getDecimationFactor(confindex), formatname);
 
   // since we allocated the max amount of space needed above, we need to change
   // this to the number actually needed.
@@ -218,7 +218,7 @@ void Mk5DataStream::initialiseFile(int configindex, int fileindex)
   framebytes = config->getFrameBytes(configindex, streamnum);
   bw = config->getConfigBandwidth(configindex);
 
-  genFormatName(format, ninputbands, bw, nbits, framebytes, config->getOversampleFactor(configindex), formatname);
+  genFormatName(format, ninputbands, bw, nbits, framebytes, config->getDecimationFactor(configindex), formatname);
 
   mark5stream = new_mark5_stream(
     new_mark5_stream_file(datafilenames[configindex][fileindex].c_str(), 0),

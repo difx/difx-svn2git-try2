@@ -172,7 +172,7 @@ int Configuration::getFramePayloadBytes(int configindex, int configdatastreamind
 
 void Configuration::getFrameInc(int configindex, int configdatastreamindex, int &sec, int &ns)
 {
-  int nchan, qb, os;
+  int nchan, qb, decimationfactor;
   int payloadsize;
   double samplerate; /* in Hz */
   double seconds;
@@ -180,17 +180,17 @@ void Configuration::getFrameInc(int configindex, int configdatastreamindex, int 
   nchan = getDNumInputBands(configindex, configdatastreamindex);
   samplerate = 2.0e6*getDBandwidth(configindex, configdatastreamindex, 0);
   qb = getDNumBits(configindex, configdatastreamindex);
-  os = getOversampleFactor(configindex);
+  decimationfactor = getDecimationFactor(configindex);
   payloadsize = getFramePayloadBytes(configindex, configdatastreamindex);
 
-  seconds = payloadsize*8/(samplerate*nchan*qb*os);
+  seconds = payloadsize*8/(samplerate*nchan*qb*decimationfactor);
   sec = int(seconds);
   ns = int(1.0e9*(seconds - sec));
 }
 
 int Configuration::getFramesPerSecond(int configindex, int configdatastreamindex)
 {
-  int nchan, qb, os;
+  int nchan, qb, decimationfactor;
   int payloadsize;
   double samplerate; /* in Hz */
   double seconds;
@@ -198,11 +198,11 @@ int Configuration::getFramesPerSecond(int configindex, int configdatastreamindex
   nchan = getDNumInputBands(configindex, configdatastreamindex);
   samplerate = 2.0e6*getDBandwidth(configindex, configdatastreamindex, 0);
   qb = getDNumBits(configindex, configdatastreamindex);
-  os = getOversampleFactor(configindex);
+  decimationfactor = getDecimationFactor(configindex);
   payloadsize = getFramePayloadBytes(configindex, configdatastreamindex);
 
   // This will always work out to be an integer 
-  return int(samplerate*nchan*qb*os/(8*payloadsize) + 0.5);
+  return int(samplerate*nchan*qb*decimationfactor/(8*payloadsize) + 0.5);
 }
 
 int Configuration::getMaxResultLength()
@@ -339,11 +339,11 @@ int Configuration::getResultLength(int configindex)
 int Configuration::getDataBytes(int configindex, int datastreamindex)
 {
   datastreamdata currentds = datastreamtable[configs[configindex].datastreamindices[datastreamindex]];
-  int validlength = (configs[configindex].oversamplefactor*configs[configindex].blockspersend*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
+  int validlength = (configs[configindex].decimationfactor*configs[configindex].blockspersend*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
   if(currentds.format == MKIV || currentds.format == VLBA || currentds.format == MARK5B)
   {
     //must be an integer number of frames, with enough margin for overlap on either side
-    validlength += (configs[configindex].oversamplefactor*configs[configindex].guardblocks*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
+    validlength += (configs[configindex].decimationfactor*configs[configindex].guardblocks*currentds.numinputbands*2*currentds.numbits*configs[configindex].numchannels)/8;
     return ((validlength/currentds.framebytes)+2)*currentds.framebytes;
   }
   else
@@ -467,7 +467,7 @@ Mode* Configuration::getMode(int configindex, int datastreamindex)
     case MKIV:
     case VLBA:
     case MARK5B:
-      framesamples = getFramePayloadBytes(configindex, datastreamindex)*8/(getDNumBits(configindex, datastreamindex)*getDNumInputBands(configindex, datastreamindex)*conf.oversamplefactor);
+      framesamples = getFramePayloadBytes(configindex, datastreamindex)*8/(getDNumBits(configindex, datastreamindex)*getDNumInputBands(configindex, datastreamindex)*conf.decimationfactor);
       framebytes = getFrameBytes(configindex, datastreamindex);
       return new Mk5Mode(this, configindex, datastreamindex, conf.numchannels, conf.blockspersend, conf.guardblocks, stream.numfreqs, freqtable[stream.freqtableindices[0]].bandwidth, stream.freqclockoffsets, stream.numinputbands, stream.numoutputbands, stream.numbits, stream.filterbank, conf.postffringerot, conf.quadraticdelayinterp, conf.writeautocorrs, framebytes, framesamples, stream.format);
       break;
@@ -637,6 +637,8 @@ void Configuration::processConfig(ifstream * input)
     configs[i].channelstoaverage = atoi(line.c_str());
     getinputline(input, &line, "OVERSAMPLE FACTOR");
     configs[i].oversamplefactor = atoi(line.c_str());
+    getinputline(input, &line, "DECIMATION FACTOR");
+    configs[i].decimationfactor = atoi(line.c_str());
     configs[i].independentchannelindex = i;
     for(int j=numindependentchannelconfigs-1;j>=0;j--)
     {
@@ -715,7 +717,7 @@ void Configuration::processDatastreamTable(ifstream * input)
   for(int i=0;i<datastreamtablelength;i++)
   {
     int configindex=-1;
-    int oversamp;
+    int decimationfactor;
 
     //get configuration index for this datastream
     for(int c=0; c<numconfigs; c++)
@@ -737,7 +739,7 @@ void Configuration::processDatastreamTable(ifstream * input)
       exit(1);
     }
 
-    oversamp = configs[configindex].oversamplefactor;
+    decimationfactor = configs[configindex].decimationfactor;
 
     //read all the info for this datastream
     getinputline(input, &line, "TELESCOPE INDEX");
@@ -803,11 +805,11 @@ void Configuration::processDatastreamTable(ifstream * input)
       datastreamtable[i].freqpols[j] = atoi(line.c_str());
       datastreamtable[i].numinputbands += datastreamtable[i].freqpols[j];
     }
-    datastreamtable[i].bytespersamplenum = (datastreamtable[i].numinputbands*datastreamtable[i].numbits*oversamp)/8;
+    datastreamtable[i].bytespersamplenum = (datastreamtable[i].numinputbands*datastreamtable[i].numbits*decimationfactor)/8;
     if(datastreamtable[i].bytespersamplenum == 0)
     {
       datastreamtable[i].bytespersamplenum = 1;
-      datastreamtable[i].bytespersampledenom = 8/(datastreamtable[i].numinputbands*datastreamtable[i].numbits*oversamp);
+      datastreamtable[i].bytespersampledenom = 8/(datastreamtable[i].numinputbands*datastreamtable[i].numbits*decimationfactor);
     }
     else
       datastreamtable[i].bytespersampledenom = 1;
@@ -1005,6 +1007,13 @@ bool Configuration::consistencyCheck()
     if(count != numdatastreams)
     {
       cerr << "Error - not all datastreams accounted for in the datastream table for config " << i << endl;
+      return false;
+    }
+
+    //check that oversamplefactor >= decimationfactor
+    if(configs[i].oversamplefactor < configs[i].decimationfactor)
+    {
+      cerr << "Error - oversamplefactor (" << oversamplefactor << ") is less than decimation factor (" << decimationfactor << ") - aborting!!!" << endl;
       return false;
     }
 

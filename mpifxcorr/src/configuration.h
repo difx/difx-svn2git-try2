@@ -70,6 +70,7 @@ public:
   inline int getBlocksPerSend(int configindex) { return configs[configindex].blockspersend; }
   inline int getGuardBlocks(int configindex) { return configs[configindex].guardblocks; }
   inline int getOversampleFactor(int configindex) { return configs[configindex].oversamplefactor; }
+  inline int getDecimationFactor(int configindex) { return configs[configindex].decimationfactor; }
   inline double getIntTime(int configindex) { return configs[configindex].inttime; }
   inline bool writeAutoCorrs(int configindex) { return configs[configindex].writeautocorrs; }
   inline outputformat getOutputFormat() { return outformat; }
@@ -408,6 +409,7 @@ private:
     int numchannels;
     int channelstoaverage;
     int oversamplefactor;
+    int decimationfactor;
     int independentchannelindex;
     int blockspersend;
     int guardblocks;
