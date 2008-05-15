@@ -28,7 +28,10 @@ static int genFormatName(Configuration::dataformat format, int nchan, double bw,
         cerr << "genFormatName : MKIV format : framebytes = " << framebytes << " is not allowed\n";
         exit(1);
       }
-      sprintf(formatname, "MKIV%d_%d-%d-%d-%d", oversamplefactor, fanout, mbps, nchan, nbits);
+      if(oversamplefactor > 1)
+        sprintf(formatname, "MKIV1_%d-%d-%d-%d/%d", fanout, mbps, nchan, nbits, oversamplefactor);
+      else
+        sprintf(formatname, "MKIV1_%d-%d-%d-%d", fanout, mbps, nchan, nbits);
       break;
     case Configuration::VLBA:
       fanout = framebytes*8/(20160*nbits*nchan);
@@ -37,11 +40,14 @@ static int genFormatName(Configuration::dataformat format, int nchan, double bw,
         cerr << "genFormatName : VLBA format : framebytes = " << framebytes << " is not allowed\n";
         exit(1);
       }
-      sprintf(formatname, "VLBA%d_%d-%d-%d-%d", oversamplefactor, fanout, mbps, nchan, nbits);
+      if(oversamplefactor > 1)
+        sprintf(formatname, "VLBA1_%d-%d-%d-%d/%d", fanout, mbps, nchan, nbits, oversamplefactor);
+      else
+        sprintf(formatname, "VLBA1_%d-%d-%d-%d", fanout, mbps, nchan, nbits);
       break;
     case Configuration::MARK5B:
       if(oversamplefactor > 1)
-        sprintf(formatname, "Mark5B%d-%d-%d-%d", oversamplefactor, mbps, nchan, nbits);
+        sprintf(formatname, "Mark5B-%d-%d-%d/%d", mbps, nchan, nbits, oversamplefactor);
       else
         sprintf(formatname, "Mark5B-%d-%d-%d", mbps, nchan, nbits);
       break;
