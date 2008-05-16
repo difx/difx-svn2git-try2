@@ -1013,7 +1013,7 @@ bool Configuration::consistencyCheck()
     //check that oversamplefactor >= decimationfactor
     if(configs[i].oversamplefactor < configs[i].decimationfactor)
     {
-      cerr << "Error - oversamplefactor (" << oversamplefactor << ") is less than decimation factor (" << decimationfactor << ") - aborting!!!" << endl;
+      cerr << "Error - oversamplefactor (" << configs[i].oversamplefactor << ") is less than decimation factor (" << configs[i].decimationfactor << ") - aborting!!!" << endl;
       return false;
     }
 
