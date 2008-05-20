@@ -182,7 +182,7 @@ void Visibility::updateTime()
   }
   if(configindex != currentconfigindex && currentstartseconds < executeseconds)
   {
-    changeConfig(currentconfigindex);
+    changeConfig(configindex);
   }
 }
 
