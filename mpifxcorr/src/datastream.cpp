@@ -63,6 +63,9 @@ void DataStream::initialise()
   int currentconfigindex, currentoverflowbytes, overflowbytes = 0;
   bufferbytes = databufferfactor*config->getMaxDataBytes(streamnum);
   readbytes = bufferbytes/numdatasegments;
+
+  cout << "******DataStream " << mpiid << ": Initialise. bufferbytes=" << bufferbytes << "  numdatasegments=" << numdatasegments << "  readbytes=" << readbytes << endl;
+
   for(int i=0;i<config->getNumConfigs();i++) {
     currentoverflowbytes = int((((long long)config->getDataBytes(i,streamnum))*((long long)(config->getBlocksPerSend(i) + config->getGuardBlocks(i))))/config->getBlocksPerSend(i));
     if(currentoverflowbytes > overflowbytes)
@@ -702,10 +705,11 @@ void DataStream::openstream(int portnumber, int tcpwindowsizebytes)
   /* Initialise server's address */
   memset((char *)&server,0,sizeof(server));
   server.sin_family = AF_INET;
-  server.sin_addr.s_addr = htonl(INADDR_ANY); /* Anyone can connect */
+  //server.sin_addr.s_addr = htonl(INADDR_ANY); /* Anyone can connect */
   server.sin_port = htons((unsigned short)portnumber); /* Which port number to use */
 
   if (tcp) { // TCP socket
+    cout << "***** Datastream " << mpiid << ": Creating a TCP socket" << endl;
     /* Create a server to listen with */
     serversock = socket(AF_INET,SOCK_STREAM,0); 
     if (serversock==-1) 
@@ -713,30 +717,32 @@ void DataStream::openstream(int portnumber, int tcpwindowsizebytes)
 
     /* Set the TCP window size */
     if (tcpwindowsizebytes>0) {
-      setsockopt(serversock, SOL_SOCKET, SO_SNDBUF,
-		 (char *) &tcpwindowsizebytes, sizeof(tcpwindowsizebytes));
-      if (status!=0) {
-	cerr << "Error setting socket options" << endl;
-	close(serversock);
-      } 
-
-      setsockopt(serversock, SOL_SOCKET, SO_RCVBUF,
+      status = setsockopt(serversock, SOL_SOCKET, SO_RCVBUF,
 		 (char *) &tcpwindowsizebytes, sizeof(tcpwindowsizebytes));
 
       if (status!=0) {
-	cerr << "Error setting socket options" << endl;
+	cerr << "Datastream " << mpiid << ": Error setting socket RCVBUF" << endl;
 	close(serversock);
       } 
     }
   } else { // UDP socket  
-    serversock = socket(AF_INET,SOCK_DGRAM,0); 
+    cout << "***** Datastream " << mpiid << ": Creating a UDP socket" << endl;
+    serversock = socket(AF_INET,SOCK_DGRAM, IPPROTO_UDP); 
     if (serversock==-1) 
       cerr << "Error creating UDP socket" << endl;
     // Should exit here on error
 
+    int udpbufbytes = 32*1024*1024;
+    status = setsockopt(serversock, SOL_SOCKET, SO_RCVBUF,
+			(char *) &udpbufbytes, sizeof(udpbufbytes));
+    
+    if (status!=0) {
+      cerr << "Datastream " << mpiid << ": Error setting socket RCVBUF" << endl;
+	close(serversock);
+    } 
   }
 
-    status = bind(serversock, (struct sockaddr *)&server, sizeof(server));
+  status = bind(serversock, (struct sockaddr *)&server, sizeof(server));
   if (status!=0) {
     cerr << "Datastream " << mpiid << ": Error binding socket" << endl;
     close(serversock);
@@ -789,9 +795,9 @@ int DataStream::openframe()
 
   buf = (char*)malloc(LBA_HEADER_LENGTH); // Minimum size of file header
 
-  cout << "About to open frame" << endl;
+  //cout << "About to open frame" << endl;
   status = readnetwork(socketnumber, buf, ntoread, &nread);
-  cout << "Read first network successfully" << endl;
+  //cout << "Read first network successfully" << endl;
   if (status==-1) { // Error reading socket
     cerr << "Error reading socket" << endl;
     keepreading=false;
@@ -905,8 +911,13 @@ void DataStream::networkToMemory(int buffersegment, int & framebytesremaining)
   char *ptr;
   int bytestoread, nread, status;
 
+  
+  //cout << "***DataStream " << mpiid << ": Waiting on buffer " << buffersegment << "/" << numdatasegments << endl;
   //do the buffer housekeeping
   waitForBuffer(buffersegment);
+  //cout << "***DataStream " << mpiid << ": Got it. Reading " << readbytes << endl;
+
+  //cout << "***DataStream " << mpiid << ": framebytesremaining = " << framebytesremaining << endl;
  
   bytestoread = readbytes;
   if (bytestoread>framebytesremaining)
@@ -919,7 +930,7 @@ void DataStream::networkToMemory(int buffersegment, int & framebytesremaining)
   status = readnetwork(socketnumber, ptr, bytestoread, &nread);
 
   if (status==-1) { // Error reading socket
-    cerr << "Error reading socket" << endl;
+    cerr << "Datastream " << mpiid << ": Error reading socket" << endl;
     keepreading=false;
   } else if (status==0) {  // Socket closed remotely
     keepreading=false;
@@ -935,6 +946,7 @@ void DataStream::networkToMemory(int buffersegment, int & framebytesremaining)
   readnanoseconds += bufferinfo[buffersegment].nsinc;
   readseconds += readnanoseconds/1000000000;
   readnanoseconds %= 1000000000;
+
 }
 
 int DataStream::readnetwork(int sock, char* ptr, int bytestoread, int* nread)
@@ -942,6 +954,8 @@ int DataStream::readnetwork(int sock, char* ptr, int bytestoread, int* nread)
   int nr;
 
   *nread = 0;
+
+  //cout << "DataStream " << mpiid << ": Reading " << bytestoread << " bytes" << endl;
 
   while (bytestoread>0)
   {
