@@ -236,7 +236,6 @@ int main(int argc, char *argv[])
     {
       int datastreamnum = myID - fxcorr::FIRSTTELESCOPEID;
       if(config->isMkV(datastreamnum)) {
-	cout << "**** Create new Mk5 stream *** " << endl;
         stream = new Mk5DataStream(config, datastreamnum, myID, numcores, coreids, config->getDDataBufferFactor(), config->getDNumDataSegments());
       } else if(config->isNativeMkV(datastreamnum))
         stream = new NativeMk5DataStream(config, datastreamnum, myID, numcores, coreids, config->getDDataBufferFactor(), config->getDNumDataSegments());
