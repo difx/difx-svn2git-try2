@@ -5,6 +5,8 @@ AC_LANG_CPLUSPLUS
 AC_PROG_CXX
 AC_PROG_RANLIB
 
+AC_ARG_ENABLE(quiet, ["disable some verbiage"], [CFLAG_QUIET="-DQUIET"], [CFLAG_QUIET=" "])
+
 dnl **********************************************************
 dnl **** Set path for Intel Performance Primitive library ****
 dnl **********************************************************
@@ -76,7 +78,7 @@ PKG_CHECK_MODULES(M5ACCESS, mark5access)
 dnl **********************************************************
 
 
-CXXFLAGS="${CXXFLAGS} ${M5ACCESS_CFLAGS} ${IPP_CFLAGS} ${RPFITS_CFLAGS} ${DIFXMESSAGE_CFLAGS}"
+CXXFLAGS="${CXXFLAGS} ${M5ACCESS_CFLAGS} ${IPP_CFLAGS} ${RPFITS_CFLAGS} ${DIFXMESSAGE_CFLAGS} ${CFLAG_QUIET}"
 LIBS="${M5ACCESS_LIBS} ${SS_LIBS} ${IPP_LIBS} ${RPFITS_LIBS} ${DIFXMESSAGE_LIBS}"
 
 echo "CXXFLAGS = ${CXXFLAGS}"

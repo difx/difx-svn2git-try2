@@ -29,7 +29,7 @@ Core::Core(int id, Configuration * conf, int * dids, MPI_Comm rcomm)
   startmjd = config->getStartMJD();
   startseconds = config->getStartSeconds();
 
-  //work out the biggest ovearhead from any of the active configurations
+  //work out the biggest overhead from any of the active configurations
   maxguardratio = 1.0;
   databytes = config->getMaxDataBytes();
   for(int i=0;i<config->getNumConfigs();i++)
