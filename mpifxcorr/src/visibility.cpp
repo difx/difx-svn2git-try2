@@ -28,6 +28,9 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#ifdef HAVE_DIFXMESSAGE
+#include <difxmessage.h>
+#endif
 
 Visibility::Visibility(Configuration * conf, int id, int numvis, int eseconds, int skipseconds, int startns, const string * pnames, bool mon, int port, char * hname, int * sock, int monskip)
   : config(conf), visID(id), numvisibilities(numvis), executeseconds(eseconds), polnames(pnames), monitor(mon), portnum(port), hostname(hname), mon_socket(sock), monitor_skip(monskip)
@@ -911,6 +914,49 @@ void Visibility::writedifx()
     }
   }
 }
+
+void Visibility::multicastweights()
+{
+#ifdef HAVE_DIFXMESSAGE
+  int i, j, k, pboffset;
+  float *weight;
+  double mjd;
+  int dumpmjd;
+  double dumpseconds;
+
+  weight = new float[numdatastreams];
+  
+  //work out the time of this integration
+  dumpmjd = expermjd + (experseconds + currentstartseconds)/86400;
+  dumpseconds = double((experseconds + currentstartseconds)%86400) + double((currentstartsamples+integrationsamples/2)/(2000000.0*config->getDBandwidth(currentconfigindex,0,0)));
+
+  for(int i=0;i<numdatastreams;i++)
+  {
+    pboffset = -1;
+    for(int j=0;j<config->getDNumFreqs(currentconfigindex, i); j++)
+    {
+      //find a product that is active, so we know where to look to work out which frequency this is
+      for(int k=maxproducts-1;k>=0;k--) {
+        if(datastreampolbandoffsets[i][j][k] >= 0)
+          pboffset = datastreampolbandoffsets[i][j][k];
+      }
+      if(pboffset >= 0)
+        break;
+    }
+    if(pboffset >= 0)
+      weight[i] = autocorrweights[i][pboffset];
+    else
+      weight[i] = -1.0;
+  }
+
+  mjd = dumpmjd + dumpseconds/86400.0;
+
+  difxMessageSendDifxStatus(DIFX_STATE_RUNNING, "", mjd, numdatastreams, weight);
+
+  delete[] weight;
+#endif
+} 
+
 
 void Visibility::writeDiFXHeader(ofstream * output, int baselinenum, int dumpmjd, double dumpseconds, int configindex, int sourceindex, int freqindex, const char polproduct[3], int pulsarbin, int flag, float weight, float buvw[3])
 {

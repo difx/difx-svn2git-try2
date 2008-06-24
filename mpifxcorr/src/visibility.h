@@ -82,6 +82,11 @@ public:
   */
   inline double getTime() { return double(currentstartseconds) + double(currentstartsamples)/double(samplespersecond); }
 
+/**
+  * Send a difxmessage containing integration time and antenna weights
+  */
+  void multicastweights();
+
 private:
  /**
   * Changes the parameters of the Visibilty object to match the specified configuration
