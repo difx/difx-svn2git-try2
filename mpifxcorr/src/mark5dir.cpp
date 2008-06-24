@@ -102,8 +102,8 @@ int getMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice, int mjdref)
 	unsigned long *buffer;
 	int bufferlen;
 
-	/* allocate the minimum needed */
-	bufferlen = 20160*8*3;
+	/* allocate a bit more than the minimum needed */
+	bufferlen = 20160*8*3 + 20160*8*5;
 
 	memset(module, 0, sizeof(struct Mark5Module));
 
@@ -145,6 +145,12 @@ int getMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice, int mjdref)
 		strncpy(scan->name, m5dir.scanName[i], MAXLENGTH);
 		scan->start  = m5dir.start[i];
 		scan->length = m5dir.length[i];
+		if(scan->length < bufferlen*10)
+		{
+			printf("@");
+			fflush(stdout);
+			continue;
+		}
 
 		if(scan->start & 4)
 		{
@@ -164,7 +170,7 @@ int getMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice, int mjdref)
 			continue;
 		}
 
-		mf = new_mark5_format_from_stream(new_mark5_stream_memory(buffer, bufferlen));
+		mf = new_mark5_format_from_stream(new_mark5_stream_memory(buffer, bufferlen/2));
 	
 		if(!mf)
 		{
