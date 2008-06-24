@@ -294,9 +294,6 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 	{
 		bufferinfo[buffersegment].validbytes = 0;
 		dataremaining = false;
-#ifdef HAVE_DIFXMESSAGE
-		difxMessageSendDifxInfo("Leaving moduleToMemory early");
-#endif
 		return;
 	}
 
@@ -305,10 +302,6 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		bytes = scan->start + scan->length - start;
 		cout << "[" << mpiid << "] shortening read to only " << bytes << " bytes ";
 		cout << "(was " << readbytes << ")" << endl;
-#ifdef HAVE_DIFXMESSAGE
-		sprintf(message, "Shortening read from %d to %d bytes", readbytes, bytes);
-		difxMessageSendDifxInfo(message);
-#endif
 	}
 
 	/* always read multiples of 8 bytes */
