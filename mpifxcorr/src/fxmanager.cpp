@@ -58,7 +58,7 @@ FxManager::FxManager(Configuration * conf, int ncores, int * dids, int * cids, i
   cout << "STARTING " << PACKAGE_NAME << " version " << VERSION << endl;
 
 #ifdef HAVE_DIFXMESSAGE
-  difxMessageSendDifxStatus(DIFX_STATE_STARTING, "Version " VERSION, 0.0);
+  difxMessageSendDifxStatus(DIFX_STATE_STARTING, "Version " VERSION, 0.0, 0, 0);
 #endif
 
   /* set the PIPE signal handler to 'catch_pipe' */
@@ -187,11 +187,11 @@ FxManager::~FxManager()
 #ifdef HAVE_DIFXMESSAGE
   if(terminatenow)
   {
-    difxMessageSendDifxStatus(DIFX_STATE_TERMINATED, "", 0.0);
+    difxMessageSendDifxStatus(DIFX_STATE_TERMINATED, "", 0.0, 0, 0);
   }
   else
   {
-    difxMessageSendDifxStatus(DIFX_STATE_DONE, "", 0.0);
+    difxMessageSendDifxStatus(DIFX_STATE_DONE, "", 0.0, 0, 0);
   }
 #endif
 }
@@ -207,11 +207,11 @@ void FxManager::terminate()
 #ifdef HAVE_DIFXMESSAGE
   if(terminatenow)
   {
-    difxMessageSendDifxStatus(DIFX_STATE_TERMINATING, "", 0.0);
+    difxMessageSendDifxStatus(DIFX_STATE_TERMINATING, "", 0.0, 0, 0);
   }
   else
   {
-    difxMessageSendDifxStatus(DIFX_STATE_ENDING, "", 0.0);
+    difxMessageSendDifxStatus(DIFX_STATE_ENDING, "", 0.0, 0, 0);
   }
 #endif
   cout << "FXMANAGER: Sending terminate signals" << endl;
@@ -382,13 +382,8 @@ void FxManager::receiveData(bool resend)
       viscomplete = visbuffer[visindex]->addData(resultbuffer);
       if(viscomplete)
       {
-#ifdef HAVE_DIFXMESSAGE
-	{
-	  double mjd;
-	  mjd = config->getStartMJD() + (visbuffer[visindex]->getTime()+config->getStartSeconds())/86400.0;
-          difxMessageSendDifxStatus(DIFX_STATE_RUNNING, "", mjd);
-	}
-#endif
+        visbuffer[visindex]->multicastweights();
+
         cout << "FXMANAGER telling visbuffer[" << visindex << "] to write out - this refers to time " << visbuffer[visindex]->getTime() << " - the previous buffer has time " << visbuffer[(visindex-1+config->getVisBufferLength())%config->getVisBufferLength()]->getTime() << ", and the next one has " << visbuffer[(visindex +1)%config->getVisBufferLength()]->getTime() << endl;
         cout << "Newestlockedvis is " << newestlockedvis << ", while oldestlockedvis is " << oldestlockedvis << endl;
         //better make sure we have at least locked the next section
