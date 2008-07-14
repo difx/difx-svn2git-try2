@@ -16,10 +16,18 @@
 #include <string.h>
 #include <strings.h>
 #include <stdlib.h>
+#include <mark5access.h>
 #include "mark5dir.h"
-#include "mark5access.h"
 
 using namespace std;
+
+char Mark5DirDescription[][20] =
+{
+	"Short scan",
+	"XLR Read error",
+	"Decode error",
+	"Decoded"
+};
 
 /* returns active bank, or -1 if none */
 int Mark5BankGet(SSHANDLE xlrDevice)
@@ -91,35 +99,36 @@ int Mark5BankSetByVSN(SSHANDLE xlrDevice, const char *vsn)
 	return b;
 }
 
-int getMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice, int mjdref)
+int getMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice, int mjdref, 
+	void (*callback)(int, int, int, void *), void *data)
 {
 	XLR_RETURN_CODE xlrRC;
 	Mark5Directory m5dir;
 	int len, i, n;
 	struct mark5_format *mf;
 	Mark5Scan *scan;
+	char label[XLR_LABEL_LENGTH];
+	int bank;
 	unsigned long a, b;
 	unsigned long *buffer;
 	int bufferlen;
+	unsigned int x, signature;
 
 	/* allocate a bit more than the minimum needed */
-	bufferlen = 20160*8*3 + 20160*8*5;
+	bufferlen = 20160*8*5;
 
-	memset(module, 0, sizeof(struct Mark5Module));
-
-	module->bank = Mark5BankGet(xlrDevice);
-	if(module->bank < 0)
+	bank = Mark5BankGet(xlrDevice);
+	if(bank < 0)
 	{
 		return -1;
 	}
 
-	xlrRC = XLRGetLabel(xlrDevice, module->label);
+	xlrRC = XLRGetLabel(xlrDevice, label);
 	if(xlrRC != XLR_SUCCESS)
 	{
 		return -1;
 	}
-
-	module->label[8] = 0;
+	label[8] = 0;
 
 	len = XLRGetUserDirLength(xlrDevice);
 	if(len < (signed int)sizeof(struct Mark5Directory))
@@ -134,10 +143,34 @@ int getMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice, int mjdref)
 		return -1;
 	}
 
+	/* the adventurous would use md5 here */
+	signature = 1;
+	for(i = 0; i < sizeof(struct Mark5Directory)/4; i++)
+	{
+		x = ((unsigned int *)(&m5dir))[i] + 1;
+		signature = signature ^ x;
+	}
+
+	/* prevent a zero signature */
+	if(signature == 0)
+	{
+		signature = 0x55555555;
+	}
+
+	if(module->signature == signature && module->nscans > 0)
+	{
+		module->bank = bank;
+		return 0;
+	}
+
 	buffer = (unsigned long *)malloc(bufferlen);
 	
+	memset(module, 0, sizeof(struct Mark5Module));
 	module->nscans = m5dir.nscans;
-	
+	module->bank = bank;
+	strcpy(module->label, label);
+	module->signature = signature;
+
 	for(i = 0; i < module->nscans; i++)
 	{
 		scan = module->scans + i;
@@ -147,8 +180,10 @@ int getMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice, int mjdref)
 		scan->length = m5dir.length[i];
 		if(scan->length < bufferlen*10)
 		{
-			printf("@");
-			fflush(stdout);
+			if(callback)
+			{
+				callback(i, module->nscans, MARK5_DIR_SHORT_SCAN, data);
+			}
 			continue;
 		}
 
@@ -165,17 +200,21 @@ int getMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice, int mjdref)
 
 		if(xlrRC == XLR_FAIL)
 		{
-			printf("?");
-			fflush(stdout);
+			if(callback)
+			{
+				callback(i, module->nscans, MARK5_DIR_READ_ERROR, data);
+			}
 			continue;
 		}
 
-		mf = new_mark5_format_from_stream(new_mark5_stream_memory(buffer, bufferlen/2));
+		mf = new_mark5_format_from_stream(new_mark5_stream_memory(buffer, bufferlen));
 	
 		if(!mf)
 		{
-			printf("!");
-			fflush(stdout);
+			if(callback)
+			{
+				callback(i, module->nscans, MARK5_DIR_DECODE_ERROR, data);
+			}
 			continue;
 		}
 		
@@ -195,13 +234,14 @@ int getMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice, int mjdref)
 		
 		delete_mark5_format(mf);
 
-		printf("."); 
-		fflush(stdout);
+		if(callback)
+		{
+			callback(i, module->nscans, MARK5_DIR_DECODE_SUCCESS, data);
+		}
+		continue;
 	}
 
 	free(buffer);
-	
-	printf("\n");
 
 	return 0;
 }
@@ -220,8 +260,9 @@ void printMark5Module(const struct Mark5Module *module)
 		return;
 	}
 	
-	printf("Module Name = %s   Nscans = %d   Bank = %c\n", 
-		module->label, module->nscans, module->bank+'A');
+	printf("Module Name = %s   Nscans = %d   Bank = %c  Sig = %u\n", 
+		module->label, module->nscans, module->bank+'A', 
+		module->signature);
 
 	n = module->nscans;
 	for(i = 0; i < n; i++)
@@ -242,8 +283,6 @@ void printMark5Module(const struct Mark5Module *module)
 			scan->framespersecond,
 			scan->duration);
 	}
-
-	printf("\n");
 }
 
 int loadMark5Module(struct Mark5Module *module, const char *filename)
@@ -251,10 +290,11 @@ int loadMark5Module(struct Mark5Module *module, const char *filename)
 	FILE *in;
 	struct Mark5Scan *scan;
 	char line[256];
-	int i, nscans;
+	int i, nscans, n;
 	char bank;
 	char label[XLR_LABEL_LENGTH];
 	double sec, framesec;
+	unsigned int signature;
 
 	if(!module)
 	{
@@ -278,13 +318,15 @@ int loadMark5Module(struct Mark5Module *module, const char *filename)
 		return -1;
 	}
 
-	if(sscanf(line, "%8s %d %c", 
-		label,
-		&nscans,
-		&bank) != 3)
+	n = sscanf(line, "%8s %d %c %u", label, &nscans, &bank, &signature);
+	if(n < 3)
 	{
 		fclose(in);
 		return -1;
+	}
+	if(n == 3)
+	{
+		signature = ~0;
 	}
 
 	if(nscans > MAXSCANS || nscans < 0)
@@ -296,6 +338,7 @@ int loadMark5Module(struct Mark5Module *module, const char *filename)
 	strcpy(module->label, label);
 	module->nscans = nscans;
 	module->bank = bank-'A';
+	module->signature = signature;
 
 	for(i = 0; i < nscans; i++)
 	{
@@ -346,10 +389,11 @@ int saveMark5Module(struct Mark5Module *module, const char *filename)
 		return -1;
 	}
 
-	fprintf(out, "%8s %d %c\n",
+	fprintf(out, "%8s %d %c %u\n",
 		module->label,
 		module->nscans,
-		module->bank+'A');
+		module->bank+'A',
+		module->signature);
 	for(i = 0; i < module->nscans; i++)
 	{
 		scan = module->scans + i;
@@ -378,16 +422,15 @@ int saveMark5Module(struct Mark5Module *module, const char *filename)
  * desired module is the active one.  On any failure return < 0 
  */
 int getCachedMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice, 
-	int mjdref, const char *vsn, const char *dir)
+	int mjdref, const char *vsn, const char *dir,
+	void (*callback)(int, int, int, void *), void *data)
 {
 	char filename[256];
-	int v, m1, m2, curbank;
-	int nscans = 0;
+	int v, curbank;
 
 	curbank = Mark5BankSetByVSN(xlrDevice, vsn);
 	if(curbank < 0)
 	{
-		cout << "Mark5BankSetByVSN(" << vsn << ") returned " << curbank << endl;
 		return -1;
 	}
 	
@@ -395,40 +438,10 @@ int getCachedMark5Module(struct Mark5Module *module, SSHANDLE xlrDevice,
 	
 	v = loadMark5Module(module, filename);
 
+	v = getMark5Module(module, xlrDevice, mjdref, callback, data);
+
 	if(v >= 0)
 	{
-		nscans = module->nscans;
-		if(nscans < 1)
-		{
-			v = -1;
-		}
-		else	/* valid dir loaded.  Is date OK? */
-		{
-			m1 = module->scans[0].mjd;
-			m2 = module->scans[nscans-1].mjd;
-			if(mjdref < m1-1 || mjdref > m2+1)
-			{
-				v = -1;
-			}
-		}
-	}
-
-	if(v < 0)	/* No cached dir or cache is old.  Remake. */
-	{
-		v = getMark5Module(module, xlrDevice, mjdref);
-		nscans = module->nscans;
-		if(v >= 0 && nscans < 1)
-		{
-			v = -1;
-		}
-		if(v >= 0)
-		{
-			saveMark5Module(module, filename);
-		}
-	}
-	else if(module->bank != curbank)
-	{
-		module->bank = curbank;
 		saveMark5Module(module, filename);
 	}
 

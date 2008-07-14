@@ -146,11 +146,11 @@ Mk5DataStream::Mk5DataStream(Configuration * conf, int snum, int id, int ncores,
 Mk5DataStream::~Mk5DataStream()
 {}
 
-int Mk5DataStream::calculateControlParams(int offsetsec, int offsetsamples)
+int Mk5DataStream::calculateControlParams(int offsetsec, int offsetns)
 {
   int bufferindex, framesin, vlbaoffset;
   
-  bufferindex = DataStream::calculateControlParams(offsetsec, offsetsamples);
+  bufferindex = DataStream::calculateControlParams(offsetsec, offsetns);
 
   if(bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] < 0.0)
     return 0;
@@ -160,7 +160,7 @@ int Mk5DataStream::calculateControlParams(int offsetsec, int offsetsamples)
 
   if(vlbaoffset < 0)
   {
-    cout << "ERROR Mk5DataStream::calculateControlParams : vlbaoffset=" << vlbaoffset << endl;
+    cout << "ERROR Mk5DataStream::calculateControlParams : vlbaoffset=" << vlbaoffset << " bufferindex=" << bufferindex << " atsegment=" << atsegment << endl;
     bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][0] = -1.0;
     return 0;
   }

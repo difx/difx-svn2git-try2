@@ -93,10 +93,10 @@ protected:
   * the geometric delays at the start and end of each FFT block as control information to pass to the Cores.  Allows for
   * the fact that Mk5 data must be sent as an integer number of frames, starting at a frame boundary
   * @param offsetsec The offset in seconds from the start of the correlation
-  * @param offsetsamples The offset in samples from the given second
+  * @param offsetns The offset in ns from the given second
   * @return The offset in bytes from the start of the databuffer that this block should start from - must be between 0 and bufferlength
   */
-  virtual int calculateControlParams(int offsetsec, int offsetsamples);
+  virtual int calculateControlParams(int offsetsec, int offsetns);
 
  /** 
   * Updates all the parameters (numchannels, sendbytes etc) for the specified segment of the databuffer.  Allows for

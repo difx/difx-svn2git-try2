@@ -147,7 +147,7 @@ FxManager::FxManager(Configuration * conf, int ncores, int * dids, int * cids, i
     cerr << "FxManager: Error locking first visibility!!" << endl;
   perr = pthread_mutex_lock(&(bufferlock[1]));
   if(perr != 0)
-    cerr << "FxManager: Error locking first visibility!!" << endl;
+    cerr << "FxManager: Error locking second visibility!!" << endl;
   perr = pthread_create(&writethread, NULL, FxManager::launchNewWriteThread, (void *)(this));
   if(perr != 0)
     cerr << "FxManager: Error in launching writethread!!" << endl;
@@ -157,6 +157,8 @@ FxManager::FxManager(Configuration * conf, int ncores, int * dids, int * cids, i
     if (perr != 0)
       cerr << "Error waiting on writethreadstarted condition!!!!" << endl;
   }
+
+  lastsource = numdatastreams;
 
   cout << "Estimated memory usage by FXManager: " << float(uvw->getNumUVWPoints()*24 + config->getVisBufferLength()*config->getMaxResultLength()*8)/1048576.0 << " MB" << endl;
 }
@@ -345,8 +347,31 @@ void FxManager::receiveData(bool resend)
   int sourcecore, sourceid=0, visindex, perr;
   bool viscomplete;
   double time;
+  int i, flag;
 
-  MPI_Recv(resultbuffer, resultlength*2, MPI_FLOAT, MPI_ANY_SOURCE, MPI_ANY_TAG, return_comm, &mpistatus);
+  // Work around MPI_Recv's desire to prioritize receives by MPI rank
+  for(i = 0; i < numcores; i++)
+  {
+      lastsource++;
+      if(lastsource > numcores + numdatastreams)
+      {
+      	lastsource = numdatastreams+1;
+      }
+      MPI_Iprobe(lastsource, MPI_ANY_TAG, return_comm, &flag, &mpistatus);
+      if(flag) break;
+  }
+  if(i == numcores)
+  {
+  	// No core has sent data yet -- wait for first message to come
+  	MPI_Recv(resultbuffer, resultlength*2, MPI_FLOAT, MPI_ANY_SOURCE, MPI_ANY_TAG, return_comm, &mpistatus);
+  }
+  else
+  {
+  	// Receive message from the core that is both ready and has been waiting the longest
+  	MPI_Recv(resultbuffer, resultlength*2, MPI_FLOAT, lastsource, MPI_ANY_TAG, return_comm, &mpistatus);
+  }
+
+
   sourcecore = mpistatus.MPI_SOURCE;
   MPI_Get_count(&mpistatus, MPI_FLOAT, &perr);
 
@@ -667,7 +692,7 @@ int FxManager::locateVisIndex(int coreid)
         return newestlockedvis;
     }
     //d'oh - its newer than we can handle - have to drop old data until we catch up
-    cerr << "Error - data was received which is too recent (" << coretimes[(numsent[coreid])% Core::RECEIVE_RING_LENGTH][coreid][0] << "sec + " << coretimes[(numsent[coreid])%Core::RECEIVE_RING_LENGTH][coreid][1] << "ns)!  Will force existing data to be dropped until we have caught up" << endl;
+    cerr << "Error - data was received which is too recent (" << coretimes[(numsent[coreid])% Core::RECEIVE_RING_LENGTH][coreid][0] << "sec + " << coretimes[(numsent[coreid])%Core::RECEIVE_RING_LENGTH][coreid][1] << "ns)!  Will force existing data to be dropped until we have caught up coreid="<< coreid << endl;
     while(difference > inttime)
     {
       count = 0;

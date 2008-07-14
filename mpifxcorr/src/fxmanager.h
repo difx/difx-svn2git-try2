@@ -144,6 +144,8 @@ private:
   bool * islocked;
   pthread_cond_t writecond;
   pthread_t writethread;
+
+  int lastsource;
 };
 
 #endif

@@ -150,7 +150,7 @@ void DataStream::execute()
   //read in some data from the first file and launch the reading/network thread
   initialiseMemoryBuffer();
 
-  //get the first instruction on where to send data, and how much of it (three ints in a row - core index, seconds offset, samplesoffset)
+  //get the first instruction on where to send data, and how much of it (three ints in a row - core index, seconds offset, ns offset)
   MPI_Irecv(receiveinfo, 3, MPI_INT, fxcorr::MANAGERID, MPI_ANY_TAG, MPI_COMM_WORLD, &msgrequest);
   
   while(status == vecNoErr)
@@ -196,7 +196,7 @@ void DataStream::execute()
       }
 
       bufferinfo[atsegment].numsent++;
-      if(bufferinfo[atsegment].numsent == maxsendspersegment) //can occur at the start when many come from segment 0
+      if(bufferinfo[atsegment].numsent >= maxsendspersegment) //can occur at the start when many come from segment 0
       {
         //wait til everything has sent so we can reset the requests and go again
         MPI_Waitall(maxsendspersegment, bufferinfo[atsegment].datarequests, datastatuses);
@@ -339,6 +339,10 @@ int DataStream::calculateControlParams(int offsetsec, int offsetns)
     firstoffsetns += 1000000000;
     lastoffsetns += 1000000000;
   }
+  if(lastoffsetns < 0)
+  {
+    cerr << "lastoffsetns < 0 still! =" << lastoffsetns << endl;
+  }
 
   //while we have passed the first of our two locked sections, unlock that and lock the next - have two tests so sample difference can't overflow
   waitForSendComplete();
@@ -371,6 +375,14 @@ int DataStream::calculateControlParams(int offsetsec, int offsetns)
       bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][i] = -1.0;
     return 0; //note exit here!!!!
   }
+
+  // FIXME -- talk to Adam about this next check.  -WFB
+  if(offsetsec > bufferinfo[atsegment].seconds + 1)
+  {
+    for(int i=0;i<bufferinfo[atsegment].controllength;i++)
+      bufferinfo[atsegment].controlbuffer[bufferinfo[atsegment].numsent][i] = -1.0;
+    return 0; //note exit here!!!!
+  }
   
   //now that we obviously have a lock on all the data we need, fill the control buffer
   blockbytes = (bufferinfo[atsegment].numchannels*2*bufferinfo[atsegment].bytespersamplenum)/bufferinfo[atsegment].bytespersampledenom;
@@ -387,6 +399,7 @@ int DataStream::calculateControlParams(int offsetsec, int offsetns)
 
   //if we make it here, its safe to make the int calculations below
   bufferindex = atsegment*readbytes + (int(((offsetsec - bufferinfo[atsegment].seconds)*1000000000 + (firstoffsetns - bufferinfo[atsegment].nanoseconds))/bufferinfo[atsegment].sampletimens + 0.5)*bufferinfo[atsegment].bytespersamplenum)/bufferinfo[atsegment].bytespersampledenom;
+
   //align the index to nearest previous 16 bit boundary
   if(bufferindex%2 != 0)
     bufferindex -= 1;

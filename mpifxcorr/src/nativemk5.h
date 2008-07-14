@@ -42,13 +42,20 @@ protected:
 	int sendMark5Status(enum Mk5State state, int scanNumber, long long position, double dataMJD, float rate);
 #endif
 
-#ifdef HAVE_XLRAPI_H
 private:
+#ifdef HAVE_XLRAPI_H
 	struct Mark5Module module;
 	struct Mark5Scan *scan;
 	long long readpointer;
 	SSHANDLE xlrDevice;
 #endif
+
+#ifdef HAVE_DIFXMESSAGE
+	DifxMessageMk5Status mk5status;
+#endif
+
+	int executeseconds;
+
 };
 
 #endif
