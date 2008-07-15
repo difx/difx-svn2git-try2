@@ -339,9 +339,9 @@ int Mk5DataStream::readnetwork(int sock, char* ptr, int bytestoread, int* nread)
     if (udp_offset>0) packet_segmentend++;
     segmentsize = packet_segmentend-packet_segmentstart+1;
 
-    cout << "****** udpsize " << udpsize << "  bytestoread " << bytestoread << endl;
-    cout << "****** udp_offset = " << udp_offset << endl;
-    cout << "****** readnetwork will read packets " << packet_segmentstart << " to " << packet_segmentend << "(" << segmentsize << ")" << endl;
+    //cout << "****** udpsize " << udpsize << "  bytestoread " << bytestoread << endl;
+    //cout << "****** udp_offset = " << udp_offset << endl;
+    //cout << "****** readnetwork will read packets " << packet_segmentstart << " to " << packet_segmentend << "(" << segmentsize << ")" << endl;
     
     if (segmentsize>packets_arrived.size()) {
       cerr << "Mk5DataStream::readnetwork  bytestoread too large (" << bytestoread << ")" << endl;
@@ -383,7 +383,7 @@ int Mk5DataStream::readnetwork(int sock, char* ptr, int bytestoread, int* nread)
 
 	  done = 1;
 	  *nread = bytestoread;
-	  //cout << "CORNER UDP CASE NOT IMPLEMENTED YET!!!!! " << endl;
+
 	} else {
 	  int bytes = (bytestoread-udp_offset)%udpsize;
 	  memcpy(ptr+udp_offset+(packet_index-1)*udpsize, udp_buf, bytes);  
@@ -424,6 +424,17 @@ int Mk5DataStream::readnetwork(int sock, char* ptr, int bytestoread, int* nread)
 	cerr << "DataStream " << mpiid << ": Expected " << udpsize+sizeof(long long) << " bytes, got " << nr << "bytes. Quiting" << endl;
 	exit(1);
       } else {
+	if (packet_head==0 && sequence!=0) { // First packet!
+	  packet_head = sequence;
+	  cout <<  "DataStream " << mpiid << ": First packet has sequence " << sequence << endl;
+
+	  packet_segmentstart = sequence;
+	  packet_segmentend = packet_segmentstart+(bytestoread-1)/udpsize;
+	  //cout << "****** readnetwork will actually read packets " << packet_segmentstart << " to " << packet_segmentend << "(" << segmentsize << ")" << endl;
+
+	}
+
+
 	// Check this is a sensible packet
 	packet_index = sequence-packet_segmentstart;
 	if (packet_index<0) {
@@ -431,7 +442,7 @@ int Mk5DataStream::readnetwork(int sock, char* ptr, int bytestoread, int* nread)
 	  // Resync
 	  packet_oo++;  // This could be duplicate but we cannot tell
 	} else if (sequence==packet_segmentend) { 
-	  cout << "**Segmentend " << packet_index << " (" << packet_segmentend << ")" << endl;
+	  //cout << "**Segmentend " << packet_index << " (" << packet_segmentend << ")" << endl;
 	  int bytes = (bytestoread-udp_offset-1)%udpsize+1;
 	  // Consistence check
 	  if (bytes<0) {
@@ -455,7 +466,7 @@ int Mk5DataStream::readnetwork(int sock, char* ptr, int bytestoread, int* nread)
 	  packets_arrived[packet_index] = true;
 	  done = 1;
 	} else if (packet_index>=segmentsize) { 
-	  cout << "*********Past Segmentend " << sequence << endl;
+	  //cout << "*********Past Segmentend " << sequence << endl;
 
 	  if (udp_offset==udpsize) 
 	    next_segmentstart = packet_segmentend+1;
@@ -463,7 +474,7 @@ int Mk5DataStream::readnetwork(int sock, char* ptr, int bytestoread, int* nread)
 	    next_segmentstart = packet_segmentend;
 
 	  next_udpoffset = udpsize-(bytestoread-udp_offset)%udpsize+udpsize*(sequence-packet_segmentend);
-	  cout << "**********udp_offset= " << next_udpoffset << endl;
+	  //cout << "**********udp_offset= " << next_udpoffset << endl;
 	  packet_head = sequence;
 	  *nread = bytestoread;
 	  done = 1;
@@ -508,7 +519,7 @@ int Mk5DataStream::readnetwork(int sock, char* ptr, int bytestoread, int* nread)
 	}
       }
     }
-    cout << "**** Datastream " << mpiid << " missing " << nmiss << "/" << segmentsize << " packets" << endl;
+    //cout << "**** Datastream " << mpiid << " missing " << nmiss << "/" << segmentsize << " packets" << endl;
 
     packet_segmentstart = next_segmentstart;
     udp_offset = next_udpoffset;
@@ -546,7 +557,7 @@ void Mk5DataStream::initialiseNetwork(int configindex, int buffersegment)
     new_mark5_format_generic_from_string(formatname) );
 
   if (mark5stream==0) {
-    cerr << "DataStream " << mpiid << ": Warning - Could not identify Mark5 segment time" << endl;
+    cerr << "DataStream " << mpiid << ": Warning - Could not identify Mark5 segment time (" << formatname << ")" << endl;
     // We don't need to actually set the time - it ill just be deadreckoned from that last segment. As there is no good data this does not matter
   } else {
 
@@ -595,7 +606,7 @@ void Mk5DataStream::initialiseNetwork(int configindex, int buffersegment)
 
     readseconds = 86400*(mark5stream->mjd-corrstartday) + mark5stream->sec-corrstartseconds + intclockseconds;
     readnanoseconds = mark5stream->ns;
-    //cout << "The frame start day is " << mark5stream->mjd << ", the frame start seconds is " << mark5stream->sec << ", the frame start ns is " << mark5stream->ns << ", readseconds is " << readseconds << ", readnanoseconds is " << readnanoseconds << endl;
+    //cout << "DataStream " << mpiid << ": The frame start day is " << mark5stream->mjd << ", the frame start seconds is " << mark5stream->sec << ", the frame start ns is " << mark5stream->ns << ", readseconds is " << readseconds << ", readnanoseconds is " << readnanoseconds << endl;
 
     delete_mark5_stream(mark5stream);
   }
