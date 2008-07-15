@@ -64,7 +64,7 @@ void DataStream::initialise()
   bufferbytes = databufferfactor*config->getMaxDataBytes(streamnum);
   readbytes = bufferbytes/numdatasegments;
 
-  cout << "******DataStream " << mpiid << ": Initialise. bufferbytes=" << bufferbytes << "  numdatasegments=" << numdatasegments << "  readbytes=" << readbytes << endl;
+  //cout << "******DataStream " << mpiid << ": Initialise. bufferbytes=" << bufferbytes << "  numdatasegments=" << numdatasegments << "  readbytes=" << readbytes << endl;
 
   for(int i=0;i<config->getNumConfigs();i++) {
     currentoverflowbytes = int((((long long)config->getDataBytes(i,streamnum))*((long long)(config->getBlocksPerSend(i) + config->getGuardBlocks(i))))/config->getBlocksPerSend(i));
@@ -709,14 +709,16 @@ void DataStream::openstream(int portnumber, int tcpwindowsizebytes)
   server.sin_port = htons((unsigned short)portnumber); /* Which port number to use */
 
   if (tcp) { // TCP socket
-    cout << "***** Datastream " << mpiid << ": Creating a TCP socket" << endl;
+    cout << "Datastream " << mpiid << ": Creating a TCP socket on port " << portnumber << endl;
     /* Create a server to listen with */
     serversock = socket(AF_INET,SOCK_STREAM,0); 
     if (serversock==-1) 
       cerr << "Error creating socket" << endl;
 
     /* Set the TCP window size */
+
     if (tcpwindowsizebytes>0) {
+      cout << "Datastream " << mpiid << ": Set TCP window to " << int(tcpwindowsizebytes/1024) << " kB" << endl;
       status = setsockopt(serversock, SOL_SOCKET, SO_RCVBUF,
 		 (char *) &tcpwindowsizebytes, sizeof(tcpwindowsizebytes));
 
@@ -724,9 +726,19 @@ void DataStream::openstream(int portnumber, int tcpwindowsizebytes)
 	cerr << "Datastream " << mpiid << ": Error setting socket RCVBUF" << endl;
 	close(serversock);
       } 
+
+      int window_size;
+      socklen_t winlen = sizeof(window_size);
+      status = getsockopt(serversock, SOL_SOCKET, SO_RCVBUF,
+			  (char *) &window_size, &winlen);
+      if (status!=0) {
+	cerr << "Datastream " << mpiid << ": Error getting socket RCVBUF" << endl;
+      }
+      printf("Sending buffersize set to %d Kbytes\n", window_size/1024);
+
     }
   } else { // UDP socket  
-    cout << "***** Datastream " << mpiid << ": Creating a UDP socket" << endl;
+    cout << "Datastream " << mpiid << ": Creating a UDP socket on port " << portnumber << endl;
     serversock = socket(AF_INET,SOCK_DGRAM, IPPROTO_UDP); 
     if (serversock==-1) 
       cerr << "Error creating UDP socket" << endl;
@@ -888,7 +900,7 @@ int DataStream::initialiseFrame(char * frameheader)
 
   inputline = at;
 
-  cout << "DataStream " << mpiid << " read a header line of " << inputline << "!" << endl;
+  //cout << "DataStream " << mpiid << " read a header line of " << inputline << "!" << endl;
   year = atoi((inputline.substr(0,4)).c_str());
   month = atoi((inputline.substr(4,2)).c_str());
   day = atoi((inputline.substr(6,2)).c_str());
