@@ -763,7 +763,7 @@ void Configuration::processDatastreamTable(ifstream * input)
       datastreamtable[i].format = MARK5B;
     else
     {
-      cerr << "Unnkown data format " << line << " (case sensitive choices are LBASTD, LBAVSOP, NZ, K5, MKIV, VLBA, and MARK5B)" << endl;
+      cerr << "Unknown data format " << line << " (case sensitive choices are LBASTD, LBAVSOP, NZ, K5, MKIV, VLBA, and MARK5B)" << endl;
       exit(1);
     }
     getinputline(input, &line, "QUANTISATION BITS");

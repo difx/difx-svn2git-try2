@@ -52,7 +52,7 @@ public:
  /**
   * Creates all arrays, initialises the reading thread and loads delays from the precomputed delay file
   */
-  void initialise();
+  virtual void initialise();
 
  /**
   * While the correlation continues, keep accepting control information from the FxManager and sending data to the appropriate
@@ -146,7 +146,7 @@ protected:
   * Attempts to open the next frame by reading data from the open network socket
   * @return 0 on failure, otherwise the framesize in bytes
   */
-  int openframe();
+  virtual int openframe();
 
  /** 
   * Attempts to open a network socket to read data from
@@ -181,7 +181,7 @@ protected:
   * @param buffersegment The segment of the databuffer that this read will be stored in
   * @param framebytesremaining The number of bytes left in this frame before reading a new frame is necessary
   */
-  void networkToMemory(int buffersegment, int & framebytesremaining);
+  virtual void networkToMemory(int buffersegment, int & framebytesremaining);
 
  /** 
   * Reads the specified number of bytes from the specified socket into the provided buffer
@@ -190,7 +190,7 @@ protected:
   * @param bytestoread The number of bytes to read from the socket
   * @param nread The number of bytes actually read
   */
-  int readnetwork(int sock, char* ptr, int bytestoread, int* nread);
+  virtual int readnetwork(int sock, char* ptr, int bytestoread, int* nread);
 
  /** 
   * Loads the precomputed delays for this telescope from the specified delay file
@@ -237,7 +237,7 @@ protected:
   int * filesread;
   int * confignumfiles;
   double a, b, c, clockoffset, clockrate;
-  bool readthreadstarted, keepreading, readfromfile;
+  bool readthreadstarted, keepreading, readfromfile, tcp;
   double ** delays;
   int * scanstarts;
   int * scanlengths;

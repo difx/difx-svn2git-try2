@@ -87,7 +87,10 @@ public:
   Mk5DataStream(Configuration * conf, int snum, int id, int ncores, int * cids, int bufferfactor, int numsegments);
   virtual ~Mk5DataStream();
 
+  virtual void initialise();
+
 protected:
+  #include <vector>
  /** 
   * Calculates the correct offset from the start of the databuffer for a given time in the correlation, and calculates
   * the geometric delays at the start and end of each FFT block as control information to pass to the Cores.  Allows for
@@ -112,7 +115,26 @@ protected:
   */
   virtual void initialiseFile(int configindex, int fileindex);
 
+  virtual void networkToMemory(int buffersegment, int & framebytesremaining);
+  
+  void initialiseNetwork(int configindex, int buffersegment);
+
+  virtual int readnetwork(int sock, char* ptr, int bytestoread, int* nread);
+
+  virtual int openframe();
+
   int framebytes, payloadbytes, framespersecond;
+
+  int lastconfig;
+
+  // UDP values and statistics
+  int npacketperframe, udpsize;
+  unsigned long packet_drop, packet_oo, packet_duplicate, npacket, udp_offset;
+  unsigned long long packet_sum, packet_head, packet_segmentstart;
+  double lasttime;
+  char *udp_buf, *invalid_buf;
+  vector<bool> packets_arrived;
+
 };
 
 #endif
