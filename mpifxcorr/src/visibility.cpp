@@ -189,7 +189,7 @@ void Visibility::updateTime()
 //setup monitoring socket
 int Visibility::openMonitorSocket(char *hostname, int port, int window_size, int *sock) {
   int status;
-  int *err=0;
+  int err=0;
   unsigned long ip_addr;
   struct hostent     *hostptr;
   struct linger      linger = {1, 1};
@@ -221,16 +221,6 @@ int Visibility::openMonitorSocket(char *hostname, int port, int window_size, int
     return(1);
   }
 
-  /* Set the linger option so that if we need to send a message and
-     close the socket, the message shouldn't get lost */
-  status = setsockopt(*sock, SOL_SOCKET, SO_LINGER, (char *)&linger,
-                      sizeof(struct linger)); 
-  if (status!=0) {
-    close(*sock);
-    perror("Setting socket options");
-    return(1);
-  }
-
   /* Set the window size to TCP actually works */
   status = setsockopt(*sock, SOL_SOCKET, SO_SNDBUF,
                       (char *) &window_size, sizeof(window_size));
@@ -239,23 +229,18 @@ int Visibility::openMonitorSocket(char *hostname, int port, int window_size, int
     perror("Setting socket options");
     return(1);
   }
-  status = setsockopt(*sock, SOL_SOCKET, SO_RCVBUF,
-                      (char *) &window_size, sizeof(window_size));
-  if (status!=0) {
-    close(*sock);
-    perror("Setting socket options");
-    return(1);
-  }
+
   saveflags=fcntl(*sock,F_GETFL,0);
   if(saveflags<0) {
     perror("fcntl1");
-    *err=errno;
+    err=errno;
     return 1;
   }
+
   /* Set non blocking */
   if(fcntl(*sock,F_SETFL,saveflags|O_NONBLOCK)<0) {
     perror("fcntl2");
-    *err=errno;
+    err=errno;
     return 1;
   }
 
@@ -266,48 +251,52 @@ int Visibility::openMonitorSocket(char *hostname, int port, int window_size, int
   /* restore flags */
   if(fcntl(*sock,F_SETFL,saveflags)<0) {
     perror("fcntl3");
-    *err=errno;
+    err=errno;
     return 1;
   }
 
   /* return unless the connection was successful or the connect is
            still in progress. */
-  if(*err<0 && back_err!=EINPROGRESS) {
-    perror("connect");
-    *err=errno;
-    return 1;
-  }
 
-  FD_ZERO(&fd_w);
-  FD_SET(*sock,&fd_w);
-
-  status = select(FD_SETSIZE,NULL,&fd_w,NULL,&timeout);
-  if(status < 0) {
-    perror("select");
-    *err=errno;
-    return 1;
-  }
-
-  /* 0 means it timeout out & no fds changed */
-  if(status==0) {
-    close(*sock);
-    status=ETIMEDOUT;
-    return 1;
-  }
-
-  /* Get the return code from the connect */
-  socklen_t len=sizeof(ret);
-  status=getsockopt(*sock,SOL_SOCKET,SO_ERROR,&ret,&len);
   if(status<0) {
-    perror("getsockopt");
-    status = errno;
-    return 1;
-  }
+    if (back_err!=EINPROGRESS) {
+      perror("connect");
+      err=errno;
+      return 1;
+    } else {
 
-  /* ret=0 means success, otherwise it contains the errno */
-  if(ret) {
-    status=ret;
-    return 1;
+      FD_ZERO(&fd_w);
+      FD_SET(*sock,&fd_w);
+
+      status = select(FD_SETSIZE,NULL,&fd_w,NULL,&timeout);
+      if(status < 0) {
+	perror("select");
+	err=errno;
+	return 1;
+      }
+
+      /* 0 means it timeout out & no fds changed */
+      if(status==0) {
+	close(*sock);
+	status=ETIMEDOUT;
+	return 1;
+      }
+
+      /* Get the return code from the connect */
+      socklen_t len=sizeof(ret);
+      status=getsockopt(*sock,SOL_SOCKET,SO_ERROR,&ret,&len);
+      if(status<0) {
+	perror("getsockopt");
+	status = errno;
+	return 1;
+      }
+
+      /* ret=0 means success, otherwise it contains the errno */
+      if(ret) {
+	status=ret;
+	return 1;
+      }
+    }
   }
 
   return 0;
@@ -332,8 +321,6 @@ int Visibility::sendMonitorData(bool tofollow) {
       cerr << "Error writing to network - will try to reconnect next Visibility 0 integration!" << endl;
       return 1;
     }
-
-    cout << "Timestamp sent ok" << endl;
 
     if(tofollow)
     {
@@ -360,7 +347,6 @@ int Visibility::sendMonitorData(bool tofollow) {
           ptr += nwrote;
         }
       }
-      cout << "Finished writing monitoring data to socket!" << endl;
     }
   }
   return(0);
@@ -620,11 +606,14 @@ void Visibility::writedata()
     writeascii();
 
   //send monitoring data, if we don't have to skip this one
-  if(monitor && visID % monitor_skip == 0) {
-    if (sendMonitorData(true) != 0){ 
-      cerr << "Error sending monitoring data - closing socket!" << endl;
-      close(*mon_socket);
-      *mon_socket = -1;
+  if(monitor) {
+    if (visID % monitor_skip == 0) {
+      if (sendMonitorData(true) != 0){ 
+	cerr << "Error sending monitoring data - closing socket!" << endl;
+	close(*mon_socket);
+	*mon_socket = -1;
+      }
+    } else {
     }
   }
 
