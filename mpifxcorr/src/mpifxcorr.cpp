@@ -132,8 +132,8 @@ int main(int argc, char *argv[])
   int nameslength = 1;
   char * monhostname = new char[nameslength];
   char * mpihost = new char[nameslength];
-  int port, monitor_skip;
-
+  int port, monitor_skip, namelen;
+  char processor_name[MPI_MAX_PROCESSOR_NAME];
 
   cout << "About to run MPIInit" << endl;
 
@@ -142,11 +142,9 @@ int main(int argc, char *argv[])
   MPI_Comm_size(world, &numprocs);
   MPI_Comm_rank(world, &myID);
   MPI_Comm_dup(world, &return_comm);
-  struct utsname ugnm;
-  if (uname(&ugnm) >=0)
-    strncpy(mpihost, ugnm.nodename, nameslength);
-  mpihost[nameslength-1] = '\0';
-  cout << "MPI Process " << myID << " is running on host " << mpihost << endl;
+  MPI_Get_processor_name(processor_name, &namelen);
+
+  cout << "MPI Process " << myID << " is running on host " << processor_name << endl;
   
   if(argc == 3)
   {
@@ -161,7 +159,8 @@ int main(int argc, char *argv[])
     monitoropt = string(argv[2]);
     int colindex1 = monitoropt.find_first_of(':');
     int colindex2 = monitoropt.find_last_of(':');
-    if(colindex2 == string::npos)
+    if(colindex2 == string::npos) 
+      // BUG: This does not work and skip ends up equaling port!!!!
     {
       port = atoi(monitoropt.substr(colindex1 + 1).c_str());
       monitor_skip = 1;	
@@ -170,6 +169,7 @@ int main(int argc, char *argv[])
     {
       port = atoi(monitoropt.substr(colindex1 + 1, colindex2-colindex1-1).c_str());
       monitor_skip = atoi(monitoropt.substr(colindex2 + 1).c_str());
+
     }
     strcpy(monhostname, monitoropt.substr(2,colindex1-2).c_str());
   }
