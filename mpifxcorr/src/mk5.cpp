@@ -557,7 +557,7 @@ void Mk5DataStream::initialiseNetwork(int configindex, int buffersegment)
   framebytes = config->getFrameBytes(configindex, streamnum);
   bw = config->getConfigBandwidth(configindex);
 
-  genFormatName(format, ninputbands, bw, nbits, framebytes, formatname);
+  genFormatName(format, ninputbands, bw, nbits, framebytes, config->getDecimationFactor(configindex), formatname);
 
   //cout << "******* validbytes " << bufferinfo[buffersegment].validbytes << endl;
 
