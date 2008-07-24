@@ -59,6 +59,7 @@ protected:
 
   int framesamples, framebytes, samplestounpack, fanout;
   struct mark5_stream *mark5stream;
+  int lastsampleoffset;
 };
 
 /**
