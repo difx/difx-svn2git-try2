@@ -161,10 +161,13 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 
 	// find starting position
   
-	if(scan != 0)  /* just continue by reading next scan */
+	if(scan != 0)  /* just continue by reading next valid scan */
 	{
 		cout << "NM5 : continuing read in next scan" << endl;
-		scan++;
+		do
+		{
+			scan++;
+		} while(scan-module.scans < module.nscans && scan->duration < 0.1);
 		if(scan-module.scans >= module.nscans)
 		{
 			cerr << "No more data on module [" << mpiid << "]" << endl;
