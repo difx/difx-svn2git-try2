@@ -98,9 +98,10 @@ Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, in
   if(mark5stream == 0)
   {
     cerr << "Mk5Mode::Mk5Mode : mark5stream is null " << endl;
+    exit(1);
   }
 
-  mark5_stream_print(mark5stream);
+  sprintf(mark5stream->streamname, "DS%d", dsindex);
 
   if(framesamples != mark5stream->framesamples)
   {

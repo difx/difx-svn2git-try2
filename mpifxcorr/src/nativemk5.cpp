@@ -99,6 +99,7 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 	module.nscans = -1;
 	readpointer = -1;
 	scan = 0;
+	lastval = 0xFFFFFFFF;
 #ifdef HAVE_DIFXMESSAGE
 	sendMark5Status(MARK5_STATE_OPEN, 0, 0, 0.0, 0.0);
 #endif
@@ -312,7 +313,7 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 	struct timeval tv;
 	char message[1000];
 
-	/* All reads of a module must be 32 bit aligned */
+	/* All reads of a module must be 64 bit aligned */
 	bytes = readbytes;
 	start = readpointer;
 	buf = (unsigned long *)&databuffer[(buffersegment*bufferbytes)/
@@ -320,6 +321,7 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 	if(start & 4)
 	{
 		start += 4;
+		*buf = lastval;
 		buf++;
 	}
 
@@ -357,7 +359,13 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 
 		if(xlrRC != XLR_SUCCESS)
 		{
-			cout << "XLRReadImmed returns FAIL" << endl;
+			xlrEC = XLRGetLastError();
+			XLRGetErrorMessage(errStr, xlrEC);
+			cout << "XLRReadImmed returns FAIL.  Error msg: " << errStr << endl;
+#ifdef HAVE_DIFXMESSAGE
+			sprintf(message, "Read error at position=%lld, length=%d, error=%s", readpointer, bytes, errStr);
+			difxMessageSendDifxError(message, 0);
+#endif
 			break;
 		}
 
@@ -471,6 +479,7 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		{
 			dataremaining = false;
 		}
+		lastval = buf[bytes/4-1];
 	}
 }
 

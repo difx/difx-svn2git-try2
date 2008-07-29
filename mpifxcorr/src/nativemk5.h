@@ -55,7 +55,7 @@ private:
 #endif
 
 	int executeseconds;
-
+	unsigned long lastval;
 };
 
 #endif
