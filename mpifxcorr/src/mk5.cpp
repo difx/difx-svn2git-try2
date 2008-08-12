@@ -24,7 +24,7 @@
 #define MAXPACKETSIZE 10000
 #define MARK5FILL 0x11223344;
 
-static int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, int decimationfactor, char *formatname)
+int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, int decimationfactor, char *formatname)
 {
   int fanout=1, mbps;
 
@@ -84,8 +84,6 @@ Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, in
   // this to the number actually needed.
   unpacksamples = nchan*2;
 
-  lastsampleoffset = 1000000000;
-
   samplestounpack = nchan*2;
   if(fanout > 1)
     samplestounpack += fanout;
@@ -144,26 +142,6 @@ float Mk5Mode::unpack(int sampleoffset)
     cerr << "Error trying to unpack Mark5 format data at sampleoffset " << sampleoffset << " from buffer seconds " << bufferseconds << " plus " << buffermicroseconds << " microseconds!!!" << endl;
     goodsamples = 0;
   }
-
-  // on each new block of data, verify that the timestamp matches the buffer time
-  if(sampleoffset < lastsampleoffset)
-  {
-    int mjd, sec;
-    double ns, ms;
-
-    mark5stream->frame = data;
-    mark5_stream_get_frame_time(mark5stream, &mjd, &sec, &ns);
-    mark5stream->frame = 0;
-
-    ms = ns/1000.0;
-
-    if(fabs(ms - buffermicroseconds) > 0.1)
-    {
-      cerr << "Error: buffermicroseconds = " << buffermicroseconds << " and frame microseconds = " << ms << endl;
-    }
-
-  }
-  lastsampleoffset = sampleoffset;
 
   return goodsamples/(float)unpacksamples;
 }

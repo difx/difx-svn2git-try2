@@ -59,7 +59,6 @@ protected:
 
   int framesamples, framebytes, samplestounpack, fanout;
   struct mark5_stream *mark5stream;
-  int lastsampleoffset;
 };
 
 /**
@@ -137,5 +136,7 @@ protected:
   vector<bool> packets_arrived;
 
 };
+
+int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, int decimationfactor, char *formatname);
 
 #endif
