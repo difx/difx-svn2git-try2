@@ -59,6 +59,7 @@ private:
 	long long invalidstart;
 	unsigned long lastval;
 	struct mark5_stream *mark5stream;
+	int newscan;
 };
 
 #endif

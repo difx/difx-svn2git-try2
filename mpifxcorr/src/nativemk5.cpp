@@ -104,6 +104,7 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 	mark5stream = 0;
 	invalidtime = 0;
 	invalidstart = 0;
+	newscan = 0;
 #ifdef HAVE_DIFXMESSAGE
 	sendMark5Status(MARK5_STATE_OPEN, 0, 0, 0.0, 0.0);
 #endif
@@ -186,6 +187,10 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 			return;
 		}
 	}
+
+#ifdef HAVE_DIFXMESSAGE
+	sendMark5Status(MARK5_STATE_GOTDIR, 0, 0, startmjd, 0.0);
+#endif
 
 	// find starting position
   
@@ -281,7 +286,7 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	}
 
 #ifdef HAVE_DIFXMESSAGE
-	sendMark5Status(MARK5_STATE_GOTDIR, scan-module.scans+1, readpointer, startmjd, 0.0);
+	sendMark5Status(MARK5_STATE_GOTDIR, scan-module.scans+1, readpointer, scan->mjd+(scan->sec+scanns*1.e-9)/86400.0, 0.0);
 #endif
 
 	cout << "The frame start day is " << scan->mjd << 
@@ -304,7 +309,9 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	{
 		cout << "NOT updating all configs [" << mpiid << "]" << endl;
 	}
-	
+
+	newscan = 1;
+
 	cout << "Scan " << (scan-module.scans) <<" initialised[" << mpiid << "]" << endl;
 }
 
@@ -522,10 +529,22 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		if(lastpos > 0)
 		{
 			double rate;
-			double fmjd;
+			double fmjd, fmjd2;
 			enum Mk5State state;
 
-			if(invalidtime == 0)
+			fmjd = corrstartday + (corrstartseconds + readseconds + (double)readnanoseconds/1000000000.0)/86400.0;
+			if(newscan > 0)
+			{
+				newscan = 0;
+				state = MARK5_STATE_START;
+				rate = 0.0;
+				fmjd2 = scan->mjd + (scan->sec + (float)scan->framenuminsecond/scan->framespersecond)/86400.0;
+				if(fmjd2 > fmjd)
+				{
+					fmjd = fmjd2;
+				}
+			}
+			else if(invalidtime == 0)
 			{
 				state = MARK5_STATE_PLAY;
 				rate = (double)(readpointer + bytes - lastpos)*8.0/1000000.0;
@@ -536,7 +555,6 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 				rate = invalidtime;
 			}
 
-			fmjd = corrstartday + (corrstartseconds + readseconds + (double)readnanoseconds/1000000000.0)/86400.0;
 			sendMark5Status(state, scan-module.scans+1, readpointer, fmjd, rate);
 		}
 		lastpos = readpointer + bytes;
