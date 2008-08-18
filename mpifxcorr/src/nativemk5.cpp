@@ -83,6 +83,13 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 		cerr << "Success opening Streamstor device [" << mpiid << "]" <<  endl;
 	}
 
+	// FIXME -- for non-bank-mode operation, need to look at the modules to determine what to do here.
+	xlrRC = XLRSetBankMode(xlrDevice, SS_BANKMODE_NORMAL);
+	if(xlrRC != XLR_SUCCESS)
+	{
+		cerr << "Error setting bank mode" << endl;
+	}
+
 	xlrRC = XLRSetOption(xlrDevice, SS_OPT_SKIPCHECKDIR);
 	if(xlrRC == XLR_SUCCESS)
 	{
@@ -288,6 +295,7 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 #ifdef HAVE_DIFXMESSAGE
 	sendMark5Status(MARK5_STATE_GOTDIR, scan-module.scans+1, readpointer, scan->mjd+(scan->sec+scanns*1.e-9)/86400.0, 0.0);
 #endif
+	newscan = 1;
 
 	cout << "The frame start day is " << scan->mjd << 
 		", the frame start seconds is " << (scan->sec+scanns*1.e-9)
@@ -309,8 +317,6 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	{
 		cout << "NOT updating all configs [" << mpiid << "]" << endl;
 	}
-
-	newscan = 1;
 
 	cout << "Scan " << (scan-module.scans) <<" initialised[" << mpiid << "]" << endl;
 }
