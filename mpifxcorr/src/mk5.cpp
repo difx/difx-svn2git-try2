@@ -16,6 +16,7 @@
 
 
 #include <errno.h>
+#include <math.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -23,7 +24,7 @@
 #define MAXPACKETSIZE 10000
 #define MARK5FILL 0x11223344;
 
-static int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, int decimationfactor, char *formatname)
+int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, int decimationfactor, char *formatname)
 {
   int fanout=1, mbps;
 
@@ -95,7 +96,10 @@ Mk5Mode::Mk5Mode(Configuration * conf, int confindex, int dsindex, int nchan, in
   if(mark5stream == 0)
   {
     cerr << "Mk5Mode::Mk5Mode : mark5stream is null " << endl;
+    exit(1);
   }
+
+  sprintf(mark5stream->streamname, "DS%d", dsindex);
 
   if(framesamples != mark5stream->framesamples)
   {
@@ -557,7 +561,7 @@ void Mk5DataStream::initialiseNetwork(int configindex, int buffersegment)
   framebytes = config->getFrameBytes(configindex, streamnum);
   bw = config->getConfigBandwidth(configindex);
 
-  genFormatName(format, ninputbands, bw, nbits, framebytes, formatname);
+  genFormatName(format, ninputbands, bw, nbits, framebytes, config->getDecimationFactor(configindex), formatname);
 
   //cout << "******* validbytes " << bufferinfo[buffersegment].validbytes << endl;
 

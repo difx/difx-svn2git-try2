@@ -856,7 +856,7 @@ void Visibility::writedifx()
   }
 
   //now each autocorrelation visibility point if necessary
-  if(config->writeAutoCorrs(currentconfigindex)) // FIXME -- bug lurks within
+  if(config->writeAutoCorrs(currentconfigindex)) // FIXME -- bug lurks within?
   {
     buvw[0] = 0.0;
     buvw[1] = 0.0;

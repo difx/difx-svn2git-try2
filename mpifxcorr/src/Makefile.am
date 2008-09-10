@@ -20,4 +20,4 @@ mpifxcorr_LDADD = \
 
 lib_LIBRARIES = libmpifxcorr.a
 libmpifxcorr_a_SOURCES = configuration.cpp mode.cpp core.cpp datastream.cpp polyco.cpp \
-	mk5.cpp fxmanager.cpp uvw.cpp visibility.cpp`
+	mk5.cpp fxmanager.cpp uvw.cpp visibility.cpp

@@ -13,6 +13,7 @@
 #include <mpi.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include <sys/time.h>
 #include "config.h"
 #include "nativemk5.h"
@@ -82,6 +83,13 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 		cerr << "Success opening Streamstor device [" << mpiid << "]" <<  endl;
 	}
 
+	// FIXME -- for non-bank-mode operation, need to look at the modules to determine what to do here.
+	xlrRC = XLRSetBankMode(xlrDevice, SS_BANKMODE_NORMAL);
+	if(xlrRC != XLR_SUCCESS)
+	{
+		cerr << "Error setting bank mode" << endl;
+	}
+
 	xlrRC = XLRSetOption(xlrDevice, SS_OPT_SKIPCHECKDIR);
 	if(xlrRC == XLR_SUCCESS)
 	{
@@ -99,6 +107,11 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 	module.nscans = -1;
 	readpointer = -1;
 	scan = 0;
+	lastval = 0xFFFFFFFF;
+	mark5stream = 0;
+	invalidtime = 0;
+	invalidstart = 0;
+	newscan = 0;
 #ifdef HAVE_DIFXMESSAGE
 	sendMark5Status(MARK5_STATE_OPEN, 0, 0, 0.0, 0.0);
 #endif
@@ -106,6 +119,10 @@ NativeMk5DataStream::NativeMk5DataStream(Configuration * conf, int snum,
 
 NativeMk5DataStream::~NativeMk5DataStream()
 {
+	if(mark5stream)
+	{
+		delete_mark5_stream(mark5stream);
+	}
 #ifdef HAVE_DIFXMESSAGE
 	sendMark5Status(MARK5_STATE_CLOSE, 0, 0, 0.0, 0.0);
 #endif
@@ -123,6 +140,25 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	int doUpdate = 0;
 	char *mk5dirpath;
 	char message[64];
+	char formatname[64];
+	int nbits, ninputbands, framebytes;
+	Configuration::dataformat format;
+	double bw;
+
+	format = config->getDataFormat(configindex, streamnum);
+	nbits = config->getDNumBits(configindex, streamnum);
+	ninputbands = config->getDNumInputBands(configindex, streamnum);
+	framebytes = config->getFrameBytes(configindex, streamnum);
+	bw = config->getConfigBandwidth(configindex);
+	genFormatName(format, ninputbands, bw, nbits, framebytes, config->getDecimationFactor(configindex), formatname);
+
+	if(mark5stream)
+	{
+		delete_mark5_stream(mark5stream);
+	}
+	mark5stream = new_mark5_stream(
+	  new_mark5_stream_unpacker(0),
+	  new_mark5_format_generic_from_string(formatname) );
 
 	mk5dirpath = getenv("MARK5_DIR_PATH");
 	if(mk5dirpath == 0)
@@ -159,18 +195,28 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 		}
 	}
 
+#ifdef HAVE_DIFXMESSAGE
+	sendMark5Status(MARK5_STATE_GOTDIR, 0, 0, startmjd, 0.0);
+#endif
+
 	// find starting position
   
-	if(scan != 0)  /* just continue by reading next scan */
+	if(scan != 0)  /* just continue by reading next valid scan */
 	{
 		cout << "NM5 : continuing read in next scan" << endl;
-		scan++;
+		do
+		{
+			scan++;
+		} while(scan-module.scans < module.nscans && scan->duration < 0.1);
 		if(scan-module.scans >= module.nscans)
 		{
 			cerr << "No more data on module [" << mpiid << "]" << endl;
 			scan = 0;
 			dataremaining = false;
 			keepreading = false;
+#ifdef HAVE_DIFXMESSAGE
+			sendMark5Status(MARK5_STATE_NOMOREDATA, 0, 0, 0.0, 0.0);
+#endif
 			return;
 		}
 		scanns = int(1000000000.0*scan->framenuminsecond/scan->framespersecond + 0.1);
@@ -189,6 +235,9 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 			scan = 0;
 			dataremaining = false;
 			keepreading = false;
+#ifdef HAVE_DIFXMESSAGE
+			sendMark5Status(MARK5_STATE_NOMOREDATA, 0, 0, 0.0, 0.0);
+#endif
 			return;
 		}
 	}
@@ -234,6 +283,9 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 		{
 			cerr << "No valid data found - aborting\n";
 			dataremaining = false;
+#ifdef HAVE_DIFXMESSAGE
+			sendMark5Status(MARK5_STATE_NODATA, 0, 0, 0.0, 0.0);
+#endif
 			return;
 		}
 
@@ -241,8 +293,9 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	}
 
 #ifdef HAVE_DIFXMESSAGE
-	sendMark5Status(MARK5_STATE_GOTDIR, scan-module.scans+1, readpointer, startmjd, 0.0);
+	sendMark5Status(MARK5_STATE_GOTDIR, scan-module.scans+1, readpointer, scan->mjd+(scan->sec+scanns*1.e-9)/86400.0, 0.0);
 #endif
+	newscan = 1;
 
 	cout << "The frame start day is " << scan->mjd << 
 		", the frame start seconds is " << (scan->sec+scanns*1.e-9)
@@ -264,7 +317,7 @@ void NativeMk5DataStream::initialiseFile(int configindex, int fileindex)
 	{
 		cout << "NOT updating all configs [" << mpiid << "]" << endl;
 	}
-	
+
 	cout << "Scan " << (scan-module.scans) <<" initialised[" << mpiid << "]" << endl;
 }
 
@@ -295,7 +348,7 @@ void NativeMk5DataStream::openfile(int configindex, int fileindex)
 void NativeMk5DataStream::moduleToMemory(int buffersegment)
 {
 	long long start;
-	unsigned long *buf;
+	unsigned long *buf, *data;
 	unsigned long a, b;
 	int i, t;
 	S_READDESC      xlrRD;
@@ -308,15 +361,18 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 	static long long lastpos = 0;
 	struct timeval tv;
 	char message[1000];
+	int mjd, sec, sec2;
+	double ns, ms;
 
-	/* All reads of a module must be 32 bit aligned */
+	/* All reads of a module must be 64 bit aligned */
 	bytes = readbytes;
 	start = readpointer;
-	buf = (unsigned long *)&databuffer[(buffersegment*bufferbytes)/
+	data = buf = (unsigned long *)&databuffer[(buffersegment*bufferbytes)/
 		numdatasegments];
 	if(start & 4)
 	{
 		start += 4;
+		*buf = lastval;
 		buf++;
 	}
 
@@ -354,7 +410,13 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 
 		if(xlrRC != XLR_SUCCESS)
 		{
-			cout << "XLRReadImmed returns FAIL" << endl;
+			xlrEC = XLRGetLastError();
+			XLRGetErrorMessage(errStr, xlrEC);
+			cout << "XLRReadImmed returns FAIL.  Error msg: " << errStr << endl;
+#ifdef HAVE_DIFXMESSAGE
+			sprintf(message, "Read error at position=%lld, length=%d, error=%s", readpointer, bytes, errStr);
+			difxMessageSendDifxError(message, 0);
+#endif
 			break;
 		}
 
@@ -420,23 +482,6 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		}
 	}
 
-#ifdef HAVE_DIFXMESSAGE
-	gettimeofday(&tv, 0);
-	if(tv.tv_sec > now)
-	{
-		now = tv.tv_sec;
-		if(lastpos > 0)
-		{
-			double rate;
-			double mjd;
-			rate = (double)(readpointer + bytes - lastpos)*8.0/1000000.0;
-			mjd = corrstartday + (corrstartseconds + readseconds + (double)readnanoseconds/1000000000.0)/86400.0;
-			sendMark5Status(MARK5_STATE_PLAY, scan-module.scans+1, readpointer, mjd, rate);
-		}
-		lastpos = readpointer + bytes;
-	}
-#endif
-
 	if(xlrRS != XLR_READ_COMPLETE)
 	{
 		cerr << "Native Mark5 Error at:" << a << ":" << b << "  rp = " << readpointer << endl;
@@ -450,24 +495,93 @@ void NativeMk5DataStream::moduleToMemory(int buffersegment)
 		bufferinfo[buffersegment].validbytes = 0;
 		return;
 	}
+
+	bufferinfo[buffersegment].validbytes = bytes;
+	lastval = buf[bytes/4-1];
+
+	// Check for validity
+	mark5stream->frame = (uint8_t *)data;
+	mark5_stream_get_frame_time(mark5stream, &mjd, &sec, &ns);
+	mark5stream->frame = 0;
+	sec2 = (readseconds + corrstartseconds) % 86400;
+
+	if(sec != sec2 || fabs(ns - readnanoseconds) > 0.5)
+	{
+		invalidtime++;
+		invalidstart = readpointer;
+		bufferinfo[buffersegment].validbytes = 0;
+		cerr << "[" << mpiid << "] Sync error: ("<<sec<<","<<ns<<") != ("<<sec2<<","<<readnanoseconds<<")"<<endl;
+		printf("sync error: %d %f %d\n", mpiid, ns, readnanoseconds);
+#ifdef HAVE_DIFXMESSAGE
+		if(invalidtime % 16 == 0)
+		{
+			sprintf(message, "%d consecutive sync errors starting at readpos %lld.", invalidtime, invalidstart);
+			difxMessageSendDifxError(message, 0);
+		}
+#endif
+		// FIXME -- if invalidtime > threshhold, look for sync again
+	}
 	else
 	{
-		bufferinfo[buffersegment].validbytes = bytes;
-		readnanoseconds += bufferinfo[buffersegment].nsinc;
-		readseconds += readnanoseconds/1000000000;
-		readnanoseconds %= 1000000000;
-		if(bytes < readbytes)
+		invalidtime = 0;
+	}
+
+
+#ifdef HAVE_DIFXMESSAGE
+	gettimeofday(&tv, 0);
+	if(tv.tv_sec > now)
+	{
+		now = tv.tv_sec;
+		if(lastpos > 0)
 		{
-			dataremaining = false;
+			double rate;
+			double fmjd, fmjd2;
+			enum Mk5State state;
+
+			fmjd = corrstartday + (corrstartseconds + readseconds + (double)readnanoseconds/1000000000.0)/86400.0;
+			if(newscan > 0)
+			{
+				newscan = 0;
+				state = MARK5_STATE_START;
+				rate = 0.0;
+				fmjd2 = scan->mjd + (scan->sec + (float)scan->framenuminsecond/scan->framespersecond)/86400.0;
+				if(fmjd2 > fmjd)
+				{
+					fmjd = fmjd2;
+				}
+			}
+			else if(invalidtime == 0)
+			{
+				state = MARK5_STATE_PLAY;
+				rate = (double)(readpointer + bytes - lastpos)*8.0/1000000.0;
+			}
+			else
+			{
+				state = MARK5_STATE_PLAYINVALID;
+				rate = invalidtime;
+			}
+
+			sendMark5Status(state, scan-module.scans+1, readpointer, fmjd, rate);
 		}
-		else
-		{
-			readpointer += bytes;
-		}
-		if(readpointer >= scan->start + scan->length)
-		{
-			dataremaining = false;
-		}
+		lastpos = readpointer + bytes;
+	}
+#endif
+
+	// Update various counters
+	readnanoseconds += bufferinfo[buffersegment].nsinc;
+	readseconds += readnanoseconds/1000000000;
+	readnanoseconds %= 1000000000;
+	if(bytes < readbytes)
+	{
+		dataremaining = false;
+	}
+	else
+	{
+		readpointer += bytes;
+	}
+	if(readpointer >= scan->start + scan->length)
+	{
+		dataremaining = false;
 	}
 }
 

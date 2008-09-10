@@ -137,4 +137,6 @@ protected:
 
 };
 
+int genFormatName(Configuration::dataformat format, int nchan, double bw, int nbits, int framebytes, int decimationfactor, char *formatname);
+
 #endif
