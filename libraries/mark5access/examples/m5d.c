@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2008 by Walter Brisken                                  *
+ *   Copyright (C) 2006, 2007 by Walter Brisken                            *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -26,56 +26,43 @@
 // $LastChangedDate$
 //
 //============================================================================
-#include <complex.h>
+
 #include <stdlib.h>
-#include <complex.h>
-#include <fftw3.h>
-#include <math.h>
 #include "../mark5access/mark5_stream.h"
 
-const char program[] = "m5spec";
+const char program[] = "m5d";
 const char author[]  = "Walter Brisken";
-const char version[] = "0.1";
-const char verdate[] = "2008 Jul 6";
+const char version[] = "1.0";
+const char verdate[] = "2007 Oct 6";
 
 int usage(const char *pgm)
 {
 	printf("\n");
 
 	printf("%s ver. %s   %s  %s\n\n", program, version, author, verdate);
-	printf("A Mark5 spectrometer.  Can use VLBA, Mark3/4, and Mark5B "
+	printf("A Mark5 decoder.  Can decode VLBA, Mark3/4, and Mark5B "
 		"formats using the\nmark5access library.\n\n");
-	printf("Usage : %s <infile> <dataformat> <nchan> <nint> <outfile> [<offset>]\n\n", program);
-	printf("  <infile> is the name of the input file\n\n");
+	printf("Usage : %s <file> <dataformat> <n> [<offset>]\n\n", pgm);
+	printf("  <file> is the name of the input file\n\n");
 	printf("  <dataformat> should be of the form: "
 		"<FORMAT>-<Mbps>-<nchan>-<nbit>, e.g.:\n");
 	printf("    VLBA1_2-256-8-2\n");
 	printf("    MKIV1_4-128-2-1\n");
 	printf("    Mark5B-512-16-2\n\n");
-	printf("  <nchan> is the number of channels to make per IF\n\n");
-	printf("  <nint> is the number of FFT frames to spectrometize\n\n");
-	printf("  <outfile> is the name of the output file\n\n");
+	printf("  <n> is the number of samples per channel to decode\n\n");
 	printf("  <offset> is number of bytes into file to start decoding\n\n");
 
 	return 0;
 }
 
-int spec(const char *filename, const char *formatname, int nchan, int nint,
-	const char *outfile, long long offset)
+int decode(const char *filename, const char *formatname, const char *f,
+	long long offset, long long n)
 {
 	struct mark5_stream *ms;
-	double **data, **spec;
-	fftw_complex **zdata, **zx;
-	int c, i, j, k, status;
-	int chunk, nif;
+	float **data;
+	int i, j, k, status;
+	long long chunk = 1024;
 	long long total, unpacked;
-	FILE *out;
-	fftw_plan *plan;
-	double re, im;
-	double f, sum;
-	double x, y;
-
-	chunk = 2*nchan;
 
 	total = unpacked = 0;
 
@@ -89,35 +76,32 @@ int spec(const char *filename, const char *formatname, int nchan, int nint,
 		return 0;
 	}
 
-	nif = ms->nchan;
-
-	data = (double **)malloc(nif*sizeof(double *));
-	spec = (double **)malloc(nif*sizeof(double *));
-	zdata = (fftw_complex **)malloc(nif*sizeof(fftw_complex *));
-	plan = (fftw_plan *)malloc(nif*sizeof(fftw_plan));
-	zx = (fftw_complex **)malloc((nif/2)*sizeof(fftw_complex *));
-	for(i = 0; i < nif; i++)
+	data = (float **)malloc(ms->nchan*sizeof(float *));
+	for(i = 0; i < ms->nchan; i++)
 	{
-		data[i] = (double *)malloc((chunk+2)*sizeof(double));
-		spec[i] = (double *)calloc(nchan, sizeof(double));
-		zdata[i] = (fftw_complex *)malloc((nchan+1)*sizeof(fftw_complex));
-		plan[i] = fftw_plan_dft_r2c_1d(nchan*2, data[i],
-			(fftw_complex *)zdata[i], FFTW_MEASURE);
-	}
-	for(i = 0; i < nif/2; i++)
-	{
-		zx[i] = (fftw_complex *)calloc(nchan, sizeof(fftw_complex));
+		data[i] = (float *)malloc(chunk*sizeof(float ));
 	}
 
 	mark5_stream_print(ms);
 
-	for(j = 0; j < nint; j++)
+	if(n % ms->samplegranularity > 0)
 	{
-		status = mark5_stream_decode_double(ms, chunk, data);
+		n -= (n % ms->samplegranularity);
+		printf("Warning -- reducing read size to %Ld\n", n);
+	}
+
+	for(; n > 0; n -= chunk)
+	{
+		if(n < chunk)
+		{
+			chunk = n;
+		}
+		status = mark5_stream_decode(ms, chunk, data);
 		
 		if(status < 0)
 		{
-			break;
+			printf("<EOF> status=%d\n", status);
+			//break;
 		}
 		else
 		{
@@ -125,86 +109,23 @@ int spec(const char *filename, const char *formatname, int nchan, int nint,
 			unpacked += status;
 		}
 
-		if(ms->consecutivefails > 5)
+		for(j = 0; j < chunk; j++)
 		{
-			break;
-		}
-
-		for(i = 0; i < nif; i++)
-		{
-			/* FFT */
-			fftw_execute(plan[i]);
-		}
-
-		for(i = 0; i < nif; i++)
-		{
-			for(c = 0; c < nchan; c++)
+			for(k = 0; k < ms->nchan; k++)
 			{
-				re = creal(zdata[i][c]);
-				im = cimag(zdata[i][c]);
-				spec[i][c] += re*re + im*im;
+				printf(f, data[k][j]);
 			}
-		}
-
-		for(i = 0; i < nif/2; i++)
-		{
-			for(c = 0; c < nchan; c++)
-			{
-				zx[i][c] += zdata[2*i][c]*~zdata[2*i+1][c];
-			}
+			printf("\n");
 		}
 	}
 
 	fprintf(stderr, "%Ld / %Ld samples unpacked\n", unpacked, total);
 
-	out = fopen(outfile, "w");
-
-	/* normalize */
-	sum = 0.0;
-	for(c = 0; c < nchan; c++)
-	{
-		for(i = 0; i < nif; i++)
-		{
-			sum += spec[i][c];
-		}
-	}
-
-	f = nif*nchan/sum;
-
-	for(c = 0; c < nchan; c++)
-	{
-		fprintf(out, "%f ", (double)c*ms->samprate/(2.0e6*nchan));
-		for(i = 0; i < nif; i++)
-		{
-			fprintf(out, " %f", f*spec[i][c]);
-		}
-		for(i = 0; i < nif/2; i++)
-		{
-			x = creal(zx[i][c])*f;
-			y = cimag(zx[i][c])*f;
-			fprintf(out, "  %f %f", sqrt(x*x+y*y), atan2(y, x));
-		}
-		fprintf(out, "\n");
-	}
-
-	fclose(out);
-
-	for(i = 0; i < nif; i++)
+	for(i = 0; i < ms->nchan; i++)
 	{
 		free(data[i]);
-		free(zdata[i]);
-		free(spec[i]);
-		fftw_destroy_plan(plan[i]);
 	}
-	for(i = 0; i < nif/2; i++)
-	{
-		free(zx[i]);
-	}
-	free(zx);
 	free(data);
-	free(zdata);
-	free(spec);
-	free(plan);
 
 	delete_mark5_stream(ms);
 
@@ -214,7 +135,7 @@ int spec(const char *filename, const char *formatname, int nchan, int nint,
 int main(int argc, char **argv)
 {
 	long long offset = 0;
-	int nchan, nint;
+	long long n;
 
 	if(argc == 2)
 	{
@@ -245,24 +166,19 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	else if(argc < 6)
+	else if(argc < 4)
 	{
 		return usage(argv[0]);
 	}
 
-	nchan = atol(argv[3]);
-	nint  = atol(argv[4]);
-	if(nint <= 0)
+	n = atol(argv[3]);
+
+	if(argc > 4)
 	{
-		nint = 2000000000L;
+		offset=atoll(argv[4]);
 	}
 
-	if(argc > 6)
-	{
-		offset=atoll(argv[6]);
-	}
-
-	spec(argv[1], argv[2], nchan, nint, argv[5], offset);
+	decode(argv[1], argv[2], "%2.0f ", offset, n);
 
 	return 0;
 }
