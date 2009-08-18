@@ -27,68 +27,91 @@
  *
  *==========================================================================*/
 
-#ifndef __FITS_UV_H__
-#define __FITS_UV_H__
-
-#include <complex.h>
-#include <math.h>
-#include <glob.h>
+#include <stdlib.h>
 #include <sys/types.h>
-#include "difxio/parsedifx.h"
+#include <strings.h>
+#include "config.h"
 #include "difx2fits.h"
 
-struct __attribute__((packed)) UVrow
+const DifxInput *DifxInput2FitsSO(const DifxInput *D,
+	struct fits_keywords *p_fits_keys, struct fitsPrivate *out)
 {
-	float U, V, W;
-	double jd, iat;
-	int32_t baseline, filter;
-	int32_t sourceId1, freqId1;	/* 1-based FITS indices */
-	float intTime;
-	/* FIXME -- no pulsar gate id! */
-	float data[0];	/* this takes no room in the "sizeof" operation */
-};
+	struct fitsBinTableColumn columns[] =
+	{
+		{"SPACECR", "16A", "spacecraft name", 0},
+		{"TIME",    "1D",  "UT time", "DAYS"},
+		{"ORBXYZ",  "3D",  "geocentric coordinates", "METERS"},
+		{"VELXYZ",  "3D",  "velcity vector", "METERS/SEC"}
+	};
 
-/* Information useful for tracking properies of visibility records */
-typedef struct
-{
-	glob_t globbuf;
-	int curFile, nFile;
-	const DifxInput *D;
-	DifxParameters *dp;
-	FILE *in;
-	double U, V, W;
-	double mjd;
-	float tInt;
-	int baseline;
-	int *antennaIdRemap;		/* to convert baseline number */
-	int jobId;
-	int configId;
-	int sourceId;
-	int scanId;
-	int freqId;			/* DiFX configId or FITS freqId */
-	int bandId;			/* FITS IF index, 0-based */
-	int polId;			/* FITS polarization index, 0-based */
-	int pulsarBin;
-	int nPol, nFreq;
-	int polStart;			/* start of polarization FITS axis */
-	float *spectrum;		/* input visibility spectrum */
-	float recweight;
-	int nData;
-	int nComplex;
-	struct UVrow *record;
-	float *weight;
-	float *data;
-	int changed;
-	int first;
-	double scale;
-	int flagTransition;
-} DifxVis;
+	int nColumn;
+	int nRowBytes;
+	char *fitsbuf;
+	char *p_fitsbuf;
+	int s, p;
+	const sixVector *pos;
 
-DifxVis *newDifxVis(const DifxInput *D, int jobId);
-void deleteDifxVis(DifxVis *dv);
-int DifxVisNextFile(DifxVis *dv);
-int DifxVisNewUVData(DifxVis *dv, int verbose, int pulsarBin);
-int DifxVisCollectRandomParams(const DifxVis *dv);
+	char name[16];
+	double time;
+	double xyz[3], vel[3];
+	
+	if(D == 0)
+	{
+		return 0;
+	}
 
+	if(D->nSpacecraft == 0 || !D->spacecraft)
+	{
+		return D;
+	}
 
+	nColumn = NELEMENTS(columns);
+	nRowBytes = FitsBinTableSize(columns, nColumn);
+
+	fitsWriteBinTable(out, nColumn, columns, nRowBytes, "SPACECRAFT_ORBIT");
+	arrayWriteKeys(p_fits_keys, out);
+	fitsWriteInteger(out, "TABREV", 1, "");
+	fitsWriteEnd(out);
+
+	fitsbuf = (char *)calloc(nRowBytes, 1);
+	if(fitsbuf == 0)
+	{
+		return 0;
+	}
+	
+	for(s = 0; s < D->nSpacecraft; s++)
+	{
+		strcpypad(name, D->spacecraft[s].name, 16);
+
+		for(p = 0; p < D->spacecraft[s].nPoint; p++)
+		{
+			pos = D->spacecraft[s].pos + p;
+
+			time = pos->mjd + pos->fracDay;
+			xyz[0] = pos->X;
+			xyz[1] = pos->Y;
+			xyz[2] = pos->Z;
+			vel[0] = pos->dX;
+			vel[1] = pos->dY;
+			vel[2] = pos->dZ;
+
+			p_fitsbuf = fitsbuf;
+
+			FITS_WRITE_ITEM (name, p_fitsbuf);
+			FITS_WRITE_ITEM (time, p_fitsbuf);
+			FITS_WRITE_ITEM (xyz, p_fitsbuf);
+			FITS_WRITE_ITEM (vel, p_fitsbuf);
+
+			testFitsBufBytes(p_fitsbuf - fitsbuf, nRowBytes, "SO");
+
+#ifndef WORDS_BIGENDIAN
+			FitsBinRowByteSwap(columns, nColumn, fitsbuf);
 #endif
+			fitsWriteBinRow(out, fitsbuf);
+		}
+	}
+
+	free(fitsbuf);
+
+	return D;
+}	
