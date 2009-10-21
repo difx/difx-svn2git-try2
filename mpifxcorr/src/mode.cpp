@@ -27,6 +27,8 @@
 #include "datastream.h"
 #include "alert.h"
 
+#include <stdlib.h>
+
 //using namespace std;
 const float Mode::TINY = 0.000000001;
 
@@ -166,6 +168,9 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int nchan, int bper
         autocorrelations[i][j] = vectorAlloc_cf32(numchannels+1);
     }
   }
+      
+  // Allocate memory
+  pcal = new cf32[numinputbands*2];
 }
 
 Mode::~Mode()
@@ -223,7 +228,10 @@ Mode::~Mode()
     delete [] autocorrelations[i];
   }
   delete [] autocorrelations;
-
+  
+  // Free memory
+  delete[] pcal;
+  
   cdebug << startl << "Ending a mode destructor" << endl;
 }
 
@@ -231,20 +239,23 @@ float Mode::unpack(int sampleoffset)
 {
   int status, leftoversamples, stepin = 0;
 
-  if(bytesperblockdenominator/bytesperblocknumerator == 0)
+  if (bytesperblockdenominator/bytesperblocknumerator == 0)
     leftoversamples = 0;
   else
-    leftoversamples = sampleoffset%(bytesperblockdenominator/bytesperblocknumerator);
+    leftoversamples = sampleoffset % (bytesperblockdenominator/bytesperblocknumerator);
+  
   unpackstartsamples = sampleoffset - leftoversamples;
-  if(samplesperblock > 1)
-    stepin = unpackstartsamples%(samplesperblock*bytesperblockdenominator);
+  
+  if (samplesperblock > 1)
+    stepin = unpackstartsamples % (samplesperblock*bytesperblockdenominator);
+  
   u16 * packed = (u16 *)(&(data[((unpackstartsamples/samplesperblock)*bytesperblocknumerator)/bytesperblockdenominator]));
 
   //copy from the lookup table to the linear unpacked array
-  for(int i=0;i<numlookups;i++)
+  for (int i = 0; i < numlookups; i++)
   {
     status = vectorCopy_s16(&lookup[packed[i]*samplesperlookup], &linearunpacked[i*samplesperlookup], samplesperlookup);
-    if(status != vecNoErr) {
+    if (status != vecNoErr) {
       csevere << startl << "Error in lookup for unpacking!!!" << status << endl;
       return 0;
     }
@@ -252,7 +263,7 @@ float Mode::unpack(int sampleoffset)
 
   //split the linear unpacked array into the separate subbands
   status = vectorSplitScaled_s16f32(&(linearunpacked[stepin*numinputbands]), unpackedarrays, numinputbands, unpacksamples);
-  if(status != vecNoErr) {
+  if (status != vecNoErr) {
     csevere << startl << "Error in splitting linearunpacked!!!" << status << endl;
     return 0;
   }
@@ -265,10 +276,11 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
   double phaserotation, averagedelay, nearestsampletime, starttime, finaloffset, lofreq, distance;
   f32 phaserotationfloat, fracsampleerror;
   int status, count, nearestsample, integerdelay, sidebandoffset;
-  cf32* fftptr;
+  cf32* fftptr, fftptr_data;
   f32* currentchannelfreqptr;
   int indices[10];
-  
+  int currpcalfreq;
+      
   if(datalengthbytes == 0 || !(delays[index] > MAX_NEGATIVE_DELAY) || !(delays[index+1] > MAX_NEGATIVE_DELAY))
   {
     for(int i=0;i<numinputbands;i++)
@@ -286,6 +298,7 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
   averagedelay = (delays[index] + delays[index+1])/2.0;
   starttime = (offsetseconds-bufferseconds)*1000000.0 + (double(offsetns)/1000.0 + index*twicenumchannels*sampletime - buffermicroseconds) - averagedelay;
   nearestsample = int(starttime/sampletime + 0.5);
+  nearestsampletime = nearestsample*sampletime;
   
   //if we need to, unpack some more data - first check to make sure the pos is valid at all
   if(nearestsample < -1 || (((nearestsample + twicenumchannels)/samplesperblock)*bytesperblocknumerator)/bytesperblockdenominator > datalengthbytes)
@@ -293,21 +306,39 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
     cerror << startl << "MODE error - trying to process data outside range - aborting!!! nearest sample was " << nearestsample << ", the max bytes should be " << datalengthbytes << ".  bufferseconds was " << bufferseconds << ", offsetseconds was " << offsetseconds << ", buffermicroseconds was " << buffermicroseconds << ", offsetns was " << offsetns << ", index was " << index << ", average delay was " << averagedelay << endl;
     return 0.0;
   }
+  
   if(nearestsample == -1)
   {
     nearestsample = 0;
     dataweight = unpack(nearestsample);
   }
-  else if(nearestsample < unpackstartsamples || nearestsample > unpackstartsamples + unpacksamples - twicenumchannels)
+  else if(nearestsample < unpackstartsamples || nearestsample > unpackstartsamples + unpacksamples - twicenumchannels) {
     //need to unpack more data
     dataweight = unpack(nearestsample);
-
+  }
+  
   if(!(dataweight > 0.0))
     return 0.0;
 
-  nearestsampletime = nearestsample*sampletime;
   fracsampleerror = float(starttime - nearestsampletime);
 
+
+  // phase cal
+  if (config->getPcalExtract()) {
+    // Compute the inner product between data and basis functions
+    for (int i = 0, currpcalfreq = 0; i < numinputbands; i++) {
+      for (int j = 0; j < config->getPcalNumtones(); j++, currpcalfreq++) {
+	pcal[currpcalfreq].re = 0.0;
+	pcal[currpcalfreq].im = 0.0;
+	for (int k = 0; k < unpacksamples; k++) {
+	  pcal[currpcalfreq].re += unpackedarrays[i][k]*cos(-2.0*M_PI*config->getPcalFreq()[currpcalfreq]*(nearestsampletime + buffermicroseconds + k*1.0/16e6));	  
+	  pcal[currpcalfreq].im += unpackedarrays[i][k]*sin(-2.0*M_PI*config->getPcalFreq()[currpcalfreq]*(nearestsampletime + buffermicroseconds + k*1.0/16e6));
+	}
+      }
+    }
+  }
+  // end of phasecal extraction
+  
   if(postffringerot)
   {
     integerdelay = int(averagedelay);
@@ -352,7 +383,7 @@ float Mode::process(int index)  //frac sample error, fringedelay and wholemicros
     }
   }
 
-  for(int i=0;i<numfreqs;i++)
+  for (int i = 0; i < numfreqs; i++)
   {
     count = 0;
     //updated so that Nyquist channel is not accumulated for either USB or LSB data

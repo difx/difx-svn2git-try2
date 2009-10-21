@@ -83,6 +83,11 @@ Visibility::Visibility(Configuration * conf, int id, int numvis, int eseconds, i
   }
   for(int i=0;i<visID;i++)
     updateTime();
+  
+  
+  pcal = new cf32*[numdatastreams];
+  for (int i = 0; i < numdatastreams; i++)
+    pcal[i] = new cf32[config->getDNumInputBands(currentconfigindex, i)*2];
 }
 
 
@@ -125,6 +130,10 @@ Visibility::~Visibility()
     delete [] binscales;
     vectorFree(binweightdivisor);
   }
+  
+  for (int i = 0; i < numdatastreams*2; i++)
+    delete[] pcal[i];
+  delete[] pcal;
 }
 
 bool Visibility::addData(cf32* subintresults)
@@ -413,6 +422,8 @@ void Visibility::writedata()
   int status, ds1, ds2, ds1bandindex, ds2bandindex, binloop;
   int dumpmjd;
   double dumpseconds;
+  // added for pcal
+  f32 pcal_scale;
 
   cdebug << startl << "Vis. " << visID << " is starting to write out data" << endl;
 
@@ -492,6 +503,13 @@ void Visibility::writedata()
       }
     }
   }
+  
+  //pcal
+  // pcal_scale = 1.0/(autocorrweights[i][k+j*config->getDNumOutputBands(currentconfigindex, i)]*meansubintsperintegration*((float)(config->getBlocksPerSend(currentconfigindex)*2*numchannels)));
+  for (int i = 0; i < numdatastreams; i++)
+    for (int j = 0; j < config->getDNumInputBands(currentconfigindex, i)*2; j++)
+	pcal[i][j] = results[count++];  // NOTE for sure divide by some scaling factor
+
   count = 0;
   for(int i=0;i<numbaselines;i++) //do each baseline
   {
@@ -834,12 +852,15 @@ void Visibility::writerpfits()
 void Visibility::writedifx()
 {
   ofstream output;
+  ofstream pcaloutput;
   char filename[256];
+  char **pcalfilename;
   int dumpmjd, binloop, sourceindex, freqindex, numpolproducts, firstpolindex, baselinenumber, lsboffset;
   double dumpseconds;
   int count = 0;
   float buvw[3]; //the u,v and w for this baseline at this time
   char polpair[3]; //the polarisation eg RR, LL
+  char pcalstr[1024];
 
   if(config->pulsarBinOn(currentconfigindex) && !config->scrunchOutputOn(currentconfigindex))
     binloop = config->getNumPulsarBins(currentconfigindex);
@@ -851,7 +872,13 @@ void Visibility::writedifx()
   dumpmjd = expermjd + (experseconds + currentstartseconds)/86400;
   dumpseconds = double((experseconds + currentstartseconds)%86400) + double((currentstartsamples+integrationsamples/2)/(2000000.0*config->getDBandwidth(currentconfigindex,0,0)));
 
+  pcalfilename = new char*[numdatastreams];
+  for (int i = 0; i < numdatastreams; i++)
+    pcalfilename[i] = new char[256];
+  
   sprintf(filename, "%s/DIFX_%05d_%06d", config->getOutputFilename().c_str(), expermjd, experseconds);
+  for (int i = 0; i < numdatastreams; i++)
+    sprintf(pcalfilename[i], "%s/PCAL_%s", config->getOutputFilename().c_str(), config->getTelescopeName(i).c_str());
   
   //work through each baseline visibility point
   for(int i=0;i<numbaselines;i++)
@@ -940,6 +967,35 @@ void Visibility::writedifx()
       count += autocorrincrement*config->getDNumOutputBands(currentconfigindex, i);
     }
   }
+  
+  // write out the pcal data!
+  int year, month, day;
+  int days, seconds;
+  float pcal_mjd;
+  
+  config->mjd2ymd(dumpmjd, year, month, day);
+  config->getMJD(days, seconds, year, 1, 1, 0, 0, 0);
+  pcal_mjd = dumpmjd - days + 1.0 + dumpseconds/86400.0;
+      
+  for (int i = 0; i < numdatastreams; i++) {
+    pcaloutput.open(pcalfilename[i], ios::app);
+    sprintf(pcalstr, "%s %10.7f %9.7f %5f %c %d %d %d %d", config->getTelescopeName(i).c_str(), pcal_mjd, config->getIntTime(currentconfigindex)/86400.0, 0.0, (config->getMaxProducts(currentconfigindex) == 1 ? "1" : "2"), config->getDNumInputBands(currentconfigindex, i), 2, 0, 0);
+   // NOTE There are still dummy values in the output above!
+    
+    pcaloutput.write(pcalstr, strlen(pcalstr));
+    for (int j = 0; j < config->getDNumInputBands(currentconfigindex, i)*2; j++) {
+	// sprintf(pcalstr, "  %d %.2f %.4f %.3f", j, k+config->getFreqTableFreq(config->getDFreqIndex(currentconfigindex, i, j)), sqrt(pow(pcal[i][j][k].re, float(2.0))) + pow(pcal[i][j][k].im, float(2.0)), atan2(pcal[i][j][k].im, pcal[i][j][k].re)*180.0/M_PI);
+      sprintf(pcalstr, "  %d %.2f %.4f %.3f", config->getPcalFreq()[j]/1e6, sqrt(pow(pcal[i][j].re, float(2.0)) + pow(pcal[i][j].re, float(2.0))), atan2(pcal[i][j].im, pcal[i][j].re)*180.0/M_PI);
+	pcaloutput.write(pcalstr, strlen(pcalstr));
+     }
+    pcaloutput.write("\n", 1);
+    pcaloutput.close();
+  }
+  
+  for (int i = 0; i < numdatastreams; i++)
+    delete[] pcalfilename[i];
+  delete[] pcalfilename;
+  
 }
 
 void Visibility::multicastweights()

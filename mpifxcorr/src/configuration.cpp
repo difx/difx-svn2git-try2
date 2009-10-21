@@ -122,6 +122,34 @@ Configuration::Configuration(const char * configfile, int id)
   stadumpchannels = DEFAULT_MONITOR_NUMCHANNELS;
   ltadumpchannels = DEFAULT_MONITOR_NUMCHANNELS;
 //  cinfo << startl << "Finished processing input file!!!" << endl;
+  
+  // Added temporarily for pcal
+  // hard code the configuration for now. TODO: Change this!
+  
+  pcalconfig = new pcalvalues;
+  
+  pcalconfig->extract = true;
+  pcalconfig->freq = new f32[16];
+  
+  pcalconfig->numtones = 2;
+  
+  // hard coded frequencies
+  pcalconfig->freq[0] = 1358e6;
+  pcalconfig->freq[1] = 1359e6;
+  pcalconfig->freq[2] = 1374e6;
+  pcalconfig->freq[3] = 1375e6;
+  pcalconfig->freq[4] = 1390e6;
+  pcalconfig->freq[5] = 1391e6;
+  pcalconfig->freq[6] = 1406e6;
+  pcalconfig->freq[7] = 1407e6;
+  pcalconfig->freq[8] = 1358e6;
+  pcalconfig->freq[9] = 1359e6;
+  pcalconfig->freq[10] = 1374e6;
+  pcalconfig->freq[11] = 1375e6;
+  pcalconfig->freq[12] = 1390e6;
+  pcalconfig->freq[13] = 1391e6;
+  pcalconfig->freq[14] = 1406e6;
+  pcalconfig->freq[15] = 1407e6;
 }
 
 
@@ -175,6 +203,10 @@ Configuration::~Configuration()
   delete [] baselinetable;
   delete [] numprocessthreads;
   delete [] firstnaturalconfigindices;
+  
+  // Added for pcal
+  delete[] pcalconfig->freq;
+  delete pcalconfig;
 }
 
 int Configuration::genMk5FormatName(dataformat format, int nchan, double bw, int nbits, int framebytes, int decimationfactor, char *formatname)
@@ -389,6 +421,7 @@ int Configuration::getResultLength(int configindex)
 {
   datastreamdata currentdatastream;
   int numbands = 0;
+  int pcal_size = 0;
   int bandsperautocorr = (configs[configindex].writeautocorrs)?2:1;
 
   //add up all the bands in the baselines
@@ -404,9 +437,12 @@ int Configuration::getResultLength(int configindex)
   {
     currentdatastream = datastreamtable[configs[configindex].datastreamindices[i]];
     numbands += currentdatastream.numoutputbands*bandsperautocorr;
+    //pcal
+    pcal_size += currentdatastream.numoutputbands*2;
   }
 
-  return numbands*(configs[configindex].numchannels+1);
+  // Changed for pcal extraction by Frederic Jaron
+  return numbands*(configs[configindex].numchannels+1) + pcal_size;
 }
 
 int Configuration::getDataBytes(int configindex, int datastreamindex)

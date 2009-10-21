@@ -28,6 +28,8 @@
 #include <fstream>
 #include <cstdlib>
 
+#include <malloc.h>
+
 using namespace std;
 
 /**
@@ -36,7 +38,7 @@ using namespace std;
 
 Possesses all methods necessary for mode functionality but should not be instantiated as it does not build a
 lookup table or handle unpacking - this is particular to each subclass of mode.  Station-based processing
-(FFT, fringe rotation, fraction sample correction etc) is handled via the process method, based on
+(FFT, fringe rotation, fraction sample correction etc) is handled via the process method, based on 
 the provided data and control (delay) arrays
 
 @author Adam Deller
@@ -147,7 +149,9 @@ public:
 
   /** Constant for comparing two floats for equality (for freqs and bandwidths etc) */
   static const float TINY;
-
+  
+  inline cf32* getPcal() { return pcal; }
+    
 protected:
  /** 
   * Unpacks quantised data to float arrays.  The floating point values filled should
@@ -197,7 +201,10 @@ protected:
   f32* realfftd;
   f32* imagfftd;
   f64* fringedelayarray;
-
+      
+  // variables for pcal
+  cf32 *pcal;
+  
 private:
   ///Array containing decorrelation percentages for a given number of bits
   static const float decorrelationpercentage[];

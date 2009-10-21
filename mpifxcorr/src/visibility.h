@@ -180,6 +180,7 @@ private:
   Polyco * polyco;
   int *** baselinepoloffsets;
   int *** datastreampolbandoffsets;
+  cf32 **pcal;
 };
 
 #endif

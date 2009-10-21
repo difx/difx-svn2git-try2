@@ -31,6 +31,9 @@
 #include "mark5access.h"
 #include "mpifxcorr.h"
 
+// Added temporarily for pcal
+#include <math.h>
+
 //forward declaration of class Mode
 class Mode;
 
@@ -417,7 +420,15 @@ public:
   * @param destination The buffer to store the Fortran-style string
   */
   void makeFortranString(string line, int length, char * destination);
-
+  
+  /**
+  * Added for pcal by Frederic Jaron
+  */
+  inline bool getPcalExtract() { return pcalconfig->extract; }
+  inline void setPcalExtract(const bool value) { pcalconfig->extract = value; }
+  inline f32* getPcalFreq() { return pcalconfig->freq; }  
+  inline int getPcalNumtones() { return pcalconfig->numtones; }
+  
 private:
   ///types of sections that can occur within an input file
   enum sectionheader {COMMON, CONFIG, FREQ, TELESCOPE, DATASTREAM, BASELINE, DATA, NETWORK, INPUT_EOF, UNKNOWN};
@@ -498,6 +509,14 @@ private:
     int portnumber;
     int tcpwindowsizekb;
   } datastreamdata;
+  
+  ///Storage struct for pcal information. Added by Frederic Jaron for pcal
+  typedef struct {
+    // pcal configuration variables
+    bool extract; // = true;
+    f32 *freq;
+    int numtones;
+  } pcalvalues;
 
  /**
   * Reads through the input file and locates the next section header
@@ -599,6 +618,9 @@ private:
   datastreamdata * datastreamtable;
   Uvw * uvw;
   outputformat outformat;
+  
+  /// Added for pcal. The pcal configuration
+  pcalvalues *pcalconfig;
 };
 
 #endif

@@ -36,7 +36,10 @@ Core::Core(int id, Configuration * conf, int * dids, MPI_Comm rcomm)
   }
   numdatastreams = config->getNumDataStreams();
   numbaselines = config->getNumBaselines();
-  maxresultlength = config->getMaxResultLength();
+  
+  // Changed for pcal: Add space for pcal
+  maxresultlength = config->getMaxResultLength() + numdatastreams*16;
+  
   numprocessthreads = config->getCNumProcessThreads(mpiid - numdatastreams - fxcorr::FIRSTTELESCOPEID);
   currentconfigindex = 0;
   startmjd = config->getStartMJD();
@@ -761,6 +764,12 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
   //clear the bin count if necessary - NO LONGER NECESSARY
   //if(config->pulsarBinOn(procslots[index].configindex))
   //  currentpolyco->incrementBinCount();
+  
+  //pcal
+  for (int i = 0; i < numdatastreams; i++)
+    for (int j = 0; j < config->getDNumInputBands(procslots[index].configindex, i)*2; j++)
+      procslots[index].results[resultindex++] = (modes[i]->getPcal())[j];
+
 
   //unlock the copy lock
   perr = pthread_mutex_unlock(&(procslots[index].copylock));
