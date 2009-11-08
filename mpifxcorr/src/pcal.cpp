@@ -29,8 +29,9 @@
  *
  ********************************************************************************************************/
 
-#include "PCal.h"
-#include "PCal_impl.h"
+#include "architecture.h"
+#include "pcal.h"
+#include "pcal_impl.h"
 #include <iostream>
 #include <cmath>
 using std::cerr;
@@ -46,10 +47,10 @@ class pcal_config_pimpl {
     ~pcal_config_pimpl() {};
   public:
     double   dphi;
-    Ipp32fc* rotator;        // pre-cooked oscillator values
-    Ipp32fc* rotated;        // temporary
-    Ipp32fc* pcal_complex;   // temporary unassembled output, later final output
-    Ipp32f*  pcal_real;      // temporary unassembled output for the pcaloffsethz==0.0f case
+    cf32* rotator;        // pre-cooked oscillator values
+    cf32* rotated;        // temporary
+    cf32* pcal_complex;   // temporary unassembled output, later final output
+    f32*  pcal_real;      // temporary unassembled output for the pcaloffsethz==0.0f case
     size_t   rotatorlen;
     size_t   pcal_index;     // zero, changes when extract() is called at least once with "leftover" samples
     size_t   rotator_index;  // zero, changes when extract() is called at least once with "leftover" samples
@@ -110,7 +111,7 @@ long long PCal::gcd(long long a, long long b)
  * @param  len           length of input vector
  * @param  pcalout       output array of sufficient size to store extracted PCal
  */
-bool PCal::extractAndIntegrate_reference(Ipp32f const* data, const size_t len, Ipp32fc* pcalout)
+bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32* pcalout)
 {
     double dphi = 2*M_PI * (-_pcaloffset_hz/_fs_hz);
     for (size_t n=0; n<len; n++) {
@@ -137,8 +138,8 @@ PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, double pcal_spac
     _pcaloffset_hz = 0.0f;
 
     /* Allocate */
-    _cfg->pcal_complex = (Ipp32fc*)memalign(128, sizeof(Ipp32fc) * _N_bins * 2);
-    _cfg->pcal_real    = (Ipp32f*)memalign(128, sizeof(Ipp32f) * _N_bins * 2);
+    _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 2);
+    _cfg->pcal_real    = (f32*)memalign(128, sizeof(f32) * _N_bins * 2);
     this->clear();
 }
 
@@ -156,8 +157,8 @@ void PCalExtractorTrivial::clear()
 {
     _samplecount = 0;
     _finalized   = false;
-    ippsZero_32fc(_cfg->pcal_complex, _N_bins * 2);
-    ippsZero_32f (_cfg->pcal_real,    _N_bins * 2);
+    vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
+    vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
     _cfg->rotator_index = 0;
     _cfg->pcal_index    = 0;
 }
@@ -178,23 +179,23 @@ void PCalExtractorTrivial::clear()
  * @param len     Length of the input signal chunk
  * @return true on success
  */
-bool PCalExtractorTrivial::extractAndIntegrate(Ipp32f const* samples, const size_t len)
+bool PCalExtractorTrivial::extractAndIntegrate(f32 const* samples, const size_t len)
 {
     if (_finalized) { return false; }
 
-    Ipp32f const* src = samples;
-    Ipp32f* dst = &(_cfg->pcal_real[_cfg->pcal_index]);
+    f32 const* src = samples;
+    f32* dst = &(_cfg->pcal_real[_cfg->pcal_index]);
     size_t tail = (len % _N_bins);
     size_t end  = len - tail;
 
     /* Process the first part that fits perfectly */
     for (size_t n = 0; n < end; n+=_N_bins, src+=_N_bins) {
-        ippsAdd_32f_I(src, dst, _N_bins);
+        vectorAdd_f32_I(src, dst, _N_bins);
     }
 
     /* Handle any samples that didn't fit */
     if (tail != 0) {
-        ippsAdd_32f_I(src, dst, tail);
+        vectorAdd_f32_I(src, dst, tail);
         _cfg->pcal_index = (_cfg->pcal_index + tail) % _N_bins;
     }
 
@@ -210,14 +211,14 @@ bool PCalExtractorTrivial::extractAndIntegrate(Ipp32f const* samples, const size
  *
  * @param pointer to user PCal array with getLength() values
  */
-void PCalExtractorTrivial::getFinalPCal(Ipp32fc* out)
+void PCalExtractorTrivial::getFinalPCal(cf32* out)
 {
     if (!_finalized) {
         _finalized = true;
-        ippsAdd_32f_I(/*src*/&(_cfg->pcal_real[_N_bins]), /*srcdst*/&(_cfg->pcal_real[0]), _N_bins);
-        ippsRealToCplx_32f(/*srcRe*/_cfg->pcal_real, /*srcIm*/NULL, _cfg->pcal_complex, _N_bins);
+        vectorAdd_f32_I(/*src*/&(_cfg->pcal_real[_N_bins]), /*srcdst*/&(_cfg->pcal_real[0]), _N_bins);
+        vectorRealToComplex_f32(/*srcRe*/_cfg->pcal_real, /*srcIm*/NULL, _cfg->pcal_complex, _N_bins);
     }
-    ippsCopy_32fc(/*src*/_cfg->pcal_complex, /*dst*/out, _N_bins);
+    vectorCopy_cf32(/*src*/_cfg->pcal_complex, /*dst*/out, _N_bins);
 }
 
 
@@ -236,18 +237,18 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
     _cfg->rotatorlen = _fs_hz / gcd(std::abs(_pcaloffset_hz), _fs_hz);
 
     /* Allocate */
-    _cfg->pcal_complex = (Ipp32fc*)memalign(128, sizeof(Ipp32fc) * _N_bins * 2);
-    _cfg->pcal_real    = (Ipp32f*)memalign(128, sizeof(Ipp32f) * _N_bins * 2);
-    _cfg->rotator = (Ipp32fc*)memalign(128, sizeof(Ipp32fc) * _cfg->rotatorlen * 2);
-    _cfg->rotated = (Ipp32fc*)memalign(128, sizeof(Ipp32fc) * _cfg->rotatorlen * 2);
+    _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 2);
+    _cfg->pcal_real    = (f32*)memalign(128, sizeof(f32) * _N_bins * 2);
+    _cfg->rotator = (cf32*)memalign(128, sizeof(cf32) * _cfg->rotatorlen * 2);
+    _cfg->rotated = (cf32*)memalign(128, sizeof(cf32) * _cfg->rotatorlen * 2);
     this->clear();
 
     /* Prepare frequency shifter/mixer lookup */
     _cfg->dphi = 2*M_PI * (_pcaloffset_hz/_fs_hz);
     for (size_t n = 0; n < (2 * _cfg->rotatorlen); n++) {
         double arg = _cfg->dphi * double(n);
-        _cfg->rotator[n].re = Ipp32f(cos(arg));
-        _cfg->rotator[n].im = Ipp32f(sin(arg));
+        _cfg->rotator[n].re = f32(cos(arg));
+        _cfg->rotator[n].im = f32(sin(arg));
     }
 }
 
@@ -267,9 +268,9 @@ void PCalExtractorShifting::clear()
 {
     _samplecount = 0;
     _finalized   = false;
-    ippsZero_32fc(_cfg->pcal_complex, _N_bins * 2);
-    ippsZero_32f (_cfg->pcal_real,    _N_bins * 2);
-    ippsZero_32fc(_cfg->rotated,      _cfg->rotatorlen * 2);
+    vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
+    vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
+    vectorZero_cf32(_cfg->rotated,      _cfg->rotatorlen * 2);
     _cfg->rotator_index = 0;
     _cfg->pcal_index    = 0;
 }
@@ -290,12 +291,12 @@ void PCalExtractorShifting::clear()
  * @param len     Length of the input signal chunk
  * @return true on success
  */
-bool PCalExtractorShifting::extractAndIntegrate(Ipp32f const* samples, const size_t len)
+bool PCalExtractorShifting::extractAndIntegrate(f32 const* samples, const size_t len)
 {
     if (_finalized) { return false; }
 
-    Ipp32f const* src = samples;
-    Ipp32fc* dst = &(_cfg->pcal_complex[_cfg->pcal_index]);
+    f32 const* src = samples;
+    cf32* dst = &(_cfg->pcal_complex[_cfg->pcal_index]);
     size_t tail  = (len % _cfg->rotatorlen);
     size_t end   = len - tail;
 
@@ -311,33 +312,33 @@ bool PCalExtractorShifting::extractAndIntegrate(Ipp32f const* samples, const siz
 
     /* Process the first part that fits perfectly (and note: rotatorlen modulo _N_bins is 0!) */
     for (size_t n = 0; n < end; n+=_cfg->rotatorlen, src+=_cfg->rotatorlen) {
-        ippsMul_32f32fc(/*A*/src, 
+        vectorMul_f32cf32(/*A*/src, 
                         /*B*/&(_cfg->rotator[_cfg->rotator_index]), 
                         /*dst*/&(_cfg->rotated[_cfg->rotator_index]), 
                         /*len*/_cfg->rotatorlen);
-        Ipp32fc* pulse = &(_cfg->rotated[_cfg->rotator_index]);
+        cf32* pulse = &(_cfg->rotated[_cfg->rotator_index]);
         for (size_t p = 0; p < (_cfg->rotatorlen/_N_bins); p++) {
-            ippsAdd_32fc_I(/*src*/pulse, /*srcdst*/dst, _N_bins);
+            vectorAdd_cf32_I(/*src*/pulse, /*srcdst*/dst, _N_bins);
             pulse += _N_bins;
         }
     }
 
     /* Handle any samples that didn't fit */
     if (tail != 0) {
-        ippsMul_32f32fc(
+        vectorMul_f32cf32(
             /*A*/src, 
             /*B*/&(_cfg->rotator[_cfg->rotator_index]),
             /*dst*/&(_cfg->rotated[_cfg->rotator_index]), 
             /*len*/tail);
-        Ipp32fc* pulse = &(_cfg->rotated[_cfg->rotator_index]);
+        cf32* pulse = &(_cfg->rotated[_cfg->rotator_index]);
         size_t tail2 = (tail % _N_bins);
         size_t end2  = tail - tail2;
         for (size_t p = 0; p < (end2/_N_bins); p++) {
-            ippsAdd_32fc_I(/*src*/pulse, /*srcdst*/dst, _N_bins);
+            vectorAdd_cf32_I(/*src*/pulse, /*srcdst*/dst, _N_bins);
             pulse += _N_bins;
         }
         /* Samples that didn't fit _N_bins */
-        ippsAdd_32fc_I(/*src*/pulse, /*srcdst*/dst, tail2);
+        vectorAdd_cf32_I(/*src*/pulse, /*srcdst*/dst, tail2);
         _cfg->rotator_index = (_cfg->rotator_index + tail) % _cfg->rotatorlen;
         _cfg->pcal_index    = (_cfg->pcal_index + tail2)   % _N_bins;
     }
@@ -354,13 +355,13 @@ bool PCalExtractorShifting::extractAndIntegrate(Ipp32f const* samples, const siz
  *
  * @param pointer to user PCal array with getLength() values
  */
-void PCalExtractorShifting::getFinalPCal(Ipp32fc* out)
+void PCalExtractorShifting::getFinalPCal(cf32* out)
 {
     if (!_finalized) {
         _finalized = true;
-         ippsAdd_32fc_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
+         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
     }
-    ippsCopy_32fc(/*src*/_cfg->pcal_complex, /*dst*/out, _N_bins);
+    vectorCopy_cf32(/*src*/_cfg->pcal_complex, /*dst*/out, _N_bins);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -377,8 +378,8 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
     _cfg = new pcal_config_pimpl();
 
     /* Allocate */
-    _cfg->pcal_complex = (Ipp32fc*)memalign(128, sizeof(Ipp32fc) * _N_tones);
-    _cfg->pcal_real    = (Ipp32f*) memalign(128, sizeof(Ipp32f) * _N_bins * 2);
+    _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_tones);
+    _cfg->pcal_real    = (f32*) memalign(128, sizeof(f32) * _N_bins * 2);
     this->clear();
 }
 
@@ -396,8 +397,8 @@ void PCalExtractorImplicitShift::clear()
 {
     _samplecount = 0;
     _finalized   = false;
-    ippsZero_32fc(_cfg->pcal_complex, _N_tones);
-    ippsZero_32f (_cfg->pcal_real,    _N_bins * 2);
+    vectorZero_cf32(_cfg->pcal_complex, _N_tones);
+    vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
     _cfg->pcal_index = 0;
 }
 
@@ -417,12 +418,12 @@ void PCalExtractorImplicitShift::clear()
  * @param len     Length of the input signal chunk
  * @return true on success
  */
-bool PCalExtractorImplicitShift::extractAndIntegrate(Ipp32f const* samples, const size_t len)
+bool PCalExtractorImplicitShift::extractAndIntegrate(f32 const* samples, const size_t len)
 {
     if (_finalized) { return false; }
 
-    Ipp32f const* src = samples;
-    Ipp32f* dst = &(_cfg->pcal_real[_cfg->pcal_index]);
+    f32 const* src = samples;
+    f32* dst = &(_cfg->pcal_real[_cfg->pcal_index]);
     size_t tail = (len % _N_bins);
     size_t end  = len - tail;
 
@@ -436,12 +437,12 @@ bool PCalExtractorImplicitShift::extractAndIntegrate(Ipp32f const* samples, cons
 
     /* Process the first part that fits perfectly */
     for (size_t n = 0; n < end; n+=_N_bins, src+=_N_bins) {
-        ippsAdd_32f_I(src, /*srcdst*/dst, _N_bins);
+        vectorAdd_f32_I(src, /*srcdst*/dst, _N_bins);
     }
 
     /* Handle any samples that didn't fit */
     if (tail != 0) {
-        ippsAdd_32f_I(src, /*srcdst*/dst, tail);
+        vectorAdd_f32_I(src, /*srcdst*/dst, tail);
         _cfg->pcal_index = (_cfg->pcal_index + tail) % _N_bins;
     }
 
@@ -457,7 +458,7 @@ bool PCalExtractorImplicitShift::extractAndIntegrate(Ipp32f const* samples, cons
  *
  * @param pointer to user PCal array with getLength() values
  */
-void PCalExtractorImplicitShift::getFinalPCal(Ipp32fc* out)
+void PCalExtractorImplicitShift::getFinalPCal(cf32* out)
 {
     /* TODO: perform FFT/DFT, copy the tone bins.
      * The bins are at 
@@ -465,9 +466,9 @@ void PCalExtractorImplicitShift::getFinalPCal(Ipp32fc* out)
      */
     if (!_finalized) {
         _finalized = true;
-         ippsAdd_32fc_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
+         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
     }
-    ippsCopy_32fc(/*src*/_cfg->pcal_complex, /*dst*/out, _N_bins);
+    vectorCopy_cf32(/*src*/_cfg->pcal_complex, /*dst*/out, _N_bins);
 }
 
 
@@ -482,7 +483,7 @@ void PCalExtractorImplicitShift::getFinalPCal(Ipp32fc* out)
  * @param  data    pointer to input sample vector
  * @param  len     length of input vector
  */
-void PCal::extract_continuous(Ipp32f* data, size_t len)
+void PCal::extract_continuous(f32* data, size_t len)
 {
     /* Works on almost the same principle as extract(), but
      * instead of a precomputed pcalcfg.rotatevec[], we use
@@ -559,7 +560,7 @@ void PCal::extract_continuous(Ipp32f* data, size_t len)
  * @param  data    pointer to input sample vector
  * @param  len     length of input vector
  */
-void PCal::extract_analytic(Ipp32f* data, size_t len)
+void PCal::extract_analytic(f32* data, size_t len)
 {
     for (size_t n=0; n<len; n++) {
         int bin = (n % pcalcfg.tonebins);

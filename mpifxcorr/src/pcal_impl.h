@@ -31,12 +31,10 @@
  *
  ********************************************************************************************************/
 
+#include "architecture.h"
 #include <cstddef>
 #include <stdint.h>
 using std::size_t;
-
-#include <ipps.h>
-#include <ippcore.h>
 
 class pcal_config_pimpl;
 
@@ -71,7 +69,7 @@ class PCalExtractorTrivial : public PCal {
        * @param len     Length of the input signal chunk
        * @return true on success
        */
-      bool extractAndIntegrate(Ipp32f const* samples, const size_t len);
+      bool extractAndIntegrate(f32 const* samples, const size_t len);
 
       /**
        * Performs finalization steps on the internal PCal results if necessary
@@ -80,7 +78,7 @@ class PCalExtractorTrivial : public PCal {
        *
        * @param pointer to user PCal array with getLength() values
        */
-      void getFinalPCal(Ipp32fc* out);
+      void getFinalPCal(cf32* out);
 };
 
 
@@ -115,7 +113,7 @@ class PCalExtractorShifting : public PCal {
        * @param len     Length of the input signal chunk
        * @return true on success
        */
-      bool extractAndIntegrate(Ipp32f const* samples, const size_t len);
+      bool extractAndIntegrate(f32 const* samples, const size_t len);
 
       /**
        * Performs finalization steps on the internal PCal results if necessary
@@ -124,7 +122,7 @@ class PCalExtractorShifting : public PCal {
        *
        * @param pointer to user PCal array with getLength() values
        */
-      void getFinalPCal(Ipp32fc* out);
+      void getFinalPCal(cf32* out);
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -158,7 +156,7 @@ class PCalExtractorImplicitShift : public PCal {
        * @param len     Length of the input signal chunk
        * @return true on success
        */
-      bool extractAndIntegrate(Ipp32f const* samples, const size_t len);
+      bool extractAndIntegrate(f32 const* samples, const size_t len);
 
       /**
        * Performs finalization steps on the internal PCal results if necessary
@@ -167,7 +165,7 @@ class PCalExtractorImplicitShift : public PCal {
        *
        * @param pointer to user PCal array with getLength() values
        */
-      void getFinalPCal(Ipp32fc* out);
+      void getFinalPCal(cf32* out);
 };
 
 #endif // _PCAL_IMPL_H

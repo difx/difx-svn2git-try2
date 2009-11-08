@@ -31,12 +31,10 @@
  *
  ********************************************************************************************************/
 
+#include "architecture.h"
 #include <cstddef>
 #include <stdint.h>
 using std::size_t;
-
-#include <ipps.h>
-#include <ippcore.h>
 
 class PCalExtractorTrivial;
 class PCalExtractorShifting;
@@ -86,7 +84,7 @@ class PCal {
        * @param len     Length of the input signal chunk
        * @return true on success
        */
-      virtual bool extractAndIntegrate(Ipp32f const* samples, const size_t len) = 0;
+      virtual bool extractAndIntegrate(f32 const* samples, const size_t len) = 0;
 
       /**
        * Returns the length in data-seconds of the currently integrated PCal results.
@@ -108,7 +106,7 @@ class PCal {
        *
        * @param pointer to user PCal array with getLength() values
        */
-      virtual void getFinalPCal(Ipp32fc* out) = 0;
+      virtual void getFinalPCal(cf32* out) = 0;
 
       /**
        * Processes samples and accumulates the detected phase calibration tone vector.
@@ -118,7 +116,7 @@ class PCal {
        * @param  len           length of input vector
        * @param  pcalout       output array of sufficient size to store extracted PCal
        */
-      bool extractAndIntegrate_reference(Ipp32f const* data, const size_t len, Ipp32fc* pcalout);
+      bool extractAndIntegrate_reference(f32 const* data, const size_t len, cf32* pcalout);
 
    private:
      /**
