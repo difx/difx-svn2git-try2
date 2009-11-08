@@ -106,7 +106,7 @@ void * launchCommandMonitorThread(void * c) {
   //setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
   cinfo << startl << "Receive socket opened - socket is " << socket << endl;
   if (socket < 0) {
-    csevere << startl << "Could not open command monitoring socket! Aborting message receive thread." << endl;
+    cwarn << startl << "Could not open command monitoring socket! Aborting message receive thread." << endl;
     keepacting = false;
   }
   config->setCommandThreadInitialised();
@@ -126,7 +126,7 @@ void * launchCommandMonitorThread(void * c) {
   free(genericmessage);
   if(socket >= 0)
     difxMessageReceiveClose(socket);
-  //cverbose << startl << "Command monitor thread shutting down" << endl;
+  //cinfo << startl << "Command monitor thread shutting down" << endl;
   return 0;
 }
 
@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
   char * monhostname = new char[nameslength];
   int port=0, monitor_skip=0, namelen;
   char processor_name[MPI_MAX_PROCESSOR_NAME];
-  char difxMessageID[128];
+  char difxMessageID[DIFX_MESSAGE_IDENTIFIER_LENGTH];
 
   cout << "About to run MPIInit" << endl;
 
@@ -254,6 +254,25 @@ int main(int argc, char *argv[])
   MPI_Comm_rank(world, &myID);
   MPI_Comm_dup(world, &return_comm);
   MPI_Get_processor_name(processor_name, &namelen);
+
+  if(argc < 2 || argc > 3)
+  {
+    cerr << "Error - invoke with mpifxcorr <inputfilename> [-M<monhostname>:port[:monitor_skip]]" << endl;
+    MPI_Barrier(world);
+    MPI_Finalize();
+    return EXIT_FAILURE;
+  }
+
+  //setup difxmessage
+  generateIdentifier(argv[1], myID, difxMessageID);
+  difxMessageInit(myID, difxMessageID);
+  if(myID == 0)
+  {
+    if(isDifxMessageInUse())
+    {
+      cout << "NOTE: difxmessage is in use.  If you are not running errormon/errormon2, you are missing all the (potentially important) info messages!!" << endl;
+    }
+  }
 
   cinfo << startl << "MPI Process " << myID << " is running on host " << processor_name << endl;
   
@@ -284,16 +303,6 @@ int main(int argc, char *argv[])
     }
     strcpy(monhostname, monitoropt.substr(2,colindex1-2).c_str());
   }
-  else if(argc != 2)
-  {
-    cfatal << startl << "Error - invoke with mpifxcorr <inputfilename> [-M<monhostname>:port[:monitor_skip]]" << endl;
-    MPI_Barrier(world);
-    MPI_Finalize();
-    return EXIT_FAILURE;
-  }
-
-  generateIdentifier(argv[1], myID, difxMessageID);
-  difxMessageInit(myID, difxMessageID);
 
   cverbose << startl << "About to process the input file.." << endl;
   //process the input file to get all the info we need
@@ -346,6 +355,7 @@ int main(int argc, char *argv[])
       manager = new FxManager(config, numcores, datastreamids, coreids, myID, return_comm, monitor, monhostname, port, monitor_skip);
       MPI_Barrier(world);
       t1 = MPI_Wtime();
+      cinfo << startl << "Estimated memory usage by FXManager: " << manager->getEstimatedBytes()/1048576.0 << " MB" << endl;
       manager->execute();
       t2 = MPI_Wtime();
       cinfo << startl << "Total wallclock time was **" << t2 - t1 << "** seconds" << endl;
@@ -361,12 +371,14 @@ int main(int argc, char *argv[])
         stream = new DataStream(config, datastreamnum, myID, numcores, coreids, config->getDDataBufferFactor(), config->getDNumDataSegments());
       stream->initialise();
       MPI_Barrier(world);
+      cinfo << startl << "Estimated memory usage by Datastream: " << stream->getEstimatedBytes()/1048576.0 << " MB" << endl;
       stream->execute();
     }
     else //im a processing core
     {
       core = new Core(myID, config, datastreamids, return_comm);
       MPI_Barrier(world);
+      cinfo << startl << "Estimated memory usage by Core: " << core->getEstimatedBytes()/1048576.0 << " MB" << endl;
       core->execute();
     }
     MPI_Barrier(world);
@@ -380,9 +392,7 @@ int main(int argc, char *argv[])
   delete [] coreids;
   delete [] datastreamids;
 
-  //if(myID == 0) difxMessageSendDifxAlert("Will this work?", 3);
   if(myID == 0) difxMessageSendDifxParameter("keepacting", "false", DIFX_MESSAGE_ALLMPIFXCORR);
-  //if(myID == 0) difxMessageSendDifxAlert("Not expecting this one!?", 3);
   perr = pthread_join(commandthread, NULL);
   if(perr != 0) csevere << startl << "Error in closing commandthread!!!" << endl;
   if(manager) delete manager;
@@ -394,3 +404,4 @@ int main(int argc, char *argv[])
   cinfo << startl << "MPI ID " << myID << " says BYE!" << endl;
   return EXIT_SUCCESS;
 }
+// vim: shiftwidth=2:softtabstop=2:expandtab:

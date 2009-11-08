@@ -1,0 +1,59 @@
++ Done
+- Todo
+PhaseCal pathway
+================
+Configuration::processDatastreamTable
++ get phasecalintervalmhz and check it's a positive integer
+
+Configuration::populateResultLengths
+- set up space at the end of results for phase cal values
+
+Core::processdata
+  //before processing
++ for all datastreams i
++   modes[i].resetpcal()
+  //just before averageandsendAcorrs 
+- averagePcals
+  
+Core::averagePcals //not yet written c.f. averageAndSendAutoCorrs
+- extract pcal results
+- average thread results
+- copy to main results array
+
+Mode::Mode
++ for each frequency
++   Work out the number of tones in each subband
++   Work out the pcaloffset in hz for each subband
++   Instantiate a PCal extractor
++   getLen of extractor
++ Instantiate pcalresults[nfreq][ntones]
+  	
+Mode::~Mode
++ delete extractors
++ delete pcalresults
+
+Mode::process
++ for each frequency
++  if phase cal is on for this frequency
++   extract and integrate
+
+Mode::resetpcal
++ for each frequency
++   PCal->clear()
+
+FXManager
+
+Visibility::Visibility
++ for each datastream
++   for each frequency
++     allocate one cf32 per pcal extracted
+
+Visibility::~Visibility
++ delete pcal
+
+Visibility::writedifx
++ open one pcal file for each antenna
+
+Visibility::writedata
+- write out data to disk
+
