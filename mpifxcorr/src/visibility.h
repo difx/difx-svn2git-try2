@@ -190,7 +190,6 @@ private:
   Model * model;
   Polyco * polyco;
   static monsockStatusType monsockStatus;
-  cf32 ***pcal;
 };
 
 #endif

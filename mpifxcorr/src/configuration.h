@@ -95,6 +95,7 @@ public:
   inline int getCoreResultBWeightOffset(int configindex, int freqindex, int configbaselineindex) { return configs[configindex].coreresultbweightoffset[freqindex][configbaselineindex]; }
   inline int getCoreResultAutocorrOffset(int configindex, int configdatastreamindex) { return configs[configindex].coreresultautocorroffset[configdatastreamindex]; }
   inline int getCoreResultACWeightOffset(int configindex, int configdatastreamindex) { return configs[configindex].coreresultacweightoffset[configdatastreamindex]; }
+  inline int getCoreResultPCalOffset(int configindex, int configdatastreamindex) { return configs[configindex].coreresultpcaloffset[configdatastreamindex]; }
   inline int getNumConfigs() { return numconfigs; }
   inline int getBlocksPerSend(int configindex) { return configs[configindex].blockspersend; }
   inline double getIntTime(int configindex) { return configs[configindex].inttime; }
@@ -132,6 +133,8 @@ public:
     { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].tsys; }
   inline int getDPhaseCalIntervalMHz(int configindex, int configdatastreamindex) 
     { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].phasecalintervalmhz; }
+  inline int getDMaxRecordedPCalTones(int configindex, int configdatastreamindex)
+    { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].maxrecordedpcaltones; }
   inline int getDNumBits(int configindex, int configdatastreamindex) 
     { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].numbits; }
   inline int getDRecordedFreqIndex(int configindex, int configdatastreamindex, int datastreamrecordedbandindex)
@@ -171,6 +174,10 @@ public:
     {  return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].numzoombands + datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].numrecordedbands; }
   inline string * getDDataFileNames(int configindex, int configdatastreamindex)
     { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].datafilenames; }
+  inline int getDRecordedFreqNumPCalTones(int configindex, int configdatastreamindex, int recordedfreqindex)
+    { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].numrecordedfreqpcaltones[recordedfreqindex]; }
+  inline int getDRecordedFreqPCalToneFreq(int configindex, int configdatastreamindex, int recordedfreqindex, int tone)
+    { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].recordedfreqpcaltonefreqs[recordedfreqindex][tone]; }
   inline double getDRecordedFreq(int configindex, int configdatastreamindex, int datastreamrecordedfreqindex)
     { return freqtable[datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].recordedfreqtableindices[datastreamrecordedfreqindex]].bandedgefreq; }
   inline double getDZoomFreq(int configindex, int configdatastreamindex, int datastreamzoomfreqindex)
@@ -542,6 +549,7 @@ private:
     int ** coreresultbweightoffset; //[freq][baseline]
     int  * coreresultautocorroffset; //[datastream]
     int  * coreresultacweightoffset; //[datastream]
+    int  * coreresultpcaloffset;     //[datastream]
   } configdata;
 
   ///storage struct for data from the rule table of the input file
@@ -580,8 +588,11 @@ private:
     bool filterbank;
     int numrecordedfreqs;
     int numzoomfreqs;
+    int maxrecordedpcaltones;
     int * recordedfreqpols;
     int * recordedfreqtableindices;
+    int *  numrecordedfreqpcaltones;
+    int ** recordedfreqpcaltonefreqs;
     double * recordedfreqclockoffsets;
     double * recordedfreqlooffsets;
     int * zoomfreqpols;

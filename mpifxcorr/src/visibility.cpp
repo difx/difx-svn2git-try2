@@ -87,15 +87,6 @@ Visibility::Visibility(Configuration * conf, int id, int numvis, int eseconds, i
   }
   for(int i=0;i<visID;i++)
     updateTime();
-  
-  
-  pcal = new cf32**[numdatastreams];
-  for (int i = 0; i < numdatastreams; i++)
-  {
-    pcal[i] = new cf32*[config->getDNumRecordedFreqs(currentconfigindex, i)];
-    for (int j = 0; j < config->getDNumRecordedFreqs(currentconfigindex, i); j++)
-      pcal[i][j] = new cf32[int(config->getDRecordedBandwidth(currentconfigindex, i, j)/config->getDPhaseCalIntervalMHz(currentconfigindex, i))];
-  }
 }
 
 
@@ -126,14 +117,6 @@ Visibility::~Visibility()
     delete [] binweightsums;
     delete [] binscales;
     vectorFree(binweightdivisor);
-  }
-  for (int i = 0; i < numdatastreams*2; i++)
-  {
-    for (int j = 0; j < config->getDNumRecordedBands(currentconfigindex, i); j++)
-    {
-    delete[] pcal[i][j];
-    }
-  delete[] pcal[i];
   }
 }
 
@@ -519,7 +502,7 @@ bool Visibility::checkSocketStatus()
 void Visibility::writedata()
 {
   f32 scale, divisor;
-  int ds1, ds2, ds1bandindex, ds2bandindex, freqindex, freqchannels;
+  int ds1, ds2, ds1bandindex, ds2bandindex, localfreqindex, freqindex, freqchannels;
   int status, resultindex, binloop;
   int dumpmjd, intsec;
   double dumpseconds;
@@ -707,6 +690,29 @@ void Visibility::writedata()
     }
   }
 
+  //calibrate the pulse cal
+  for(int i=0;i<numdatastreams;i++)
+  {
+    if(config->getDPhaseCalIntervalMHz(currentconfigindex, i) > 0)
+    {
+      resultindex = config->getCoreResultPCalOffset(currentconfigindex, i)*2;
+      for(int j=0;j<config->getDNumRecordedBands(currentconfigindex, i); j++)
+      {
+        localfreqindex = config->getDLocalRecordedFreqIndex(currentconfigindex, i, j);
+        freqindex = config->getDRecordedFreqIndex(currentconfigindex, i, localfreqindex);
+        freqchannels = config->getFNumChannels(freqindex)/config->getFChannelsToAverage(freqindex);
+        if(autocorrweights[i][0][j] > 0.0)
+        {
+          scale = 1.0/(autocorrweights[i][0][j]*meansubintsperintegration*((float)(config->getBlocksPerSend(currentconfigindex)*2*freqchannels*config->getFChannelsToAverage(freqindex))));
+          status = vectorMulC_f32_I(scale, &(floatresults[resultindex]), config->getDRecordedFreqNumPCalTones(currentconfigindex, i, localfreqindex)*2);
+          if(status != vecNoErr)
+            csevere << startl << "Error trying to amplitude calibrate the pulsecal data!!" << endl;
+        }
+        resultindex += config->getDRecordedFreqNumPCalTones(currentconfigindex, i, localfreqindex)*2;
+      }
+    }
+  }
+
   //all calibrated, now just need to write out
   if(config->getOutputFormat() == Configuration::DIFX)
     writedifx(dumpmjd, dumpseconds);
@@ -813,14 +819,15 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
   ofstream output;
   ofstream pcaloutput;
   char filename[256];
-  char **pcalfilename;
-  int binloop, freqindex, numpolproducts, resultindex, freqchannels;
+  char pcalfilename[256];
+  char pcalstr[256];
+  int binloop, freqindex, numpolproducts, resultindex, freqchannels, maxpol;
+  int year, month, day, startyearmjd, dummyseconds;
   int ant1index, ant2index, sourceindex, baselinenumber;
-  double scanoffsetsecs;
+  double scanoffsetsecs, pcaldoy, cablecaldelay, tonefreq;
   bool modelok;
   double buvw[3]; //the u,v and w for this baseline at this time
   char polpair[3]; //the polarisation eg RR, LL
-  char pcalstr[1024];
 
   if(currentscan >= model->getNumScans()) {
     cwarn << startl << "Visibility will not write out time " << dumpmjd << "/" << dumpseconds << " since currentscan is " << currentscan << " and numscans is " << model->getNumScans() << endl;
@@ -836,14 +843,6 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
   dumpmjd = expermjd + (experseconds + model->getScanStartSec(currentscan, expermjd, experseconds) + currentstartseconds)/86400;
   dumpseconds = double((experseconds + model->getScanStartSec(currentscan, expermjd, experseconds) + currentstartseconds)%86400) + ((double)currentstartns)/1000000000.0 + config->getIntTime(currentconfigindex)/2.0;
 
-  pcalfilename = new char*[numdatastreams];
-  for (int i = 0; i < numdatastreams; i++)
-    pcalfilename[i] = new char[256];
-  
-  sprintf(filename, "%s/DIFX_%05d_%06d", config->getOutputFilename().c_str(), expermjd, experseconds);
-  for (int i = 0; i < numdatastreams; i++)
-    sprintf(pcalfilename[i], "%s/PCAL_%s", config->getOutputFilename().c_str(), config->getTelescopeName(i).c_str());
-  
   //work through each baseline visibility point
   for(int i=0;i<numbaselines;i++)
   {
@@ -948,35 +947,63 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
     }
   }
   
-  // write out the pcal data!
-  int year, month, day;
-  int days, seconds;
-  float pcal_mjd;
-  
+  //now each pcal (if necessary)
+  cablecaldelay = 0.0;
   config->mjd2ymd(dumpmjd, year, month, day);
-  config->getMJD(days, seconds, year, 1, 1, 0, 0, 0);
-  pcal_mjd = dumpmjd - days + 1.0 + dumpseconds/86400.0;
-      
-  for (int i = 0; i < numdatastreams; i++) {
-    pcaloutput.open(pcalfilename[i], ios::app);
-    sprintf(pcalstr, "%s %10.7f %9.7f %5f %c %d %d %d %d", config->getTelescopeName(i).c_str(), pcal_mjd, config->getIntTime(currentconfigindex)/86400.0, 0.0, (config->getMaxProducts(currentconfigindex) == 1 ? 1 : 2), config->getDNumRecordedFreqs(currentconfigindex, i), 2, 0, 0);
-   // NOTE There are still dummy values in the output above!
-    
-    pcaloutput.write(pcalstr, strlen(pcalstr));
-    for (int j = 0; j < config->getDNumRecordedFreqs(currentconfigindex, i)*2; j++) {
-      // FIXME loop over all phasecal tones
-	// sprintf(pcalstr, "  %d %.2f %.4f %.3f", j, k+config->getFreqTableFreq(config->getDFreqIndex(currentconfigindex, i, j)), sqrt(pow(pcal[i][j][k].re, float(2.0))) + pow(pcal[i][j][k].im, float(2.0)), atan2(pcal[i][j][k].im, pcal[i][j][k].re)*180.0/M_PI);
-      //sprintf(pcalstr, "  %d %.2f %.4f %.3f", config->getPcalFreq()[j]/1e6, sqrt(pow(pcal[i][j].re, float(2.0)) + pow(pcal[i][j].re, float(2.0))), atan2(pcal[i][j].im, pcal[i][j].re)*180.0/M_PI);
-	pcaloutput.write(pcalstr, strlen(pcalstr));
-     }
-    pcaloutput.write("\n", 1);
-    pcaloutput.close();
+  config->getMJD(startyearmjd, dummyseconds, year, 1, 1, 0, 0, 0);
+  pcaldoy = dumpmjd - startyearmjd + 1.0 + dumpseconds/86400.0;
+  maxpol = 1;
+  if(config->getMaxProducts(currentconfigindex) > 1)
+    maxpol = 2;
+  polpair[0] = config->getDRecordedBandPol(0, 0, 0);
+  polpair[1] = config->getOppositePol(polpair[0]);
+  for(int i=0;i<numdatastreams;i++)
+  {
+    if(config->getDPhaseCalIntervalMHz(currentconfigindex, i) > 0)
+    {
+      sprintf(pcalfilename, "%s/PCAL_%s", config->getOutputFilename().c_str(), config->getTelescopeName(i).c_str());
+      pcaloutput.open(pcalfilename, ios::app);
+      //write the header string - note state counts are not written, and cablecal is dummy
+      sprintf(pcalstr, "%s %10.7f %9.7f %5f %d %d %d %d %d",
+              config->getTelescopeName(i).c_str(), pcaldoy,
+              config->getIntTime(currentconfigindex)/86400.0, cablecaldelay,
+              maxpol, config->getDNumRecordedFreqs(currentconfigindex, i),
+              config->getDMaxRecordedPCalTones(currentconfigindex, i),
+              0/*no state counts*/, config->getDNumRecordedBands(currentconfigindex, i));
+      pcaloutput.write(pcalstr, strlen(pcalstr));
+      for(int p=0;p<maxpol;p++)
+      {
+        for(int j=0;j<config->getDNumRecordedFreqs(currentconfigindex, i);j++)
+        {
+          for(int t=0;t<config->getDMaxRecordedPCalTones(currentconfigindex, i);t++)
+          {
+            //get the default response ready in case we don't find anything
+            sprintf(pcalstr, "  %d %.6f %.8f %.8f", -1, 0.0, 0.0, 0.0);
+
+            if(t >= config->getDRecordedFreqNumPCalTones(currentconfigindex, i, j)) {
+              //don't write any tones we don't have
+              pcaloutput.write(pcalstr, strlen(pcalstr));
+              continue; //move on
+            }
+
+            //try to find the matching band
+            resultindex = config->getCoreResultPCalOffset(currentconfigindex, i);
+            for(int b=0;b<config->getDNumRecordedBands(currentconfigindex, i);b++)
+            {
+              if(config->getDRecordedBandPol(currentconfigindex, i, b) == polpair[p] && config->getDLocalRecordedFreqIndex(currentconfigindex, i, b) == j) {
+                tonefreq = config->getDRecordedFreqPCalToneFreq(currentconfigindex, i, j, t);
+                sprintf(pcalstr, "  %d %.6f %.8f %.8f", j, tonefreq, results[resultindex+t].re, results[resultindex+t].im);
+                break;
+              }
+              resultindex += config->getDRecordedFreqNumPCalTones(currentconfigindex, i, config->getDLocalRecordedFreqIndex(currentconfigindex, i, b));
+            }
+            pcaloutput.write(pcalstr, strlen(pcalstr));
+          }
+        }
+      }
+      pcaloutput.write("\n", 1);
+    }
   }
-  
-  for (int i = 0; i < numdatastreams; i++)
-    delete[] pcalfilename[i];
-  delete[] pcalfilename;
-  
 }
 
 void Visibility::multicastweights()

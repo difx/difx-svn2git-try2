@@ -105,6 +105,9 @@ Core::Core(int id, Configuration * conf, int * dids, MPI_Comm rcomm)
     pthread_mutex_init(&(procslots[i].acweightcopylock), NULL);
     if(perr != 0)
       csevere << startl << "Problem initialising acweightcopylock in slot " << i << "(" << perr << ")" << endl;
+    pthread_mutex_init(&(procslots[i].pcalcopylock), NULL);
+    if(perr != 0)
+      csevere << startl << "Problem initialising pcalcopylock in slot " << i << "(" << perr << ")" << endl;
     procslots[i].datalengthbytes = new int[numdatastreams];
     procslots[i].databuffer = new u8*[numdatastreams];
     procslots[i].controlbuffer = new s32*[numdatastreams];
@@ -724,7 +727,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
       for(int fftsubloop=0;fftsubloop<config->getNumBufferedFFTs(procslots[index].configindex); fftsubloop++)
       {
         i = fftloop*config->getNumBufferedFFTs(procslots[index].configindex) + fftsubloop + startblock;
-        offsetmins = ((double)i)*((double)config->getSubintNS(procslots[index].configindex))/(60000000000.0);
+        offsetmins = ((double)i)*blockns/60000000000.0;
         currentpolyco->getBins(offsetmins, scratchspace->bins[fftsubloop]);
       }
     }
@@ -809,7 +812,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
                     if(procslots[index].scrunchoutput)
                     {
                       destchan = xmacstart+outputoffset;
-                      for(int l=0;l<xmacmullength;x++)
+                      for(int l=0;l<xmacmullength;l++)
                       {
                         //the first zero (the source slot) is because we are limiting to one pulsar ephemeris for now
                         destbin = scratchspace->bins[fftsubloop][f][destchan];
@@ -822,7 +825,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
                     {
                       bweight = scratchspace->dsweights[ds1index][fftsubloop]*scratchspace->dsweights[ds2index][fftsubloop]/(freqchannels);
                       destchan = xmacstart+outputoffset;
-                      for(int l=0;l<xmacmullength;x++)
+                      for(int l=0;l<xmacmullength;l++)
                       {
                         destbin = scratchspace->bins[fftsubloop][f][destchan];
                         //cindex = resultindex + (scratchspace->bins[freqindex][destchan]*config->getBNumPolProducts(procslots[index].configindex,j,localfreqindex) + p)*(freqchannels+1) + destchan;
@@ -947,6 +950,9 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
   if(perr != 0)
     csevere << startl << "PROCESSTHREAD " << mpiid << "/" << threadid << " error trying unlock copy mutex!!!" << endl;
 
+  //copy the PCal results
+  copyPCalTones(index, threadid, modes, scratchspace);
+
 //end the cutout of processing in "Neutered DiFX"
 #endif
 
@@ -961,11 +967,41 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
     csevere << startl << "PROCESSTHREAD " << mpiid << "/" << threadid << " error trying unlock mutex " << index << endl;
 }
 
-void Core::averagePcal()
+void Core::copyPCalTones(int index, int threadid, Mode ** modes, threadscratchspace * scratchspace)
+{
+  int resultindex, localfreqindex, perr;
+  cf32 pcal;
+
+  //lock the pcal copylock, so we're the only one adding to the result array (pcal section)
+  perr = pthread_mutex_lock(&(procslots[index].pcalcopylock));
+  if(perr != 0)
+    csevere << startl << "PROCESSTHREAD " << mpiid << "/" << threadid << " error trying lock pcal copy mutex!!!" << endl;
+
+  //copy the pulse cal
+  for(int i=0;i<numdatastreams;i++)
   {
-    //c.f. averageAndSendAutocorrs
-    //procslots[index].results[resultindex++] = (modes[i]->getPcal())[j];
+    if(config->getDPhaseCalIntervalMHz(procslots[index].configindex, i) > 0)
+    {
+      resultindex = config->getCoreResultPCalOffset(procslots[index].configindex, i);
+      for(int j=0;j<config->getDNumRecordedBands(procslots[index].configindex, i);j++)
+      {
+        localfreqindex = config->getDLocalRecordedFreqIndex(procslots[index].configindex, i, j);
+        for(int k=0;k<config->getDRecordedFreqNumPCalTones(procslots[index].configindex, i, localfreqindex);k++)
+        {
+          //pcal = modes[i]->getPCal(j, k);
+          procslots[index].results[resultindex].re += pcal.re;
+          procslots[index].results[resultindex].im += pcal.im;
+          resultindex++;
+        }
+      }
+    }
   }
+
+  //unlock the thread pcal copylock
+  perr = pthread_mutex_unlock(&(procslots[index].pcalcopylock));
+  if(perr != 0)
+    csevere << startl << "PROCESSTHREAD " << mpiid << "/" << threadid << " error trying unlock pcal copy mutex!!!" << endl;
+}
 
 void Core::averageAndSendAutocorrs(int index, int threadid, double nsoffset, double nswidth, Mode ** modes, threadscratchspace * scratchspace)
 {
@@ -1070,7 +1106,7 @@ void Core::averageAndSendAutocorrs(int index, int threadid, double nsoffset, dou
   //unlock the thread autocorr copylock
   perr = pthread_mutex_unlock(&(procslots[index].autocorrcopylock));
   if(perr != 0)
-    csevere << startl << "PROCESSTHREAD " << mpiid << "/" << threadid << " error trying unlock bweight copy mutex!!!" << endl;
+    csevere << startl << "PROCESSTHREAD " << mpiid << "/" << threadid << " error trying unlock autocorr copy mutex!!!" << endl;
 
   //lock the acweight copylock, so we're the only one adding to the result array (autocorr weight section)
   perr = pthread_mutex_lock(&(procslots[index].acweightcopylock));
@@ -1488,7 +1524,6 @@ void Core::uvshiftAndAverageBaselineFreq(int index, int threadid, double nsoffse
     coreindex += corebinloop*config->getBNumPolProducts(procslots[index].configindex,baseline,localfreqindex)*freqchannels/channelinc;
   }
   
-
   //cinfo << startl << "For index " << index << ", thread " << threadid << " is about to finish freqindex " << freqindex << ", baseline " << baseline << endl;
 
   //unlock the mutex for this segment of the copying

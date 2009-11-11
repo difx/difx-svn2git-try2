@@ -96,6 +96,7 @@ private:
     pthread_mutex_t autocorrcopylock;
     pthread_mutex_t bweightcopylock;
     pthread_mutex_t acweightcopylock;
+    pthread_mutex_t pcalcopylock;
   } processslot;
 
   ///Structure containing all of the pointers to scratch space for a single thread
@@ -167,11 +168,6 @@ private:
   void processdata(int index, int threadid, int startblock, int numblocks, Mode ** modes, Polyco * currentpolyco, threadscratchspace * scratchspace);
 
  /**
-  * Averages pcal down and copies to results
-  */
-void averagePcal();
-
- /**
   * Averages the autocorrelations down, sends off STA dumps down a socket if required and copies to coreresults
   * @param index The index in the circular send/receive buffer to be processed
   * @param threadid The id of the thread which is doing the processing
@@ -181,6 +177,15 @@ void averagePcal();
   * @param scratchspace Space for all of the intermediate results for this thread
   */
   void averageAndSendAutocorrs(int index, int threadid, double nsoffset, double nswidth, Mode ** modes, threadscratchspace * scratchspace);
+
+ /**
+  * Gets the PCal results from the modes and copies to the coreresults
+  * @param index The index in the circular send/receive buffer to be processed
+  * @param threadid The id of the thread which is doing the processing
+  * @param modes The Mode objects which have the pcal results
+  * @param scratchspace Space for all of the intermediate results for this thread
+  */
+  void copyPCalTones(int index, int threadid, Mode ** modes, threadscratchspace * scratchspace);
 
  /**
   * Does any uvshifting necessary and averages down in frequency into the coreresults

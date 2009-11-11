@@ -36,6 +36,8 @@ Configuration::Configuration(const char * configfile, int id)
   int basestart = configfilestring.find_last_of('/');
   if(basestart == string::npos)
     basestart = 0;
+  else
+    basestart = basestart+1;
   jobname = configfilestring.substr(basestart, string(configfile).find_last_of('.')-basestart);
 
   sectionheader currentheader = INPUT_EOF;
@@ -867,8 +869,11 @@ bool Configuration::processConfig(ifstream * input)
 
 bool Configuration::processDatastreamTable(ifstream * input)
 {
-  bool ok = true;
+  datastreamdata * dsdata;
+  int configindex, freqindex, decimationfactor, tonefreq;
+  double lofreq, parentlowbandedge, parenthighbandedge, lowbandedge, highbandedge;
   string line;
+  bool ok = true;
 
   getinputline(input, &line, "DATASTREAM ENTRIES");
   datastreamtablelength = atoi(line.c_str());
@@ -892,8 +897,8 @@ bool Configuration::processDatastreamTable(ifstream * input)
 
   for(int i=0;i<datastreamtablelength;i++)
   {
-    int configindex=-1;
-    int decimationfactor = 1;
+    dsdata = &(datastreamtable[i]);
+    configindex=-1;
     datastreamtable[i].numdatafiles = 0; //default in case its a network datastream
     datastreamtable[i].tcpwindowsizekb = 0; //default in case its a file datastream
     datastreamtable[i].portnumber = -1; //default in case its a file datastream
@@ -1038,14 +1043,14 @@ bool Configuration::processDatastreamTable(ifstream * input)
       datastreamtable[i].numzoombands += datastreamtable[i].zoomfreqpols[j];
       datastreamtable[i].zoomfreqparentdfreqindices[j] = -1;
       for (int k=0;k<datastreamtable[i].numrecordedfreqs;k++) {
-        double parentlowbandedge = freqtable[datastreamtable[i].recordedfreqtableindices[k]].bandedgefreq;
-        double parenthighbandedge = freqtable[datastreamtable[i].recordedfreqtableindices[k]].bandedgefreq + freqtable[datastreamtable[i].recordedfreqtableindices[k]].bandwidth;
+        parentlowbandedge = freqtable[datastreamtable[i].recordedfreqtableindices[k]].bandedgefreq;
+        parenthighbandedge = freqtable[datastreamtable[i].recordedfreqtableindices[k]].bandedgefreq + freqtable[datastreamtable[i].recordedfreqtableindices[k]].bandwidth;
         if(freqtable[datastreamtable[i].recordedfreqtableindices[k]].lowersideband) {
           parentlowbandedge -= freqtable[datastreamtable[i].recordedfreqtableindices[k]].bandwidth;
           parenthighbandedge -= freqtable[datastreamtable[i].recordedfreqtableindices[k]].bandwidth;
         }
-        double lowbandedge = freqtable[datastreamtable[i].zoomfreqtableindices[k]].bandedgefreq;
-        double highbandedge = freqtable[datastreamtable[i].zoomfreqtableindices[k]].bandedgefreq + freqtable[datastreamtable[i].zoomfreqtableindices[k]].bandwidth;
+        lowbandedge = freqtable[datastreamtable[i].zoomfreqtableindices[k]].bandedgefreq;
+        highbandedge = freqtable[datastreamtable[i].zoomfreqtableindices[k]].bandedgefreq + freqtable[datastreamtable[i].zoomfreqtableindices[k]].bandwidth;
         if(freqtable[datastreamtable[i].zoomfreqtableindices[k]].lowersideband) {
           parentlowbandedge -= freqtable[datastreamtable[i].zoomfreqtableindices[k]].bandwidth;
           parenthighbandedge -= freqtable[datastreamtable[i].zoomfreqtableindices[k]].bandwidth;
@@ -1071,6 +1076,35 @@ bool Configuration::processDatastreamTable(ifstream * input)
         if(mpiid == 0) //only write one copy of this error message
           cerror << startl << "Error - attempting to refer to freq outside local table!!!" << endl;
         return false;
+      }
+    }
+    if(dsdata->phasecalintervalmhz > 0)
+    {
+      dsdata->numrecordedfreqpcaltones = new int[dsdata->numrecordedfreqs];
+      dsdata->recordedfreqpcaltonefreqs = new int*[dsdata->numrecordedfreqs];
+      dsdata->maxrecordedpcaltones = 0;
+      estimatedbytes += sizeof(int)*(dsdata->numrecordedfreqs);
+      for(int j=0;j<dsdata->numrecordedfreqs;j++)
+      {
+        datastreamtable[i].numrecordedfreqpcaltones[j] = 0;
+        freqindex = dsdata->recordedfreqtableindices[j];
+        lofreq = freqtable[freqindex].bandedgefreq;
+        if(freqtable[freqindex].lowersideband)
+          lofreq -= freqtable[freqindex].bandwidth;
+        tonefreq = (int(lofreq)/dsdata->phasecalintervalmhz)*dsdata->phasecalintervalmhz;
+        if(tonefreq < lofreq)
+          tonefreq += dsdata->phasecalintervalmhz;
+        while(tonefreq + dsdata->numrecordedfreqpcaltones[j]*dsdata->phasecalintervalmhz < lofreq + freqtable[freqindex].bandwidth)
+          dsdata->numrecordedfreqpcaltones[j]++;
+        if(dsdata->numrecordedfreqpcaltones[j] > dsdata->maxrecordedpcaltones)
+          dsdata->maxrecordedpcaltones = dsdata->numrecordedfreqpcaltones[j];
+        datastreamtable[i].recordedfreqpcaltonefreqs[j] = new int[datastreamtable[i].numrecordedfreqpcaltones[j]];
+        estimatedbytes += sizeof(int)*datastreamtable[i].numrecordedfreqpcaltones[j];
+        tonefreq = (int(lofreq)/dsdata->phasecalintervalmhz)*dsdata->phasecalintervalmhz;
+        if(tonefreq < lofreq)
+          tonefreq += dsdata->phasecalintervalmhz;
+        for(int k=0;k<datastreamtable[i].numrecordedfreqpcaltones[j];k++)
+          datastreamtable[i].recordedfreqpcaltonefreqs[j][k] = tonefreq + k*dsdata->phasecalintervalmhz;
       }
     }
     datastreamtable[i].tcpwindowsizekb = 0;
@@ -1398,11 +1432,6 @@ bool Configuration::populateResultLengths()
     binloop = 1;
     if(configs[c].pulsarbin && !configs[c].scrunchoutput)
       binloop = configs[c].numbins;
-    if(getMaxProducts(c) > 2)
-      bandsperautocorr = 2;
-    else
-      bandsperautocorr = 1;
-
     //find a scan that matches this config
     found = false;
     maxconfigphasecentres = 1;
@@ -1417,6 +1446,11 @@ bool Configuration::populateResultLengths()
       if(mpiid == 0) //only write one copy of this error message
         cwarn << startl << "Did not find a scan matching config index " << c << endl;
     }
+    if(getMaxProducts(c) > 2)
+      bandsperautocorr = 2;
+    else
+      bandsperautocorr = 1;
+
 
     //work out the offsets for threadresult, and the total length too
     configs[c].completestridelength = new int[freqtablelength];
@@ -1456,6 +1490,7 @@ bool Configuration::populateResultLengths()
     configs[c].coreresultbweightoffset  = new int*[freqtablelength];
     configs[c].coreresultautocorroffset = new int[numdatastreams];
     configs[c].coreresultacweightoffset = new int[numdatastreams];
+    configs[c].coreresultpcaloffset     = new int[numdatastreams];
     coreresultindex = 0;
     for(int i=0;i<freqtablelength;i++)
     {
@@ -1536,6 +1571,16 @@ bool Configuration::populateResultLengths()
       if(toadd == 0)
         toadd = 1;
       coreresultindex += toadd;
+    }
+    for(int i=0;i<numdatastreams;i++)
+    {
+      configs[c].coreresultpcaloffset[i] = coreresultindex;
+      dsdata = datastreamtable[configs[c].datastreamindices[i]];
+      if(dsdata.phasecalintervalmhz > 0)
+      {
+        for(int j=0;j<getDNumRecordedFreqs(c, i);j++)
+          coreresultindex += dsdata.recordedfreqpols[j]*getDRecordedFreqNumPCalTones(c, i, j);
+      }
     }
     configs[c].coreresultlength = coreresultindex;
     if(configs[c].coreresultlength > maxcoreresultlength)
