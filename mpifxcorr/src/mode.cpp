@@ -58,6 +58,7 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
   }
 
   phasecalintervalmhz = config->getDPhaseCalIntervalMHz(configindex, datastreamindex);
+  //FIXME use configuration instead same for both polns
   nphasecaltones = recordedbandwidth/phasecalintervalmhz;
   //now do the rest of the initialising
   samplesperblock = int(recordedbandwidth*2/blockclock);
@@ -275,6 +276,7 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
   }
       
   // Phase cal stuff
+  // FIXME change from freq to band
   pcalresults = new cf32*[numrecordedfreqs];
   extractor = new PCal*[numrecordedfreqs];
   pcalLen = new int[numrecordedfreqs];//could be useful for memory usage estimate?
@@ -888,6 +890,7 @@ void Mode::setData(u8 * d, int dbytes, int dscan, int dsec, int dns)
   unpackstartsamples = -999999999;
 }
 
+//change freq to band
 void Mode::resetpcal()
 {
   for(int i=0;i<numrecordedfreqs;i++)

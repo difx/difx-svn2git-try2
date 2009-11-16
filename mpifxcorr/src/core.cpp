@@ -972,6 +972,7 @@ void Core::copyPCalTones(int index, int threadid, Mode ** modes, threadscratchsp
   int resultindex, localfreqindex, perr;
   cf32 pcal;
 
+  //FIXME put getfinalpcal in here???
   //lock the pcal copylock, so we're the only one adding to the result array (pcal section)
   perr = pthread_mutex_lock(&(procslots[index].pcalcopylock));
   if(perr != 0)
