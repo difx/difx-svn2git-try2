@@ -1,4 +1,5 @@
 bin_PROGRAMS = printDiFX
+dist_bin_SCRIPTS = diffDiFX.py
 
 AM_CXXFLAGS = $(DIFXMESSAGE_CFLAGS) $(FXCORR_CFLAGS) $(IPP_CFLAGS) 
 printDiFX_SOURCES = printDiFX.cpp
