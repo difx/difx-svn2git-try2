@@ -163,6 +163,12 @@ void PCalExtractorTrivial::clear()
     _cfg->pcal_index    = 0;
 }
 
+void reset(const long int t)
+{
+  clear();
+  starttime = t;
+}
+
 /**
  * Extracts multi-tone PCal information from a single-channel signal segment
  * and integrates it to the class-internal PCal extraction result buffer.
@@ -213,12 +219,27 @@ bool PCalExtractorTrivial::extractAndIntegrate(f32 const* samples, const size_t 
  */
 void PCalExtractorTrivial::getFinalPCal(cf32* out)
 {
+    IppsDFTSpec_C_32fc** pDFTSpec;
+    Ipp8u* pBuffer;
+  
     if (!_finalized) {
         _finalized = true;
         vectorAdd_f32_I(/*src*/&(_cfg->pcal_real[_N_bins]), /*srcdst*/&(_cfg->pcal_real[0]), _N_bins);
         vectorRealToComplex_f32(/*srcRe*/_cfg->pcal_real, /*srcIm*/NULL, _cfg->pcal_complex, _N_bins);
     }
-    vectorCopy_cf32(/*src*/_cfg->pcal_complex, /*dst*/out, _N_bins);
+    
+    // This is substituted by DFT
+    // vectorCopy_cf32(/*src*/_cfg->pcal_complex, /*dst*/out, _N_bins);
+    
+    // Discrete Fourier Transform of the output
+    
+    // Initialization of the Fourier Transform.
+    // IPP_FFT_NODIV_BY_ANY means that no normalization of the spectrum is done.
+    // ippAlgHintFast indicates that the fast algorithm is used for the DFT.
+    ippsDFTInitAlloc_C_32f(pDFTSpec, _N_bins, 1, IPP_FFT_NODIV_BY_ANY, ippAlgHintFast);
+    
+    // Perform the DFT for complex data type
+    ippsDFTFwd_CToC_32fc(_cfg->pcal_complex, out, pDFTSpec, pBuffer);    
 }
 
 

@@ -67,6 +67,11 @@ class PCal {
        * Set the extracted and accumulated PCal data back to zero.
        */
       virtual void clear() = 0;
+      
+      /**
+       * Like clear() but with start time of the data as argument.
+       */
+      virtual void reset(const long int t) = 0;
 
       /**
        * Extracts multi-tone PCal information from a single-channel signal segment
@@ -80,7 +85,7 @@ class PCal {
        * If extraction has been finalized by calling getFinalPCal() this function
        * returns False. You need to call clear() to reset.
        *
-       * @paran samples Chunk of the input signal consisting of 'float' samples
+       * @param samples Chunk of the input signal consisting of 'float' samples
        * @param len     Length of the input signal chunk
        * @return true on success
        */
@@ -131,6 +136,8 @@ class PCal {
       int _N_bins;
       int _N_tones;
       bool _finalized;
+      
+      long int starttime;
  
       pcal_config_pimpl* _cfg;
 

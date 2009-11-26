@@ -276,11 +276,11 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
   }
       
   // Phase cal stuff
-  // FIXME change from freq to band
-  pcalresults = new cf32*[numrecordedfreqs];
-  extractor = new PCal*[numrecordedfreqs];
-  pcalLen = new int[numrecordedfreqs];//could be useful for memory usage estimate?
-  for(int i=0;i<numrecordedfreqs;i++)
+  // FIXME change from freq to band. FIXED?
+  pcalresults = new cf32*[numrecordedbands];
+  extractor = new PCal*[numrecordedbands];
+  pcalLen = new int[numrecordedbands];//could be useful for memory usage estimate?
+  for(int i=0;i<numrecordedbands;i++)
   {
     pcalresults[i] = new cf32[(int)(recordedbandwidth/phasecalintervalmhz)];
     if(config->getDRecordedLowerSideband(configindex, datastreamindex, i))
