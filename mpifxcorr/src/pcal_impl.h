@@ -168,5 +168,45 @@ class PCalExtractorImplicitShift : public PCal {
       void getFinalPCal(cf32* out);
 };
 
+class PCalExtractorDummy : public PCal {
+  public:
+    PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_hz);
+    ~PCalExtractorDummy();
+
+  public:
+      /**
+   * Set the extracted and accumulated PCal data back to zero.
+       */
+    void clear();
+
+      /**
+     * Extracts multi-tone PCal information from a single-channel signal segment
+     * and integrates it to the class-internal PCal extraction result buffer.
+     * There are no restrictions to the segment length.
+     *
+     * If you integrate over a longer time and several segments, i.e. perform
+     * multiple calls to this function, take care to keep the input
+     * continuous (i.e. don't leave out samples).
+     *
+     * If extraction has been finalized by calling getFinalPCal() this function
+     * returns False. You need to call clear() to reset.
+     *
+     * @paran samples Chunk of the input signal consisting of 'float' samples
+     * @param len     Length of the input signal chunk
+     * @return true on success
+       */
+    bool extractAndIntegrate(f32 const* samples, const size_t len);
+
+      /**
+     * Performs finalization steps on the internal PCal results if necessary
+     * and then copies these PCal results into the specified output array.
+     * Data in the output array is overwritten with PCal results.
+     *
+     * @param pointer to user PCal array with getLength() values
+       */
+    void getFinalPCal(cf32* out);
+};
+
+
 #endif // _PCAL_IMPL_H
 

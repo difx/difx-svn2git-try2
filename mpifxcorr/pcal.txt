@@ -31,16 +31,15 @@ Core::processdata
   //just before averageandsendAcorrs 
 
 Core::copyPCalTones()
--  call getfinalpcal()
+-  call Mode::getfinalpcal()
   
-
 Mode::Mode
 + for each frequency
-?   Work out the number of tones in each subband
-?   Work out the pcaloffset in hz for each subband
+?   Work out the number of tones in each band
+?   Work out the pcaloffset in hz for each band
 ?   Instantiate a PCal extractor
 ?   getLen of extractor
-? Instantiate pcalresults[nfreq][ntones]
+? Instantiate pcalresults[nband][ntones]
   	
 Mode::~Mode
 + delete extractors

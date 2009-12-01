@@ -176,9 +176,20 @@ public:
 
   /** Constant for comparing two floats for equality (for freqs and bandwidths etc) */
   static const float TINY;
-  
-  inline cf32* getPcal() { return pcal; }
     
+  /**
+   * Returns the twodimensional pcalresults array
+   * @param outpubband The band to get
+   * @param tone The number of the tone to get
+   * @return pcalresults vector
+   */
+  inline cf32* getPcal(int outputband) 
+  { 
+    extractor[outputband]->getFinalPCal(pcalresults[outputband]);
+    
+    return pcalresults[outputband]; 
+  }
+  
   ///constant indicating no valid data in a subint
   static const int INVALID_SUBINT = -99999999;
 
@@ -228,7 +239,7 @@ protected:
   cf32 * fftd;
       
   // variables for pcal
-  cf32 *pcal;
+//  cf32 *pcal;
   int nphasecaltones;
   int * pcalLen;
   int phasecalintervalmhz;

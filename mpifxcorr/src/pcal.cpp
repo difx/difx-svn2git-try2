@@ -71,6 +71,9 @@ class pcal_config_pimpl {
  */
 PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz) 
 {
+  //NOTE Added for testing
+  return new PCalExtractorDummy(bandwidth_hz, pcal_spacing_hz);  
+  
     if (pcal_offset_hz == 0.0f) {
         return new PCalExtractorTrivial(bandwidth_hz, pcal_spacing_hz);
     }
@@ -123,6 +126,12 @@ bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32
     return true;
 }
 
+void PCal::reset(const long int t)
+{
+  clear();
+  starttime = t;
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DERIVED CLASS: extraction of zero-offset PCal signals
@@ -163,11 +172,13 @@ void PCalExtractorTrivial::clear()
     _cfg->pcal_index    = 0;
 }
 
-void reset(const long int t)
+/*
+void PCalExtractorTrivial::reset(const long int t)
 {
   clear();
   starttime = t;
 }
+*/
 
 /**
  * Extracts multi-tone PCal information from a single-channel signal segment
@@ -236,10 +247,10 @@ void PCalExtractorTrivial::getFinalPCal(cf32* out)
     // Initialization of the Fourier Transform.
     // IPP_FFT_NODIV_BY_ANY means that no normalization of the spectrum is done.
     // ippAlgHintFast indicates that the fast algorithm is used for the DFT.
-    ippsDFTInitAlloc_C_32f(pDFTSpec, _N_bins, 1, IPP_FFT_NODIV_BY_ANY, ippAlgHintFast);
+    //ippsDFTInitAlloc_C_32f(pDFTSpec, _N_bins, 1, IPP_FFT_NODIV_BY_ANY, ippAlgHintFast);
     
     // Perform the DFT for complex data type
-    ippsDFTFwd_CToC_32fc(_cfg->pcal_complex, out, pDFTSpec, pBuffer);    
+    //ippsDFTFwd_CToC_32fc(_cfg->pcal_complex, out, pDFTSpec, pBuffer);    
 }
 
 
@@ -591,3 +602,107 @@ void PCal::extract_analytic(f32* data, size_t len)
     sample_count += len;
 }
 #endif
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+// DERIVED CLASS: PCal class that returns only known dummy values.
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+PCalExtractorDummy::PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_hz)
+{
+  /* Derive config */
+  _cfg = new pcal_config_pimpl();
+  _fs_hz   = 2*bandwidth_hz;
+  _N_bins  = _fs_hz / gcd(std::abs(pcal_spacing_hz), _fs_hz);
+  _N_tones = std::floor(bandwidth_hz / pcal_spacing_hz);
+  _pcaloffset_hz = 0.0f;
+
+  /* Allocate */
+  _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 2);
+  _cfg->pcal_real    = (f32*)memalign(128, sizeof(f32) * _N_bins * 2);
+  this->clear();
+}
+
+PCalExtractorDummy::~PCalExtractorDummy()
+{
+  free(_cfg->pcal_complex);
+  free(_cfg->pcal_real);
+  delete _cfg;
+}
+
+/**
+ * Set the extracted and accumulated PCal data back to zero.
+ */
+void PCalExtractorDummy::clear()
+{
+  _samplecount = 0;
+  _finalized   = false;
+  vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
+  vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
+  _cfg->rotator_index = 0;
+  _cfg->pcal_index    = 0;
+}
+
+/*
+void PCalExtractorDummy::reset(const long int t)
+{
+  clear();
+  starttime = t;
+}
+*/
+
+/**
+ * Extracts multi-tone PCal information from a single-channel signal segment
+ * and integrates it to the class-internal PCal extraction result buffer.
+ * There are no restrictions to the segment length.
+ *
+ * If you integrate over a longer time and several segments, i.e. perform
+ * multiple calls to this function, take care to keep the input
+ * continuous (i.e. don't leave out samples).
+ *
+ * If extraction has been finalized by calling getFinalPCal() this function
+ * returns False. You need to call clear() to reset.
+ *
+ * @paran samples Chunk of the input signal consisting of 'float' samples
+ * @param len     Length of the input signal chunk
+ * @return true on success
+ */
+bool PCalExtractorDummy::extractAndIntegrate(f32 const* samples, const size_t len)
+{
+  if (_finalized) { return false; }
+
+  f32 const* src = samples;
+  f32* dst = &(_cfg->pcal_real[_cfg->pcal_index]);
+  size_t tail = (len % _N_bins);
+  size_t end  = len - tail;
+
+  /* Process the first part that fits perfectly */
+  for (size_t n = 0; n < end; n+=_N_bins, src+=_N_bins) {
+    vectorAdd_f32_I(src, dst, _N_bins);
+  }
+
+  /* Handle any samples that didn't fit */
+  if (tail != 0) {
+    vectorAdd_f32_I(src, dst, tail);
+    _cfg->pcal_index = (_cfg->pcal_index + tail) % _N_bins;
+  }
+
+  /* Done! */
+  _samplecount += len;
+  return true;
+}
+
+/**
+ * Performs finalization steps on the internal PCal results if necessary
+ * and then copies these PCal results into the specified output array.
+ * Data in the output array is overwritten with PCal results.
+ *
+ * @param pointer to user PCal array with getLength() values
+ */
+void PCalExtractorDummy::getFinalPCal(cf32* out)
+{
+  // Fill the output array with dummy values  
+  for (int i = 0; i < _N_tones; i++) {
+    out[i].re = sqrt(2.0);
+    out[i].im = sqrt(2.0);
+  }
+}

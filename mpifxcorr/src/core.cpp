@@ -970,9 +970,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
 void Core::copyPCalTones(int index, int threadid, Mode ** modes, threadscratchspace * scratchspace)
 {
   int resultindex, localfreqindex, perr;
-  cf32 pcal;
-
-  //FIXME put getfinalpcal in here???
+  
   //lock the pcal copylock, so we're the only one adding to the result array (pcal section)
   perr = pthread_mutex_lock(&(procslots[index].pcalcopylock));
   if(perr != 0)
@@ -990,8 +988,8 @@ void Core::copyPCalTones(int index, int threadid, Mode ** modes, threadscratchsp
         for(int k=0;k<config->getDRecordedFreqNumPCalTones(procslots[index].configindex, i, localfreqindex);k++)
         {
           //pcal = modes[i]->getPCal(j, k);
-          procslots[index].results[resultindex].re += pcal.re;
-          procslots[index].results[resultindex].im += pcal.im;
+          procslots[index].results[resultindex].re += modes[index][threadid].getPcal(j)[k].re;
+          procslots[index].results[resultindex].im += modes[index][threadid].getPcal(j)[k].im;
           resultindex++;
         }
       }

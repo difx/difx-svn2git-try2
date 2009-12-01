@@ -129,7 +129,7 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
     lookup = vectorAlloc_s16((MAX_U16+1)*samplesperlookup);
     linearunpacked = vectorAlloc_s16(numlookups*samplesperlookup);
     estimatedbytes += 2*(numlookups*samplesperlookup + (MAX_U16+1)*samplesperlookup);
-
+    
     //initialise the fft info
     order = 0;
     while((twicerecordedbandchannels) >> order != 1)
@@ -282,13 +282,14 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
   pcalLen = new int[numrecordedbands];//could be useful for memory usage estimate?
   for(int i=0;i<numrecordedbands;i++)
   {
-    pcalresults[i] = new cf32[(int)(recordedbandwidth/phasecalintervalmhz)];
+    pcalresults[i] = new cf32[conf->getDRecordedFreqNumPCalTones(configindex, datastreamindex, i)];
     if(config->getDRecordedLowerSideband(configindex, datastreamindex, i))
       pcaloffsethz = 1e6*phasecalintervalmhz - fmod(1e6*(config->getDRecordedFreq(configindex, datastreamindex, i) - recordedbandwidth), 1e6*phasecalintervalmhz);
     else
       pcaloffsethz = 1e6*phasecalintervalmhz - fmod(1e6*config->getDRecordedFreq(configindex, datastreamindex, i), 1e6*phasecalintervalmhz);
     extractor[i] = PCal::getNew(recordedbandwidth, 1e6*phasecalintervalmhz, pcaloffsethz);
     pcalLen[i] = extractor[i]->getLength();
+    
   }
 }
 
@@ -483,11 +484,11 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
   {
     nearestsample = 0;
     dataweight = unpack(nearestsample);
-  }
-  else if(nearestsample < unpackstartsamples || nearestsample > unpackstartsamples + unpacksamples - twicerecordedbandchannels)
+  }  
+  else if(nearestsample < unpackstartsamples || nearestsample > (unpackstartsamples + unpacksamples - twicerecordedbandchannels))
     //need to unpack more data
     dataweight = unpack(nearestsample);
-
+  
   if(!(dataweight > 0.0))
     return 0.0;
 
@@ -496,7 +497,7 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
 
   if(!(phasecalintervalmhz == 0)) 
   {
-    for(int i=0;i<numrecordedfreqs;i++)
+    for(int i=0;i<numrecordedbands;i++)
     {
       status = extractor[i]->extractAndIntegrate(unpackedarrays[i], unpacksamples);
       if(status != true)
@@ -893,7 +894,7 @@ void Mode::setData(u8 * d, int dbytes, int dscan, int dsec, int dns)
 //change freq to band
 void Mode::resetpcal()
 {
-  for(int i=0;i<numrecordedfreqs;i++)
+  for(int i=0;i<numrecordedbands;i++)
   {
     vectorZero_cf32(pcalresults[i], int(recordedbandwidth/phasecalintervalmhz));
     extractor[i]->clear();

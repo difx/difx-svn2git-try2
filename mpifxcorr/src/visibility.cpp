@@ -961,10 +961,10 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
   {
     if(config->getDPhaseCalIntervalMHz(currentconfigindex, i) > 0)
     {
-      sprintf(pcalfilename, "%s/PCAL_%s", config->getOutputFilename().c_str(), config->getTelescopeName(i).c_str());
+      sprintf(pcalfilename, "%s/PCALtest_%s", config->getOutputFilename().c_str(), config->getTelescopeName(i).c_str());
       pcaloutput.open(pcalfilename, ios::app);
       //write the header string - note state counts are not written, and cablecal is dummy
-      sprintf(pcalstr, "%s %10.7f %9.7f %5f %d %d %d %d %d",
+      sprintf(pcalstr, "%s %10.7f %9.7f %5f %d %d %d %d %d test1",
               config->getTelescopeName(i).c_str(), pcaldoy,
               config->getIntTime(currentconfigindex)/86400.0, cablecaldelay,
               maxpol, config->getDNumRecordedFreqs(currentconfigindex, i),
@@ -973,12 +973,12 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
       pcaloutput.write(pcalstr, strlen(pcalstr));
       for(int p=0;p<maxpol;p++)
       {
-        for(int j=0;j<config->getDNumRecordedFreqs(currentconfigindex, i);j++)
+        for(int j=0;j<config->getDNumRecordedBands(currentconfigindex, i);j++)
         {
           for(int t=0;t<config->getDMaxRecordedPCalTones(currentconfigindex, i);t++)
           {
             //get the default response ready in case we don't find anything
-            sprintf(pcalstr, "  %d %.6f %.8f %.8f", -1, 0.0, 0.0, 0.0);
+            sprintf(pcalstr, "  %d %.6f %.8f %.8f test2", -1, 0.0, 0.0, 0.0);
 
             if(t >= config->getDRecordedFreqNumPCalTones(currentconfigindex, i, j)) {
               //don't write any tones we don't have
@@ -988,11 +988,11 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
 
             //try to find the matching band
             resultindex = config->getCoreResultPCalOffset(currentconfigindex, i);
-            for(int b=0;b<config->getDNumRecordedBands(currentconfigindex, i);b++)
+            for(int b=0;b<config->getDNumRecordedFreqs(currentconfigindex, i);b++)
             {
               if(config->getDRecordedBandPol(currentconfigindex, i, b) == polpair[p] && config->getDLocalRecordedFreqIndex(currentconfigindex, i, b) == j) {
                 tonefreq = config->getDRecordedFreqPCalToneFreq(currentconfigindex, i, j, t);
-                sprintf(pcalstr, "  %d %.6f %.8f %.8f", j, tonefreq, results[resultindex+t].re, results[resultindex+t].im);
+                sprintf(pcalstr, "  %d %.6f %.8f %.8fn test3", j, tonefreq, results[resultindex+t].re, results[resultindex+t].im);
                 break;
               }
               resultindex += config->getDRecordedFreqNumPCalTones(currentconfigindex, i, config->getDLocalRecordedFreqIndex(currentconfigindex, i, b));

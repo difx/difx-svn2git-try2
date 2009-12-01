@@ -39,7 +39,9 @@ using std::size_t;
 class PCalExtractorTrivial;
 class PCalExtractorShifting;
 class PCalExtractorImplicitShift;
+class PCalExtractorDummy; //NOTE added for testing
 class pcal_config_pimpl;
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // BASE CLASS : Factory method
@@ -71,7 +73,7 @@ class PCal {
       /**
        * Like clear() but with start time of the data as argument.
        */
-      virtual void reset(const long int t) = 0;
+      void reset(const long int t);
 
       /**
        * Extracts multi-tone PCal information from a single-channel signal segment
@@ -144,6 +146,9 @@ class PCal {
    friend class PCalExtractorTrivial;
    friend class PCalExtractorShifting;
    friend class PCalExtractorImplicitShift;
+   
+   //NOTE added for testing
+   friend class PCalExtractorDummy;
 };
 
 #endif // _PCAL_H
