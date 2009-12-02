@@ -150,9 +150,10 @@ PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, double pcal_spac
     /* Derive config */
     _cfg = new pcal_config_pimpl();
     _fs_hz   = 2*bandwidth_hz;
+    _pcaloffset_hz  = 0.0f;
+    _pcalspacing_hz = pcal_spacing_hz;
     _N_bins  = _fs_hz / gcd(std::abs(pcal_spacing_hz), _fs_hz);
     _N_tones = std::floor(bandwidth_hz / pcal_spacing_hz);
-    _pcaloffset_hz = 0.0f;
 
     /* Prep for FFT/DFT */
     // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
@@ -271,10 +272,10 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
 {
     /* Derive config */
     _fs_hz          = 2 * bandwidth_hz;
-    _N_bins         = _fs_hz / gcd(std::abs(pcal_spacing_hz), _fs_hz);
-    _N_tones        = std::floor((bandwidth_hz - pcal_offset_hz) / pcal_spacing_hz) + 1;
     _pcaloffset_hz  = pcal_offset_hz;
     _pcalspacing_hz = pcal_spacing_hz;
+    _N_bins         = _fs_hz / gcd(std::abs(pcal_spacing_hz), _fs_hz);
+    _N_tones        = std::floor((bandwidth_hz - pcal_offset_hz) / pcal_spacing_hz) + 1;
     _cfg = new pcal_config_pimpl();
     _cfg->rotatorlen = _fs_hz / gcd(std::abs(_pcaloffset_hz), _fs_hz);
 
@@ -448,10 +449,10 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
 {
     /* Derive config */
     _fs_hz          = 2 * bandwidth_hz;
-    _N_bins         = _fs_hz / gcd(std::abs(_pcaloffset_hz), _fs_hz);
-    _N_tones        = std::floor((bandwidth_hz - pcal_offset_hz) / pcal_spacing_hz) + 1;
     _pcalspacing_hz = pcal_spacing_hz;
     _pcaloffset_hz  = pcal_offset_hz;
+    _N_bins         = _fs_hz / gcd(std::abs(_pcaloffset_hz), _fs_hz);
+    _N_tones        = std::floor((bandwidth_hz - pcal_offset_hz) / pcal_spacing_hz) + 1;
     _cfg = new pcal_config_pimpl();
 
     /* Prep for FFT/DFT */
