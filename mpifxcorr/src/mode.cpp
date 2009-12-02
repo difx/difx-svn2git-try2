@@ -38,7 +38,7 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
   int status, localfreqindex;
   int decimationfactor = config->getDDecimationFactor(configindex, datastreamindex);
   estimatedbytes = 0;
-  double pcaloffsethz;
+  double pcaloffsetmhz;
 
   model = config->getModel();
   initok = true;
@@ -282,12 +282,10 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
   pcalLen = new int[numrecordedbands];//could be useful for memory usage estimate?
   for(int i=0;i<numrecordedbands;i++)
   {
-    pcalresults[i] = new cf32[conf->getDRecordedFreqNumPCalTones(configindex, datastreamindex, i)];
-    if(config->getDRecordedLowerSideband(configindex, datastreamindex, i))
-      pcaloffsethz = 1e6*phasecalintervalmhz - fmod(1e6*(config->getDRecordedFreq(configindex, datastreamindex, i) - recordedbandwidth), 1e6*phasecalintervalmhz);
-    else
-      pcaloffsethz = 1e6*phasecalintervalmhz - fmod(1e6*config->getDRecordedFreq(configindex, datastreamindex, i), 1e6*phasecalintervalmhz);
-    extractor[i] = PCal::getNew(recordedbandwidth, 1e6*phasecalintervalmhz, pcaloffsethz);
+    localfreqindex = conf->getDLocalRecordedFreqIndex(confindex, datastreamindex, i);
+    pcalresults[i] = new cf32[conf->getDRecordedFreqNumPCalTones(configindex, datastreamindex, localfreqindex)];
+    pcaloffsetmhz = conf->getDRecordedFreqPCalOffsetsMHz(configindex, datastreamindex, localfreqindex);
+    extractor[i] = PCal::getNew(1e6*recordedbandwidth, 1e6*phasecalintervalmhz, 1e6*pcaloffsetmhz);
     pcalLen[i] = extractor[i]->getLength();
     
   }
@@ -898,6 +896,14 @@ void Mode::resetpcal()
   {
     vectorZero_cf32(pcalresults[i], int(recordedbandwidth/phasecalintervalmhz));
     extractor[i]->clear();
+  }
+}
+
+void Mode::finalisepcal()
+{
+  for(int i=0;i<numrecordedbands;i++)
+  {
+    extractor[i]->getFinalPCal(pcalresults[i]);
   }
 }
 

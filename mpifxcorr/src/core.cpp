@@ -951,7 +951,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
     csevere << startl << "PROCESSTHREAD " << mpiid << "/" << threadid << " error trying unlock copy mutex!!!" << endl;
 
   //copy the PCal results
-  copyPCalTones(index, threadid, modes, scratchspace);
+  copyPCalTones(index, threadid, modes);
 
 //end the cutout of processing in "Neutered DiFX"
 #endif
@@ -967,7 +967,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
     csevere << startl << "PROCESSTHREAD " << mpiid << "/" << threadid << " error trying unlock mutex " << index << endl;
 }
 
-void Core::copyPCalTones(int index, int threadid, Mode ** modes, threadscratchspace * scratchspace)
+void Core::copyPCalTones(int index, int threadid, Mode ** modes)
 {
   int resultindex, localfreqindex, perr;
   
@@ -981,15 +981,17 @@ void Core::copyPCalTones(int index, int threadid, Mode ** modes, threadscratchsp
   {
     if(config->getDPhaseCalIntervalMHz(procslots[index].configindex, i) > 0)
     {
+      modes[i]->finalisepcal();
       resultindex = config->getCoreResultPCalOffset(procslots[index].configindex, i);
       for(int j=0;j<config->getDNumRecordedBands(procslots[index].configindex, i);j++)
       {
         localfreqindex = config->getDLocalRecordedFreqIndex(procslots[index].configindex, i, j);
         for(int k=0;k<config->getDRecordedFreqNumPCalTones(procslots[index].configindex, i, localfreqindex);k++)
         {
-          //pcal = modes[i]->getPCal(j, k);
-          procslots[index].results[resultindex].re += modes[index][threadid].getPcal(j)[k].re;
-          procslots[index].results[resultindex].im += modes[index][threadid].getPcal(j)[k].im;
+          procslots[index].results[resultindex].re += modes[i]->getPcal(j,k).re;
+          procslots[index].results[resultindex].im += modes[i]->getPcal(j,k).im;
+          //cout << procslots[index].results[resultindex].re << ' ';
+          //cout << procslots[index].results[resultindex].im << '\n';
           resultindex++;
         }
       }

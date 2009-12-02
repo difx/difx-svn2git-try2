@@ -91,6 +91,7 @@ public:
   * reset all pcal objects
   */
   void resetpcal();
+  void finalisepcal();
 
  /**
   * Calculates fringe rotation and fractional sample correction arrays and FFTs, and autocorrelates
@@ -183,11 +184,9 @@ public:
    * @param tone The number of the tone to get
    * @return pcalresults vector
    */
-  inline cf32* getPcal(int outputband) 
+  inline cf32 getPcal(int outputband, int tone) 
   { 
-    extractor[outputband]->getFinalPCal(pcalresults[outputband]);
-    
-    return pcalresults[outputband]; 
+    return pcalresults[outputband][tone]; 
   }
   
   ///constant indicating no valid data in a subint
