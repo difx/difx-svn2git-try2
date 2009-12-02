@@ -282,8 +282,15 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
     /* Prep for FFT/DFT */
     // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
     int wbufsize = 0;
-    ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
-    ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
+    IppStatus r;
+    r = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
+    if (r != ippStsNoErr) {
+        cout << "ippsDFTInitAlloc _N_bins=" << _N_bins << " error " << ippGetStatusString(r) << endl;
+    }
+    r = ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
+    if (r != ippStsNoErr) {
+        cout << "ippsDFTGetBufSize error " << ippGetStatusString(r) << endl;
+    }
     _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
     /* Allocate */
@@ -422,7 +429,10 @@ void PCalExtractorShifting::getFinalPCal(cf32* out)
     if (!_finalized) {
         _finalized = true;
         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
-        ippsDFTFwd_CToC_32fc(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
+        IppStatus r = ippsDFTFwd_CToC_32fc(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
+        if (r != ippStsNoErr) {
+            cout << "ippsDFTFwd error " << ippGetStatusString(r) << endl;
+        }
     }
 
     if (_pcalspacing_hz == 1e6) {
