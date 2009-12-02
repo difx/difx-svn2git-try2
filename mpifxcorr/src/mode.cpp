@@ -38,7 +38,7 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
   int status, localfreqindex;
   int decimationfactor = config->getDDecimationFactor(configindex, datastreamindex);
   estimatedbytes = 0;
-  double pcaloffsetmhz;
+  double pcaloffsethz;
 
   model = config->getModel();
   initok = true;
@@ -285,8 +285,8 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
     localfreqindex = conf->getDLocalRecordedFreqIndex(confindex, datastreamindex, i);
     size_t pcallen = conf->getDRecordedFreqNumPCalTones(configindex, datastreamindex, localfreqindex);
     pcalresults[i] = new cf32[conf->getDRecordedFreqNumPCalTones(configindex, datastreamindex, localfreqindex)];
-    pcaloffsetmhz = conf->getDRecordedFreqPCalOffsetsMHz(configindex, datastreamindex, localfreqindex);
-    extractor[i] = PCal::getNew(1e6*recordedbandwidth, 1e6*phasecalintervalmhz, 1e6*pcaloffsetmhz, 0);
+    pcaloffsethz = conf->getDRecordedFreqPCalOffsetsHz(configindex, datastreamindex, localfreqindex);
+    extractor[i] = PCal::getNew(1e6*recordedbandwidth, 1e6*phasecalintervalmhz, pcaloffsethz, 0);
     pcalLen[i] = extractor[i]->getLength();
     if (pcalLen[i] != pcallen) {
        cout << "pcalLen " << pcalLen[i] << " from PCal class vs config " << pcallen << endl;

@@ -1082,7 +1082,7 @@ bool Configuration::processDatastreamTable(ifstream * input)
     {
       dsdata->numrecordedfreqpcaltones = new int[dsdata->numrecordedfreqs];
       dsdata->recordedfreqpcaltonefreqs = new int*[dsdata->numrecordedfreqs];
-      dsdata->recordedfreqpcaloffsetsmhz = new double[dsdata->numrecordedfreqs];
+      dsdata->recordedfreqpcaloffsetshz = new int[dsdata->numrecordedfreqs];
       dsdata->maxrecordedpcaltones = 0;
       estimatedbytes += sizeof(int)*(dsdata->numrecordedfreqs);
       for(int j=0;j<dsdata->numrecordedfreqs;j++)
@@ -1106,7 +1106,7 @@ bool Configuration::processDatastreamTable(ifstream * input)
           tonefreq += dsdata->phasecalintervalmhz;
         for(int k=0;k<datastreamtable[i].numrecordedfreqpcaltones[j];k++)
           datastreamtable[i].recordedfreqpcaltonefreqs[j][k] = tonefreq + k*dsdata->phasecalintervalmhz;
-        dsdata->recordedfreqpcaloffsetsmhz[j] = (double)datastreamtable[i].recordedfreqpcaltonefreqs[j][0] - lofreq;
+        dsdata->recordedfreqpcaloffsetshz[j] = 1e6*datastreamtable[i].recordedfreqpcaltonefreqs[j][0] - 1e6*lofreq;
       }
     }
     datastreamtable[i].tcpwindowsizekb = 0;
