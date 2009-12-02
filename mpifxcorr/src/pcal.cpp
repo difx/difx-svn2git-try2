@@ -457,8 +457,15 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
     /* Prep for FFT/DFT */
     // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
     int wbufsize = 0;
-    ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
-    ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
+    IppStatus r;
+    r = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
+    if (r != ippStsNoErr) {
+        cout << "ippsDFTInitAlloc _N_bins=" << _N_bins << " error " << ippGetStatusString(r) << endl;
+    }
+    r = ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
+    if (r != ippStsNoErr) {
+        cout << "ippsDFTGetBufSize error " << ippGetStatusString(r) << endl;
+    }
     _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
     /* Allocate */
@@ -517,7 +524,10 @@ void PCalExtractorImplicitShift::clear(const size_t sampleoffset)
  */
 bool PCalExtractorImplicitShift::extractAndIntegrate(f32 const* samples, const size_t len)
 {
-    if (_finalized) { return false; }
+    if (_finalized) { 
+        cout << "PCalExtractorImplicitShift::extractAndIntegrate on finalized class!" << endl;
+        return false; 
+    }
 
     f32 const* src = samples;
     f32* dst = &(_cfg->pcal_real[_cfg->pcal_index]);
@@ -563,9 +573,12 @@ void PCalExtractorImplicitShift::getFinalPCal(cf32* out)
      */
     if (!_finalized) {
         _finalized = true;
-        vectorRealToComplex_f32(/*srcRe*/_cfg->pcal_real, /*srcIm*/NULL, _cfg->pcal_complex, _N_bins);
+        vectorRealToComplex_f32(/*srcRe*/_cfg->pcal_real, /*srcIm*/NULL, _cfg->pcal_complex, 2*_N_bins);
         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
-        ippsDFTFwd_CToC_32fc(/*src*/ _cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
+        IppStatus r = ippsDFTFwd_CToC_32fc(/*src*/ _cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
+        if (r != ippStsNoErr) {
+            cout << "ippsDFTFwd error " << ippGetStatusString(r) << endl;
+        }
     }
 
     // Copy only the interesting bins
@@ -573,6 +586,7 @@ void PCalExtractorImplicitShift::getFinalPCal(cf32* out)
     size_t offset = std::floor(_N_bins*(_pcaloffset_hz/_fs_hz));
     for (size_t n=0; n<(size_t)_N_tones; n++) {
         size_t idx = offset + n*step;
+        cout << "getFinalPCal tone " << n << " from DFT bin " << idx << endl;
         if (idx >= (size_t)_N_bins) { break; }
         out[n].re = _cfg->dft_out[idx].re;
         out[n].im = _cfg->dft_out[idx].im;
