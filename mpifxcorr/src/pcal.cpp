@@ -469,7 +469,7 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
     _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
     /* Allocate */
-    _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_tones);
+    _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_tones * 2);
     _cfg->pcal_real    = (f32*) memalign(128, sizeof(f32) * _N_bins * 2);
     _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
     this->clear(sampleoffset);
@@ -500,7 +500,7 @@ void PCalExtractorImplicitShift::clear(const size_t sampleoffset)
 {
     _samplecount = 0;
     _finalized   = false;
-    vectorZero_cf32(_cfg->pcal_complex, _N_tones);
+    vectorZero_cf32(_cfg->pcal_complex, _N_tones * 2);
     vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
     _cfg->pcal_index = sampleoffset % _N_bins;
 }
