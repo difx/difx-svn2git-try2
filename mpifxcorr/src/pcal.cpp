@@ -25,7 +25,8 @@
  *
  * Changelog:
  *   05Oct2009 - added support for arbitrary input segment lengths
- *   08oct2009 - added Briskens rotationless method
+ *   08Oct2009 - added Briskens rotationless method
+ *   02Nov2009 - added sub-subintegration sample offset, DFT for f-d results, tone bin coping to user buf
  *
  ********************************************************************************************************/
 
@@ -57,7 +58,7 @@ class pcal_config_pimpl {
   public:
     IppsDFTSpec_C_32fc* dftspec;
     Ipp8u* dftworkbuf;
-    cf32*  dft_out;
+    cf32*  dft_out; // unnecessary onces Intel implements inplace DFTFwd_CtoC_32fc_I (counterpart of inplace DFTFwd_RtoC)
 };
 
 
