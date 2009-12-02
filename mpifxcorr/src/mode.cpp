@@ -285,7 +285,7 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
     localfreqindex = conf->getDLocalRecordedFreqIndex(confindex, datastreamindex, i);
     pcalresults[i] = new cf32[conf->getDRecordedFreqNumPCalTones(configindex, datastreamindex, localfreqindex)];
     pcaloffsetmhz = conf->getDRecordedFreqPCalOffsetsMHz(configindex, datastreamindex, localfreqindex);
-    extractor[i] = PCal::getNew(1e6*recordedbandwidth, 1e6*phasecalintervalmhz, 1e6*pcaloffsetmhz);
+    extractor[i] = PCal::getNew(1e6*recordedbandwidth, 1e6*phasecalintervalmhz, 1e6*pcaloffsetmhz, 0);
     pcalLen[i] = extractor[i]->getLength();
     
   }
@@ -895,7 +895,7 @@ void Mode::resetpcal()
   for(int i=0;i<numrecordedbands;i++)
   {
     vectorZero_cf32(pcalresults[i], int(recordedbandwidth/phasecalintervalmhz));
-    extractor[i]->clear();
+    extractor[i]->clear(0);
   }
 }
 

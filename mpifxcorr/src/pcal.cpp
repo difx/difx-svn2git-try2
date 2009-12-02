@@ -38,6 +38,8 @@
 using std::cerr;
 using std::endl;
 
+using namespace std;
+
 #include <malloc.h>    // memalign
 #define UNROLL_BY_4(x) { x }{ x }{ x }{ x }
 #define VALIGN __attribute__((aligned(16)))
@@ -78,9 +80,12 @@ class pcal_config_pimpl {
 PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz, const size_t sampleoffset) 
 {
     //NOTE Added for testing
-    return new PCalExtractorDummy(bandwidth_hz, pcal_spacing_hz, sampleoffset);
+    //return new PCalExtractorDummy(bandwidth_hz, pcal_spacing_hz, sampleoffset);
+
+    cout << "bandwidth_hz = " << bandwidth_hz << ", pcal_spacing_hz = " << pcal_spacing_hz << ", pcal_offset_hz = " << pcal_offset_hz << "sampleoffset = " << sampleoffset << endl;
 
     if (pcal_offset_hz == 0.0f) {
+	cout << "PCalExtractorTrivial" << endl;
         return new PCalExtractorTrivial(bandwidth_hz, pcal_spacing_hz, sampleoffset);
     }
     // if ( __unlikely ((2*bandwidth_hz / gcd(2*bandwidth_hz,pcal_spacing_hz)) > someLengthLimit) ) {
@@ -90,8 +95,10 @@ PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, double pcal_offs
     No = 2*bandwidth_hz / gcd(pcal_offset_hz, 2*bandwidth_hz);
     Np = 2*bandwidth_hz / gcd(pcal_spacing_hz, 2*bandwidth_hz);
     if ((No % Np) == 0) {
+	cout << "PCalExtractorImplicitShift" << endl;
         return new PCalExtractorImplicitShift(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
     }
+    cout << "PCalExtractorShifting" << endl;
     return new PCalExtractorShifting(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
 }
 
