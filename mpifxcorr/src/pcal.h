@@ -63,7 +63,7 @@ class PCal {
        * @param sampleoffset     Offset of the first sample as referenced to start of subintegration interval
        * @return new PCal extractor class instance 
        */
-      static PCal* getNew(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz, const size_t sampleoffset);
+      static PCal* getNew(double bandwidth_hz, double pcal_spacing_hz, int pcal_offset_hz, const size_t sampleoffset);
 
    public:
       /**
@@ -133,12 +133,12 @@ class PCal {
      /**
       * Return greatest common divisor.
       */
-      static long long gcd(long long, long long);
+      static long long gcd(long, long);
 
    private:
       uint64_t _samplecount;
       double _fs_hz;
-      double _pcaloffset_hz;
+      int _pcaloffset_hz;
       double _pcalspacing_hz;
       int _N_bins;
       int _N_tones;
