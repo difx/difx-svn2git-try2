@@ -92,12 +92,11 @@ class pcal_config_pimpl {
 PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, int pcal_offset_hz, const size_t sampleoffset) 
 {
     //NOTE Added for testing
-    return new PCalExtractorDummy(bandwidth_hz, pcal_spacing_hz, sampleoffset);
+    //return new PCalExtractorDummy(bandwidth_hz, pcal_spacing_hz, sampleoffset);
 
-    cout << "bandwidth_hz = " << bandwidth_hz << ", pcal_spacing_hz = " << pcal_spacing_hz << ", pcal_offset_hz = " << pcal_offset_hz << ", sampleoffset = " << sampleoffset << endl;
+    //cout << "bandwidth_hz = " << bandwidth_hz << ", pcal_spacing_hz = " << pcal_spacing_hz << ", pcal_offset_hz = " << pcal_offset_hz << ", sampleoffset = " << sampleoffset << endl;
 
     if (pcal_offset_hz == 0.0f) {
-	cout << "PCalExtractorTrivial" << endl;
         return new PCalExtractorTrivial(bandwidth_hz, pcal_spacing_hz, sampleoffset);
     }
     // if ( __unlikely ((2*bandwidth_hz / gcd(2*bandwidth_hz,pcal_spacing_hz)) > someLengthLimit) ) {
@@ -107,10 +106,8 @@ PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, int pcal_offset_
     No = 2*bandwidth_hz / gcd(pcal_offset_hz, 2*bandwidth_hz);
     Np = 2*bandwidth_hz / gcd(pcal_spacing_hz, 2*bandwidth_hz);
     if ((No % Np) == 0 && No<1600) {
-        cout << "PCalExtractorImplicitShift" << endl;
         return new PCalExtractorImplicitShift(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
     }
-    cout << "PCalExtractorShifting" << endl;
     return new PCalExtractorShifting(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
 }
 
@@ -184,6 +181,7 @@ PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing
     _cfg->pcal_real    = (f32*)memalign(128, sizeof(f32) * _N_bins * 2);
     _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
     this->clear(sampleoffset);
+    cout << "PCalExtractorTrivial: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
 }
 
 PCalExtractorTrivial::~PCalExtractorTrivial()
@@ -330,7 +328,7 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
         _cfg->rotator[n].re = f32(cos(arg));
         _cfg->rotator[n].im = f32(sin(arg));
     }
-    cout << "PcalShifting: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
+    cout << "PcalExtractorShifting: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
 }
 
 PCalExtractorShifting::~PCalExtractorShifting()
@@ -509,7 +507,7 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
     _cfg->pcal_real    = (f32*) memalign(128, sizeof(f32) * _N_bins * 2);
     _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
     this->clear(sampleoffset);
-    cout << "ImplicitShift: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
+    cout << "PCalExtractorImplicitShift: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
 }
 
 
@@ -741,6 +739,7 @@ PCalExtractorDummy::PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_
   _N_bins  = _fs_hz / gcd(std::abs(pcal_spacing_hz), _fs_hz);
   _N_tones = std::floor(bandwidth_hz / pcal_spacing_hz);
   this->clear(sampleoffset);
+  cout << "PCalExtractorDummy: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << endl;
 }
 
 PCalExtractorDummy::~PCalExtractorDummy()
@@ -807,7 +806,7 @@ uint64_t PCalExtractorDummy::getFinalPCal(cf32* out)
 
     // Fill the output array with dummy values  
     for (int i = 0; i < _N_tones; i++) {
-        out[i].re = sqrt(2.0); //_samplecount;
+        out[i].re = sqrt(2.0); // * _samplecount;
         out[i].im = sqrt(2.0) * _samplecount;
     }
     return _samplecount;
