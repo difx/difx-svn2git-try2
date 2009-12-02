@@ -396,6 +396,10 @@ Mode::~Mode()
   delete [] weights;
   delete [] autocorrelations;
 
+  for(int i=0;i<numrecordedbands;i++) {
+     delete extractor[i];
+     delete pcalresults[i];
+  }
   delete[] pcalresults;
   delete[] extractor;
   delete[] pcalLen;
