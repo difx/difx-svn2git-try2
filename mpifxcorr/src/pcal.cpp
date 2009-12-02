@@ -94,8 +94,8 @@ PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, double pcal_offs
     int No, Np;
     No = 2*bandwidth_hz / gcd(pcal_offset_hz, 2*bandwidth_hz);
     Np = 2*bandwidth_hz / gcd(pcal_spacing_hz, 2*bandwidth_hz);
-    if ((No % Np) == 0) {
-	cout << "PCalExtractorImplicitShift" << endl;
+    if ((No % Np) == 0 && No<1600) {
+        cout << "PCalExtractorImplicitShift" << endl;
         return new PCalExtractorImplicitShift(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
     }
     cout << "PCalExtractorShifting" << endl;
