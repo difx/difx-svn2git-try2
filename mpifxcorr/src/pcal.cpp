@@ -582,8 +582,9 @@ void PCalExtractorImplicitShift::getFinalPCal(cf32* out)
     }
 
     // Copy only the interesting bins
-    size_t step = std::floor(_N_bins*(_pcalspacing_hz/_fs_hz));
-    size_t offset = std::floor(_N_bins*(_pcaloffset_hz/_fs_hz));
+    cout << "getFinalPCal " << _pcalspacing_hz << " " << _pcaloffset_hz << " " << _fs_hz << endl;
+    size_t step = std::floor(double(_N_bins)*(_pcalspacing_hz/_fs_hz));
+    size_t offset = std::floor(double(_N_bins)*(_pcaloffset_hz/_fs_hz));
     for (size_t n=0; n<(size_t)_N_tones; n++) {
         size_t idx = offset + n*step;
         cout << "getFinalPCal tone " << n << " from DFT bin " << idx << endl;
