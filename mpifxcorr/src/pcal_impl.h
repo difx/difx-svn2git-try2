@@ -88,8 +88,9 @@ class PCalExtractorTrivial : public PCal {
        * Data in the output array is overwritten with PCal results.
        *
        * @param pointer to user PCal array with getLength() values
+       * @return number of samples that were integrated for the result
        */
-      void getFinalPCal(cf32* out);
+      uint64_t getFinalPCal(cf32* out);
 };
 
 
@@ -144,8 +145,9 @@ class PCalExtractorShifting : public PCal {
        * Data in the output array is overwritten with PCal results.
        *
        * @param pointer to user PCal array with getLength() values
+       * @return number of samples that were integrated for the result
        */
-      void getFinalPCal(cf32* out);
+      uint64_t getFinalPCal(cf32* out);
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -199,8 +201,9 @@ class PCalExtractorImplicitShift : public PCal {
        * Data in the output array is overwritten with PCal results.
        *
        * @param pointer to user PCal array with getLength() values
+       * @return number of samples that were integrated for the result
        */
-      void getFinalPCal(cf32* out);
+      uint64_t getFinalPCal(cf32* out);
 };
 
 class PCalExtractorDummy : public PCal {
@@ -249,8 +252,9 @@ class PCalExtractorDummy : public PCal {
      * Data in the output array is overwritten with PCal results.
      *
      * @param pointer to user PCal array with getLength() values
-       */
-    void getFinalPCal(cf32* out);
+     * @return number of samples that were integrated for the result
+     */
+    uint64_t getFinalPCal(cf32* out);
 };
 
 

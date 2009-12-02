@@ -265,12 +265,10 @@ bool PCalExtractorTrivial::extractAndIntegrate(f32 const* samples, const size_t 
  * Data in the output array is overwritten with PCal results.
  *
  * @param pointer to user PCal array with getLength() values
+ * @return number of samples that were integrated for the result
  */
-void PCalExtractorTrivial::getFinalPCal(cf32* out)
+uint64_t PCalExtractorTrivial::getFinalPCal(cf32* out)
 {
-    if (_samplecount == 0) {
-        cout << "getFinalPCal called after clear()!" << endl;
-    }
     if (!_finalized) {
         _finalized = true;
         vectorAdd_f32_I(/*src*/&(_cfg->pcal_real[_N_bins]), /*srcdst*/&(_cfg->pcal_real[0]), _N_bins);
@@ -284,6 +282,7 @@ void PCalExtractorTrivial::getFinalPCal(cf32* out)
     // Copy only the tone bins: in PCalExtractorTrivial case
     // this should be all bins... _N_tones==_N_bins
     ippsCopy_32fc(_cfg->dft_out, (Ipp32fc*)out, _N_tones);
+    return _samplecount;
 }
 
 
@@ -447,12 +446,10 @@ bool PCalExtractorShifting::extractAndIntegrate(f32 const* samples, const size_t
  * Data in the output array is overwritten with PCal results.
  *
  * @param pointer to user PCal array with getLength() values
+ * @return number of samples that were integrated for the result
  */
-void PCalExtractorShifting::getFinalPCal(cf32* out)
+uint64_t PCalExtractorShifting::getFinalPCal(cf32* out)
 {
-    if (_samplecount == 0) {
-        cout << "getFinalPCal called after clear()!" << endl;
-    }
     if (!_finalized) {
         _finalized = true;
         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
@@ -476,6 +473,7 @@ void PCalExtractorShifting::getFinalPCal(cf32* out)
             out[n].im = _cfg->dft_out[idx].im;
         }
     }
+    return _samplecount;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -604,12 +602,10 @@ bool PCalExtractorImplicitShift::extractAndIntegrate(f32 const* samples, const s
  * Data in the output array is overwritten with PCal results.
  *
  * @param pointer to user PCal array with getLength() values
+ * @return number of samples that were integrated for the result
  */
-void PCalExtractorImplicitShift::getFinalPCal(cf32* out)
+uint64_t PCalExtractorImplicitShift::getFinalPCal(cf32* out)
 {
-   if (_samplecount == 0) {
-        cout << "getFinalPCal called after clear()!" << endl;
-   }
    if (!_finalized) {
         _finalized = true;
         //print_f32(_cfg->pcal_real, 8);
@@ -631,6 +627,7 @@ void PCalExtractorImplicitShift::getFinalPCal(cf32* out)
         out[n].re = _cfg->dft_out[idx].re;
         out[n].im = _cfg->dft_out[idx].im;
     }
+    return _samplecount;
 }
 
 
@@ -781,12 +778,12 @@ void PCalExtractorDummy::clear(const size_t sampleoffset)
  */
 bool PCalExtractorDummy::extractAndIntegrate(f32 const* samples, const size_t len)
 {
-  if (_finalized) { 
+  if (false && _finalized) { 
       cout << "Dummy::extract on finalized results!" << endl;
       return false; 
   }
   _samplecount += len;
-  if (_samplecount>0 && _samplecount<1024) { // print just a few times
+  if (false && _samplecount>0 && _samplecount<1024) { // print just a few times
      cout << "_samplecount=" << _samplecount << endl;
   }
   return true;
@@ -798,17 +795,21 @@ bool PCalExtractorDummy::extractAndIntegrate(f32 const* samples, const size_t le
  * Data in the output array is overwritten with PCal results.
  *
  * @param pointer to user PCal array with getLength() values
+ * @return number of samples that were integrated for the result
  */
-void PCalExtractorDummy::getFinalPCal(cf32* out)
+uint64_t PCalExtractorDummy::getFinalPCal(cf32* out)
 {
-    if (_samplecount == 0) {
-        cout << "Dummy::getFinalPCal called after clear()!" << endl;
+    if (false && _samplecount == 0) {
+        cout << "Dummy::getFinalPCal called without call to extractAndIntegrate()!" << endl;
+        cout << "                           or after call to clear()!" << endl;
     }
     _finalized = true;
 
-  // Fill the output array with dummy values  
-  for (int i = 0; i < _N_tones; i++) {
-    out[i].re = sqrt(2.0); //_samplecount;
-    out[i].im = sqrt(2.0) * _samplecount;
-  }
+    // Fill the output array with dummy values  
+    for (int i = 0; i < _N_tones; i++) {
+        out[i].re = sqrt(2.0); //_samplecount;
+        out[i].im = sqrt(2.0) * _samplecount;
+    }
+    return _samplecount;
 }
+

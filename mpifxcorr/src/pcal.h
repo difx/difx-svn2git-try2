@@ -119,8 +119,9 @@ class PCal {
        * Data in the output array is overwritten with PCal results.
        *
        * @param pointer to user PCal array with getLength() values
+       * @return number of samples that were integrated for the result
        */
-      virtual void getFinalPCal(cf32* out) = 0;
+      virtual uint64_t getFinalPCal(cf32* out) = 0;
 
       /**
        * Processes samples and accumulates the detected phase calibration tone vector.
