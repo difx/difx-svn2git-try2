@@ -60,20 +60,24 @@ class PCal {
        * @param bandwidth_hz     Bandwidth of the input signal in Hertz
        * @param pcal_spacing_hz  Spacing of the PCal signal, comb spacing, typically 1e6 Hertz
        * @param pcal_offset_hz   Offset of the first PCal signal from 0Hz/DC, typically 10e3 Hertz
+       * @param sampleoffset     Offset of the first sample as referenced to start of subintegration interval
        * @return new PCal extractor class instance 
        */
-      static PCal* getNew(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz);
+      static PCal* getNew(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz, const size_t sampleoffset);
 
    public:
       /**
        * Set the extracted and accumulated PCal data back to zero.
+       * When several PCal are run in parallel in segments of a 
+       * time slice of data, and the PCal results from each segment
+       * should be combined later, care must be taken to tell the PCal
+       * extraction the number/offset of the first sample in the segment
+       * Typically 0 for the first segment, len(segment) for the second
+       * segment, and so on, until offset of the last segment
+       * which is len(subintegration_subslice)-len(segment).
+       * @param sampleoffset referenced back to start of subintegration interval
        */
-      virtual void clear() = 0;
-      
-      /**
-       * Like clear() but with start time of the data as argument.
-       */
-      void reset(const long int t);
+      virtual void clear(const size_t sampleoffset) = 0;
 
       /**
        * Extracts multi-tone PCal information from a single-channel signal segment
@@ -104,7 +108,7 @@ class PCal {
        * Get length of vector the user should reserve for getFinalPCal() output copy.
        * @return vector length in complex samples
        */
-      int getLength() { return _N_bins; /*TODO: add FFT, copy just _N_tones*/ }
+      int getLength() { return _N_bins; }
 
       /**
        * Performs finalization steps on the internal PCal results if necessary
@@ -135,18 +139,19 @@ class PCal {
       uint64_t _samplecount;
       double _fs_hz;
       double _pcaloffset_hz;
+      double _pcalspacing_hz;
       int _N_bins;
       int _N_tones;
       bool _finalized;
-      
+
       long int starttime;
- 
+
       pcal_config_pimpl* _cfg;
 
    friend class PCalExtractorTrivial;
    friend class PCalExtractorShifting;
    friend class PCalExtractorImplicitShift;
-   
+
    //NOTE added for testing
    friend class PCalExtractorDummy;
 };

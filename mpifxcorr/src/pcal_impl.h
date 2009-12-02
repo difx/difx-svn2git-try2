@@ -44,14 +44,22 @@ class pcal_config_pimpl;
 
 class PCalExtractorTrivial : public PCal {
    public:
-      PCalExtractorTrivial(double bandwidth_hz, double pcal_spacing_hz);
+      PCalExtractorTrivial(double bandwidth_hz, double pcal_spacing_hz, const size_t sampleoffset);
       ~PCalExtractorTrivial();
 
    public:
       /**
        * Set the extracted and accumulated PCal data back to zero.
+       * When several PCal are run in parallel in segments of a 
+       * time slice of data, and the PCal results from each segment
+       * should be combined later, care must be taken to tell the PCal
+       * extraction the number/offset of the first sample in the segment
+       * Typically 0 for the first segment, len(segment) for the second
+       * segment, and so on, until offset of the last segment
+       * which is len(subintegration_subslice)-len(segment).
+       * @param sampleoffset referenced back to start of subintegration interval
        */
-      void clear();
+      void clear(const size_t sampleoffset);
 
       /**
        * Extracts multi-tone PCal information from a single-channel signal segment
@@ -88,14 +96,23 @@ class PCalExtractorTrivial : public PCal {
 
 class PCalExtractorShifting : public PCal {
    public:
-      PCalExtractorShifting(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz);
+      PCalExtractorShifting(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz, 
+                            const size_t sampleoffset);
       ~PCalExtractorShifting();
 
    public:
       /**
        * Set the extracted and accumulated PCal data back to zero.
+       * When several PCal are run in parallel in segments of a 
+       * time slice of data, and the PCal results from each segment
+       * should be combined later, care must be taken to tell the PCal
+       * extraction the number/offset of the first sample in the segment
+       * Typically 0 for the first segment, len(segment) for the second
+       * segment, and so on, until offset of the last segment
+       * which is len(subintegration_subslice)-len(segment).
+       * @param sampleoffset referenced back to start of subintegration interval
        */
-      void clear();
+      void clear(const size_t sampleoffset);
 
       /**
        * Extracts multi-tone PCal information from a single-channel signal segment
@@ -131,14 +148,23 @@ class PCalExtractorShifting : public PCal {
 
 class PCalExtractorImplicitShift : public PCal {
    public:
-      PCalExtractorImplicitShift(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz);
+      PCalExtractorImplicitShift(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz, 
+                                const size_t sampleoffset);
       ~PCalExtractorImplicitShift();
 
    public:
       /**
        * Set the extracted and accumulated PCal data back to zero.
+       * When several PCal are run in parallel in segments of a 
+       * time slice of data, and the PCal results from each segment
+       * should be combined later, care must be taken to tell the PCal
+       * extraction the number/offset of the first sample in the segment
+       * Typically 0 for the first segment, len(segment) for the second
+       * segment, and so on, until offset of the last segment
+       * which is len(subintegration_subslice)-len(segment).
+       * @param sampleoffset referenced back to start of subintegration interval
        */
-      void clear();
+      void clear(const size_t sampleoffset);
 
       /**
        * Extracts multi-tone PCal information from a single-channel signal segment
@@ -170,14 +196,22 @@ class PCalExtractorImplicitShift : public PCal {
 
 class PCalExtractorDummy : public PCal {
   public:
-    PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_hz);
+    PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_hz, const size_t sampleoffset);
     ~PCalExtractorDummy();
 
   public:
       /**
-   * Set the extracted and accumulated PCal data back to zero.
+       * Set the extracted and accumulated PCal data back to zero.
+       * When several PCal are run in parallel in segments of a 
+       * time slice of data, and the PCal results from each segment
+       * should be combined later, care must be taken to tell the PCal
+       * extraction the number/offset of the first sample in the segment
+       * Typically 0 for the first segment, len(segment) for the second
+       * segment, and so on, until offset of the last segment
+       * which is len(subintegration_subslice)-len(segment).
+       * @param sampleoffset referenced back to start of subintegration interval
        */
-    void clear();
+    void clear(const size_t sampleoffset);
 
       /**
      * Extracts multi-tone PCal information from a single-channel signal segment

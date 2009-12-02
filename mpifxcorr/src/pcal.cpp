@@ -54,6 +54,10 @@ class pcal_config_pimpl {
     size_t   rotatorlen;
     size_t   pcal_index;     // zero, changes when extract() is called at least once with "leftover" samples
     size_t   rotator_index;  // zero, changes when extract() is called at least once with "leftover" samples
+  public:
+    IppsDFTSpec_C_32fc* dftspec;
+    Ipp8u* dftworkbuf;
+    cf32*  dft_out;
 };
 
 
@@ -67,15 +71,16 @@ class pcal_config_pimpl {
  * @param bandwidth_hz     Bandwidth of the input signal in Hertz
  * @param pcal_spacing_hz  Spacing of the PCal signal, comb spacing, typically 1e6 Hertz
  * @param pcal_offset_hz   Offset of the first PCal signal from 0Hz/DC, typically 10e3 Hertz
+ * @param sampleoffset     Offset of the first sample as referenced to start of subintegration interval
  * @return new PCal extractor class instance
  */
-PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz) 
+PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz, const size_t sampleoffset) 
 {
-  //NOTE Added for testing
-  return new PCalExtractorDummy(bandwidth_hz, pcal_spacing_hz);  
-  
+    //NOTE Added for testing
+    return new PCalExtractorDummy(bandwidth_hz, pcal_spacing_hz, sampleoffset);
+
     if (pcal_offset_hz == 0.0f) {
-        return new PCalExtractorTrivial(bandwidth_hz, pcal_spacing_hz);
+        return new PCalExtractorTrivial(bandwidth_hz, pcal_spacing_hz, sampleoffset);
     }
     // if ( __unlikely ((2*bandwidth_hz / gcd(2*bandwidth_hz,pcal_spacing_hz)) > someLengthLimit) ) {
     //    use oscillator implementation instead
@@ -84,9 +89,9 @@ PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, double pcal_offs
     No = 2*bandwidth_hz / gcd(pcal_offset_hz, 2*bandwidth_hz);
     Np = 2*bandwidth_hz / gcd(pcal_spacing_hz, 2*bandwidth_hz);
     if ((No % Np) == 0) {
-        return new PCalExtractorImplicitShift(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz);
+        return new PCalExtractorImplicitShift(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
     }
-    return new PCalExtractorShifting(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz);
+    return new PCalExtractorShifting(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
 }
 
 /**
@@ -118,7 +123,7 @@ bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32
 {
     double dphi = 2*M_PI * (-_pcaloffset_hz/_fs_hz);
     for (size_t n=0; n<len; n++) {
-        int bin = (n % _N_bins);
+        int bin = (n % _N_bins); //NOTE this does not use sampleoffset referenced back to subintegration intvl start
         pcalout[bin].re += cos(dphi * (_samplecount + n)) * data[n];
         pcalout[bin].im += sin(dphi * (_samplecount + n)) * data[n];
     }
@@ -126,18 +131,13 @@ bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32
     return true;
 }
 
-void PCal::reset(const long int t)
-{
-  clear();
-  starttime = t;
-}
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DERIVED CLASS: extraction of zero-offset PCal signals
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, double pcal_spacing_hz)
+PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, double pcal_spacing_hz, const size_t sampleoffset)
 {
     /* Derive config */
     _cfg = new pcal_config_pimpl();
@@ -146,39 +146,51 @@ PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, double pcal_spac
     _N_tones = std::floor(bandwidth_hz / pcal_spacing_hz);
     _pcaloffset_hz = 0.0f;
 
+    /* Prep for FFT/DFT */
+    // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
+    int wbufsize = 0;
+    ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
+    ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
+    _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
+
     /* Allocate */
     _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 2);
     _cfg->pcal_real    = (f32*)memalign(128, sizeof(f32) * _N_bins * 2);
-    this->clear();
+    _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
+    this->clear(sampleoffset);
 }
 
 PCalExtractorTrivial::~PCalExtractorTrivial()
 {
     free(_cfg->pcal_complex);
     free(_cfg->pcal_real);
+    ippsDFTFree_C_32fc(_cfg->dftspec);
+    free(_cfg->dftworkbuf);
+    free(_cfg->dft_out);
     delete _cfg;
 }
 
 /**
  * Set the extracted and accumulated PCal data back to zero.
+ * When several PCal are run in parallel in segments of a 
+ * time slice of data, and the PCal results from each segment
+ * should be combined later, care must be taken to tell the PCal
+ * extraction the number/offset of the first sample in the segment
+ * Typically 0 for the first segment, len(segment) for the second
+ * segment, and so on, until offset of the last segment
+ * which is len(subintegration_subslice)-len(segment).
+ * @param sampleoffset referenced back to start of subintegration interval
  */
-void PCalExtractorTrivial::clear()
+void PCalExtractorTrivial::clear(const size_t sampleoffset)
 {
     _samplecount = 0;
     _finalized   = false;
     vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
     vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
-    _cfg->rotator_index = 0;
-    _cfg->pcal_index    = 0;
+    _cfg->rotator_index = 0; // unused
+    _cfg->pcal_index    = sampleoffset % _N_bins;
 }
 
-/*
-void PCalExtractorTrivial::reset(const long int t)
-{
-  clear();
-  starttime = t;
-}
-*/
 
 /**
  * Extracts multi-tone PCal information from a single-channel signal segment
@@ -230,27 +242,16 @@ bool PCalExtractorTrivial::extractAndIntegrate(f32 const* samples, const size_t 
  */
 void PCalExtractorTrivial::getFinalPCal(cf32* out)
 {
-    IppsDFTSpec_C_32fc** pDFTSpec;
-    Ipp8u* pBuffer;
-  
     if (!_finalized) {
         _finalized = true;
         vectorAdd_f32_I(/*src*/&(_cfg->pcal_real[_N_bins]), /*srcdst*/&(_cfg->pcal_real[0]), _N_bins);
         vectorRealToComplex_f32(/*srcRe*/_cfg->pcal_real, /*srcIm*/NULL, _cfg->pcal_complex, _N_bins);
+        ippsDFTFwd_CToC_32fc(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
     }
-    
-    // This is substituted by DFT
-    // vectorCopy_cf32(/*src*/_cfg->pcal_complex, /*dst*/out, _N_bins);
-    
-    // Discrete Fourier Transform of the output
-    
-    // Initialization of the Fourier Transform.
-    // IPP_FFT_NODIV_BY_ANY means that no normalization of the spectrum is done.
-    // ippAlgHintFast indicates that the fast algorithm is used for the DFT.
-    //ippsDFTInitAlloc_C_32f(pDFTSpec, _N_bins, 1, IPP_FFT_NODIV_BY_ANY, ippAlgHintFast);
-    
-    // Perform the DFT for complex data type
-    //ippsDFTFwd_CToC_32fc(_cfg->pcal_complex, out, pDFTSpec, pBuffer);    
+
+    // Copy only the tone bins: in PCalExtractorTrivial case
+    // this should be all bins... _N_tones==_N_bins
+    ippsCopy_32fc(_cfg->dft_out, (Ipp32fc*)out, _N_tones);
 }
 
 
@@ -258,22 +259,31 @@ void PCalExtractorTrivial::getFinalPCal(cf32* out)
 // DERIVED CLASS: extraction of PCal signals with non-zero offset
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz)
+PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz, const size_t sampleoffset)
 {
     /* Derive config */
-    _fs_hz         = 2 * bandwidth_hz;
-    _N_bins        = _fs_hz / gcd(std::abs(pcal_spacing_hz), _fs_hz);
-    _N_tones       = std::floor((bandwidth_hz - pcal_offset_hz) / pcal_spacing_hz) + 1;
-    _pcaloffset_hz = pcal_offset_hz;
+    _fs_hz          = 2 * bandwidth_hz;
+    _N_bins         = _fs_hz / gcd(std::abs(pcal_spacing_hz), _fs_hz);
+    _N_tones        = std::floor((bandwidth_hz - pcal_offset_hz) / pcal_spacing_hz) + 1;
+    _pcaloffset_hz  = pcal_offset_hz;
+    _pcalspacing_hz = pcal_spacing_hz;
     _cfg = new pcal_config_pimpl();
     _cfg->rotatorlen = _fs_hz / gcd(std::abs(_pcaloffset_hz), _fs_hz);
+
+    /* Prep for FFT/DFT */
+    // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
+    int wbufsize = 0;
+    ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
+    ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
+    _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
     /* Allocate */
     _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 2);
     _cfg->pcal_real    = (f32*)memalign(128, sizeof(f32) * _N_bins * 2);
     _cfg->rotator = (cf32*)memalign(128, sizeof(cf32) * _cfg->rotatorlen * 2);
     _cfg->rotated = (cf32*)memalign(128, sizeof(cf32) * _cfg->rotatorlen * 2);
-    this->clear();
+    _cfg->dft_out = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
+    this->clear(sampleoffset);
 
     /* Prepare frequency shifter/mixer lookup */
     _cfg->dphi = 2*M_PI * (_pcaloffset_hz/_fs_hz);
@@ -290,21 +300,32 @@ PCalExtractorShifting::~PCalExtractorShifting()
     free(_cfg->pcal_real);
     free(_cfg->rotator);
     free(_cfg->rotated);
+    ippsDFTFree_C_32fc(_cfg->dftspec);
+    free(_cfg->dftworkbuf);
+    free(_cfg->dft_out);
     delete _cfg;
 }
 
 /**
  * Set the extracted and accumulated PCal data back to zero.
+ * When several PCal are run in parallel in segments of a 
+ * time slice of data, and the PCal results from each segment
+ * should be combined later, care must be taken to tell the PCal
+ * extraction the number/offset of the first sample in the segment
+ * Typically 0 for the first segment, len(segment) for the second
+ * segment, and so on, until offset of the last segment
+ * which is len(subintegration_subslice)-len(segment).
+ * @param sampleoffset referenced back to start of subintegration interval
  */
-void PCalExtractorShifting::clear()
+void PCalExtractorShifting::clear(const size_t sampleoffset)
 {
     _samplecount = 0;
     _finalized   = false;
     vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
     vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
     vectorZero_cf32(_cfg->rotated,      _cfg->rotatorlen * 2);
-    _cfg->rotator_index = 0;
-    _cfg->pcal_index    = 0;
+    _cfg->rotator_index = sampleoffset % _cfg->rotatorlen;
+    _cfg->pcal_index    = sampleoffset % _N_bins;
 }
 
 /**
@@ -391,48 +412,84 @@ void PCalExtractorShifting::getFinalPCal(cf32* out)
 {
     if (!_finalized) {
         _finalized = true;
-         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
+        vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
+        ippsDFTFwd_CToC_32fc(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
     }
-    vectorCopy_cf32(/*src*/_cfg->pcal_complex, /*dst*/out, _N_bins);
+
+    if (_pcalspacing_hz == 1e6) {
+        // Copy only the tone bins: in PCalExtractorTrivial case
+        // this should be all bins... _N_tones==_N_bins
+        ippsCopy_32fc(_cfg->dft_out, (Ipp32fc*)out, _N_tones);
+    } else {
+        // Copy only the interesting bins
+        size_t step = std::floor(_N_bins*(_pcalspacing_hz/_fs_hz));
+        for (size_t n=0; n<(size_t)_N_tones; n++) {
+            size_t idx = n*step;
+            if (idx >= (size_t)_N_bins) { break; }
+            out[n].re = _cfg->dft_out[idx].re;
+            out[n].im = _cfg->dft_out[idx].im;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DERIVED CLASS: extraction of PCal signals with non-zero offset and FFT-implicit rotation possible
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz)
+PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, double pcal_spacing_hz, double pcal_offset_hz, const size_t sampleoffset)
 {
     /* Derive config */
-    _fs_hz         = 2 * bandwidth_hz;
-    _N_bins        = _fs_hz / gcd(std::abs(_pcaloffset_hz), _fs_hz);
-    _N_tones       = std::floor((bandwidth_hz - pcal_offset_hz) / pcal_spacing_hz) + 1;
-    _pcaloffset_hz = pcal_offset_hz;
+    _fs_hz          = 2 * bandwidth_hz;
+    _N_bins         = _fs_hz / gcd(std::abs(_pcaloffset_hz), _fs_hz);
+    _N_tones        = std::floor((bandwidth_hz - pcal_offset_hz) / pcal_spacing_hz) + 1;
+    _pcalspacing_hz = pcal_spacing_hz;
+    _pcaloffset_hz  = pcal_offset_hz;
     _cfg = new pcal_config_pimpl();
+
+    /* Prep for FFT/DFT */
+    // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
+    int wbufsize = 0;
+    ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
+    ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
+    _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
     /* Allocate */
     _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_tones);
     _cfg->pcal_real    = (f32*) memalign(128, sizeof(f32) * _N_bins * 2);
-    this->clear();
+    _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
+    this->clear(sampleoffset);
 }
 
 PCalExtractorImplicitShift::~PCalExtractorImplicitShift()
 {
     free(_cfg->pcal_complex);
     free(_cfg->pcal_real);
+    ippsDFTFree_C_32fc(_cfg->dftspec);
+    free(_cfg->dftworkbuf);
+    free(_cfg->dft_out);
     delete _cfg;
 }
 
 /**
  * Set the extracted and accumulated PCal data back to zero.
+ * When several PCal are run in parallel in segments of a 
+ * time slice of data, and the PCal results from each segment
+ * should be combined later, care must be taken to tell the PCal
+ * extraction the number/offset of the first sample in the segment
+ * Typically 0 for the first segment, len(segment) for the second
+ * segment, and so on, until offset of the last segment
+ * which is len(subintegration_subslice)-len(segment).
+ * @param sampleoffset referenced back to start of subintegration interval
  */
-void PCalExtractorImplicitShift::clear()
+void PCalExtractorImplicitShift::clear(const size_t sampleoffset)
 {
     _samplecount = 0;
     _finalized   = false;
     vectorZero_cf32(_cfg->pcal_complex, _N_tones);
     vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
-    _cfg->pcal_index = 0;
+    _cfg->pcal_index = sampleoffset % _N_bins;
 }
+
 
 /**
  * Extracts multi-tone PCal information from a single-channel signal segment
@@ -498,9 +555,20 @@ void PCalExtractorImplicitShift::getFinalPCal(cf32* out)
      */
     if (!_finalized) {
         _finalized = true;
-         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
+        vectorRealToComplex_f32(/*srcRe*/_cfg->pcal_real, /*srcIm*/NULL, _cfg->pcal_complex, _N_bins);
+        vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
+        ippsDFTFwd_CToC_32fc(/*src*/ _cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
     }
-    vectorCopy_cf32(/*src*/_cfg->pcal_complex, /*dst*/out, _N_bins);
+
+    // Copy only the interesting bins
+    size_t step = std::floor(_N_bins*(_pcalspacing_hz/_fs_hz));
+    size_t offset = std::floor(_N_bins*(_pcaloffset_hz/_fs_hz));
+    for (size_t n=0; n<(size_t)_N_tones; n++) {
+        size_t idx = offset + n*step;
+        if (idx >= (size_t)_N_bins) { break; }
+        out[n].re = _cfg->dft_out[idx].re;
+        out[n].im = _cfg->dft_out[idx].im;
+    }
 }
 
 
@@ -607,7 +675,7 @@ void PCal::extract_analytic(f32* data, size_t len)
 // DERIVED CLASS: PCal class that returns only known dummy values.
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PCalExtractorDummy::PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_hz)
+PCalExtractorDummy::PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_hz, const size_t sampleoffset)
 {
   /* Derive config */
   _cfg = new pcal_config_pimpl();
@@ -616,24 +684,44 @@ PCalExtractorDummy::PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_
   _N_tones = std::floor(bandwidth_hz / pcal_spacing_hz);
   _pcaloffset_hz = 0.0f;
 
+  /* Prep for FFT/DFT */
+  // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
+  int wbufsize = 0;
+  ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
+  ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
+  _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
+
   /* Allocate */
   _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 2);
   _cfg->pcal_real    = (f32*)memalign(128, sizeof(f32) * _N_bins * 2);
-  this->clear();
+  _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
+  this->clear(sampleoffset);
 }
 
 PCalExtractorDummy::~PCalExtractorDummy()
 {
   free(_cfg->pcal_complex);
   free(_cfg->pcal_real);
+  ippsDFTFree_C_32fc(_cfg->dftspec);
+  free(_cfg->dftworkbuf);
+  free(_cfg->dft_out);
   delete _cfg;
 }
 
 /**
  * Set the extracted and accumulated PCal data back to zero.
+ * When several PCal are run in parallel in segments of a 
+ * time slice of data, and the PCal results from each segment
+ * should be combined later, care must be taken to tell the PCal
+ * extraction the number/offset of the first sample in the segment
+ * Typically 0 for the first segment, len(segment) for the second
+ * segment, and so on, until offset of the last segment
+ * which is len(subintegration_subslice)-len(segment).
+ * @param sampleoffset referenced back to start of subintegration interval
  */
-void PCalExtractorDummy::clear()
+void PCalExtractorDummy::clear(const size_t sampleoffset)
 {
+  (void)sampleoffset;
   _samplecount = 0;
   _finalized   = false;
   vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
@@ -642,13 +730,6 @@ void PCalExtractorDummy::clear()
   _cfg->pcal_index    = 0;
 }
 
-/*
-void PCalExtractorDummy::reset(const long int t)
-{
-  clear();
-  starttime = t;
-}
-*/
 
 /**
  * Extracts multi-tone PCal information from a single-channel signal segment
