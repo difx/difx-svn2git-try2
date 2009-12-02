@@ -52,6 +52,9 @@ class PCal {
    public:
       PCal() {};
       ~PCal() {};
+   private:
+      PCal(const PCal& o) { /* no copy */ }
+      PCal& operator= (const PCal& o) { /* no assign */ }
 
    public:
       /**

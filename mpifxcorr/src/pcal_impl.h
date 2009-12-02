@@ -46,6 +46,9 @@ class PCalExtractorTrivial : public PCal {
    public:
       PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing_hz, const size_t sampleoffset);
       ~PCalExtractorTrivial();
+   private:
+     PCalExtractorTrivial& operator= (const PCalExtractorTrivial& o) { /* no copy */ }
+     PCalExtractorTrivial(const PCalExtractorTrivial& o) { /* no copy */ }
 
    public:
       /**
@@ -99,6 +102,9 @@ class PCalExtractorShifting : public PCal {
       PCalExtractorShifting(double bandwidth_hz, double pcal_spacing_hz, int pcal_offset_hz, 
                             const size_t sampleoffset);
       ~PCalExtractorShifting();
+   private:
+      PCalExtractorShifting& operator= (const PCalExtractorShifting& o) { /* no copy */ }
+      PCalExtractorShifting(const PCalExtractorShifting& o) { /* no copy */ }
 
    public:
       /**
@@ -151,6 +157,9 @@ class PCalExtractorImplicitShift : public PCal {
       PCalExtractorImplicitShift(double bandwidth_hz, double pcal_spacing_hz, int pcal_offset_hz, 
                                 const size_t sampleoffset);
       ~PCalExtractorImplicitShift();
+   private:
+     PCalExtractorImplicitShift& operator= (const PCalExtractorImplicitShift& o) { /* no copy */ }
+     PCalExtractorImplicitShift(const PCalExtractorImplicitShift& o) { /* no copy */ }     
 
    public:
       /**
@@ -198,6 +207,9 @@ class PCalExtractorDummy : public PCal {
   public:
     PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_hz, const size_t sampleoffset);
     ~PCalExtractorDummy();
+  private:
+    PCalExtractorDummy& operator= (const PCalExtractorDummy& o) { /* no copy */ }
+    PCalExtractorDummy(const PCalExtractorDummy& o) { /* no copy */ }
 
   public:
       /**
