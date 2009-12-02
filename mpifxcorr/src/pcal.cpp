@@ -786,6 +786,9 @@ bool PCalExtractorDummy::extractAndIntegrate(f32 const* samples, const size_t le
       return false; 
   }
   _samplecount += len;
+  if (_samplecount>0 && _samplecount<1024) { // print just a few times
+     cout << "_samplecount=" << _samplecount << endl;
+  }
   return true;
 }
 
