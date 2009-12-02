@@ -901,7 +901,6 @@ void Mode::resetpcal()
 {
   for(int i=0;i<numrecordedbands;i++)
   {
-    vectorZero_cf32(pcalresults[i], int(recordedbandwidth/phasecalintervalmhz));
     extractor[i]->clear(0);
   }
 }
