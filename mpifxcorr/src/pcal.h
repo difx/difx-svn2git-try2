@@ -108,7 +108,7 @@ class PCal {
        * Get length of vector the user should reserve for getFinalPCal() output copy.
        * @return vector length in complex samples
        */
-      int getLength() { return _N_bins; }
+      int getLength() { return _N_tones; }
 
       /**
        * Performs finalization steps on the internal PCal results if necessary
