@@ -283,11 +283,14 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
   for(int i=0;i<numrecordedbands;i++)
   {
     localfreqindex = conf->getDLocalRecordedFreqIndex(confindex, datastreamindex, i);
+    size_t pcallen = conf->getDRecordedFreqNumPCalTones(configindex, datastreamindex, localfreqindex);
     pcalresults[i] = new cf32[conf->getDRecordedFreqNumPCalTones(configindex, datastreamindex, localfreqindex)];
     pcaloffsetmhz = conf->getDRecordedFreqPCalOffsetsMHz(configindex, datastreamindex, localfreqindex);
     extractor[i] = PCal::getNew(1e6*recordedbandwidth, 1e6*phasecalintervalmhz, 1e6*pcaloffsetmhz, 0);
     pcalLen[i] = extractor[i]->getLength();
-    
+    if (pcalLen[i] != pcallen) {
+       cout << "pcalLen " << pcalLen[i] << " from PCal class vs config " << pcallen << endl;
+    } 
   }
 }
 
