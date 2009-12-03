@@ -105,7 +105,7 @@ PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, int pcal_offset_
     int No, Np;
     No = 2*bandwidth_hz / gcd(pcal_offset_hz, 2*bandwidth_hz);
     Np = 2*bandwidth_hz / gcd(pcal_spacing_hz, 2*bandwidth_hz);
-    if ((No % Np) == 0 && No<1600) {
+    if ((No % Np) == 0) {
         return new PCalExtractorImplicitShift(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
     }
     return new PCalExtractorShifting(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
@@ -524,7 +524,7 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
 
     /* Allocate */
     _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 2);
-    _cfg->pcal_real    = (f32*) memalign(128, sizeof(f32) * _N_bins * 2);
+    _cfg->pcal_real    = (f32*) memalign(128, sizeof(f32)  * _N_bins * 2);
     _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
     this->clear(sampleoffset);
     cout << "PCalExtractorImplicitShift: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
@@ -556,7 +556,7 @@ void PCalExtractorImplicitShift::clear(const size_t sampleoffset)
 {
     _samplecount = 0;
     _finalized   = false;
-    vectorZero_cf32(_cfg->pcal_complex, _N_tones * 2);
+    vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
     vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
     _cfg->pcal_index = sampleoffset % _N_bins;
 }
@@ -848,6 +848,7 @@ void print_32fc_phase(const Ipp32fc* v, const size_t len);
 
 int main(int argc, char** argv)
 {
+   bool sloping_reference_data = true;
    if (argc < 6) {
       cerr << "Usage: " << argv[0] << " <samplecount> <bandwidthHz> <spacingHz> <offsetHz> <sampleoffset>" << endl;
       return -1;
@@ -865,11 +866,13 @@ int main(int argc, char** argv)
    for (long n=0; n<samplecount; n++) {
       data[n] = 0; //rand()*1e-9;
       for (int t=0; t<int(bandwidth/spacing); t++) {
-          // data[n] += sin(M_PI*(n+sampleoffset)*(offset + t*spacing)/bandwidth);
-          data[n] += sin(M_PI*(n+sampleoffset)*(offset + t*spacing)/bandwidth + t*M_PI*5/180);
+          if (sloping_reference_data) {
+              data[n] += sin(M_PI*(n+sampleoffset)*(offset + t*spacing)/bandwidth + t*M_PI*5/180);
+          } else {
+              data[n] += sin(M_PI*(n+sampleoffset)*(offset + t*spacing)/bandwidth);
+          }
       }
    }
-   cerr << "Expected result: -5deg slope per tone" << endl;
 
    /* Get an extractor */
    PCal* extractor = PCal::getNew(bandwidth, spacing, offset, sampleoffset);
@@ -881,6 +884,13 @@ int main(int argc, char** argv)
    /* Extract with the autoselected fast method */
    extractor->extractAndIntegrate(data, samplecount);
    uint64_t usedsamplecount = extractor->getFinalPCal(out);
+
+   if (sloping_reference_data) {
+       cerr << "Expected result: tones are sloping by -5deg each" << endl;
+   } else {
+       cerr << "Expected result: each tone has a fixed -90deg phase" << endl;
+   }
+
    cerr << "getFinalPCal returned samplecount=" << usedsamplecount << endl;
    cerr << "final PCal reim: ";
    print_32fc(out, numtones);
