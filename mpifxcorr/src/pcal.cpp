@@ -1,5 +1,5 @@
 /********************************************************************************************************
- * @file PCal.h
+ * @file PCal.cpp
  * Multi-tone Phase Cal Extraction
  *
  * @brief Extracts and integrates multi-tone phase calibration signal information from an input signal.
@@ -27,6 +27,7 @@
  *   05Oct2009 - added support for arbitrary input segment lengths
  *   08Oct2009 - added Briskens rotationless method
  *   02Nov2009 - added sub-subintegration sample offset, DFT for f-d results, tone bin coping to user buf
+ *   03Nov2009 - added unit test, included DFT in extractAndIntegrate_reference(), fix rotation direction
  *
  ********************************************************************************************************/
 
@@ -729,23 +730,6 @@ void PCal::extract_continuous(f32* data, size_t len)
     return;
 }
 
-
-/**
- * Process samples and accumulate the detected phase calibration tone vector.
- * Accumulation takes place into the internal (ipp32fc*)pcalcfg.pcal.
- * Computation uses the slowest thinkable direct method.
- * @param  data    pointer to input sample vector
- * @param  len     length of input vector
- */
-void PCal::extract_analytic(f32* data, size_t len)
-{
-    for (size_t n=0; n<len; n++) {
-        int bin = (n % pcalcfg.tonebins);
-        pcalcfg.pcal[bin].re += cosf(pcalcfg.phase_inc * (sample_count + n)) * data[n];
-        pcalcfg.pcal[bin].im += sinf(pcalcfg.phase_inc * (sample_count + n)) * data[n];
-    }
-    sample_count += len;
-}
 #endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -837,6 +821,13 @@ uint64_t PCalExtractorDummy::getFinalPCal(cf32* out)
 // UNIT TEST (NON-AUTOMATED, MANUAL VISUAL CHECK)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 #ifdef UNIT_TEST
+
+/* Example:
+g++ -m64 -DUNIT_TEST -Wall -O3 -I$(IPPROOT)/include/ -pthread -I.. pcal.cpp -o test \
+ -L$(IPPROOT)/sharedlib -L$(IPPROOT)/lib -lippsem64t -lguide -lippvmem64t -lippcoreem64t
+
+./test 32000 16e6 1e6 510e3 0
+*/
 
 #include <cmath>
 #include <iostream>
