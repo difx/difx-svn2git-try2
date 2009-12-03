@@ -130,8 +130,9 @@ class PCal {
        * @param  data          pointer to input sample vector
        * @param  len           length of input vector
        * @param  pcalout       output array of sufficient size to store extracted PCal
+       * @param  sampleoffset
        */
-      bool extractAndIntegrate_reference(f32 const* data, const size_t len, cf32* pcalout);
+      bool extractAndIntegrate_reference(f32 const* data, const size_t len, cf32* pcalout, const uint64_t sampleoffset);
 
    private:
      /**

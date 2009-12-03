@@ -141,15 +141,40 @@ long long PCal::gcd(long a, long b)
  * @param  len           length of input vector
  * @param  pcalout       output array of sufficient size to store extracted PCal
  */
-bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32* pcalout)
+bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32* out, const uint64_t sampleoffset)
 {
+    size_t Nbins = 2*_N_tones;
+    size_t maxtoneperiod = _fs_hz/gcd(_pcaloffset_hz,_fs_hz);
     double dphi = 2*M_PI * (-_pcaloffset_hz/_fs_hz);
+
+    Ipp32fc pcalout[Nbins];
+    ippsZero_32fc(pcalout, Nbins);
+
     for (size_t n=0; n<len; n++) {
-        int bin = (n % _N_bins); //NOTE this does not use sampleoffset referenced back to subintegration intvl start
-        pcalout[bin].re += cos(dphi * (_samplecount + n)) * data[n];
-        pcalout[bin].im += sin(dphi * (_samplecount + n)) * data[n];
+        size_t no = n + sampleoffset;
+        int bin = (no % Nbins);
+        double phi = dphi * ((_samplecount + no) % maxtoneperiod);
+        pcalout[bin].re += cos(phi) * data[n];
+        pcalout[bin].im += sin(phi) * data[n];
     }
     _samplecount += len;
+    cout << "PCal::extractAndIntegrate_reference Ntones=" << _N_tones << " Nbins=" << Nbins << endl;
+
+    int wbufsize = 0;
+    IppsDFTSpec_C_32fc* dftspec;
+    IppStatus s = ippsDFTInitAlloc_C_32fc(&dftspec, Nbins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
+    if (s != ippStsNoErr) { cerr << "DFTInitAlloc err " << ippGetStatusString(s) << endl; } 
+    s = ippsDFTGetBufSize_C_32fc(dftspec, &wbufsize);
+    if (s != ippStsNoErr) { cerr << "DFTGetBufSize err " << ippGetStatusString(s) << endl; }
+    Ipp8u* dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
+
+    Ipp32fc dftout[Nbins];
+    s = ippsDFTFwd_CToC_32fc(pcalout, dftout, dftspec, dftworkbuf);
+    if (s != ippStsNoErr) cerr << "DFTFwd err " << ippGetStatusString(s) << endl; 
+    ippsCopy_32fc(dftout, out, _N_tones);
+
+    ippsDFTFree_C_32fc(dftspec);
+    free(dftworkbuf);
     return true;
 }
 
@@ -812,3 +837,88 @@ uint64_t PCalExtractorDummy::getFinalPCal(cf32* out)
     return _samplecount;
 }
 
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+// UNIT TEST (NON-AUTOMATED, MANUAL VISUAL CHECK)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef UNIT_TEST
+
+#include <cmath>
+#include <iostream>
+#include <iomanip>
+#include <stdlib.h>
+void print_32f(const Ipp32f* v, const size_t len);
+void print_32fc(const Ipp32fc* v, const size_t len);
+void print_32fc_phase(const Ipp32fc* v, const size_t len);
+
+int main(int argc, char** argv)
+{
+   if (argc < 6) {
+      cerr << "Usage: " << argv[0] << " <samplecount> <bandwidthHz> <spacingHz> <offsetHz> <sampleoffset>" << endl;
+      return -1;
+   }
+   // ippInit(); -- not in IPP 5.3.1?
+   long samplecount = atof(argv[1]);
+   long bandwidth = atof(argv[2]);
+   long spacing = atof(argv[3]);
+   long offset = atof(argv[4]);
+   long sampleoffset = atof(argv[5]);
+   cerr << "BWHz=" << bandwidth << " spcHz=" << spacing << ", offHz=" << offset << ", sampOff=" << sampleoffset << endl;
+
+   /* Make test data for fixed -90deg or sloping -90deg+5deg*ToneNr phase */
+   float* data = (float*)memalign(128, samplecount*sizeof(float));
+   for (long n=0; n<samplecount; n++) {
+      data[n] = 0; //rand()*1e-9;
+      for (int t=0; t<int(bandwidth/spacing); t++) {
+          // data[n] += sin(M_PI*(n+sampleoffset)*(offset + t*spacing)/bandwidth);
+          data[n] += sin(M_PI*(n+sampleoffset)*(offset + t*spacing)/bandwidth + t*M_PI*5/180);
+      }
+   }
+   cerr << "Expected result: -5deg slope per tone" << endl;
+
+   /* Get an extractor */
+   PCal* extractor = PCal::getNew(bandwidth, spacing, offset, sampleoffset);
+   int numtones = extractor->getLength();
+   cerr << "extractor->getLength()=" << numtones << endl << endl;
+   Ipp32fc* out = (Ipp32fc*)memalign(128, sizeof(Ipp32fc)*numtones);
+   Ipp32fc* ref = (Ipp32fc*)memalign(128, sizeof(Ipp32fc)*numtones);
+
+   /* Extract with the autoselected fast method */
+   extractor->extractAndIntegrate(data, samplecount);
+   uint64_t usedsamplecount = extractor->getFinalPCal(out);
+   cerr << "getFinalPCal returned samplecount=" << usedsamplecount << endl;
+   cerr << "final PCal reim: ";
+   print_32fc(out, numtones);
+   cerr << "final PCal phase: ";
+   print_32fc_phase(out, numtones);
+   cerr << endl;
+
+   /* "Visual" comparison with the "reference" extracted result */
+   extractor->clear(sampleoffset);
+   extractor->extractAndIntegrate_reference(data, samplecount, ref, sampleoffset);
+   cerr << "reference PCal reim: ";
+   print_32fc(ref, numtones);
+   cerr << "reference PCal phase: ";
+   print_32fc_phase(ref, numtones); // should be ~ -90deg
+   return 0;
+}
+
+void print_32f(const Ipp32f* v, const size_t len) {
+   for (size_t i=0; i<len; i++) { cerr << std::scientific << v[i] << " "; }
+   cerr << endl;
+}
+
+void print_32fc(const Ipp32fc* v, const size_t len) {
+   for (size_t i=0; i<len; i++) { cerr << std::scientific << v[i].re << "+i" << v[i].im << " "; }
+   cerr << endl;
+}
+
+void print_32fc_phase(const Ipp32fc* v, const size_t len) {
+   for (size_t i=0; i<len; i++) { 
+      float phi = (180/M_PI)*std::atan2(v[i].im, v[i].re);
+      cerr << std::scientific << phi << " ";
+   }
+   cerr << "deg" << endl;
+}
+
+#endif
