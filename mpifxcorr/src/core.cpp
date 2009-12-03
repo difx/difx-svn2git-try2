@@ -653,7 +653,11 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
     modes[j]->setData(procslots[index].databuffer[j], procslots[index].datalengthbytes[j], procslots[index].controlbuffer[j][0], procslots[index].controlbuffer[j][1], procslots[index].controlbuffer[j][2]);
     modes[j]->setOffsets(procslots[index].offsets[0], procslots[index].offsets[1], procslots[index].offsets[2]);
     //reset pcal
-    modes[j]->resetpcal();
+    
+    if(config->getDPhaseCalIntervalMHz(procslots[index].configindex, j) > 0)
+    {
+      modes[j]->resetpcal();
+    }
   }
 
   //zero the results for this thread

@@ -274,23 +274,26 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
       }
     }
   }
-      
   // Phase cal stuff
   // FIXME change from freq to band. FIXED?
-  pcalresults = new cf32*[numrecordedbands];
-  extractor = new PCal*[numrecordedbands];
-  pcalLen = new int[numrecordedbands];//could be useful for memory usage estimate?
-  for(int i=0;i<numrecordedbands;i++)
+  if(config->getDPhaseCalIntervalMHz(configindex, datastreamindex))
   {
-    localfreqindex = conf->getDLocalRecordedFreqIndex(confindex, datastreamindex, i);
-    size_t pcallen = conf->getDRecordedFreqNumPCalTones(configindex, datastreamindex, localfreqindex);
-    pcalresults[i] = new cf32[conf->getDRecordedFreqNumPCalTones(configindex, datastreamindex, localfreqindex)];
-    pcaloffsethz = conf->getDRecordedFreqPCalOffsetsHz(configindex, datastreamindex, localfreqindex);
-    extractor[i] = PCal::getNew(1e6*recordedbandwidth, 1e6*phasecalintervalmhz, pcaloffsethz, 0);
-    pcalLen[i] = extractor[i]->getLength();
-    if (pcalLen[i] != pcallen) {
-       cout << "pcalLen " << pcalLen[i] << " from PCal class vs config " << pcallen << endl;
-    } 
+    pcalresults = new cf32*[numrecordedbands];
+    extractor = new PCal*[numrecordedbands];
+    pcalLen = new int[numrecordedbands];
+    for(int i=0;i<numrecordedbands;i++)
+    {
+      localfreqindex = conf->getDLocalRecordedFreqIndex(confindex, dsindex, i);
+      size_t pcallen = conf->getDRecordedFreqNumPCalTones(configindex, dsindex, localfreqindex);
+      pcalresults[i] = new cf32[conf->getDRecordedFreqNumPCalTones(configindex, dsindex, localfreqindex)];
+      pcaloffsethz = conf->getDRecordedFreqPCalOffsetsHz(configindex, dsindex, localfreqindex);
+      extractor[i] = PCal::getNew(1e6*recordedbandwidth, 1e6*phasecalintervalmhz, pcaloffsethz, 0);
+      pcalLen[i] = extractor[i]->getLength();
+      //if (pcalLen[i] != pcallen) 
+      //{
+      //   cout << "pcalLen " << pcalLen[i] << " from PCal class vs config " << pcallen << endl;
+      //} 
+    }
   }
 }
 
@@ -396,13 +399,16 @@ Mode::~Mode()
   delete [] weights;
   delete [] autocorrelations;
 
-  for(int i=0;i<numrecordedbands;i++) {
-     delete extractor[i];
-     delete pcalresults[i];
+  if(config->getDPhaseCalIntervalMHz(configindex, datastreamindex))
+  {
+    for(int i=0;i<numrecordedbands;i++) {
+       delete extractor[i];
+       delete pcalresults[i];
+    }
+    delete[] pcalresults;
+    delete[] extractor;
+    delete[] pcalLen;
   }
-  delete[] pcalresults;
-  delete[] extractor;
-  delete[] pcalLen;
 }
 
 float Mode::unpack(int sampleoffset)
