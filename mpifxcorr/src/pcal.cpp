@@ -116,11 +116,6 @@ PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, int pcal_offset_
  */
 long long PCal::gcd(long a, long b)
 {
-    if (b < a) {
-        long tmp = a;
-        a = b;
-        b = tmp;
-    }
     while (true) {
         a = a%b;
         if (a == 0) {
@@ -303,7 +298,7 @@ uint64_t PCalExtractorTrivial::getFinalPCal(cf32* out)
     }
 
     // Copy only the tone bins: in PCalExtractorTrivial case
-    // this should be all bins... _N_tones==_N_bins
+    // this should be all bins... _N_tones==_N_bins/2
     ippsCopy_32fc(_cfg->dft_out, (Ipp32fc*)out, _N_tones);
     return _samplecount;
 }
@@ -347,7 +342,7 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
     this->clear(sampleoffset);
 
     /* Prepare frequency shifter/mixer lookup */
-    _cfg->dphi = 2*M_PI * (_pcaloffset_hz/_fs_hz);
+    _cfg->dphi = 2*M_PI * (-_pcaloffset_hz/_fs_hz);
     for (size_t n = 0; n < (2 * _cfg->rotatorlen); n++) {
         double arg = _cfg->dphi * double(n);
         _cfg->rotator[n].re = f32(cos(arg));
