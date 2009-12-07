@@ -88,8 +88,6 @@ protected:
 
   virtual int openframe();
 
-  int framebytes, payloadbytes, framespersecond;
-
   int lastconfig;
 
   // UDP values and statistics
@@ -105,4 +103,3 @@ protected:
 };
 
 #endif
-// vim: shiftwidth=2:softtabstop=2:expandtab:
