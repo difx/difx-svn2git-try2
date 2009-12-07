@@ -38,7 +38,6 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
   int status, localfreqindex;
   int decimationfactor = config->getDDecimationFactor(configindex, datastreamindex);
   estimatedbytes = 0;
-  double pcaloffsethz;
 
   model = config->getModel();
   initok = true;
@@ -57,9 +56,6 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
       fractionalLoFreq = true;
   }
 
-  phasecalintervalmhz = config->getDPhaseCalIntervalMHz(configindex, datastreamindex);
-  //FIXME use configuration instead same for both polns
-  nphasecaltones = recordedbandwidth/phasecalintervalmhz;
   //now do the rest of the initialising
   samplesperblock = int(recordedbandwidth*2/blockclock);
   if(samplesperblock == 0)
@@ -275,24 +271,21 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
     }
   }
   // Phase cal stuff
-  // FIXME change from freq to band. FIXED?
   if(config->getDPhaseCalIntervalMHz(configindex, datastreamindex))
   {
     pcalresults = new cf32*[numrecordedbands];
     extractor = new PCal*[numrecordedbands];
-    pcalLen = new int[numrecordedbands];
+    pcalnbins = new int[numrecordedbands];
     for(int i=0;i<numrecordedbands;i++)
     {
       localfreqindex = conf->getDLocalRecordedFreqIndex(confindex, dsindex, i);
-      size_t pcallen = conf->getDRecordedFreqNumPCalTones(configindex, dsindex, localfreqindex);
+
       pcalresults[i] = new cf32[conf->getDRecordedFreqNumPCalTones(configindex, dsindex, localfreqindex)];
-      pcaloffsethz = conf->getDRecordedFreqPCalOffsetsHz(configindex, dsindex, localfreqindex);
-      extractor[i] = PCal::getNew(1e6*recordedbandwidth, 1e6*phasecalintervalmhz, pcaloffsethz, 0);
-      pcalLen[i] = extractor[i]->getLength();
-      //if (pcalLen[i] != pcallen) 
-      //{
-      //   cout << "pcalLen " << pcalLen[i] << " from PCal class vs config " << pcallen << endl;
-      //} 
+      extractor[i] = PCal::getNew(1e6*recordedbandwidth, 
+                                  1e6*config->getDPhaseCalIntervalMHz(configindex, datastreamindex),
+                                      config->getDRecordedFreqPCalOffsetsHz(configindex, dsindex, localfreqindex), 0);
+      pcalnbins[i] = extractor[i]->getNBins();
+      cerror << "Band " << i << " phase cal extractor buffer length (N bins)" << pcalnbins[i] << endl;
     }
   }
 }
@@ -407,7 +400,7 @@ Mode::~Mode()
     }
     delete[] pcalresults;
     delete[] extractor;
-    delete[] pcalLen;
+    delete[] pcalnbins;
   }
 }
 
@@ -506,7 +499,7 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
   nearestsampletime = nearestsample*sampletime;
   fracsampleerror = float(starttime - nearestsampletime);
 
-  if(!(phasecalintervalmhz == 0)) 
+  if(!(config->getDPhaseCalIntervalMHz(configindex, datastreamindex) == 0)) 
   {
     for(int i=0;i<numrecordedbands;i++)
     {

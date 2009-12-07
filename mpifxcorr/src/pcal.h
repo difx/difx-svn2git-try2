@@ -109,9 +109,15 @@ class PCal {
 
       /**
        * Get length of vector the user should reserve for getFinalPCal() output copy.
-       * @return vector length in complex samples
+       * @return vector length in complex tones
        */
       int getLength() { return _N_tones; }
+
+      /**
+       * Get length of folding buffer the user should use for ensuring consistency of results.
+       * @return length in complex samples of folding buffer (N bins)
+       */
+      int getNBins() { return _N_bins; }
 
       /**
        * Performs finalization steps on the internal PCal results if necessary

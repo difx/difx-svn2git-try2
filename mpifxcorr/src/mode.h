@@ -239,9 +239,7 @@ protected:
       
   // variables for pcal
 //  cf32 *pcal;
-  int nphasecaltones;
-  int * pcalLen;
-  int phasecalintervalmhz;
+  int * pcalnbins;
   cf32 ** pcalresults;
   PCal ** extractor;
   
