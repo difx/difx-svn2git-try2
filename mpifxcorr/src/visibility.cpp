@@ -1004,6 +1004,7 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
       }
       pcaloutput.write("\n", 1);
     }
+    pcaloutput.close();
   }
 }
 
