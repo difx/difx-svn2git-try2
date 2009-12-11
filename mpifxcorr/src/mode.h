@@ -192,16 +192,6 @@ public:
   ///constant indicating no valid data in a subint
   static const int INVALID_SUBINT = -99999999;
   
-  inline double getFFTDurationms()
-  {
-    return fftdurationmicrosec;
-  }
-  
-  inline int getTwiceRecordedBandChannels()
-  {
-    return twicerecordedbandchannels;
-  }
-
 protected:
  /** 
   * Unpacks quantised data to float arrays.  The floating point values filled should
