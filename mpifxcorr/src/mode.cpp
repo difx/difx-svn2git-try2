@@ -895,12 +895,11 @@ void Mode::setData(u8 * d, int dbytes, int dscan, int dsec, int dns)
   unpackstartsamples = -999999999;
 }
 
-//change freq to band
-void Mode::resetpcal()
+void Mode::resetpcal(uint64_t sampleoffset)
 {
   for(int i=0;i<numrecordedbands;i++)
   {
-    extractor[i]->clear(0);
+    extractor[i]->clear(sampleoffset);
   }
 }
 

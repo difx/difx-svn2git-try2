@@ -155,8 +155,6 @@ class PCal {
       int _N_tones;
       bool _finalized;
 
-      long int starttime;
-
       pcal_config_pimpl* _cfg;
 
    friend class PCalExtractorTrivial;

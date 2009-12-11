@@ -90,7 +90,7 @@ public:
  /**
   * reset all pcal objects
   */
-  void resetpcal();
+  void resetpcal(uint64_t sampleoffset);
   void finalisepcal();
 
  /**
@@ -191,6 +191,11 @@ public:
   
   ///constant indicating no valid data in a subint
   static const int INVALID_SUBINT = -99999999;
+  
+  inline double getFFTDurationms()
+  {
+    return fftdurationmicrosec;
+  }
 
 protected:
  /** 

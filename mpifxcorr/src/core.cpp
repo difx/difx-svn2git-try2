@@ -636,6 +636,10 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
   Mode * m1, * m2;
   cf32 * vis1;
   cf32 * vis2;
+  uint64_t offsetsamples;
+  double sampletimens;
+  int starttimens;
+  int fftsize;
 
 //following statement used to cut all all processing for "Neutered DiFX"
 #ifndef NEUTERED_DIFX
@@ -656,7 +660,19 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
     
     if(config->getDPhaseCalIntervalMHz(procslots[index].configindex, j) > 0)
     {
-      modes[j]->resetpcal();
+      // Calculate the sample time. Every band has the same bandwidth.
+      sampletimens = 1.0/(2.0*config->getDRecordedBandwidth(procslots[index].configindex, j, 0)*1e+3;
+      
+      // Get the ns start time of the whole block.
+      starttimens = procslots[index].offsets[2];
+      
+      // Calculate the FFT size in number of samples.
+      fftsize = modes[i]->getFFTDurationms()*1e+3/sampletimens;
+      	  
+      // Calculate the number of offset samples. The modulo PCal bins is done in the pcal object!
+      offsetsamples = starttimens/sampletimens + startblock*fftsize*2;
+      
+      modes[j]->resetpcal(offsetsamples);
     }
   }
 
