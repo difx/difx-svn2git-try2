@@ -667,11 +667,10 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
       starttimens = procslots[index].offsets[2];
       
       // Calculate the FFT size in number of samples.
-      //fftsize = modes[j]->getFFTDurationms()*1e+3/sampletimens;
-      fftsize = modes[j]->getTwiceRecordedBandChannels();
+      fftsize = 2*config->getFNumChannels(getDRecordedFreqIndex(procslots[index].configindex, j, 0))
       
       // Calculate the number of offset samples. The modulo PCal bins is done in the pcal object!
-      offsetsamples = starttimens/sampletimens + startblock*fftsize*2;
+      offsetsamples = starttimens/sampletimens + startblock*fftsize;
       
       modes[j]->resetpcal(offsetsamples);
     }
