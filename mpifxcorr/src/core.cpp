@@ -661,7 +661,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
     if(config->getDPhaseCalIntervalMHz(procslots[index].configindex, j) > 0)
     {
       // Calculate the sample time. Every band has the same bandwidth.
-      sampletimens = 1.0/(2.0*config->getDRecordedBandwidth(procslots[index].configindex, j, 0)*1e+3;
+      sampletimens = 1.0/(2.0*config->getDRecordedBandwidth(procslots[index].configindex, j, 0))*1e+3;
       
       // Get the ns start time of the whole block.
       starttimens = procslots[index].offsets[2];
