@@ -196,6 +196,11 @@ public:
   {
     return fftdurationmicrosec;
   }
+  
+  inline int getTwiceRecordedBandChannels()
+  {
+    return twicerecordedbandchannels;
+  }
 
 protected:
  /** 
