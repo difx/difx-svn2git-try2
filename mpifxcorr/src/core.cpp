@@ -660,6 +660,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
     
     if(config->getDPhaseCalIntervalMHz(procslots[index].configindex, j) > 0)
     {
+      /*
       // Calculate the sample time. Every band has the same bandwidth.
       sampletimens = 1.0/(2.0*config->getDRecordedBandwidth(procslots[index].configindex, j, 0))*1e+3;
       
@@ -671,6 +672,10 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
       
       // Calculate the number of offset samples. The modulo PCal bins is done in the pcal object!
       offsetsamples = starttimens/sampletimens + startblock*fftsize;
+      */
+      
+      // NOTE Setting the offset to 0 to see if it makes any difference...
+      offsetsamples = 0;
       
       modes[j]->resetpcal(offsetsamples);
     }
