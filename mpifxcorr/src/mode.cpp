@@ -899,6 +899,8 @@ void Mode::resetpcal(uint64_t sampleoffset)
 {
   for(int i=0;i<numrecordedbands;i++)
   {
+    // NOTE Debug output
+    cout << "sampleoffset = " << sampleoffset << ", sampleoffset%nbins = " << sampleoffset%extractor[i]->getNBins() << endl;
     extractor[i]->clear(sampleoffset);
   }
 }
