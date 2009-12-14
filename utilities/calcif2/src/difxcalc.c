@@ -211,6 +211,7 @@ int extractCalcResults(DifxPolyModel *im, int index,
 {
 	struct getCALC_res *res0, *res1, *res2;
 	double d, dx, dy;
+	int rv = 0;
 
 	res0 = &results->res[0];
 	res1 = &results->res[1];
@@ -236,15 +237,27 @@ int extractCalcResults(DifxPolyModel *im, int index,
 		im->u[index] = (C_LIGHT/results->delta)*(d-dx);
 		im->v[index] = (C_LIGHT/results->delta)*(dy-d);
 		im->w[index] = C_LIGHT*d;
+
+		if( isnan(d)  || isinf(d)  ||
+		    isnan(dx) || isinf(dx) ||
+		    isnan(dy) || isinf(dy) )
+		{
+			rv = 1;
+		}
 	}
 	else
 	{
 		im->u[index] = res0->getCALC_res_u.record.UV[0];
 		im->v[index] = res0->getCALC_res_u.record.UV[1];
 		im->w[index] = res0->getCALC_res_u.record.UV[2];
+
+		if(isnan(im->delay[index]) || isinf(im->delay[index]))
+		{
+			rv = 1;
+		}
 	}
 
-	return 0;
+	return rv;
 }
 
 void computePolyModel(DifxPolyModel *im, double deltaT)
@@ -276,6 +289,7 @@ static int antennaCalc(int scanId, int antId, const DifxInput *D, CalcParams *p)
 	int nInt, deltat;
 	int spacecraftId = -1;
 	int sourceId;
+	int nError = 0;
 
 	job = D->job;
 	antenna = D->antenna + antId;
@@ -341,7 +355,7 @@ static int antennaCalc(int scanId, int antId, const DifxInput *D, CalcParams *p)
 			}
 			/* use result to populate tabulated values */
 
-			extractCalcResults(&im[i], j, &results);
+			nError += extractCalcResults(&im[i], j, &results);
 
 			lastsec = sec;
 			sec += subInc;
@@ -352,6 +366,11 @@ static int antennaCalc(int scanId, int antId, const DifxInput *D, CalcParams *p)
 			}
 		}
 		computePolyModel(&im[i], subInc);
+	}
+
+	if(nError > 0)
+	{
+		fprintf(stderr, "Error: Antenna %s had %d invalid delays\n", D->antenna[antId].name, nError);
 	}
 
 	/* use polynomial to calculate uvw and delay for difx */
@@ -391,7 +410,14 @@ static int antennaCalc(int scanId, int antId, const DifxInput *D, CalcParams *p)
 		}
 	}
 
-	return 0;
+	if(nError > 0)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 static int scanCalc(int scanId, const DifxInput *D, CalcParams *p, int isLast)
