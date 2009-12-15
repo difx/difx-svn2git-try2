@@ -47,8 +47,8 @@ class PCalExtractorTrivial : public PCal {
       PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing_hz, const size_t sampleoffset);
       ~PCalExtractorTrivial();
    private:
-     PCalExtractorTrivial& operator= (const PCalExtractorTrivial& o) { /* no copy */ }
-     PCalExtractorTrivial(const PCalExtractorTrivial& o) { /* no copy */ }
+     PCalExtractorTrivial& operator= (const PCalExtractorTrivial& o); /* no copy */
+     PCalExtractorTrivial(const PCalExtractorTrivial& o); /* no copy */
 
    public:
       /**
@@ -63,6 +63,14 @@ class PCalExtractorTrivial : public PCal {
        * @param sampleoffset referenced back to start of subintegration interval
        */
       void clear(const size_t sampleoffset);
+
+      /**
+       * Adjust the sample offset. Should be called before extractAndIntegrate()
+       * every time there is a gap or backwards shift in the otherwise contiguous
+       * sample stream.
+       * @param sampleoffset referenced back to start of subintegration interval
+       */
+      void adjustSampleOffset(const size_t sampleoffset);
 
       /**
        * Extracts multi-tone PCal information from a single-channel signal segment
@@ -104,8 +112,8 @@ class PCalExtractorShifting : public PCal {
                             const size_t sampleoffset);
       ~PCalExtractorShifting();
    private:
-      PCalExtractorShifting& operator= (const PCalExtractorShifting& o) { /* no copy */ }
-      PCalExtractorShifting(const PCalExtractorShifting& o) { /* no copy */ }
+      PCalExtractorShifting& operator= (const PCalExtractorShifting& o); /* no copy */
+      PCalExtractorShifting(const PCalExtractorShifting& o); /* no copy */
 
    public:
       /**
@@ -120,6 +128,14 @@ class PCalExtractorShifting : public PCal {
        * @param sampleoffset referenced back to start of subintegration interval
        */
       void clear(const size_t sampleoffset);
+
+      /**
+       * Adjust the sample offset. Should be called before extractAndIntegrate()
+       * every time there is a gap or backwards shift in the otherwise contiguous
+       * sample stream.
+       * @param sampleoffset referenced back to start of subintegration interval
+       */
+      void adjustSampleOffset(const size_t sampleoffset);
 
       /**
        * Extracts multi-tone PCal information from a single-channel signal segment
@@ -160,8 +176,8 @@ class PCalExtractorImplicitShift : public PCal {
                                 const size_t sampleoffset);
       ~PCalExtractorImplicitShift();
    private:
-     PCalExtractorImplicitShift& operator= (const PCalExtractorImplicitShift& o) { /* no copy */ }
-     PCalExtractorImplicitShift(const PCalExtractorImplicitShift& o) { /* no copy */ }     
+     PCalExtractorImplicitShift& operator= (const PCalExtractorImplicitShift& o); /* no copy */
+     PCalExtractorImplicitShift(const PCalExtractorImplicitShift& o); /* no copy */     
 
    public:
       /**
@@ -176,6 +192,14 @@ class PCalExtractorImplicitShift : public PCal {
        * @param sampleoffset referenced back to start of subintegration interval
        */
       void clear(const size_t sampleoffset);
+
+      /**
+       * Adjust the sample offset. Should be called before extractAndIntegrate()
+       * every time there is a gap or backwards shift in the otherwise contiguous
+       * sample stream.
+       * @param sampleoffset referenced back to start of subintegration interval
+       */
+      void adjustSampleOffset(const size_t sampleoffset);
 
       /**
        * Extracts multi-tone PCal information from a single-channel signal segment
@@ -211,24 +235,32 @@ class PCalExtractorDummy : public PCal {
     PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_hz, const size_t sampleoffset);
     ~PCalExtractorDummy();
   private:
-    PCalExtractorDummy& operator= (const PCalExtractorDummy& o) { /* no copy */ }
-    PCalExtractorDummy(const PCalExtractorDummy& o) { /* no copy */ }
+    PCalExtractorDummy& operator= (const PCalExtractorDummy& o); /* no copy */
+    PCalExtractorDummy(const PCalExtractorDummy& o); /* no copy */
 
   public:
-      /**
-       * Set the extracted and accumulated PCal data back to zero.
-       * When several PCal are run in parallel in segments of a 
-       * time slice of data, and the PCal results from each segment
-       * should be combined later, care must be taken to tell the PCal
-       * extraction the number/offset of the first sample in the segment
-       * Typically 0 for the first segment, len(segment) for the second
-       * segment, and so on, until offset of the last segment
-       * which is len(subintegration_subslice)-len(segment).
-       * @param sampleoffset referenced back to start of subintegration interval
-       */
+    /**
+     * Set the extracted and accumulated PCal data back to zero.
+     * When several PCal are run in parallel in segments of a 
+     * time slice of data, and the PCal results from each segment
+     * should be combined later, care must be taken to tell the PCal
+     * extraction the number/offset of the first sample in the segment
+     * Typically 0 for the first segment, len(segment) for the second
+     * segment, and so on, until offset of the last segment
+     * which is len(subintegration_subslice)-len(segment).
+     * @param sampleoffset referenced back to start of subintegration interval
+     */
     void clear(const size_t sampleoffset);
 
-      /**
+    /**
+     * Adjust the sample offset. Should be called before extractAndIntegrate()
+     * every time there is a gap or backwards shift in the otherwise contiguous
+     * sample stream.
+     * @param sampleoffset referenced back to start of subintegration interval
+     */
+    void adjustSampleOffset(const size_t sampleoffset);
+
+    /**
      * Extracts multi-tone PCal information from a single-channel signal segment
      * and integrates it to the class-internal PCal extraction result buffer.
      * There are no restrictions to the segment length.
@@ -243,10 +275,10 @@ class PCalExtractorDummy : public PCal {
      * @paran samples Chunk of the input signal consisting of 'float' samples
      * @param len     Length of the input signal chunk
      * @return true on success
-       */
+     */
     bool extractAndIntegrate(f32 const* samples, const size_t len);
 
-      /**
+    /**
      * Performs finalization steps on the internal PCal results if necessary
      * and then copies these PCal results into the specified output array.
      * Data in the output array is overwritten with PCal results.
