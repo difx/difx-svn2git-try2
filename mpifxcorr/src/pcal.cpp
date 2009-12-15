@@ -106,7 +106,7 @@ PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, int pcal_offset_
     int No, Np;
     No = 2*bandwidth_hz / gcd(pcal_offset_hz, 2*bandwidth_hz);
     Np = 2*bandwidth_hz / gcd(pcal_spacing_hz, 2*bandwidth_hz);
-    if ((No % Np) == 0) {
+    if ((No % Np) == 0 /* && (!want_timedomain_delay) */) {
         return new PCalExtractorImplicitShift(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
     }
     return new PCalExtractorShifting(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
@@ -154,7 +154,8 @@ bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32
         pcalout[bin].im += sin(phi) * data[n];
     }
     _samplecount += len;
-    cout << "PCal::extractAndIntegrate_reference Ntones=" << _N_tones << " Nbins=" << Nbins << endl;
+    cout << "PCal::extractAndIntegrate_reference Ntones=" << _N_tones << " Nbins=" << Nbins 
+         << " toneperiod=" << maxtoneperiod << endl;
 
     int wbufsize = 0;
     IppsDFTSpec_C_32fc* dftspec;
@@ -187,7 +188,7 @@ PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing
     _fs_hz   = 2*bandwidth_hz;
     _pcaloffset_hz  = 0;
     _pcalspacing_hz = pcal_spacing_hz;
-    _N_bins  = _fs_hz / gcd(std::abs(pcal_spacing_hz), _fs_hz);
+    _N_bins  = _fs_hz / gcd(std::abs((double)pcal_spacing_hz), _fs_hz);
     _N_tones = std::floor(bandwidth_hz / pcal_spacing_hz);
 
     /* Prep for FFT/DFT */
@@ -232,10 +233,20 @@ void PCalExtractorTrivial::clear(const size_t sampleoffset)
     _finalized   = false;
     vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
     vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
-    _cfg->rotator_index = 0; // unused
-    _cfg->pcal_index    = sampleoffset % _N_bins;
+    adjustSampleOffset(sampleoffset);
 }
 
+/**
+ * Adjust the sample offset. Should be called before extractAndIntegrate()
+ * every time there is a gap or backwards shift in the otherwise contiguous
+ * sample stream.
+ * @param sampleoffset referenced back to start of subintegration interval
+ */
+void PCalExtractorTrivial::adjustSampleOffset(const size_t sampleoffset)
+{
+    _cfg->rotator_index = 0; // unused
+    _cfg->pcal_index = sampleoffset % _N_bins;
+}
 
 /**
  * Extracts multi-tone PCal information from a single-channel signal segment
@@ -315,10 +326,10 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
     _fs_hz          = 2 * bandwidth_hz;
     _pcaloffset_hz  = pcal_offset_hz;
     _pcalspacing_hz = pcal_spacing_hz;
-    _N_bins         = _fs_hz / gcd(std::abs(pcal_spacing_hz), _fs_hz);
+    _N_bins         = _fs_hz / gcd(std::abs((double)pcal_spacing_hz), _fs_hz);
     _N_tones        = std::floor((bandwidth_hz - pcal_offset_hz) / pcal_spacing_hz) + 1;
     _cfg = new pcal_config_pimpl();
-    _cfg->rotatorlen = _fs_hz / gcd(std::abs(_pcaloffset_hz), _fs_hz);
+    _cfg->rotatorlen = _fs_hz / gcd(std::abs((double)_pcaloffset_hz), _fs_hz);
 
     /* Prep for FFT/DFT */
     // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
@@ -382,6 +393,17 @@ void PCalExtractorShifting::clear(const size_t sampleoffset)
     vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
     vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
     vectorZero_cf32(_cfg->rotated,      _cfg->rotatorlen * 2);
+    adjustSampleOffset(sampleoffset);
+}
+
+/**
+ * Adjust the sample offset. Should be called before extractAndIntegrate()
+ * every time there is a gap or backwards shift in the otherwise contiguous
+ * sample stream.
+ * @param sampleoffset referenced back to start of subintegration interval
+ */
+void PCalExtractorShifting::adjustSampleOffset(const size_t sampleoffset)
+{
     _cfg->rotator_index = sampleoffset % _cfg->rotatorlen;
     _cfg->pcal_index    = sampleoffset % _N_bins;
 }
@@ -505,7 +527,7 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
     _fs_hz          = 2 * bandwidth_hz;
     _pcalspacing_hz = pcal_spacing_hz;
     _pcaloffset_hz  = pcal_offset_hz;
-    _N_bins         = _fs_hz / gcd(std::abs(_pcaloffset_hz), _fs_hz);
+    _N_bins         = _fs_hz / gcd(std::abs((double)_pcaloffset_hz), _fs_hz);
     _N_tones        = std::floor((bandwidth_hz - pcal_offset_hz) / pcal_spacing_hz) + 1;
     _cfg = new pcal_config_pimpl();
 
@@ -559,9 +581,19 @@ void PCalExtractorImplicitShift::clear(const size_t sampleoffset)
     _finalized   = false;
     vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
     vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
-    _cfg->pcal_index = sampleoffset % _N_bins;
+    adjustSampleOffset(sampleoffset);
 }
 
+/**
+ * Adjust the sample offset. Should be called before extractAndIntegrate()
+ * every time there is a gap or backwards shift in the otherwise contiguous
+ * sample stream.
+ * @param sampleoffset referenced back to start of subintegration interval
+ */
+void PCalExtractorImplicitShift::adjustSampleOffset(const size_t sampleoffset)
+{
+    _cfg->pcal_index = sampleoffset % _N_bins;
+}
 
 /**
  * Extracts multi-tone PCal information from a single-channel signal segment
@@ -742,6 +774,7 @@ PCalExtractorDummy::PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_
   _fs_hz   = 2*bandwidth_hz;
   _N_bins  = _fs_hz / gcd(std::abs(pcal_spacing_hz), _fs_hz);
   _N_tones = std::floor(bandwidth_hz / pcal_spacing_hz);
+  _cfg = (pcal_config_pimpl*)1;
   this->clear(sampleoffset);
   cout << "PCalExtractorDummy: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << endl;
 }
@@ -768,6 +801,16 @@ void PCalExtractorDummy::clear(const size_t sampleoffset)
   _finalized   = false;
 }
 
+/**
+ * Adjust the sample offset. Should be called before extractAndIntegrate()
+ * every time there is a gap or backwards shift in the otherwise contiguous
+ * sample stream.
+ * @param sampleoffset referenced back to start of subintegration interval
+ */
+void PCalExtractorDummy::adjustSampleOffset(const size_t sampleoffset)
+{
+    (void)sampleoffset;
+}
 
 /**
  * Does not do much.
@@ -836,15 +879,19 @@ g++ -m64 -DUNIT_TEST -Wall -O3 -I$(IPPROOT)/include/ -pthread -I.. pcal.cpp -o t
 void print_32f(const Ipp32f* v, const size_t len);
 void print_32fc(const Ipp32fc* v, const size_t len);
 void print_32fc_phase(const Ipp32fc* v, const size_t len);
+void compare_32fc_phase(const Ipp32fc* v, const size_t len, Ipp32f angle, Ipp32f step);
 
 int main(int argc, char** argv)
 {
    bool sloping_reference_data = true;
+   bool skip_some_data = true;
+   const long some_prime = 3;
+   uint64_t usedsamplecount;
+
    if (argc < 6) {
       cerr << "Usage: " << argv[0] << " <samplecount> <bandwidthHz> <spacingHz> <offsetHz> <sampleoffset>" << endl;
       return -1;
    }
-   // ippInit(); -- not in IPP 5.3.1?
    long samplecount = atof(argv[1]);
    long bandwidth = atof(argv[2]);
    long spacing = atof(argv[3]);
@@ -852,11 +899,18 @@ int main(int argc, char** argv)
    long sampleoffset = atof(argv[5]);
    cerr << "BWHz=" << bandwidth << " spcHz=" << spacing << ", offHz=" << offset << ", sampOff=" << sampleoffset << endl;
 
+   /* Get an extractor */
+   PCal* extractor = PCal::getNew(bandwidth, spacing, offset, sampleoffset);
+   int numtones = extractor->getLength();
+   cerr << "extractor->getLength() tone count is " << numtones << endl << endl;
+   Ipp32fc* out = (Ipp32fc*)memalign(128, sizeof(Ipp32fc)*numtones);
+   Ipp32fc* ref = (Ipp32fc*)memalign(128, sizeof(Ipp32fc)*numtones);
+
    /* Make test data for fixed -90deg or sloping -90deg+5deg*ToneNr phase */
    float* data = (float*)memalign(128, samplecount*sizeof(float));
    for (long n=0; n<samplecount; n++) {
       data[n] = 0; //rand()*1e-9;
-      for (int t=0; t<int(bandwidth/spacing); t++) {
+      for (int t=0; t<numtones; t++) {
           if (sloping_reference_data) {
               data[n] += sin(M_PI*(n+sampleoffset)*(offset + t*spacing)/bandwidth + t*M_PI*5/180);
           } else {
@@ -865,37 +919,41 @@ int main(int argc, char** argv)
       }
    }
 
-   /* Get an extractor */
-   PCal* extractor = PCal::getNew(bandwidth, spacing, offset, sampleoffset);
-   int numtones = extractor->getLength();
-   cerr << "extractor->getLength()=" << numtones << endl << endl;
-   Ipp32fc* out = (Ipp32fc*)memalign(128, sizeof(Ipp32fc)*numtones);
-   Ipp32fc* ref = (Ipp32fc*)memalign(128, sizeof(Ipp32fc)*numtones);
-
    /* Extract with the autoselected fast method */
    extractor->extractAndIntegrate(data, samplecount);
-   uint64_t usedsamplecount = extractor->getFinalPCal(out);
+   if (skip_some_data && (samplecount > some_prime)) {
+       long offset = sampleoffset + samplecount + some_prime;
+       extractor->adjustSampleOffset(offset);
+       extractor->extractAndIntegrate(data + some_prime, samplecount - some_prime);
+   }
+   usedsamplecount = extractor->getFinalPCal(out);
 
+   /* Check result */
    if (sloping_reference_data) {
        cerr << "Expected result: tones are sloping by -5deg each" << endl;
    } else {
        cerr << "Expected result: each tone has a fixed -90deg phase" << endl;
    }
-
-   cerr << "getFinalPCal returned samplecount=" << usedsamplecount << endl;
-   cerr << "final PCal reim: ";
-   print_32fc(out, numtones);
+   // cerr << "final PCal reim: ";
+   // print_32fc(out, numtones);
    cerr << "final PCal phase: ";
    print_32fc_phase(out, numtones);
+   compare_32fc_phase(out, numtones, -90.0f, (sloping_reference_data) ? 5.0f : 0.0f);
    cerr << endl;
 
-   /* "Visual" comparison with the "reference" extracted result */
-   extractor->clear(sampleoffset);
+   /* Comparison with the (poorer) "reference" extracted result */
+   extractor->clear(0);
+   if (skip_some_data) {
+       ippsAdd_32f_I(data+some_prime, data+some_prime, samplecount-some_prime);
+   }
    extractor->extractAndIntegrate_reference(data, samplecount, ref, sampleoffset);
-   cerr << "reference PCal reim: ";
-   print_32fc(ref, numtones);
-   cerr << "reference PCal phase: ";
+   //cerr << "reference PCal reim: ";
+   //print_32fc(ref, numtones);
+   cerr << "quasi-reference PCal phase: ";
    print_32fc_phase(ref, numtones); // should be ~ -90deg
+   compare_32fc_phase(ref, numtones, -90.0f, (sloping_reference_data) ? +5.0f : +0.0f);
+   cerr << endl;
+
    return 0;
 }
 
@@ -915,6 +973,19 @@ void print_32fc_phase(const Ipp32fc* v, const size_t len) {
       cerr << std::scientific << phi << " ";
    }
    cerr << "deg" << endl;
+}
+
+void compare_32fc_phase(const Ipp32fc* v, const size_t len, Ipp32f angle, Ipp32f step) {
+   bool pass = true;
+   for (size_t i=0; i<len; i++) { 
+      float phi = (180/M_PI)*std::atan2(v[i].im, v[i].re);
+      if (std::abs(phi - angle) > 1e-1) { // degrees
+          cerr << "tone #" << (i+1) << ": expect " << angle << ", got " << phi << endl;
+          pass = false;
+      }
+      angle += step;
+   }
+   cerr << "Extracted versus expected: " << ((pass) ? "PASS" : "NO PASS (or PASS but missed phase ambiguity)") << endl;
 }
 
 #endif
