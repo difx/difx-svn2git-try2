@@ -33,6 +33,7 @@
 
 #include "architecture.h"
 #include <cstddef>
+#include <cassert>
 #include <stdint.h>
 using std::size_t;
 
@@ -53,8 +54,8 @@ class PCal {
       PCal() {};
       ~PCal() {};
    private:
-      PCal(const PCal& o) { /* no copy */ }
-      PCal& operator= (const PCal& o) { /* no assign */ }
+      PCal(const PCal& o); /* no copy */
+      PCal& operator= (const PCal& o); /* no assign */
 
    public:
       /**
@@ -67,6 +68,7 @@ class PCal {
        * @return new PCal extractor class instance 
        */
       static PCal* getNew(double bandwidth_hz, double pcal_spacing_hz, int pcal_offset_hz, const size_t sampleoffset);
+      //TODO remove sampleoffset arg again since we have adjustSampleOffset()
 
    public:
       /**
@@ -81,7 +83,16 @@ class PCal {
        * @param sampleoffset referenced back to start of subintegration interval
        */
       virtual void clear(const size_t sampleoffset) = 0;
+      //TODO remove sampleoffset arg again since we have adjustSampleOffset()
 
+      /**
+       * Adjust the sample offset. Should be called before extractAndIntegrate()
+       * every time there is a gap or backwards shift in the otherwise contiguous
+       * sample stream.
+       * @param sampleoffset referenced back to start of subintegration interval
+       */
+      virtual void adjustSampleOffset(const size_t sampleoffset) = 0;
+ 
       /**
        * Extracts multi-tone PCal information from a single-channel signal segment
        * and integrates it to the class-internal PCal extraction result buffer.
@@ -145,6 +156,19 @@ class PCal {
       * Return greatest common divisor.
       */
       static long long gcd(long, long);
+
+   private:
+      /* Testing */
+      void invariant() { 
+          assert(_samplecount>=0);
+          assert(_fs_hz>0.0f);
+          assert(_pcaloffset_hz>=0.0f);
+          assert(_pcalspacing_hz>=0.0f);
+          assert(_pcaloffset_hz<_pcalspacing_hz);
+          assert(_N_bins>0);
+          assert(_N_tones>0);
+          assert(_cfg != NULL);
+      }
 
    private:
       uint64_t _samplecount;
