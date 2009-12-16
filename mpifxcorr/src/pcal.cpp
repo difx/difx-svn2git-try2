@@ -245,7 +245,7 @@ void PCalExtractorTrivial::clear(const size_t sampleoffset)
 void PCalExtractorTrivial::adjustSampleOffset(const size_t sampleoffset)
 {
     _cfg->rotator_index = 0; // unused
-    _cfg->pcal_index = sampleoffset % _N_bins;
+    _cfg->pcal_index = (sampleoffset+_cfg->pcal_index) % _N_bins;
 }
 
 /**
@@ -404,8 +404,8 @@ void PCalExtractorShifting::clear(const size_t sampleoffset)
  */
 void PCalExtractorShifting::adjustSampleOffset(const size_t sampleoffset)
 {
-    _cfg->rotator_index = sampleoffset % _cfg->rotatorlen;
-    _cfg->pcal_index    = sampleoffset % _N_bins;
+    _cfg->rotator_index = (sampleoffset+_cfg->pcal_index)% _cfg->rotatorlen;
+    _cfg->pcal_index    = (sampleoffset+_cfg->pcal_index)% _N_bins;
 }
 
 /**
@@ -592,7 +592,7 @@ void PCalExtractorImplicitShift::clear(const size_t sampleoffset)
  */
 void PCalExtractorImplicitShift::adjustSampleOffset(const size_t sampleoffset)
 {
-    _cfg->pcal_index = sampleoffset % _N_bins;
+    _cfg->pcal_index = (sampleoffset+_cfg->pcal_index)% _N_bins;
 }
 
 /**

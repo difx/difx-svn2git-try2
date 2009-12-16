@@ -457,8 +457,6 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
     geomdelaysamples = avgdelsamples;
   }
   */
-  for (int i = 0; i < numrecordedbands; i++)
-    extractor[i]->adjustSampleOffset(datans/sampletime + nearestsample);
   
   if((datalengthbytes <= 1) || (offsetseconds == INVALID_SUBINT) || (((validflags[index/FLAGS_PER_INT] >> (index%FLAGS_PER_INT)) & 0x01) == 0))
   {
@@ -513,12 +511,20 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
 
   if(!(config->getDPhaseCalIntervalMHz(configindex, datastreamindex) == 0)) 
   {
-    for(int i=0;i<numrecordedbands;i++)
-    {
-      status = extractor[i]->extractAndIntegrate(unpackedarrays[i], unpacksamples);
-      if(status != true)
-        csevere << startl << "Error in phase cal extractAndIntegrate" << endl;
-    }
+    avgdelsamples = averagedelay/sampletime;
+      if (geomdelaysamples != avgdelsamples) 
+      {
+        cout << datastreamindex <<" " << "shifting sample by " <<avgdelsamples-geomdelaysamples<< " time " << offsetseconds << " " << offsetns <<  fftstartmicrosec << endl;
+        //for(int i=0;i<numrecordedbands;i++)
+        //  extractor[i]->adjustSampleOffset(avgdelsamples-geomdelaysamples);
+        geomdelaysamples = avgdelsamples;
+      }
+      for(int i=0;i<numrecordedbands;i++)
+      {
+        status = extractor[i]->extractAndIntegrate(unpackedarrays[i], unpacksamples);
+        if(status != true)
+          csevere << startl << "Error in phase cal extractAndIntegrate" << endl;
+      }
   }
 
   integerdelay = 0;
@@ -909,13 +915,13 @@ void Mode::setData(u8 * d, int dbytes, int dscan, int dsec, int dns)
 
 void Mode::resetpcal(uint64_t sampleoffset)
 {
-  geomdelaysamples = ((offsetseconds - offsetseconds)*1e9 + (offsetns - datans))/sampletime;
+  geomdelaysamples = ((offsetseconds - datasec)*1e9 + (offsetns - datans))/(sampletime*1e3);
   
   for(int i=0;i<numrecordedbands;i++)
   {
     // NOTE Debug output
-    cout << "sampleoffset = " << sampleoffset << ", sampleoffset%nbins = " << sampleoffset%extractor[i]->getNBins() << endl;
-    extractor[i]->clear(sampleoffset);
+    cout << "sampleoffset = " << sampleoffset << ", sampleoffset%nbins = " << (geomdelaysamples + sampleoffset) << endl;
+    extractor[i]->clear(geomdelaysamples + sampleoffset);
   }
 }
 
