@@ -202,7 +202,7 @@ PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing
     _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 2);
     _cfg->pcal_real    = (f32*)memalign(128, sizeof(f32) * _N_bins * 2);
     _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
-    this->clear(sampleoffset);
+    this->clear();
     cout << "PCalExtractorTrivial: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
 }
 
@@ -227,13 +227,12 @@ PCalExtractorTrivial::~PCalExtractorTrivial()
  * which is len(subintegration_subslice)-len(segment).
  * @param sampleoffset referenced back to start of subintegration interval
  */
-void PCalExtractorTrivial::clear(const size_t sampleoffset)
+void PCalExtractorTrivial::clear()
 {
     _samplecount = 0;
     _finalized   = false;
     vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
     vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
-    adjustSampleOffset(sampleoffset);
 }
 
 /**
@@ -245,7 +244,7 @@ void PCalExtractorTrivial::clear(const size_t sampleoffset)
 void PCalExtractorTrivial::adjustSampleOffset(const size_t sampleoffset)
 {
     _cfg->rotator_index = 0; // unused
-    _cfg->pcal_index = (sampleoffset+_cfg->pcal_index) % _N_bins;
+    _cfg->pcal_index = (sampleoffset) % _N_bins;
 }
 
 /**
@@ -351,7 +350,7 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
     _cfg->rotator = (cf32*)memalign(128, sizeof(cf32) * _cfg->rotatorlen * 2);
     _cfg->rotated = (cf32*)memalign(128, sizeof(cf32) * _cfg->rotatorlen * 2);
     _cfg->dft_out = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
-    this->clear(sampleoffset);
+    this->clear();
 
     /* Prepare frequency shifter/mixer lookup */
     _cfg->dphi = 2*M_PI * (-_pcaloffset_hz/_fs_hz);
@@ -386,14 +385,13 @@ PCalExtractorShifting::~PCalExtractorShifting()
  * which is len(subintegration_subslice)-len(segment).
  * @param sampleoffset referenced back to start of subintegration interval
  */
-void PCalExtractorShifting::clear(const size_t sampleoffset)
+void PCalExtractorShifting::clear()
 {
     _samplecount = 0;
     _finalized   = false;
     vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
     vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
     vectorZero_cf32(_cfg->rotated,      _cfg->rotatorlen * 2);
-    adjustSampleOffset(sampleoffset);
 }
 
 /**
@@ -404,8 +402,8 @@ void PCalExtractorShifting::clear(const size_t sampleoffset)
  */
 void PCalExtractorShifting::adjustSampleOffset(const size_t sampleoffset)
 {
-    _cfg->rotator_index = (sampleoffset+_cfg->pcal_index)% _cfg->rotatorlen;
-    _cfg->pcal_index    = (sampleoffset+_cfg->pcal_index)% _N_bins;
+    _cfg->rotator_index = (sampleoffset)% _cfg->rotatorlen;
+    _cfg->pcal_index    = (sampleoffset)% _N_bins;
 }
 
 /**
@@ -549,7 +547,7 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
     _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 2);
     _cfg->pcal_real    = (f32*) memalign(128, sizeof(f32)  * _N_bins * 2);
     _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
-    this->clear(sampleoffset);
+    this->clear();
     cout << "PCalExtractorImplicitShift: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
 }
 
@@ -575,13 +573,12 @@ PCalExtractorImplicitShift::~PCalExtractorImplicitShift()
  * which is len(subintegration_subslice)-len(segment).
  * @param sampleoffset referenced back to start of subintegration interval
  */
-void PCalExtractorImplicitShift::clear(const size_t sampleoffset)
+void PCalExtractorImplicitShift::clear()
 {
     _samplecount = 0;
     _finalized   = false;
     vectorZero_cf32(_cfg->pcal_complex, _N_bins * 2);
     vectorZero_f32 (_cfg->pcal_real,    _N_bins * 2);
-    adjustSampleOffset(sampleoffset);
 }
 
 /**
@@ -592,7 +589,7 @@ void PCalExtractorImplicitShift::clear(const size_t sampleoffset)
  */
 void PCalExtractorImplicitShift::adjustSampleOffset(const size_t sampleoffset)
 {
-    _cfg->pcal_index = (sampleoffset+_cfg->pcal_index)% _N_bins;
+    _cfg->pcal_index = (sampleoffset)% _N_bins;
 }
 
 /**
@@ -775,7 +772,7 @@ PCalExtractorDummy::PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_
   _N_bins  = _fs_hz / gcd(std::abs(pcal_spacing_hz), _fs_hz);
   _N_tones = std::floor(bandwidth_hz / pcal_spacing_hz);
   _cfg = (pcal_config_pimpl*)1;
-  this->clear(sampleoffset);
+  this->clear();
   cout << "PCalExtractorDummy: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << endl;
 }
 
@@ -794,9 +791,8 @@ PCalExtractorDummy::~PCalExtractorDummy()
  * which is len(subintegration_subslice)-len(segment).
  * @param sampleoffset referenced back to start of subintegration interval
  */
-void PCalExtractorDummy::clear(const size_t sampleoffset)
+void PCalExtractorDummy::clear()
 {
-  (void)sampleoffset;
   _samplecount = 0;
   _finalized   = false;
 }
@@ -942,7 +938,7 @@ int main(int argc, char** argv)
    cerr << endl;
 
    /* Comparison with the (poorer) "reference" extracted result */
-   extractor->clear(0);
+   extractor->clear();
    if (skip_some_data) {
        ippsAdd_32f_I(data+some_prime, data+some_prime, samplecount-some_prime);
    }

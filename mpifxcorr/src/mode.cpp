@@ -449,15 +449,6 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
   int indices[10];
   //cout << "For Mode of datastream " << datastreamindex << ", index " << index << ", validflags is " << validflags[index/FLAGS_PER_INT] << ", after shift you get " << ((validflags[index/FLAGS_PER_INT] >> (index%FLAGS_PER_INT)) & 0x01) << endl;
   
-  /*
-  avgdelsamples = averagedelay/sampletime;
-  if (geomdelaysamples != avgdelsamples) {
-    for (int i = 0; i < numrecordedbands; i++)
-      extractor[i]->adjustSampleOffset(geomdelaysamples);
-    geomdelaysamples = avgdelsamples;
-  }
-  */
-  
   if((datalengthbytes <= 1) || (offsetseconds == INVALID_SUBINT) || (((validflags[index/FLAGS_PER_INT] >> (index%FLAGS_PER_INT)) & 0x01) == 0))
   {
     for(int i=0;i<numrecordedbands;i++)
@@ -506,21 +497,13 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
   if(!(dataweight > 0.0))
     return 0.0;
 
-  nearestsampletime = nearestsample*sampletime;
   fracsampleerror = float(starttime - nearestsampletime);
 
   if(!(config->getDPhaseCalIntervalMHz(configindex, datastreamindex) == 0)) 
   {
-    avgdelsamples = averagedelay/sampletime;
-      if (geomdelaysamples != avgdelsamples) 
-      {
-        cout << datastreamindex <<" " << "shifting sample by " <<avgdelsamples-geomdelaysamples<< " time " << offsetseconds << " " << offsetns <<  fftstartmicrosec << endl;
-        //for(int i=0;i<numrecordedbands;i++)
-        //  extractor[i]->adjustSampleOffset(avgdelsamples-geomdelaysamples);
-        geomdelaysamples = avgdelsamples;
-      }
       for(int i=0;i<numrecordedbands;i++)
       {
+        extractor[i]->adjustSampleOffset(datasamples+nearestsample);
         status = extractor[i]->extractAndIntegrate(unpackedarrays[i], unpacksamples);
         if(status != true)
           csevere << startl << "Error in phase cal extractAndIntegrate" << endl;
@@ -911,17 +894,14 @@ void Mode::setData(u8 * d, int dbytes, int dscan, int dsec, int dns)
   datasec = dsec;
   datans = dns;
   unpackstartsamples = -999999999;
+  datasamples = datans/(sampletime*1e3);
 }
 
-void Mode::resetpcal(uint64_t sampleoffset)
+void Mode::resetpcal()
 {
-  geomdelaysamples = ((offsetseconds - datasec)*1e9 + (offsetns - datans))/(sampletime*1e3);
-  
   for(int i=0;i<numrecordedbands;i++)
   {
-    // NOTE Debug output
-    cout << "sampleoffset = " << sampleoffset << ", sampleoffset%nbins = " << (geomdelaysamples + sampleoffset) << endl;
-    extractor[i]->clear(geomdelaysamples + sampleoffset);
+    extractor[i]->clear();
   }
 }
 

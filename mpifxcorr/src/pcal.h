@@ -82,7 +82,7 @@ class PCal {
        * which is len(subintegration_subslice)-len(segment).
        * @param sampleoffset referenced back to start of subintegration interval
        */
-      virtual void clear(const size_t sampleoffset) = 0;
+      virtual void clear() = 0;
       //TODO remove sampleoffset arg again since we have adjustSampleOffset()
 
       /**

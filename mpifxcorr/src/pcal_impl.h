@@ -62,7 +62,7 @@ class PCalExtractorTrivial : public PCal {
        * which is len(subintegration_subslice)-len(segment).
        * @param sampleoffset referenced back to start of subintegration interval
        */
-      void clear(const size_t sampleoffset);
+      void clear();
 
       /**
        * Adjust the sample offset. Should be called before extractAndIntegrate()
@@ -127,7 +127,7 @@ class PCalExtractorShifting : public PCal {
        * which is len(subintegration_subslice)-len(segment).
        * @param sampleoffset referenced back to start of subintegration interval
        */
-      void clear(const size_t sampleoffset);
+      void clear();
 
       /**
        * Adjust the sample offset. Should be called before extractAndIntegrate()
@@ -191,7 +191,7 @@ class PCalExtractorImplicitShift : public PCal {
        * which is len(subintegration_subslice)-len(segment).
        * @param sampleoffset referenced back to start of subintegration interval
        */
-      void clear(const size_t sampleoffset);
+      void clear();
 
       /**
        * Adjust the sample offset. Should be called before extractAndIntegrate()
@@ -250,7 +250,7 @@ class PCalExtractorDummy : public PCal {
      * which is len(subintegration_subslice)-len(segment).
      * @param sampleoffset referenced back to start of subintegration interval
      */
-    void clear(const size_t sampleoffset);
+    void clear();
 
     /**
      * Adjust the sample offset. Should be called before extractAndIntegrate()
