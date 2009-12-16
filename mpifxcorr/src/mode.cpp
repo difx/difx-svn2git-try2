@@ -449,12 +449,16 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
   int indices[10];
   //cout << "For Mode of datastream " << datastreamindex << ", index " << index << ", validflags is " << validflags[index/FLAGS_PER_INT] << ", after shift you get " << ((validflags[index/FLAGS_PER_INT] >> (index%FLAGS_PER_INT)) & 0x01) << endl;
   
+  /*
   avgdelsamples = averagedelay/sampletime;
   if (geomdelaysamples != avgdelsamples) {
     for (int i = 0; i < numrecordedbands; i++)
       extractor[i]->adjustSampleOffset(geomdelaysamples);
     geomdelaysamples = avgdelsamples;
   }
+  */
+  for (int i = 0; i < numrecordedbands; i++)
+    extractor[i]->adjustSampleOffset(datans/sampletime + nearestsample);
   
   if((datalengthbytes <= 1) || (offsetseconds == INVALID_SUBINT) || (((validflags[index/FLAGS_PER_INT] >> (index%FLAGS_PER_INT)) & 0x01) == 0))
   {
@@ -905,7 +909,7 @@ void Mode::setData(u8 * d, int dbytes, int dscan, int dsec, int dns)
 
 void Mode::resetpcal(uint64_t sampleoffset)
 {
-  geomdelaysamples = (offsetseconds + offsetns*1e-9 - (datasec + datans*1e-9))/(sampletime*1e-9);
+  geomdelaysamples = ((offsetseconds - offsetseconds)*1e9 + (offsetns - datans))/sampletime;
   
   for(int i=0;i<numrecordedbands;i++)
   {
