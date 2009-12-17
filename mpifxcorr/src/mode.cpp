@@ -504,7 +504,9 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
       for(int i=0;i<numrecordedbands;i++)
       {
         extractor[i]->adjustSampleOffset(datasamples+nearestsample);
-        status = extractor[i]->extractAndIntegrate(unpackedarrays[i], unpacksamples);
+        // status = extractor[i]->extractAndIntegrate(unpackedarrays[i], unpacksamples);
+	status = extractor[i]->extractAndIntegrate(&(unpackedarrays[i][nearestsample
+	    - unpackstartsamples]), twicerecordedbandchannels);
         if(status != true)
           csevere << startl << "Error in phase cal extractAndIntegrate" << endl;
       }
