@@ -981,7 +981,7 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
             //get the default response ready in case we don't find anything
             sprintf(pcalstr, "  %d %.6f %.10f %.3f", -1, 0.0, 0.0, 0.0);
 
-            if(t >= config->getDRecordedFreqNumPCalTones(currentconfigindex, i, j)) {
+	    if(t >= config->getDRecordedFreqNumPCalTones(currentconfigindex, i, config->getDLocalRecordedFreqIndex(currentconfigindex, i, j))) {
               //don't write any tones we don't have
               pcaloutput.write(pcalstr, strlen(pcalstr));
               continue; //move on

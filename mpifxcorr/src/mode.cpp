@@ -497,6 +497,7 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
   if(!(dataweight > 0.0))
     return 0.0;
 
+  nearestsampletime = nearestsample*sampletime;
   fracsampleerror = float(starttime - nearestsampletime);
 
   if(!(config->getDPhaseCalIntervalMHz(configindex, datastreamindex) == 0)) 
