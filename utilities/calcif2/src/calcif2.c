@@ -317,14 +317,21 @@ int skipFile(const char *f1, const char *f2)
 int runfile(const char *prefix, const CommandLineOptions *opts,
 	CalcParams *p)
 {
+	const int FilenameSize = 256;
 	DifxInput *D;
 	int v;
-	char imfile[256];
-	char uvwfile[256];
-	char ratefile[256];
-	char delayfile[256];
-	char calcfile[256];
+	char imfile[FilenameSize];
+	char uvwfile[FilenameSize];
+	char ratefile[FilenameSize];
+	char delayfile[FilenameSize];
+	char calcfile[FilenameSize];
 	const char *difxVersion;
+
+	if(strlen(prefix)+8 > FilenameSize)
+	{
+		fprintf(stderr, "Warning: filename prefix '%s' is too long.  skipping!\n", prefix);
+		return 0;
+	}
 
 	sprintf(imfile,    "%s.im",    prefix);
 	sprintf(uvwfile,   "%s.uvw",   prefix);
