@@ -35,6 +35,9 @@
 #include <cstddef>
 #include <cassert>
 #include <stdint.h>
+
+#include "alert.h"
+
 using std::size_t;
 
 class PCalExtractorTrivial;

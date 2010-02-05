@@ -31,6 +31,8 @@
 
 #include <malloc.h>
 
+#include "alert.h"
+
 using namespace std;
 
 /**
