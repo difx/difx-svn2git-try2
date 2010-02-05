@@ -244,6 +244,13 @@ Configuration::~Configuration()
       delete [] datastreamtable[i].zoombandpols;
       delete [] datastreamtable[i].zoombandlocalfreqindices;
       delete [] datastreamtable[i].datafilenames;
+      if(datastreamtable[i].phasecalintervalmhz > 0) {
+	for (int j=0;j<datastreamtable[i].numrecordedfreqs;j++)
+	  delete [] datastreamtable[i].recordedfreqpcaltonefreqs[j];
+	delete [] datastreamtable[i].numrecordedfreqpcaltones;
+	delete [] datastreamtable[i].recordedfreqpcaltonefreqs;
+	delete [] datastreamtable[i].recordedfreqpcaloffsetshz;
+      }
     }
     delete [] datastreamtable;
   }
