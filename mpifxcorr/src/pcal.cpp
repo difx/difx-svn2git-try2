@@ -47,14 +47,12 @@ using namespace std;
 
 void print_f32(const Ipp32f* v, const int len)
 {
-   for (int i=0; i<len; i++) cout << v[i] << " ";
-   cout << endl;
+   for (int i=0; i<len; i++) cverbose << v[i] << " ";
 }
 
 void print_fc32(const Ipp32fc* v, const int len)
 {
-   for (int i=0;i<len; i++) cout << v[i].re << "+i" << v[i].im << " ";
-   cout << endl;
+   for (int i=0;i<len; i++) cverbose << v[i].re << "+i" << v[i].im << " ";
 }
 
 class pcal_config_pimpl {
@@ -154,20 +152,20 @@ bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32
         pcalout[bin].im += sin(phi) * data[n];
     }
     _samplecount += len;
-    cout << "PCal::extractAndIntegrate_reference Ntones=" << _N_tones << " Nbins=" << Nbins 
-         << " toneperiod=" << maxtoneperiod << endl;
+    cverbose << "PCal::extractAndIntegrate_reference Ntones=" << _N_tones << " Nbins=" << Nbins 
+         << " toneperiod=" << maxtoneperiod;
 
     int wbufsize = 0;
     IppsDFTSpec_C_32fc* dftspec;
     IppStatus s = ippsDFTInitAlloc_C_32fc(&dftspec, Nbins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
-    if (s != ippStsNoErr) { cerr << "DFTInitAlloc err " << ippGetStatusString(s) << endl; } 
+    if (s != ippStsNoErr) { cerr << "DFTInitAlloc err " << ippGetStatusString(s); } 
     s = ippsDFTGetBufSize_C_32fc(dftspec, &wbufsize);
-    if (s != ippStsNoErr) { cerr << "DFTGetBufSize err " << ippGetStatusString(s) << endl; }
+    if (s != ippStsNoErr) { cerr << "DFTGetBufSize err " << ippGetStatusString(s); }
     Ipp8u* dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
     Ipp32fc dftout[Nbins];
     s = ippsDFTFwd_CToC_32fc(pcalout, dftout, dftspec, dftworkbuf);
-    if (s != ippStsNoErr) cerr << "DFTFwd err " << ippGetStatusString(s) << endl; 
+    if (s != ippStsNoErr) cerr << "DFTFwd err " << ippGetStatusString(s); 
     ippsCopy_32fc(dftout, out, _N_tones);
 
     ippsDFTFree_C_32fc(dftspec);
@@ -203,7 +201,7 @@ PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing
     _cfg->pcal_real    = (f32*)memalign(128, sizeof(f32) * _N_bins * 2);
     _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
     this->clear();
-    cverbose << "PCalExtractorTrivial: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
+    cverbose << "PCalExtractorTrivial: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize;
 }
 
 PCalExtractorTrivial::~PCalExtractorTrivial()
@@ -304,7 +302,7 @@ uint64_t PCalExtractorTrivial::getFinalPCal(cf32* out)
         vectorRealToComplex_f32(/*srcRe*/_cfg->pcal_real, /*srcIm*/NULL, _cfg->pcal_complex, _N_bins);
         IppStatus r = ippsDFTFwd_CToC_32fc(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
         if (r != ippStsNoErr) {
-            cout << "ippsDFTFwd error " << ippGetStatusString(r) << endl;
+            cverbose << "ippsDFTFwd error " << ippGetStatusString(r);
         }
     }
 
@@ -336,11 +334,11 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
     IppStatus r;
     r = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
     if (r != ippStsNoErr) {
-        cout << "ippsDFTInitAlloc _N_bins=" << _N_bins << " error " << ippGetStatusString(r) << endl;
+        cverbose << "ippsDFTInitAlloc _N_bins=" << _N_bins << " error " << ippGetStatusString(r);
     }
     r = ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
     if (r != ippStsNoErr) {
-        cout << "ippsDFTGetBufSize error " << ippGetStatusString(r) << endl;
+        cverbose << "ippsDFTGetBufSize error " << ippGetStatusString(r);
     }
     _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
@@ -359,7 +357,7 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
         _cfg->rotator[n].re = f32(cos(arg));
         _cfg->rotator[n].im = f32(sin(arg));
     }
-    cverbose << "PcalExtractorShifting: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
+    cverbose << "PcalExtractorShifting: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize;
 }
 
 PCalExtractorShifting::~PCalExtractorShifting()
@@ -494,7 +492,7 @@ uint64_t PCalExtractorShifting::getFinalPCal(cf32* out)
         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
         IppStatus r = ippsDFTFwd_CToC_32fc(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
         if (r != ippStsNoErr) {
-            cout << "ippsDFTFwd error " << ippGetStatusString(r) << endl;
+            cverbose << "ippsDFTFwd error " << ippGetStatusString(r);
         }
     }
 
@@ -535,11 +533,11 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
     IppStatus r;
     r = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
     if (r != ippStsNoErr) {
-        cout << "ippsDFTInitAlloc _N_bins=" << _N_bins << " error " << ippGetStatusString(r) << endl;
+        cverbose << "ippsDFTInitAlloc _N_bins=" << _N_bins << " error " << ippGetStatusString(r);
     }
     r = ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
     if (r != ippStsNoErr) {
-        cout << "ippsDFTGetBufSize error " << ippGetStatusString(r) << endl;
+        cverbose << "ippsDFTGetBufSize error " << ippGetStatusString(r);
     }
     _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
@@ -548,7 +546,7 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
     _cfg->pcal_real    = (f32*) memalign(128, sizeof(f32)  * _N_bins * 2);
     _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
     this->clear();
-    cverbose << "PCalExtractorImplicitShift: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
+    cverbose << "PCalExtractorImplicitShift: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize;
 }
 
 
@@ -611,7 +609,7 @@ void PCalExtractorImplicitShift::adjustSampleOffset(const size_t sampleoffset)
 bool PCalExtractorImplicitShift::extractAndIntegrate(f32 const* samples, const size_t len)
 {
     if (_finalized) { 
-        cout << "PCalExtractorImplicitShift::extractAndIntegrate on finalized class!" << endl;
+        cverbose << "PCalExtractorImplicitShift::extractAndIntegrate on finalized class!";
         return false; 
     }
 
@@ -661,7 +659,7 @@ uint64_t PCalExtractorImplicitShift::getFinalPCal(cf32* out)
         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
         IppStatus r = ippsDFTFwd_CToC_32fc(/*src*/ _cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
         if (r != ippStsNoErr) {
-            cout << "ippsDFTFwd error " << ippGetStatusString(r) << endl;
+            cverbose << "ippsDFTFwd error " << ippGetStatusString(r);
         }
     }
  
@@ -773,7 +771,7 @@ PCalExtractorDummy::PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_
   _N_tones = std::floor(bandwidth_hz / pcal_spacing_hz);
   _cfg = (pcal_config_pimpl*)1;
   this->clear();
-  cverbose << "PCalExtractorDummy: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << endl;
+  cverbose << "PCalExtractorDummy: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins;
 }
 
 PCalExtractorDummy::~PCalExtractorDummy()
@@ -821,12 +819,12 @@ void PCalExtractorDummy::adjustSampleOffset(const size_t sampleoffset)
 bool PCalExtractorDummy::extractAndIntegrate(f32 const* samples, const size_t len)
 {
   if (false && _finalized) { 
-      cout << "Dummy::extract on finalized results!" << endl;
+      cverbose << "Dummy::extract on finalized results!";
       return false; 
   }
   _samplecount += len;
   if (false && _samplecount>0 && _samplecount<1024) { // print just a few times
-     cout << "_samplecount=" << _samplecount << endl;
+     cverbose << "_samplecount=" << _samplecount;
   }
   return true;
 }
@@ -842,8 +840,8 @@ bool PCalExtractorDummy::extractAndIntegrate(f32 const* samples, const size_t le
 uint64_t PCalExtractorDummy::getFinalPCal(cf32* out)
 {
     if (false && _samplecount == 0) {
-        cout << "Dummy::getFinalPCal called without call to extractAndIntegrate()!" << endl;
-        cout << "                           or after call to clear()!" << endl;
+        cverbose << "Dummy::getFinalPCal called without call to extractAndIntegrate()!";
+        cverbose << "                           or after call to clear()!";
     }
     _finalized = true;
 
@@ -885,7 +883,7 @@ int main(int argc, char** argv)
    uint64_t usedsamplecount;
 
    if (argc < 6) {
-      cerr << "Usage: " << argv[0] << " <samplecount> <bandwidthHz> <spacingHz> <offsetHz> <sampleoffset>" << endl;
+      cerr << "Usage: " << argv[0] << " <samplecount> <bandwidthHz> <spacingHz> <offsetHz> <sampleoffset>";
       return -1;
    }
    long samplecount = atof(argv[1]);
@@ -893,12 +891,12 @@ int main(int argc, char** argv)
    long spacing = atof(argv[3]);
    long offset = atof(argv[4]);
    long sampleoffset = atof(argv[5]);
-   cerr << "BWHz=" << bandwidth << " spcHz=" << spacing << ", offHz=" << offset << ", sampOff=" << sampleoffset << endl;
+   cerr << "BWHz=" << bandwidth << " spcHz=" << spacing << ", offHz=" << offset << ", sampOff=" << sampleoffset;
 
    /* Get an extractor */
    PCal* extractor = PCal::getNew(bandwidth, spacing, offset, sampleoffset);
    int numtones = extractor->getLength();
-   cerr << "extractor->getLength() tone count is " << numtones << endl << endl;
+   cerr << "extractor->getLength() tone count is " << numtones;
    Ipp32fc* out = (Ipp32fc*)memalign(128, sizeof(Ipp32fc)*numtones);
    Ipp32fc* ref = (Ipp32fc*)memalign(128, sizeof(Ipp32fc)*numtones);
 
@@ -926,16 +924,15 @@ int main(int argc, char** argv)
 
    /* Check result */
    if (sloping_reference_data) {
-       cerr << "Expected result: tones are sloping by -5deg each" << endl;
+       cerr << "Expected result: tones are sloping by -5deg each";
    } else {
-       cerr << "Expected result: each tone has a fixed -90deg phase" << endl;
+       cerr << "Expected result: each tone has a fixed -90deg phase";
    }
    // cerr << "final PCal reim: ";
    // print_32fc(out, numtones);
    cerr << "final PCal phase: ";
    print_32fc_phase(out, numtones);
    compare_32fc_phase(out, numtones, -90.0f, (sloping_reference_data) ? 5.0f : 0.0f);
-   cerr << endl;
 
    /* Comparison with the (poorer) "reference" extracted result */
    extractor->clear();
@@ -948,19 +945,16 @@ int main(int argc, char** argv)
    cerr << "quasi-reference PCal phase: ";
    print_32fc_phase(ref, numtones); // should be ~ -90deg
    compare_32fc_phase(ref, numtones, -90.0f, (sloping_reference_data) ? +5.0f : +0.0f);
-   cerr << endl;
 
    return 0;
 }
 
 void print_32f(const Ipp32f* v, const size_t len) {
    for (size_t i=0; i<len; i++) { cerr << std::scientific << v[i] << " "; }
-   cerr << endl;
 }
 
 void print_32fc(const Ipp32fc* v, const size_t len) {
    for (size_t i=0; i<len; i++) { cerr << std::scientific << v[i].re << "+i" << v[i].im << " "; }
-   cerr << endl;
 }
 
 void print_32fc_phase(const Ipp32fc* v, const size_t len) {
@@ -968,7 +962,7 @@ void print_32fc_phase(const Ipp32fc* v, const size_t len) {
       float phi = (180/M_PI)*std::atan2(v[i].im, v[i].re);
       cerr << std::scientific << phi << " ";
    }
-   cerr << "deg" << endl;
+   cerr << "deg";
 }
 
 void compare_32fc_phase(const Ipp32fc* v, const size_t len, Ipp32f angle, Ipp32f step) {
@@ -976,12 +970,12 @@ void compare_32fc_phase(const Ipp32fc* v, const size_t len, Ipp32f angle, Ipp32f
    for (size_t i=0; i<len; i++) { 
       float phi = (180/M_PI)*std::atan2(v[i].im, v[i].re);
       if (std::abs(phi - angle) > 1e-1) { // degrees
-          cerr << "tone #" << (i+1) << ": expect " << angle << ", got " << phi << endl;
+          cerr << "tone #" << (i+1) << ": expect " << angle << ", got " << phi;
           pass = false;
       }
       angle += step;
    }
-   cerr << "Extracted versus expected: " << ((pass) ? "PASS" : "NO PASS (or PASS but missed phase ambiguity)") << endl;
+   cerr << "Extracted versus expected: " << ((pass) ? "PASS" : "NO PASS (or PASS but missed phase ambiguity)");
 }
 
 #endif
