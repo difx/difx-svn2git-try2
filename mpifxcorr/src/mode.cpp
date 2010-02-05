@@ -914,7 +914,7 @@ void Mode::finalisepcal()
   {
     uint64_t samples = extractor[i]->getFinalPCal(pcalresults[i]);
     if ((samples == 0) && (datasec != INVALID_SUBINT) && (datalengthbytes > 1)) {
-        cverbose << "finalisepcal band " << i << " samples==0 over valid subint " << datasec << "s+" << datans << "ns" << endl;
+        cverbose << "finalisepcal band " << i << " samples==0 over valid subint " << datasec << "s+" << datans << "ns";
     }
   }
 }
