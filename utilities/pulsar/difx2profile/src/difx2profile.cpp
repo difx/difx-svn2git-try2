@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
       dirp = readdir(dp);
     if(dirp == NULL) {
       cerr << "Couldn't find a difx file in directory " << config->getOutputFilename() << " - aborting!!" << endl;
+      closedir(dp);
       return EXIT_FAILURE;
     }
     difxfile = config->getOutputFilename() + "/" + string(dirp->d_name);
@@ -106,6 +107,7 @@ int main(int argc, char *argv[])
     input = new ifstream(difxfile.c_str(), ios::in);
     if(!input->is_open()) {
       cout << "Could not open file " << difxfile << " - aborting!" << endl;
+      closedir(dp);
       return EXIT_FAILURE;
     }
     double maxvisibility = 0.0;
@@ -166,6 +168,7 @@ int main(int argc, char *argv[])
     input->close();
     delete input;
     //delete config;
+    closedir(dp);
   }
 
   cout << "About to normalise" << endl;
@@ -225,6 +228,7 @@ int main(int argc, char *argv[])
     }
     for(int i=0;i<nbins;i++) 
       cout << "Overall bin count " << i << " was " << overallbincounts[i] << endl;
+    delete [] overallbincounts;
   }
 
   cout << "About to write out the profile file" << endl;
