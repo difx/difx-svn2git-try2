@@ -1,4 +1,4 @@
-AC_INIT([calcif2], [1.3], [Walter Brisken <wbrisken@nrao.edu>])
+AC_INIT([calcif2], [1.4], [Walter Brisken <wbrisken@nrao.edu>])
 AM_CONFIG_HEADER(config.h)
 
 AM_INIT_AUTOMAKE
@@ -8,7 +8,7 @@ AM_SANITY_CHECK
 
 AC_CHECK_LIB(m, erf,,[AC_MSG_ERROR("need libm")])
 
-PKG_CHECK_MODULES(DIFXIO, difxio >= 2.12.2)
+PKG_CHECK_MODULES(DIFXIO, difxio >= 2.12.3)
 LIBS="${LIBS} ${DIFXIO_LIBS}"
 CFLAGS="${CFLAGS} ${DIFXIO_CFLAGS}"
 
