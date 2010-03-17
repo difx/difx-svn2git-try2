@@ -1,5 +1,5 @@
 AC_PREREQ(2.50)
-AC_INIT([DIFX2PROFILE], [0.1], [difxusers at googlegroups.com])
+AC_INIT([DIFX2PROFILE], [0.2], [difxusers at googlegroups.com])
 PACKAGE_VERSION=AC_PACKAGE_VERSION
 AC_SUBST([PACKAGE_VERSION])
 AC_SUBST([LIBRARY_VERSION])
@@ -46,10 +46,10 @@ fi
 dnl **********************************************************
 
 # Checks for libraries.
-PKG_CHECK_MODULES(DIFXIO, difxio >= 2.9)
-PKG_CHECK_MODULES(FXCORR, fxcorr >= 1.5)
+PKG_CHECK_MODULES(DIFXIO, difxio >= 2.12.2)
+PKG_CHECK_MODULES(FXCORR, fxcorr >= 1.5.3)
 dm_enabled=true
-PKG_CHECK_MODULES(DIFXMESSAGE, difxmessage >= 0.4,
+PKG_CHECK_MODULES(DIFXMESSAGE, difxmessage >= 0.7,
                   [AC_DEFINE([HAVE_DIFXMESSAGE], 1, [1=has DIFXMESSAGE])],
                   dm_enabled=false)
 AM_CONDITIONAL(WITH_DIFXMESSAGE, $dm_enabled)

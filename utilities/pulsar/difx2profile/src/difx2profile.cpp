@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     cout << "Processing file " << i << "/" << njobs << endl;
 
     config = new Configuration(argv[i], 0);
-    if(config->getNumConfigs() > 1 || !config->pulsarBinOn(0)) {
+    if(config->getNumConfigs() > 1 || !config->pulsarBinOn(0) || config->scrunchOutputOn(0)) {
       cerr << "Error - must be a single config with pulsar binning on - aborting!" << endl;
       return EXIT_FAILURE;
     }
