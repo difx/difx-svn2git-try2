@@ -181,10 +181,10 @@ public:
   static const float TINY;
     
   /**
-   * Returns the twodimensional pcalresults array
+   * Returns a single pcal result.
    * @param outpubband The band to get
    * @param tone The number of the tone to get
-   * @return pcalresults vector
+   * @return pcal result
    */
   inline cf32 getPcal(int outputband, int tone) 
   { 

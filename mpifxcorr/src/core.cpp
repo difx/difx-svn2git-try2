@@ -1009,11 +1009,11 @@ void Core::copyPCalTones(int index, int threadid, Mode ** modes)
         {
           procslots[index].results[resultindex].re += modes[i]->getPcal(j,k).re;
           procslots[index].results[resultindex].im += modes[i]->getPcal(j,k).im;
+	  resultindex++;
 	  
 	  //NOTE Print the pcals out to stdout for debugging.
 	  // cout << "PCAL " <<  " " << procslots[index].offsets[1] <<  " " << procslots[index].offsets[2]/1000000 << " secs ms "<<i << " " << j << " " << k << " " << sqrt(pow(modes[i]->getPcal(j,k).re, 2.0) + pow(modes[i]->getPcal(j,k).im, 2.0)) << " " << atan2(modes[i]->getPcal(j,k).im, modes[i]->getPcal(j,k).re)*180.0/M_PI << endl;
           
-	  resultindex++;
         }
       }
     }
