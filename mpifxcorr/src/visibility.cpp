@@ -978,7 +978,7 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
 	  for(int t=0;t<config->getDMaxRecordedPCalTones(currentconfigindex, i);t++)
           {
             //get the default response ready in case we don't find anything
-	    sprintf(pcalstr, "  %d %.2f %.4f %.3f", -1, 0.0, 0.0, 0.0);
+	    sprintf(pcalstr, " %3d %d %.5e %.5e", -1, 0.0, 0.0, 0.0);
 	      
 	    if(t >= config->getDRecordedFreqNumPCalTones(currentconfigindex, i, config->getDLocalRecordedFreqIndex(currentconfigindex, i, j))) {
 		//don't write any tones we don't have
@@ -992,9 +992,9 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
             {
 	      if(config->getDRecordedBandPol(currentconfigindex, i, j) == polpair[p] && config->getDLocalRecordedFreqIndex(currentconfigindex, i, j) == b) {
 		tonefreq = config->getDRecordedFreqPCalToneFreq(currentconfigindex, i, config->getDLocalRecordedFreqIndex(currentconfigindex, i, j), t);
-		sprintf(pcalstr, "  %d %.2f %.4f %.3f", j*2 + p, tonefreq, 
-                        sqrt(results[resultindex+t].re*results[resultindex+t].re + results[resultindex+t].im*results[resultindex+t].im)*1000,
-                        (360.0/TWO_PI) * atan2(results[resultindex+t].im, results[resultindex+t].re));
+                sprintf(pcalstr, " %3d %d %.5e %.5e", j*2 + p, tonefreq, 
+                        results[resultindex+t].re,
+                        results[resultindex+t].im);
                 break;
               }
               resultindex += config->getDRecordedFreqNumPCalTones(currentconfigindex, i, config->getDLocalRecordedFreqIndex(currentconfigindex, i, j));
