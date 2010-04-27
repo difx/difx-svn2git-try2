@@ -1,2 +1,3 @@
 dist_bin_SCRIPTS = \
-	stopmpifxcorr
+	stopmpifxcorr \
+	difx2pcal
