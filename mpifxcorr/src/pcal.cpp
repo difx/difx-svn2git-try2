@@ -157,7 +157,7 @@ bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32
 
     int wbufsize = 0;
     IppsDFTSpec_C_32fc* dftspec;
-    IppStatus s = ippsDFTInitAlloc_C_32fc(&dftspec, Nbins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
+    IppStatus s = ippsDFTInitAlloc_C_32fc(&dftspec, Nbins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
     if (s != ippStsNoErr) { cerr << "DFTInitAlloc err " << ippGetStatusString(s); } 
     s = ippsDFTGetBufSize_C_32fc(dftspec, &wbufsize);
     if (s != ippStsNoErr) { cerr << "DFTGetBufSize err " << ippGetStatusString(s); }
@@ -192,7 +192,7 @@ PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing
     /* Prep for FFT/DFT */
     // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
     int wbufsize = 0;
-    ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
+    ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
     ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
     _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
@@ -332,7 +332,7 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
     // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
     int wbufsize = 0;
     IppStatus r;
-    r = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
+    r = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
     if (r != ippStsNoErr) {
         cverbose << "ippsDFTInitAlloc _N_bins=" << _N_bins << " error " << ippGetStatusString(r);
     }
@@ -531,7 +531,7 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
     // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
     int wbufsize = 0;
     IppStatus r;
-    r = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_DIV_FWD_BY_N, ippAlgHintAccurate);
+    r = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
     if (r != ippStsNoErr) {
         cverbose << "ippsDFTInitAlloc _N_bins=" << _N_bins << " error " << ippGetStatusString(r);
     }
