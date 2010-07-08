@@ -57,8 +57,8 @@ class pcal_config_pimpl {
     size_t   pcal_index;     // zero, changes when extract() is called at least once with "leftover" samples
     size_t   rotator_index;  // zero, changes when extract() is called at least once with "leftover" samples
   public:
-    IppsDFTSpec_C_32fc* dftspec;
-    Ipp8u* dftworkbuf;
+    vecDFTSpecC_cf32* dftspec;
+    u8* dftworkbuf;
     cf32*  dft_out; // unnecessary onces Intel implements inplace DFTFwd_CtoC_32fc_I (counterpart of inplace DFTFwd_RtoC)
 };
 
@@ -130,11 +130,11 @@ bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32
     size_t Nbins = 2*_N_tones;
     size_t maxtoneperiod = _fs_hz/gcd(_pcaloffset_hz,_fs_hz);
     double dphi = 2*M_PI * (-_pcaloffset_hz/_fs_hz);
-    IppStatus s;
-    Ipp32fc pcalout[Nbins];
-    s = ippsZero_32fc(pcalout, Nbins);
-    if (s != ippStsNoErr) 
-        csevere << startl <<"Error in ippsZero in PCal::extractAndIntegrate_reference " << ippGetStatusString(s) << endl;
+    vecStatus s;
+    cf32 pcalout[Nbins];
+    s = vectorZero_cf32(pcalout, Nbins);
+    if (s != vecNoErr) 
+        csevere << startl <<"Error in vectorZero in PCal::extractAndIntegrate_reference " << vectorGetStatusString(s) << endl;
 
     for (size_t n=0; n<len; n++) {
         size_t no = n + sampleoffset;
@@ -148,26 +148,26 @@ bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32
     cdebug << " toneperiod=" << maxtoneperiod << endl;
 
     int wbufsize = 0;
-    IppsDFTSpec_C_32fc* dftspec;
-    s = ippsDFTInitAlloc_C_32fc(&dftspec, Nbins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
-    if (s != ippStsNoErr) 
-        csevere << startl <<"Error in DFTInitAlloc in PCal::extractAndIntegrate_reference " << ippGetStatusString(s) << endl;
-    s = ippsDFTGetBufSize_C_32fc(dftspec, &wbufsize);
-    if (s != ippStsNoErr)
-        csevere << startl << "Error in DFTGetBufSize in PCal::extractAndIntegrate_reference " << ippGetStatusString(s) << endl;
-    Ipp8u* dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
+    vecDFTSpecC_cf32* dftspec;
+    s = vectorInitDFTC_cf32(&dftspec, Nbins, vecFFT_NoReNorm, vecAlgHintAccurate);
+    if (s != vecNoErr) 
+        csevere << startl <<"Error in DFTInitAlloc in PCal::extractAndIntegrate_reference " << vectorGetStatusString(s) << endl;
+    s = vectorGetDFTBufSizeC_cf32(dftspec, &wbufsize);
+    if (s != vecNoErr)
+        csevere << startl << "Error in DFTGetBufSize in PCal::extractAndIntegrate_reference " << vectorGetStatusString(s) << endl;
+    u8* dftworkbuf = (u8*)memalign(128, wbufsize);
 
-    Ipp32fc dftout[Nbins];
-    s = ippsDFTFwd_CToC_32fc(pcalout, dftout, dftspec, dftworkbuf);
-    if (s != ippStsNoErr) 
-        csevere << startl << "Error in DFTFwd in PCal::extractAndIntegrate_reference " << ippGetStatusString(s) << endl; 
-    s = ippsCopy_32fc(dftout, out, _N_tones);
-    if (s != ippStsNoErr) 
-        csevere << startl << "Error in ippsCopy in PCal::extractAndIntegrate_reference " << ippGetStatusString(s) << endl; 
+    cf32 dftout[Nbins];
+    s = vectorDFT_CtoC_cf32(pcalout, dftout, dftspec, dftworkbuf);
+    if (s != vecNoErr) 
+        csevere << startl << "Error in DFTFwd in PCal::extractAndIntegrate_reference " << vectorGetStatusString(s) << endl; 
+    s = vectorCopy_cf32(dftout, out, _N_tones);
+    if (s != vecNoErr) 
+        csevere << startl << "Error in Copy in PCal::extractAndIntegrate_reference " << vectorGetStatusString(s) << endl; 
 
-    s = ippsDFTFree_C_32fc(dftspec);
-    if (s != ippStsNoErr) 
-        csevere << startl << "Error in ippsDFTFree PCal::extractAndIntegrate_reference " << ippGetStatusString(s) << endl; 
+    s = vectorFreeDFTC_cf32(dftspec);
+    if (s != vecNoErr) 
+        csevere << startl << "Error in DFTFree PCal::extractAndIntegrate_reference " << vectorGetStatusString(s) << endl; 
     free(dftworkbuf);
     return true;
 }
@@ -180,7 +180,7 @@ bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32
 
 PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing_hz, const size_t sampleoffset)
 {
-    IppStatus s;
+    vecStatus s;
     /* Derive config */
     _cfg = new pcal_config_pimpl();
     _fs_hz   = 2*bandwidth_hz;
@@ -191,13 +191,13 @@ PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing
 
     /* Prep for FFT/DFT */
     int wbufsize = 0;
-    s = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
-    if (s != ippStsNoErr) 
-        csevere << startl << "Error in ippsDFTInitAlloc in PCalExtractorTrivial::PCalExtractorTrivial " << ippGetStatusString(s) << endl; 
-    s = ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
-    if (s != ippStsNoErr) 
-        csevere << startl << "Error in ippsDFTGetBufSize PCalExtractorTrivial::PCalExtractorTrivial " << ippGetStatusString(s) << endl; 
-    _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
+    s = vectorInitDFTC_cf32(&(_cfg->dftspec), _N_bins, vecFFT_NoReNorm, vecAlgHintAccurate);
+    if (s != vecNoErr) 
+        csevere << startl << "Error in DFTInitAlloc in PCalExtractorTrivial::PCalExtractorTrivial " << vectorGetStatusString(s) << endl; 
+    s = vectorGetDFTBufSizeC_cf32(_cfg->dftspec, &wbufsize);
+    if (s != vecNoErr) 
+        csevere << startl << "Error in DFTGetBufSize PCalExtractorTrivial::PCalExtractorTrivial " << vectorGetStatusString(s) << endl; 
+    _cfg->dftworkbuf = (u8*)memalign(128, wbufsize);
 
     /* Allocate */
     _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 2);
@@ -209,12 +209,12 @@ PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing
 
 PCalExtractorTrivial::~PCalExtractorTrivial()
 {
-    IppStatus s;
+    vecStatus s;
     free(_cfg->pcal_complex);
     free(_cfg->pcal_real);
-    s = ippsDFTFree_C_32fc(_cfg->dftspec);
-    if (s != ippStsNoErr) 
-        csevere << startl << "Error in ippsDFTFree in PCalExtractorTrivial::~PCalExtractorTrivial " << ippGetStatusString(s) << endl; 
+    s = vectorFreeDFTC_cf32(_cfg->dftspec);
+    if (s != vecNoErr) 
+        csevere << startl << "Error in DFTFree in PCalExtractorTrivial::~PCalExtractorTrivial " << vectorGetStatusString(s) << endl; 
     free(_cfg->dftworkbuf);
     free(_cfg->dft_out);
     delete _cfg;
@@ -302,22 +302,22 @@ bool PCalExtractorTrivial::extractAndIntegrate(f32 const* samples, const size_t 
  */
 uint64_t PCalExtractorTrivial::getFinalPCal(cf32* out)
 {
-    IppStatus s;
+    vecStatus s;
     if (!_finalized) 
     {
         _finalized = true;
         vectorAdd_f32_I(/*src*/&(_cfg->pcal_real[_N_bins]), /*srcdst*/&(_cfg->pcal_real[0]), _N_bins);
         vectorRealToComplex_f32(/*srcRe*/_cfg->pcal_real, /*srcIm*/NULL, _cfg->pcal_complex, _N_bins);
-        s = ippsDFTFwd_CToC_32fc(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
-        if (s != ippStsNoErr)
-            csevere << startl << "Error in ippsDFTFwd PCalExtractorTrivial::getFinalPCal " << ippGetStatusString(s) << endl;
+        s = vectorDFT_CtoC_cf32(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
+        if (s != vecNoErr)
+            csevere << startl << "Error in DFTFwd PCalExtractorTrivial::getFinalPCal " << vectorGetStatusString(s) << endl;
     }
 
     // Copy only the tone bins: in PCalExtractorTrivial case
     // this should be all bins... _N_tones==_N_bins/2
-    s = ippsCopy_32fc(_cfg->dft_out, (Ipp32fc*)out, _N_tones);
-    if (s != ippStsNoErr)
-        csevere << startl << "Error in ippsDFTFwd PCalExtractorTrivial::getFinalPCal " << ippGetStatusString(s) << endl;
+    s = vectorCopy_cf32(_cfg->dft_out, (cf32*)out, _N_tones);
+    if (s != vecNoErr)
+        csevere << startl << "Error in DFTFwd PCalExtractorTrivial::getFinalPCal " << vectorGetStatusString(s) << endl;
     return _samplecount;
 }
 
@@ -338,18 +338,17 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
     _cfg->rotatorlen = _fs_hz / gcd(std::abs((double)_pcaloffset_hz), _fs_hz);
 
     /* Prep for FFT/DFT */
-    // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
     int wbufsize = 0;
-    IppStatus s;
-    s = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
-    if (s != ippStsNoErr)
+    vecStatus s;
+    s = vectorInitDFTC_cf32(&(_cfg->dftspec), _N_bins, vecFFT_NoReNorm, vecAlgHintAccurate);
+    if (s != vecNoErr)
         csevere << startl 
-		<< "Error in ippsDFTInitAlloc in PCalExtractorShifting::PCalExtractorShifting.  _N_bins=" 
-		<< _N_bins << " error " << ippGetStatusString(s) << endl;
-    s = ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
-    if (s != ippStsNoErr)
-        csevere << startl << "Error in ippsDFTGetBufSize in PCalExtractorShifting::PCalExtractorShifting " << ippGetStatusString(s) << endl;
-    _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
+		<< "Error in DFTInitAlloc in PCalExtractorShifting::PCalExtractorShifting.  _N_bins=" 
+		<< _N_bins << " error " << vectorGetStatusString(s) << endl;
+    s = vectorGetDFTBufSizeC_cf32(_cfg->dftspec, &wbufsize);
+    if (s != vecNoErr)
+        csevere << startl << "Error in DFTGetBufSize in PCalExtractorShifting::PCalExtractorShifting " << vectorGetStatusString(s) << endl;
+    _cfg->dftworkbuf = (u8*)memalign(128, wbufsize);
 
     /* Allocate */
     _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 2);
@@ -371,14 +370,14 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
 
 PCalExtractorShifting::~PCalExtractorShifting()
 {
-    IppStatus s;
+    vecStatus s;
     free(_cfg->pcal_complex);
     free(_cfg->pcal_real);
     free(_cfg->rotator);
     free(_cfg->rotated);
-    s = ippsDFTFree_C_32fc(_cfg->dftspec);
-    if (s != ippStsNoErr)
-        csevere << startl << "Error in ippsDFTFree in PCalExtractorShifting::~PCalExtractorShifting " << ippGetStatusString(s) << endl;
+    s = vectorFreeDFTC_cf32(_cfg->dftspec);
+    if (s != vecNoErr)
+        csevere << startl << "Error in DFTFree in PCalExtractorShifting::~PCalExtractorShifting " << vectorGetStatusString(s) << endl;
     free(_cfg->dftworkbuf);
     free(_cfg->dft_out);
     delete _cfg;
@@ -499,22 +498,22 @@ bool PCalExtractorShifting::extractAndIntegrate(f32 const* samples, const size_t
  */
 uint64_t PCalExtractorShifting::getFinalPCal(cf32* out)
 {
-    IppStatus s;
+    vecStatus s;
     if (!_finalized) {
         _finalized = true;
         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
-        s = ippsDFTFwd_CToC_32fc(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
-        if (s != ippStsNoErr)
-            csevere << startl << "Error in ippsDFTFwd in PCalExtractorShifting::getFinalPCal " << ippGetStatusString(s) << endl;
+        s = vectorDFT_CtoC_cf32(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
+        if (s != vecNoErr)
+            csevere << startl << "Error in DFTFwd in PCalExtractorShifting::getFinalPCal " << vectorGetStatusString(s) << endl;
         
     }
 
     if (false && _pcalspacing_hz == 1e6) {
         // Copy only the tone bins: in PCalExtractorTrivial case
         // this should be all bins... _N_tones==_N_bins/2
-        s = ippsCopy_32fc(_cfg->dft_out, (Ipp32fc*)out, _N_tones);
-        if (s != ippStsNoErr)
-            csevere << startl << "Error in ippsCopy in PCalExtractorShifting::getFinalPCal " << ippGetStatusString(s) << endl;
+        s = vectorCopy_cf32(_cfg->dft_out, (cf32*)out, _N_tones);
+        if (s != vecNoErr)
+            csevere << startl << "Error in Copy in PCalExtractorShifting::getFinalPCal " << vectorGetStatusString(s) << endl;
     } else {
         // Copy only the interesting bins
         size_t step = std::floor(_N_bins*(_pcalspacing_hz/_fs_hz));
@@ -543,17 +542,16 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
     _cfg = new pcal_config_pimpl();
 
     /* Prep for FFT/DFT */
-    // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
     int wbufsize = 0;
-    IppStatus s;
-    s = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
-    if (s != ippStsNoErr)
-        csevere << startl << "Error in ippsDFTInitAlloc in PCalExtractorImplicitShift::PCalExtractorImplicitShift.  _N_bins=" 
-                << _N_bins << " Error " << ippGetStatusString(s) << endl;
-    s = ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
-    if (s != ippStsNoErr)
-        csevere << startl << "Error in ippsDFTGetBufSize in PCalExtractorImplicitShift::PCalExtractorImplicitShift " << ippGetStatusString(s) << endl;
-    _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
+    vecStatus s;
+    s = vectorInitDFTC_cf32(&(_cfg->dftspec), _N_bins, vecFFT_NoReNorm, vecAlgHintAccurate);
+    if (s != vecNoErr)
+        csevere << startl << "Error in DFTInitAlloc in PCalExtractorImplicitShift::PCalExtractorImplicitShift.  _N_bins=" 
+                << _N_bins << " Error " << vectorGetStatusString(s) << endl;
+    s = vectorGetDFTBufSizeC_cf32(_cfg->dftspec, &wbufsize);
+    if (s != vecNoErr)
+        csevere << startl << "Error in DFTGetBufSize in PCalExtractorImplicitShift::PCalExtractorImplicitShift " << vectorGetStatusString(s) << endl;
+    _cfg->dftworkbuf = (u8*)memalign(128, wbufsize);
 
     /* Allocate */
     _cfg->pcal_complex = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 2);
@@ -566,12 +564,12 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
 
 PCalExtractorImplicitShift::~PCalExtractorImplicitShift()
 {
-    IppStatus s;
+    vecStatus s;
     free(_cfg->pcal_complex);
     free(_cfg->pcal_real);
-    s = ippsDFTFree_C_32fc(_cfg->dftspec);
-    if (s != ippStsNoErr)
-        csevere << startl << "Error in ippsDFTFree in PCalExtractorImplicitShift::~PCalExtractorImplicitShift " << ippGetStatusString(s) << endl;
+    s = vectorFreeDFTC_cf32(_cfg->dftspec);
+    if (s != vecNoErr)
+        csevere << startl << "Error in DFTFree in PCalExtractorImplicitShift::~PCalExtractorImplicitShift " << vectorGetStatusString(s) << endl;
     free(_cfg->dftworkbuf);
     free(_cfg->dft_out);
     delete _cfg;
@@ -669,15 +667,15 @@ bool PCalExtractorImplicitShift::extractAndIntegrate(f32 const* samples, const s
  */
 uint64_t PCalExtractorImplicitShift::getFinalPCal(cf32* out)
 {
-   IppStatus s;
+   vecStatus s;
    if (!_finalized) 
    {
         _finalized = true;
         vectorRealToComplex_f32(/*srcRe*/_cfg->pcal_real, /*srcIm*/NULL, _cfg->pcal_complex, 2*_N_bins);
         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
-        s = ippsDFTFwd_CToC_32fc(/*src*/ _cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
-        if (s != ippStsNoErr)
-            csevere << startl << "Error in ippsDFTFwd in PCalExtractorImplicitShift::getFinalPCal " << ippGetStatusString(s) << endl;
+        s = vectorDFT_CtoC_cf32(/*src*/ _cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
+        if (s != vecNoErr)
+            csevere << startl << "Error in DFTFwd in PCalExtractorImplicitShift::getFinalPCal " << vectorGetStatusString(s) << endl;
     }
  
     /* Copy only the interesting bins */
@@ -701,7 +699,7 @@ uint64_t PCalExtractorImplicitShift::getFinalPCal(cf32* out)
 #if 0
 /**
  * Process samples and accumulate the detected phase calibration tone vector.
- * Accumulation takes place into the internal (ipp32fc*)pcalcfg.pcal.
+ * Accumulation takes place into the internal (cf32*)pcalcfg.pcal.
  * @param  data    pointer to input sample vector
  * @param  len     length of input vector
  */
@@ -887,10 +885,10 @@ g++ -m64 -DUNIT_TEST -Wall -O3 -I$(IPPROOT)/include/ -pthread -I.. pcal.cpp -o t
 #include <iostream>
 #include <iomanip>
 #include <stdlib.h>
-void print_32f(const Ipp32f* v, const size_t len);
-void print_32fc(const Ipp32fc* v, const size_t len);
-void print_32fc_phase(const Ipp32fc* v, const size_t len);
-void compare_32fc_phase(const Ipp32fc* v, const size_t len, Ipp32f angle, Ipp32f step);
+void print_32f(const f32* v, const size_t len);
+void print_32fc(const cf32* v, const size_t len);
+void print_32fc_phase(const cf32* v, const size_t len);
+void compare_32fc_phase(const cf32* v, const size_t len, f32 angle, f32 step);
 
 int main(int argc, char** argv)
 {
@@ -914,8 +912,8 @@ int main(int argc, char** argv)
    PCal* extractor = PCal::getNew(bandwidth, spacing, offset, sampleoffset);
    int numtones = extractor->getLength();
    cerr << "extractor->getLength() tone count is " << numtones;
-   Ipp32fc* out = (Ipp32fc*)memalign(128, sizeof(Ipp32fc)*numtones);
-   Ipp32fc* ref = (Ipp32fc*)memalign(128, sizeof(Ipp32fc)*numtones);
+   cf32* out = (cf32*)memalign(128, sizeof(cf32)*numtones);
+   cf32* ref = (cf32*)memalign(128, sizeof(cf32)*numtones);
 
    /* Make test data for fixed -90deg or sloping -90deg+5deg*ToneNr phase */
    float* data = (float*)memalign(128, samplecount*sizeof(float));
@@ -954,7 +952,7 @@ int main(int argc, char** argv)
    /* Comparison with the (poorer) "reference" extracted result */
    extractor->clear();
    if (skip_some_data) {
-       ippsAdd_32f_I(data+some_prime, data+some_prime, samplecount-some_prime);
+       vectorAdd_f32_I(data+some_prime, data+some_prime, samplecount-some_prime);
    }
    extractor->extractAndIntegrate_reference(data, samplecount, ref, sampleoffset);
    //cerr << "reference PCal reim: ";
@@ -966,15 +964,15 @@ int main(int argc, char** argv)
    return 0;
 }
 
-void print_32f(const Ipp32f* v, const size_t len) {
+void print_32f(const f32* v, const size_t len) {
    for (size_t i=0; i<len; i++) { cerr << std::scientific << v[i] << " "; }
 }
 
-void print_32fc(const Ipp32fc* v, const size_t len) {
+void print_32fc(const cf32* v, const size_t len) {
    for (size_t i=0; i<len; i++) { cerr << std::scientific << v[i].re << "+i" << v[i].im << " "; }
 }
 
-void print_32fc_phase(const Ipp32fc* v, const size_t len) {
+void print_32fc_phase(const cf32* v, const size_t len) {
    for (size_t i=0; i<len; i++) { 
       float phi = (180/M_PI)*std::atan2(v[i].im, v[i].re);
       cerr << std::scientific << phi << " ";
@@ -982,7 +980,7 @@ void print_32fc_phase(const Ipp32fc* v, const size_t len) {
    cerr << "deg";
 }
 
-void compare_32fc_phase(const Ipp32fc* v, const size_t len, Ipp32f angle, Ipp32f step) {
+void compare_32fc_phase(const cf32* v, const size_t len, f32 angle, f32 step) {
    bool pass = true;
    for (size_t i=0; i<len; i++) { 
       float phi = (180/M_PI)*std::atan2(v[i].im, v[i].re);

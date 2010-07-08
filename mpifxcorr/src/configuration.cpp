@@ -1100,7 +1100,7 @@ bool Configuration::processDatastreamTable(ifstream * input)
         if(freqtable[freqindex].lowersideband)
           lofreq -= freqtable[freqindex].bandwidth;
         tonefreq = (int(lofreq)/dsdata->phasecalintervalmhz)*dsdata->phasecalintervalmhz;
-        if(tonefreq < lofreq)
+        if(tonefreq <= lofreq)
           tonefreq += dsdata->phasecalintervalmhz;
         while(tonefreq + dsdata->numrecordedfreqpcaltones[j]*dsdata->phasecalintervalmhz < lofreq + freqtable[freqindex].bandwidth)
           dsdata->numrecordedfreqpcaltones[j]++;
