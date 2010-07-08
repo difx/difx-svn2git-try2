@@ -285,7 +285,7 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
                                   1e6*config->getDPhaseCalIntervalMHz(configindex, datastreamindex),
                                       config->getDRecordedFreqPCalOffsetsHz(configindex, dsindex, localfreqindex), 0);
       pcalnbins[i] = extractor[i]->getNBins();
-      cverbose << "Band " << i << " phase cal extractor buffer length (N bins)" << pcalnbins[i] << endl;
+      cdebug << startl << "Band " << i << " phase cal extractor buffer length (N bins)" << pcalnbins[i] << endl;
     }
   }
 }
@@ -914,7 +914,7 @@ void Mode::finalisepcal()
   {
     uint64_t samples = extractor[i]->getFinalPCal(pcalresults[i]);
     if ((samples == 0) && (datasec != INVALID_SUBINT) && (datalengthbytes > 1)) {
-        cverbose << "finalisepcal band " << i << " samples==0 over valid subint " << datasec << "s+" << datans << "ns";
+        //cdebug << startl << "finalisepcal band " << i << " samples==0 over valid subint " << datasec << "s+" << datans << "ns" << endl;
     }
   }
 }

@@ -42,18 +42,6 @@ using std::endl;
 using namespace std;
 
 #include <malloc.h>    // memalign
-#define UNROLL_BY_4(x) { x }{ x }{ x }{ x }
-#define VALIGN __attribute__((aligned(16)))
-
-void print_f32(const Ipp32f* v, const int len)
-{
-   for (int i=0; i<len; i++) cverbose << v[i] << " ";
-}
-
-void print_fc32(const Ipp32fc* v, const int len)
-{
-   for (int i=0;i<len; i++) cverbose << v[i].re << "+i" << v[i].im << " ";
-}
 
 class pcal_config_pimpl {
   public:
@@ -96,6 +84,7 @@ PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, int pcal_offset_
     //cout << "bandwidth_hz = " << bandwidth_hz << ", pcal_spacing_hz = " << pcal_spacing_hz << ", pcal_offset_hz = " << pcal_offset_hz << ", sampleoffset = " << sampleoffset << endl;
 
     if (pcal_offset_hz == 0.0f) {
+        cwarn << startl << "Warning: non-standard pcal mode (0 offset)" << endl;
         return new PCalExtractorTrivial(bandwidth_hz, pcal_spacing_hz, sampleoffset);
     }
     // if ( __unlikely ((2*bandwidth_hz / gcd(2*bandwidth_hz,pcal_spacing_hz)) > someLengthLimit) ) {
@@ -107,6 +96,7 @@ PCal* PCal::getNew(double bandwidth_hz, double pcal_spacing_hz, int pcal_offset_
     if ((No % Np) == 0 /* && (!want_timedomain_delay) */) {
         return new PCalExtractorImplicitShift(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
     }
+    cwarn << startl << "Warning: non-standard pcal mode.  Bandwidth = " << bandwidth_hz << "Hz; offset = " << pcal_offset_hz << "Hz; pcal spacing = " << pcal_spacing_hz << "Hz" <<endl;
     return new PCalExtractorShifting(bandwidth_hz, pcal_spacing_hz, pcal_offset_hz, sampleoffset);
 }
 
@@ -140,9 +130,11 @@ bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32
     size_t Nbins = 2*_N_tones;
     size_t maxtoneperiod = _fs_hz/gcd(_pcaloffset_hz,_fs_hz);
     double dphi = 2*M_PI * (-_pcaloffset_hz/_fs_hz);
-
+    IppStatus s;
     Ipp32fc pcalout[Nbins];
-    ippsZero_32fc(pcalout, Nbins);
+    s = ippsZero_32fc(pcalout, Nbins);
+    if (s != ippStsNoErr) 
+        csevere << startl <<"Error in ippsZero in PCal::extractAndIntegrate_reference " << ippGetStatusString(s) << endl;
 
     for (size_t n=0; n<len; n++) {
         size_t no = n + sampleoffset;
@@ -152,23 +144,30 @@ bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32
         pcalout[bin].im += sin(phi) * data[n];
     }
     _samplecount += len;
-    cverbose << "PCal::extractAndIntegrate_reference Ntones=" << _N_tones << " Nbins=" << Nbins 
-         << " toneperiod=" << maxtoneperiod;
+    cdebug << startl << "PCal::extractAndIntegrate_reference Ntones=" << _N_tones << " Nbins=" << Nbins;
+    cdebug << " toneperiod=" << maxtoneperiod << endl;
 
     int wbufsize = 0;
     IppsDFTSpec_C_32fc* dftspec;
-    IppStatus s = ippsDFTInitAlloc_C_32fc(&dftspec, Nbins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
-    if (s != ippStsNoErr) { cerr << "DFTInitAlloc err " << ippGetStatusString(s); } 
+    s = ippsDFTInitAlloc_C_32fc(&dftspec, Nbins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
+    if (s != ippStsNoErr) 
+        csevere << startl <<"Error in DFTInitAlloc in PCal::extractAndIntegrate_reference " << ippGetStatusString(s) << endl;
     s = ippsDFTGetBufSize_C_32fc(dftspec, &wbufsize);
-    if (s != ippStsNoErr) { cerr << "DFTGetBufSize err " << ippGetStatusString(s); }
+    if (s != ippStsNoErr)
+        csevere << startl << "Error in DFTGetBufSize in PCal::extractAndIntegrate_reference " << ippGetStatusString(s) << endl;
     Ipp8u* dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
     Ipp32fc dftout[Nbins];
     s = ippsDFTFwd_CToC_32fc(pcalout, dftout, dftspec, dftworkbuf);
-    if (s != ippStsNoErr) cerr << "DFTFwd err " << ippGetStatusString(s); 
-    ippsCopy_32fc(dftout, out, _N_tones);
+    if (s != ippStsNoErr) 
+        csevere << startl << "Error in DFTFwd in PCal::extractAndIntegrate_reference " << ippGetStatusString(s) << endl; 
+    s = ippsCopy_32fc(dftout, out, _N_tones);
+    if (s != ippStsNoErr) 
+        csevere << startl << "Error in ippsCopy in PCal::extractAndIntegrate_reference " << ippGetStatusString(s) << endl; 
 
-    ippsDFTFree_C_32fc(dftspec);
+    s = ippsDFTFree_C_32fc(dftspec);
+    if (s != ippStsNoErr) 
+        csevere << startl << "Error in ippsDFTFree PCal::extractAndIntegrate_reference " << ippGetStatusString(s) << endl; 
     free(dftworkbuf);
     return true;
 }
@@ -181,6 +180,7 @@ bool PCal::extractAndIntegrate_reference(f32 const* data, const size_t len, cf32
 
 PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing_hz, const size_t sampleoffset)
 {
+    IppStatus s;
     /* Derive config */
     _cfg = new pcal_config_pimpl();
     _fs_hz   = 2*bandwidth_hz;
@@ -190,10 +190,13 @@ PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing
     _N_tones = std::floor(bandwidth_hz / pcal_spacing_hz);
 
     /* Prep for FFT/DFT */
-    // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
     int wbufsize = 0;
-    ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
-    ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
+    s = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
+    if (s != ippStsNoErr) 
+        csevere << startl << "Error in ippsDFTInitAlloc in PCalExtractorTrivial::PCalExtractorTrivial " << ippGetStatusString(s) << endl; 
+    s = ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
+    if (s != ippStsNoErr) 
+        csevere << startl << "Error in ippsDFTGetBufSize PCalExtractorTrivial::PCalExtractorTrivial " << ippGetStatusString(s) << endl; 
     _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
     /* Allocate */
@@ -201,14 +204,17 @@ PCalExtractorTrivial::PCalExtractorTrivial(double bandwidth_hz, int pcal_spacing
     _cfg->pcal_real    = (f32*)memalign(128, sizeof(f32) * _N_bins * 2);
     _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
     this->clear();
-    cverbose << "PCalExtractorTrivial: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize;
+    cdebug << startl << "PCalExtractorTrivial: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
 }
 
 PCalExtractorTrivial::~PCalExtractorTrivial()
 {
+    IppStatus s;
     free(_cfg->pcal_complex);
     free(_cfg->pcal_real);
-    ippsDFTFree_C_32fc(_cfg->dftspec);
+    s = ippsDFTFree_C_32fc(_cfg->dftspec);
+    if (s != ippStsNoErr) 
+        csevere << startl << "Error in ippsDFTFree in PCalExtractorTrivial::~PCalExtractorTrivial " << ippGetStatusString(s) << endl; 
     free(_cfg->dftworkbuf);
     free(_cfg->dft_out);
     delete _cfg;
@@ -296,19 +302,22 @@ bool PCalExtractorTrivial::extractAndIntegrate(f32 const* samples, const size_t 
  */
 uint64_t PCalExtractorTrivial::getFinalPCal(cf32* out)
 {
-    if (!_finalized) {
+    IppStatus s;
+    if (!_finalized) 
+    {
         _finalized = true;
         vectorAdd_f32_I(/*src*/&(_cfg->pcal_real[_N_bins]), /*srcdst*/&(_cfg->pcal_real[0]), _N_bins);
         vectorRealToComplex_f32(/*srcRe*/_cfg->pcal_real, /*srcIm*/NULL, _cfg->pcal_complex, _N_bins);
-        IppStatus r = ippsDFTFwd_CToC_32fc(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
-        if (r != ippStsNoErr) {
-            cverbose << "ippsDFTFwd error " << ippGetStatusString(r);
-        }
+        s = ippsDFTFwd_CToC_32fc(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
+        if (s != ippStsNoErr)
+            csevere << startl << "Error in ippsDFTFwd PCalExtractorTrivial::getFinalPCal " << ippGetStatusString(s) << endl;
     }
 
     // Copy only the tone bins: in PCalExtractorTrivial case
     // this should be all bins... _N_tones==_N_bins/2
-    ippsCopy_32fc(_cfg->dft_out, (Ipp32fc*)out, _N_tones);
+    s = ippsCopy_32fc(_cfg->dft_out, (Ipp32fc*)out, _N_tones);
+    if (s != ippStsNoErr)
+        csevere << startl << "Error in ippsDFTFwd PCalExtractorTrivial::getFinalPCal " << ippGetStatusString(s) << endl;
     return _samplecount;
 }
 
@@ -331,15 +340,15 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
     /* Prep for FFT/DFT */
     // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
     int wbufsize = 0;
-    IppStatus r;
-    r = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
-    if (r != ippStsNoErr) {
-        cverbose << "ippsDFTInitAlloc _N_bins=" << _N_bins << " error " << ippGetStatusString(r);
-    }
-    r = ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
-    if (r != ippStsNoErr) {
-        cverbose << "ippsDFTGetBufSize error " << ippGetStatusString(r);
-    }
+    IppStatus s;
+    s = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
+    if (s != ippStsNoErr)
+        csevere << startl 
+		<< "Error in ippsDFTInitAlloc in PCalExtractorShifting::PCalExtractorShifting.  _N_bins=" 
+		<< _N_bins << " error " << ippGetStatusString(s) << endl;
+    s = ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
+    if (s != ippStsNoErr)
+        csevere << startl << "Error in ippsDFTGetBufSize in PCalExtractorShifting::PCalExtractorShifting " << ippGetStatusString(s) << endl;
     _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
     /* Allocate */
@@ -357,16 +366,19 @@ PCalExtractorShifting::PCalExtractorShifting(double bandwidth_hz, double pcal_sp
         _cfg->rotator[n].re = f32(cos(arg));
         _cfg->rotator[n].im = f32(sin(arg));
     }
-    cverbose << "PcalExtractorShifting: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize;
+    cdebug << startl << "PcalExtractorShifting: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize << endl;
 }
 
 PCalExtractorShifting::~PCalExtractorShifting()
 {
+    IppStatus s;
     free(_cfg->pcal_complex);
     free(_cfg->pcal_real);
     free(_cfg->rotator);
     free(_cfg->rotated);
-    ippsDFTFree_C_32fc(_cfg->dftspec);
+    s = ippsDFTFree_C_32fc(_cfg->dftspec);
+    if (s != ippStsNoErr)
+        csevere << startl << "Error in ippsDFTFree in PCalExtractorShifting::~PCalExtractorShifting " << ippGetStatusString(s) << endl;
     free(_cfg->dftworkbuf);
     free(_cfg->dft_out);
     delete _cfg;
@@ -487,19 +499,22 @@ bool PCalExtractorShifting::extractAndIntegrate(f32 const* samples, const size_t
  */
 uint64_t PCalExtractorShifting::getFinalPCal(cf32* out)
 {
+    IppStatus s;
     if (!_finalized) {
         _finalized = true;
         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
-        IppStatus r = ippsDFTFwd_CToC_32fc(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
-        if (r != ippStsNoErr) {
-            cverbose << "ippsDFTFwd error " << ippGetStatusString(r);
-        }
+        s = ippsDFTFwd_CToC_32fc(/*src*/_cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
+        if (s != ippStsNoErr)
+            csevere << startl << "Error in ippsDFTFwd in PCalExtractorShifting::getFinalPCal " << ippGetStatusString(s) << endl;
+        
     }
 
     if (false && _pcalspacing_hz == 1e6) {
         // Copy only the tone bins: in PCalExtractorTrivial case
         // this should be all bins... _N_tones==_N_bins/2
-        ippsCopy_32fc(_cfg->dft_out, (Ipp32fc*)out, _N_tones);
+        s = ippsCopy_32fc(_cfg->dft_out, (Ipp32fc*)out, _N_tones);
+        if (s != ippStsNoErr)
+            csevere << startl << "Error in ippsCopy in PCalExtractorShifting::getFinalPCal " << ippGetStatusString(s) << endl;
     } else {
         // Copy only the interesting bins
         size_t step = std::floor(_N_bins*(_pcalspacing_hz/_fs_hz));
@@ -530,15 +545,14 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
     /* Prep for FFT/DFT */
     // TODO: is IPP_FFT_DIV_FWD_BY_N or is IPP_FFT_DIV_INV_BY_N expected by AIPS&co?
     int wbufsize = 0;
-    IppStatus r;
-    r = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
-    if (r != ippStsNoErr) {
-        cverbose << "ippsDFTInitAlloc _N_bins=" << _N_bins << " error " << ippGetStatusString(r);
-    }
-    r = ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
-    if (r != ippStsNoErr) {
-        cverbose << "ippsDFTGetBufSize error " << ippGetStatusString(r);
-    }
+    IppStatus s;
+    s = ippsDFTInitAlloc_C_32fc(&(_cfg->dftspec), _N_bins, IPP_FFT_NODIV_BY_ANY, ippAlgHintAccurate);
+    if (s != ippStsNoErr)
+        csevere << startl << "Error in ippsDFTInitAlloc in PCalExtractorImplicitShift::PCalExtractorImplicitShift.  _N_bins=" 
+                << _N_bins << " Error " << ippGetStatusString(s) << endl;
+    s = ippsDFTGetBufSize_C_32fc(_cfg->dftspec, &wbufsize);
+    if (s != ippStsNoErr)
+        csevere << startl << "Error in ippsDFTGetBufSize in PCalExtractorImplicitShift::PCalExtractorImplicitShift " << ippGetStatusString(s) << endl;
     _cfg->dftworkbuf = (Ipp8u*)memalign(128, wbufsize);
 
     /* Allocate */
@@ -546,15 +560,18 @@ PCalExtractorImplicitShift::PCalExtractorImplicitShift(double bandwidth_hz, doub
     _cfg->pcal_real    = (f32*) memalign(128, sizeof(f32)  * _N_bins * 2);
     _cfg->dft_out      = (cf32*)memalign(128, sizeof(cf32) * _N_bins * 1);
     this->clear();
-    cverbose << "PCalExtractorImplicitShift: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << ", wbufsize=" << wbufsize;
+    cdebug << startl << "PCalExtractorImplicitShift: _Ntones = " << _N_tones << ", _N_bins = " << _N_bins << ", wbufsize = " << wbufsize << endl;
 }
 
 
 PCalExtractorImplicitShift::~PCalExtractorImplicitShift()
 {
+    IppStatus s;
     free(_cfg->pcal_complex);
     free(_cfg->pcal_real);
-    ippsDFTFree_C_32fc(_cfg->dftspec);
+    s = ippsDFTFree_C_32fc(_cfg->dftspec);
+    if (s != ippStsNoErr)
+        csevere << startl << "Error in ippsDFTFree in PCalExtractorImplicitShift::~PCalExtractorImplicitShift " << ippGetStatusString(s) << endl;
     free(_cfg->dftworkbuf);
     free(_cfg->dft_out);
     delete _cfg;
@@ -609,7 +626,7 @@ void PCalExtractorImplicitShift::adjustSampleOffset(const size_t sampleoffset)
 bool PCalExtractorImplicitShift::extractAndIntegrate(f32 const* samples, const size_t len)
 {
     if (_finalized) { 
-        cverbose << "PCalExtractorImplicitShift::extractAndIntegrate on finalized class!";
+        cerror << startl << "Error: PCalExtractorImplicitShift::extractAndIntegrate on finalized class!" << endl;
         return false; 
     }
 
@@ -652,15 +669,15 @@ bool PCalExtractorImplicitShift::extractAndIntegrate(f32 const* samples, const s
  */
 uint64_t PCalExtractorImplicitShift::getFinalPCal(cf32* out)
 {
-   if (!_finalized) {
+   IppStatus s;
+   if (!_finalized) 
+   {
         _finalized = true;
-        //print_f32(_cfg->pcal_real, 8);
         vectorRealToComplex_f32(/*srcRe*/_cfg->pcal_real, /*srcIm*/NULL, _cfg->pcal_complex, 2*_N_bins);
         vectorAdd_cf32_I(/*src*/&(_cfg->pcal_complex[_N_bins]), /*srcdst*/&(_cfg->pcal_complex[0]), _N_bins);
-        IppStatus r = ippsDFTFwd_CToC_32fc(/*src*/ _cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
-        if (r != ippStsNoErr) {
-            cverbose << "ippsDFTFwd error " << ippGetStatusString(r);
-        }
+        s = ippsDFTFwd_CToC_32fc(/*src*/ _cfg->pcal_complex, _cfg->dft_out, _cfg->dftspec, _cfg->dftworkbuf);
+        if (s != ippStsNoErr)
+            csevere << startl << "Error in ippsDFTFwd in PCalExtractorImplicitShift::getFinalPCal " << ippGetStatusString(s) << endl;
     }
  
     /* Copy only the interesting bins */
@@ -771,7 +788,7 @@ PCalExtractorDummy::PCalExtractorDummy(double bandwidth_hz, double pcal_spacing_
   _N_tones = std::floor(bandwidth_hz / pcal_spacing_hz);
   _cfg = (pcal_config_pimpl*)1;
   this->clear();
-  cverbose << "PCalExtractorDummy: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins;
+  cdebug << startl << "PCalExtractorDummy: _Ntones=" << _N_tones << ", _N_bins=" << _N_bins << endl;
 }
 
 PCalExtractorDummy::~PCalExtractorDummy()
@@ -819,12 +836,12 @@ void PCalExtractorDummy::adjustSampleOffset(const size_t sampleoffset)
 bool PCalExtractorDummy::extractAndIntegrate(f32 const* samples, const size_t len)
 {
   if (false && _finalized) { 
-      cverbose << "Dummy::extract on finalized results!";
+      cerror << startl << "Error: Dummy::extract on finalized results!" << endl;
       return false; 
   }
   _samplecount += len;
   if (false && _samplecount>0 && _samplecount<1024) { // print just a few times
-     cverbose << "_samplecount=" << _samplecount;
+     cdebug << startl << "_samplecount=" << _samplecount << endl;
   }
   return true;
 }
@@ -840,8 +857,8 @@ bool PCalExtractorDummy::extractAndIntegrate(f32 const* samples, const size_t le
 uint64_t PCalExtractorDummy::getFinalPCal(cf32* out)
 {
     if (false && _samplecount == 0) {
-        cverbose << "Dummy::getFinalPCal called without call to extractAndIntegrate()!";
-        cverbose << "                           or after call to clear()!";
+        cerror << startl << "Dummy::getFinalPCal called without call to extractAndIntegrate()!";
+        cerror << "                           or after call to clear()!" << endl;
     }
     _finalized = true;
 
