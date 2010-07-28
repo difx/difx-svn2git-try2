@@ -48,14 +48,17 @@ to this configuration information to the other objects which actually perform th
 */
 class Configuration{
 public:
-  /// Enumeration for the kind of output than can be produced
-  enum outputformat {ASCII, DIFX};
+  /// Enumeration for the format of the output than can be produced
+  enum outputformat {ASCII, DIFX, VDIFOUT};
+
+  ///Enumeration for the type of phased array output
+  enum datadomain {TIME, FREQUENCY};
 
   /// Supported types of recorded data format
-  enum dataformat {LBASTD, LBAVSOP, NZ, K5, MKIV, VLBA, MARK5B, VDIF, VLBN};
+  enum dataformat {LBASTD, LBAVSOP, LBA8BIT, LBA16BIT, K5, MKIV, VLBA, MARK5B, VDIF, VLBN};
 
   /// Supported sources of data
-  enum datasource {UNIXFILE, MK5MODULE, EVLBI};
+  enum datasource {UNIXFILE, MK5MODULE, NETWORKSTREAM};
 
   /// Constant for the TCP window size for monitoring
   static int MONITOR_TCP_WINDOWBYTES;
@@ -78,7 +81,7 @@ public:
   inline int getVisBufferLength() { return visbufferlength; }
   inline bool consistencyOK() {return consistencyok; }
   inline bool anyUsbXLsb(int configindex) { return configs[configindex].anyusbxlsb; }
-  inline bool phaseArrayOn(int configindex) { return configs[configindex].phasedarray; }
+  inline bool phasedArrayOn(int configindex) { return configs[configindex].phasedarray; }
   inline int getArrayStrideLength(int configindex) { return configs[configindex].arraystridelen; }
   inline int getXmacStrideLength(int configindex) { return configs[configindex].xmacstridelen; }
   inline int getNumBufferedFFTs(int configindex) { return configs[configindex].numbufferedffts; }
@@ -253,14 +256,14 @@ public:
   inline bool circularPolarisations() 
     { return datastreamtable[0].recordedbandpols[0] == 'R' || datastreamtable[0].recordedbandpols[0] == 'L'; }
   inline bool isReadFromFile(int configindex, int configdatastreamindex) 
-    { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].source != EVLBI; }
+    { return datastreamtable[configs[configindex].datastreamindices[configdatastreamindex]].source != NETWORKSTREAM; }
   inline bool isMkV(int datastreamindex) 
   {
     dataformat f;
     datasource s;
     f = datastreamtable[configs[0].datastreamindices[datastreamindex]].format;
     s = datastreamtable[configs[0].datastreamindices[datastreamindex]].source;
-    return ((f == MKIV || f == VLBA || f == VLBN || f == MARK5B || f == VDIF) && (s == UNIXFILE || s == EVLBI)); 
+    return ((f == MKIV || f == VLBA || f == VLBN || f == MARK5B || f == VDIF) && (s == UNIXFILE || s == NETWORKSTREAM)); 
   }
   inline bool isNativeMkV(int datastreamindex) 
   { 
@@ -280,18 +283,27 @@ public:
     { return telescopetable[telescopeindex].name; }
   inline int getTelescopeTableLength()
     { return telescopetablelength; }
+  inline int getDatastreamTableLength() { return datastreamtablelength; }
   inline bool isCoreProcess() { return mpiid >= fxcorr::FIRSTTELESCOPEID + numdatastreams; }
   inline bool isDatastreamProcess() { return mpiid >= fxcorr::FIRSTTELESCOPEID && mpiid < fxcorr::FIRSTTELESCOPEID + numdatastreams; }
   inline void setCommandThreadInitialised() { commandthreadinitialised = true; }
   inline bool commandThreadInitialised() { return commandthreadinitialised; }
   inline void setDumpSTAState(bool setval) { dumpsta = setval; }
   inline void setDumpLTAState(bool setval) { dumplta = setval; }
+  inline void setDumpKurtosisState(bool setval) { dumpkurtosis = setval; }
   inline bool dumpSTA() { return dumpsta; }
   inline bool dumpLTA() { return dumplta; }
-  inline void setSTADumpChannels(int setval) { stadumpchannels = setval; }
+  inline bool dumpKurtosis() { return dumpkurtosis; }
+  inline void setSTADumpChannels(int setval) { stadumpchannels = setval; } //shared with kurtosis
   inline void setLTADumpChannels(int setval) { ltadumpchannels = setval; }
-  inline int getSTADumpChannels() { return stadumpchannels; }
+  inline int getSTADumpChannels() { return stadumpchannels; } //shared with kurtosis
   inline int getLTADumpChannels() { return ltadumpchannels; }
+  inline double getFPhasedArrayDWeight(int configindex, int freqindex, int ordereddsindex)
+    { return configs[configindex].paweights[freqindex][ordereddsindex]; }
+  inline int getFPhasedArrayNumPols(int configindex, int freqindex)
+    { return configs[configindex].numpafreqpols[freqindex]; }
+  inline char getFPhaseArrayPol(int configindex, int freqindex, int polindex)
+    { return configs[configindex].papols[freqindex][polindex]; }
 
 //@}
 
@@ -425,6 +437,9 @@ public:
   */
   bool stationUsed(int telescopeindex);
 
+  /// Utility function used to read header info for a difx output file record
+  bool fillHeaderData(ifstream * input, int & baselinenum, int & mjd, double & seconds, int & configindex, int & sourceindex, int & freqindex, char polpair[3], int & pulsarbin, double & dataweight, double uvw[3]);
+
  /**
   * Utility method which reads a line from a file, extracts a value and checks the keyword matches that expected
   * @param input Open input stream to read from
@@ -489,6 +504,7 @@ private:
     double bandedgefreq;
     double bandwidth;
     bool lowersideband;
+    bool correlatedagainstupper;
     int numchannels;
     int channelstoaverage;
     int oversamplefactor;
@@ -536,6 +552,14 @@ private:
     bool anyusbxlsb;
     string pulsarconfigfilename;
     string phasedarrayconfigfilename;
+    outputformat paoutputformat;
+    int pabits;
+    bool pacomplexoutput;
+    int paaccumulationns;
+    double ** paweights; //[freq][datastream]
+    char ** papols; //freq][pol]
+    int * numpafreqpols; //[freq]
+    datadomain padomain;
     Polyco ** polycos;
     int  * datastreamindices;
     int  * ordereddatastreamindices;
@@ -548,7 +572,7 @@ private:
     int ** threadresultbaselineoffset; //[freq][baseline]
     //bookkeeping info for core results
     int ** coreresultbaselineoffset; //[freq][baseline]
-    int ** coreresultbweightoffset; //[freq][baseline]
+    int ** coreresultbweightoffset;  //[freq][baseline]
     int  * coreresultautocorroffset; //[datastream]
     int  * coreresultacweightoffset; //[datastream]
     int  * coreresultpcaloffset;     //[datastream]
@@ -591,8 +615,8 @@ private:
     int numrecordedfreqs;
     int numzoomfreqs;
     int maxrecordedpcaltones;
-    int * recordedfreqpols;
-    int * recordedfreqtableindices;
+    int *  recordedfreqpols;
+    int *  recordedfreqtableindices;
     int *  numrecordedfreqpcaltones;
     int ** recordedfreqpcaltonefreqs;
     int * recordedfreqpcaloffsetshz;
@@ -742,7 +766,7 @@ private:
   int mpiid;
   char header[MAX_KEY_LENGTH];
   bool commonread, configread, datastreamread, freqread, ruleread, baselineread;
-  bool consistencyok, commandthreadinitialised, dumpsta, dumplta;
+  bool consistencyok, commandthreadinitialised, dumpsta, dumplta, dumpkurtosis;
   int visbufferlength, databufferfactor, numdatasegments;
   int numdatastreams, numbaselines, numcoreconfs;
   int executeseconds, startmjd, startseconds, startns;

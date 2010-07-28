@@ -40,4 +40,9 @@ void NativeMk5DataStream::loopfileread()
 void NativeMk5DataStream::moduleToMemory(int buffersegment)
 {
 }
+
+int NativeMk5DataStream::calculateControlParams(int scan, int offsetsec, int offsetns)
+{
+	return -1;
+}
 // vim: shiftwidth=2:softtabstop=2:expandtab:

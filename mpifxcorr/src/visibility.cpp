@@ -30,30 +30,20 @@
 #include <string.h>
 #include <stdio.h>
 #include <iomanip>
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <sys/poll.h>
 #include <difxmessage.h>
 #include "alert.h"
-monsockStatusType Visibility::monsockStatus;
 
-Visibility::Visibility(Configuration * conf, int id, int numvis, int eseconds, int scan, int scanstartsec, int startns, const string * pnames, bool mon, int port, char * hname, int * sock, int monskip)
-  : config(conf), visID(id), numvisibilities(numvis), currentscan(scan), executeseconds(eseconds), currentstartseconds(scanstartsec), currentstartns(startns), polnames(pnames), monitor(mon), portnum(port), hostname(hname), mon_socket(sock), monitor_skip(monskip)
+Visibility::Visibility(Configuration * conf, int id, int numvis, char * dbuffer, int dbufferlen, int eseconds, int scan, int scanstartsec, int startns, const string * pnames)
+  : config(conf), visID(id), numvisibilities(numvis), todiskbuffer(dbuffer), todiskbufferlength(dbufferlen), currentscan(scan), executeseconds(eseconds), currentstartseconds(scanstartsec), currentstartns(startns), polnames(pnames)
 {
-  int status;
+  int status, binloop;
 
   //cverbose << startl << "About to create visibility " << id << "/" << numvis << endl;
   estimatedbytes = 0;
   model = config->getModel();
 
-  if(visID == 0) {
-    *mon_socket = -1;
-    monsockStatus = CLOSED;
-  }
   maxproducts = config->getMaxProducts();
   autocorrwidth = 1;
   if (maxproducts > 2 && config->writeAutoCorrs(config->getScanConfigIndex(currentscan)))
@@ -76,6 +66,17 @@ Visibility::Visibility(Configuration * conf, int id, int numvis, int eseconds, i
   experseconds = config->getStartSeconds();
   offsetns = 0;
   changeConfig(currentconfigindex);
+  maxfiles = 1;
+  for(int i=0;i<model->getNumScans();i++)
+  {
+    binloop = 1;
+    if(config->pulsarBinOn(config->getScanConfigIndex(i)) && !config->scrunchOutputOn(config->getScanConfigIndex(i)))
+      binloop = config->getNumPulsarBins(config->getScanConfigIndex(i));
+    if(model->getNumPhaseCentres(i)*binloop > maxfiles)
+      maxfiles = model->getNumPhaseCentres(i)*binloop;
+  }
+  todiskmemptrs = new int[maxfiles];
+  estimatedbytes += maxfiles*4;
 
   //set up the initial time period this Visibility will be responsible for
   offsetns = offsetns + offsetnsperintegration;
@@ -178,6 +179,10 @@ void Visibility::increment()
 void Visibility::updateTime()
 {
   int configindex;
+  if (currentscan >= model->getNumScans()) {
+    //already past the end, just return
+    return;
+  }
 
   offsetns = offsetns+offsetnsperintegration;
   subintsthisintegration = (int)(((long long)(config->getIntTime(currentconfigindex)*1000000000.0))/config->getSubintNS(currentconfigindex));
@@ -204,6 +209,10 @@ void Visibility::updateTime()
       subintsthisintegration++;
     }
   }
+  else if((double)model->getScanDuration(currentscan) - (double)currentstartseconds - ((double)currentstartns)/1000000000.0 < config->getIntTime(currentconfigindex)) {
+    //This will be an incomplete subintegration - recalculate subintsthisintegration
+    subintsthisintegration -= ((long long)(1000000000.0*currentstartseconds + (double)currentstartns +  1000000000.0*config->getIntTime(currentconfigindex) - 1000000000.0*model->getScanDuration(currentscan)))/((long long)config->getSubintNS(currentconfigindex));
+  }
 
   configindex = 0;
   if(currentscan < model->getNumScans())
@@ -217,286 +226,45 @@ void Visibility::updateTime()
   }
 }
 
-//setup monitoring socket
-int Visibility::openMonitorSocket(char *hostname, int port, int window_size, int *sock) {
-  int status;
-  unsigned long ip_addr;
-  struct hostent     *hostptr;
-  struct sockaddr_in server;    /* Socket address */
-  int saveflags;
 
-  hostptr = gethostbyname(hostname);
-  if (hostptr==NULL) {
-    cwarn << startl << "Failed to look up hostname " << hostname << endl;
-    return(1);
-  }
-  
-  memcpy(&ip_addr, (char *)hostptr->h_addr, sizeof(ip_addr));
-  memset((char *) &server, 0, sizeof(server));
-  server.sin_family = AF_INET;
-  server.sin_port = htons((unsigned short)port); 
-  server.sin_addr.s_addr = ip_addr;
-  
-  cinfo << startl << "Connecting to " << inet_ntoa(server.sin_addr) << endl;
-    
-  *sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (*sock==-1) {
-    perror("Failed to allocate socket");
-    return(1);
-  }
-
-  /* Set the window size to TCP actually works */
-  status = setsockopt(*sock, SOL_SOCKET, SO_SNDBUF,
-                      (char *) &window_size, sizeof(window_size));
-  if (status!=0) {
-    close(*sock);
-    perror("Setting socket options");
-    return(1);
-  }
-
-  saveflags=fcntl(*sock,F_GETFL,0);
-  if(saveflags<0) {
-    perror("fcntl1");
-    return 1;
-  }
-
-  /* Set non blocking */
-  if(fcntl(*sock,F_SETFL,saveflags|O_NONBLOCK)<0) {
-    perror("fcntl2");
-    return 1;
-  }
-
-  // try to connect    
-  status = connect(*sock, (struct sockaddr *) &server, sizeof(server));
-
-  /* return unless the connection was successful or the connect is
-           still in progress. */
-
-  if(status==0) {
-    monsockStatus = OPENED;
-    cinfo<< startl << "Immediate connection to monitor server" << endl;
-    return 0;
-  } else {
-    if (errno!=EINPROGRESS) {
-      monsockStatus = CLOSED;
-      perror("connect");
-      return 1;
-    } else {
-      monsockStatus = PENDING;
-      return 1;
-    }
-  }
-
-  return 1;
-} /* Setup Net */
-
-int Visibility::sendMonitorData(bool tofollow) {
+void Visibility::copyVisData(char **buf, int *bufsize, int *nbuf) {
   char *ptr;
-  int ntowrite, nwrote;
-  int32_t atsec, datasize, maxnumchans;
+  int ntowrite, nwrot, i;
+  int32_t atsec, datasize, numchans;
 
-  //ensure the socket is open
-  if(checkSocketStatus())
-  {
-    if(!tofollow)
-      atsec = -1;
-    else
-      atsec = currentstartseconds + model->getScanStartSec(currentscan, expermjd, experseconds);
 
-    ptr = (char*)(&atsec);
-    nwrote = send(*mon_socket, ptr, 4, 0);
-    if (nwrote==-1)
-    {
-      if (errno==EWOULDBLOCK) {
-        cwarn << startl << "Sending monitor data would block. Skipping this integration" << endl;
-        return 0;
-      }
-      else if (errno==EPIPE) {
-        cerror << startl << "Monitor connection seems to have dropped out!  Will try to reconnect shortly...!" << endl;
-	return 1;
-      }
-      else
-      {
-        cerror << startl << "Monitor socket returns \"" << strerror(errno) << "\"" << endl;
-	return 1;
-      }
-    }
-    else if (nwrote < 4)
-    {
-      cerror << startl << "Error writing to network - will try to reconnect next Visibility 0 integration!" << endl;
-      return 1;
-    }
-
-    if(tofollow)
-    {
-
-      datasize = resultlength;
-      ptr = (char*)(&datasize);
-      nwrote = send(*mon_socket, ptr, 4, 0);
-      if (nwrote==-1)
-      {
-        if (errno==EWOULDBLOCK)
-        {
-          cerror << startl << "Sending monitor data would block. Closing connection" << endl;
-          return 1;
-        }
-        else if (errno==EPIPE)
-        {
-          cwarn << startl << "Monitor connection seems to have dropped out! Will try to reconnect shortly...!" << endl;
-          return 1;
-        }
-        else
-        {
-          cerror << startl << "Monitor socket returns \"" << strerror(errno) << "\"" << endl;
-          return 1;
-        }
-      }
-      else if (nwrote < 4)
-      {
-        cerror << startl << "Error writing to network - will try to reconnect next Visibility 0 integration!" << endl;
-        return 1;
-      }
-
-      maxnumchans = config->getMaxNumChannels();
-      ptr = (char*)(&maxnumchans);
-      nwrote = send(*mon_socket, ptr, 4, 0);
-      if (nwrote==-1)
-      {
-        if (errno==EWOULDBLOCK)
-        {
-          cerror << startl << "Sending monitor data would block. Closing connection" << endl;
-          return 1;
-        }
-      else if (errno==EPIPE)
-      {
-        cwarn << startl << "Monitor connection seems to have dropped out!  Will try to reconnect shortly...!" << endl;
-        return 1;
-      }
-      else
-      {
-        cerror << startl << "Monitor socket returns \"" << strerror(errno) << "\"" << endl;
-        return 1;
-      }
-      }
-      else if (nwrote < 4)
-      {
-        cerror << startl << "Error writing to network - will try to reconnect next Visibility 0 integration!" << endl;
-        return 1;
-      }
-
-      ptr = (char*)results;
-      ntowrite = resultlength*sizeof(cf32);
-
-      while (ntowrite>0) {
-        nwrote = send(*mon_socket, ptr, ntowrite, 0);
-        if (nwrote==-1)
-        {
-          if (errno == EINTR) continue;
-          if (errno==EWOULDBLOCK)
-          {
-            cerror << startl << "Sending monitor data would block. Closing connection" << endl;
-            return 1;
-          }
-          else if (errno == EPIPE)
-          {
-            cwarn << startl << "Monitor connection seems to have dropped out! Will try to reconnect shortly...!" << endl;
-            return(1);
-          }
-          else {
-            cerror << startl << "Monitor socket returns \"" << strerror(errno) << "\"" << endl;
-            return 1;
-          }
-        }
-        else if (nwrote==0) {
-          cwarn << startl << "Warning: Did not write any bytes!" << endl;
-          return(1);
-        } 
-        else
-        {
-          ntowrite -= nwrote;
-          ptr += nwrote;
-        }
-      }
-    }
+  if (currentsubints==0) { // Nothing to send
+    *nbuf = -1;
+    return;
   }
-  return(0);
-}
 
-bool Visibility::checkSocketStatus()
-{
-  if(monsockStatus!=OPENED)
-  {
-    if (monsockStatus==PENDING)
-    {
-      int status;
-      struct pollfd fds[1];
+  atsec = currentstartseconds+experseconds;
+  datasize = resultlength;
+  numchans = config->getFNumChannels(currentconfigindex);
 
-      fds[0].fd = *mon_socket;
-      fds[0].events = POLLOUT|POLLWRBAND;
+  ntowrite = (4+4+4+resultlength*sizeof(cf32));
 
-      status = poll(fds, 1, 0);
-      if(status < 0)
-      {
-        cdebug << startl << "POLL FAILED" << endl;
-        perror("poll");
-        return false;
-      }
-      else if (status==0)
-      { // Nothing ready
-        cwarn << startl << "Connection to monitor socket still pending" << endl;
-        return false;
-      }
-      else
-      { // Either connected or error
-
-        /* Get the return code from the connect */
-        int ret;
-        socklen_t len=sizeof(ret);
-        status=getsockopt(*mon_socket,SOL_SOCKET,SO_ERROR,&ret,&len);
-        if (status<0) {
-          *mon_socket = -1;
-          monsockStatus=CLOSED;
-          perror("getsockopt");
-          cdebug << startl << "GETSOCKOPT FAILED" << endl;
-          return false;
-        }
-
-        /* ret=0 means success, otherwise it contains the errno */
-        if(ret) {
-          *mon_socket = -1;
-          monsockStatus=CLOSED;
-          errno=ret;
-          //perror("connect");
-          cinfo << startl << "Connection to monitor server failed" << endl;
-          return false;
-        }
-        else
-        {
-          // Connected!
-          cinfo << startl << "Connection to monitor server succeeded" << endl;
-          monsockStatus=OPENED;
-          return true;
-        }
-      }
+  if (*bufsize < ntowrite) {
+    if (*bufsize>0) delete [] *buf;
+    *buf = new char[ntowrite];
+    *bufsize = ntowrite;
   }
-  else if(visID != 0)
-    {
-      //don't even try to connect, unless you're the first visibility.  Saves trying to reconnect too often
-      //cerror << startl << "Visibility " << visID << " won't try to reconnect monitor - waiting for vis 0..." << endl;
-      return false;
-    }
-    if(openMonitorSocket(hostname, portnum, Configuration::MONITOR_TCP_WINDOWBYTES, mon_socket) != 0)
-    {
-      if (monsockStatus != PENDING)
-      {
-        *mon_socket = -1;
-        monsockStatus = CLOSED;
-        cerror << startl << "WARNING: Monitor socket could not be opened - monitoring not proceeding! Will try again after " << numvisibilities << " integrations..." << endl;
-      }
-      return false;
-    }
-  }
-  return true;
+
+  ptr = *buf;
+
+  memcpy(ptr, &atsec, 4);
+  ptr +=4;
+
+  memcpy(ptr, &datasize, 4);
+  ptr +=4;
+
+  memcpy(ptr, &numchans, 4);
+  ptr +=4;
+
+  memcpy(ptr, results, resultlength*sizeof(cf32));
+  *nbuf = ntowrite;
+
+  return;
 }
 
 void Visibility::writedata()
@@ -525,14 +293,6 @@ void Visibility::writedata()
 
   if(currentsubints == 0) //nothing to write out
   {
-    //cdebug << startl << "Vis. " << visID << " is not writing out any data, since it accumulated no data" << endl;
-    //if required, send a message to the monitor not to expect any data this integration - 
-    //if we can't get through to the monitor, close the socket
-    if(monitor && sendMonitorData(false) != 0) {
-      close(*mon_socket);
-      *mon_socket = -1;
-      monsockStatus = CLOSED;
-    }
     return; //NOTE EXIT HERE!!!
   }
 
@@ -571,6 +331,8 @@ void Visibility::writedata()
           autocorrweights[i][j][k] = floatresults[resultindex]/fftsperintegration;
           resultindex++;
         }
+        else
+          autocorrweights[i][j][k] = 0.0;
       }
     }
   }
@@ -719,19 +481,9 @@ void Visibility::writedata()
   else
     writeascii(dumpmjd, dumpseconds);
 
-  //send monitoring data, if we don't have to skip this one
-  if(monitor) {
-    if (visID % monitor_skip == 0) {
-      if (sendMonitorData(true) != 0){ 
-	close(*mon_socket);
-	*mon_socket = -1;
-        monsockStatus = CLOSED;
-      }
-    } else {
-    }
-  }
-
   cdebug << startl << "Vis. " << visID << " has finished writing data" << endl;
+
+  return;
 }
 
 void Visibility::writeascii(int dumpmjd, double dumpseconds)
@@ -823,7 +575,7 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
   char pcalstr[256];
   int binloop, freqindex, numpolproducts, resultindex, freqchannels, maxpol;
   int year, month, day, startyearmjd, dummyseconds;
-  int ant1index, ant2index, sourceindex, baselinenumber, tonefreq;
+  int ant1index, ant2index, sourceindex, baselinenumber, numfiles, filecount, tonefreq;
   double scanoffsetsecs, pcaldoy, cablecaldelay;
   bool modelok;
   double buvw[3]; //the u,v and w for this baseline at this time
@@ -839,6 +591,12 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
   else
     binloop = 1;
 
+  numfiles = binloop*model->getNumPhaseCentres(currentscan);
+  for(int f=0;f<numfiles;f++)
+  {
+    todiskmemptrs[f] = f*(todiskbufferlength/numfiles);
+  }
+
   //work out the time of this integration
   dumpmjd = expermjd + (experseconds + model->getScanStartSec(currentscan, expermjd, experseconds) + currentstartseconds)/86400;
   dumpseconds = double((experseconds + model->getScanStartSec(currentscan, expermjd, experseconds) + currentstartseconds)%86400) + ((double)currentstartns)/1000000000.0 + config->getIntTime(currentconfigindex)/2.0;
@@ -853,6 +611,7 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
       resultindex = config->getCoreResultBaselineOffset(currentconfigindex, freqindex, i);
       freqchannels = config->getFNumChannels(freqindex)/config->getFChannelsToAverage(freqindex);
       numpolproducts = config->getBNumPolProducts(currentconfigindex, i, j);
+      filecount = 0;
       for(int s=0;s<model->getNumPhaseCentres(currentscan);s++)
       {
         //get the source-specific data
@@ -865,7 +624,6 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
           csevere << startl << "Could not calculate the UVW for this integration!!!" << endl;
         for(int b=0;b<binloop;b++)
         {
-          sprintf(filename, "%s/DIFX_%05d_%06d.s%04d.b%04d", config->getOutputFilename().c_str(), expermjd, experseconds, s, b);
           for(int k=0;k<numpolproducts;k++) 
           {
             config->getBPolPair(currentconfigindex, i, j, k, polpair);
@@ -874,25 +632,38 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
             if(baselineweights[i][j][b][k] > 0.0)
             {
               //cout << "About to write out baseline[" << i << "][" << s << "][" << k << "] from resultindex " << resultindex << ", whose 6th vis is " << results[resultindex+6].re << " + " << results[resultindex+6].im << " i" << endl;
-              output.open(filename, ios::app);
-              writeDiFXHeader(&output, baselinenumber, dumpmjd, dumpseconds, currentconfigindex, sourceindex, freqindex, polpair, b, 0, baselineweights[i][j][b][k], buvw);
+              writeDiFXHeader(&output, baselinenumber, dumpmjd, dumpseconds, currentconfigindex, sourceindex, freqindex, polpair, b, 0, baselineweights[i][j][b][k], buvw, filecount);
 
               //close, reopen in binary and write the binary data, then close again
-              output.close();
-              output.open(filename, ios::app|ios::binary);
               //For both USB and LSB data, the Nyquist channel has already been excised by Core. In
               //the case of correlating USB with LSB data, the first datastream defines which is the 
               //Nyquist channels.  In any case, the numchannels that are written out represent the
               //the valid part of the, and run from lowest frequency to highest frequency.  For USB
               //data, the first channel is the DC - for LSB data, the last channel is the DC
-              output.write((char*)(&(results[resultindex])), freqchannels*sizeof(cf32));
-              output.close();
+              //output.write((char*)(&(results[resultindex])), freqchannels*sizeof(cf32));
+              memcpy(&(todiskbuffer[todiskmemptrs[filecount]]), &(results[resultindex]), freqchannels*sizeof(cf32));
+              todiskmemptrs[filecount] += freqchannels*sizeof(cf32);
             }
 
             resultindex += freqchannels;
           }
+          filecount++;
         }
       }
+    }
+  }
+
+  //now write all the different files out to disk, one hit per file
+  filecount = 0;
+  for(int s=0;s<model->getNumPhaseCentres(currentscan);s++)
+  {
+    for(int b=0;b<binloop;b++)
+    {
+      sprintf(filename, "%s/DIFX_%05d_%06d.s%04d.b%04d", config->getOutputFilename().c_str(), expermjd, experseconds, s, b);
+      output.open(filename, ios::app);
+      output.write(&(todiskbuffer[filecount*(todiskbufferlength/numfiles)]), todiskmemptrs[filecount]-filecount*(todiskbufferlength/numfiles));
+      output.close();
+      filecount++;
     }
   }
 
@@ -900,7 +671,7 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
     sourceindex = model->getPhaseCentreSourceIndex(currentscan, 0);
   else
     sourceindex = model->getPointingCentreSourceIndex(currentscan);
-  sprintf(filename, "%s/DIFX_%05d_%06d.s%04d.b%04d", config->getOutputFilename().c_str(), expermjd, experseconds, 0, 0);
+  todiskmemptrs[0] = 0;
 
   //now each autocorrelation visibility point if necessary
   if(config->writeAutoCorrs(currentconfigindex))
@@ -930,15 +701,13 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
                 polpair[1] = polpair[0];
               else
                 polpair[1] = config->getOppositePol(polpair[0]);
-              output.open(filename, ios::app);
-              writeDiFXHeader(&output, baselinenumber, dumpmjd, dumpseconds, currentconfigindex, sourceindex, freqindex, polpair, 0, 0, autocorrweights[i][j][k], buvw);
-              output.close();
+              writeDiFXHeader(&output, baselinenumber, dumpmjd, dumpseconds, currentconfigindex, sourceindex, freqindex, polpair, 0, 0, autocorrweights[i][j][k], buvw, 0);
 
               //open, write the binary data and close
-              output.open(filename, ios::app|ios::binary);
               //see baseline writing section for description of treatment of USB/LSB data and the Nyquist channel
-              output.write((char*)(&(results[resultindex])), freqchannels*sizeof(cf32));
-              output.close();
+              //output.write((char*)(&(results[resultindex])), freqchannels*sizeof(cf32));
+              memcpy(&(todiskbuffer[todiskmemptrs[0]]), &(results[resultindex]), freqchannels*sizeof(cf32));
+              todiskmemptrs[0] += freqchannels*sizeof(cf32);
             }
             resultindex += freqchannels;
           }
@@ -947,6 +716,12 @@ void Visibility::writedifx(int dumpmjd, double dumpseconds)
     }
   }
   
+  //write out the autocorrelations, all in one hit
+  sprintf(filename, "%s/DIFX_%05d_%06d.s%04d.b%04d", config->getOutputFilename().c_str(), expermjd, experseconds, 0, 0);
+  output.open(filename, ios::app);
+  output.write(todiskbuffer, todiskmemptrs[0]);
+  output.close();
+
   //now each pcal (if necessary)
   cablecaldelay = 0.0;
   config->mjd2ymd(dumpmjd, year, month, day);
@@ -1045,9 +820,9 @@ void Visibility::multicastweights()
 } 
 
 
-void Visibility::writeDiFXHeader(ofstream * output, int baselinenum, int dumpmjd, double dumpseconds, int configindex, int sourceindex, int freqindex, const char polproduct[3], int pulsarbin, int flag, float weight, double buvw[3])
+void Visibility::writeDiFXHeader(ofstream * output, int baselinenum, int dumpmjd, double dumpseconds, int configindex, int sourceindex, int freqindex, const char polproduct[3], int pulsarbin, int flag, float weight, double buvw[3], int filecount)
 {
-  *output << setprecision(15);
+  /* *output << setprecision(15);
   *output << "BASELINE NUM:       " << baselinenum << endl;
   *output << "MJD:                " << dumpmjd << endl;
   *output << "SECONDS:            " << dumpseconds << endl;
@@ -1061,6 +836,68 @@ void Visibility::writeDiFXHeader(ofstream * output, int baselinenum, int dumpmjd
   *output << "U (METRES):         " << buvw[0] << endl;
   *output << "V (METRES):         " << buvw[1] << endl;
   *output << "W (METRES):         " << buvw[2] << endl;
+  sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "BASELINE NUM:       %d\n", baselinenum);
+  todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+  sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "MJD:                %d\n", dumpmjd);
+  todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+  sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "SECONDS:            %15.9f\n", dumpseconds);
+  todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+  sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "CONFIG INDEX:       %d\n", configindex);
+  todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+  sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "SOURCE INDEX:       %d\n", sourceindex);
+  todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+  sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "FREQ INDEX:         %d\n", freqindex);
+  todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+  sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "POLARISATION PAIR:  %c%c\n", polproduct[0], polproduct[1]);
+  todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+  sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "PULSAR BIN:         %d\n", pulsarbin);
+  todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+  sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "FLAGGED:            %d\n", flag);
+  todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+  sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "DATA WEIGHT:        %.9f\n", weight);
+  todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+  if(baselinenum % 257 > 0)
+  {
+    sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "U (METRES):         %.9f\n", buvw[0]);
+    todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+    sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "V (METRES):         %.9f\n", buvw[1]);
+    todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+    sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "W (METRES):         %.9f\n", buvw[2]);
+    todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+  }
+  else
+  {
+    sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "U (METRES):         0.0\n");
+    todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+    sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "V (METRES):         0.0\n");
+    todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+    sprintf(&(todiskbuffer[todiskmemptrs[filecount]]), "W (METRES):         0.0\n");
+    todiskmemptrs[filecount] += strlen(&(todiskbuffer[todiskmemptrs[filecount]]));
+  }*/
+  *((unsigned int*)(&(todiskbuffer[todiskmemptrs[filecount]]))) = SYNC_WORD;
+  todiskmemptrs[filecount] += 4;
+  *((int*)(&(todiskbuffer[todiskmemptrs[filecount]]))) = BINARY_HEADER_VERSION;
+  todiskmemptrs[filecount] += 4;
+  *((int*)(&(todiskbuffer[todiskmemptrs[filecount]]))) = baselinenum;
+  todiskmemptrs[filecount] += 4;
+  *((int*)(&(todiskbuffer[todiskmemptrs[filecount]]))) = dumpmjd;
+  todiskmemptrs[filecount] += 4;
+  *((double*)(&(todiskbuffer[todiskmemptrs[filecount]]))) = dumpseconds;
+  todiskmemptrs[filecount] += 8;
+  *((int*)(&(todiskbuffer[todiskmemptrs[filecount]]))) = configindex;
+  todiskmemptrs[filecount] += 4;
+  *((int*)(&(todiskbuffer[todiskmemptrs[filecount]]))) = sourceindex;
+  todiskmemptrs[filecount] += 4;
+  *((int*)(&(todiskbuffer[todiskmemptrs[filecount]]))) = freqindex;
+  todiskmemptrs[filecount] += 4;
+  todiskbuffer[todiskmemptrs[filecount]++] = polproduct[0];
+  todiskbuffer[todiskmemptrs[filecount]++] = polproduct[1];
+  *((int*)(&(todiskbuffer[todiskmemptrs[filecount]]))) = pulsarbin;
+  todiskmemptrs[filecount] += 4;
+  *((double*)(&(todiskbuffer[todiskmemptrs[filecount]]))) = weight;
+  todiskmemptrs[filecount] += 8;
+  memcpy(&(todiskbuffer[todiskmemptrs[filecount]]), buvw, 3*8);
+  todiskmemptrs[filecount] += 3*8;
 }
 
 void Visibility::changeConfig(int configindex)

@@ -91,21 +91,21 @@ Core::Core(int id, Configuration * conf, int * dids, MPI_Comm rcomm)
     for(int j=0;j<config->getFreqTableLength();j++)
     {
       for(int k=0;k<numbaselines;k++) {
-        pthread_mutex_init(&(procslots[i].viscopylocks[j][k]), NULL);
+        perr = pthread_mutex_init(&(procslots[i].viscopylocks[j][k]), NULL);
         if(perr != 0)
           csevere << startl << "Problem initialising viscopylock for freq " << j << ", baseline " << k << " in slot " << i << "(" << perr << ")" << endl;
       }
     }
-    pthread_mutex_init(&(procslots[i].autocorrcopylock), NULL);
+    perr = pthread_mutex_init(&(procslots[i].autocorrcopylock), NULL);
     if(perr != 0)
       csevere << startl << "Problem initialising autocorrcopylock in slot " << i << "(" << perr << ")" << endl;
-    pthread_mutex_init(&(procslots[i].bweightcopylock), NULL);
+    perr = pthread_mutex_init(&(procslots[i].bweightcopylock), NULL);
     if(perr != 0)
       csevere << startl << "Problem initialising bweightcopylock in slot " << i << "(" << perr << ")" << endl;
-    pthread_mutex_init(&(procslots[i].acweightcopylock), NULL);
+    perr = pthread_mutex_init(&(procslots[i].acweightcopylock), NULL);
     if(perr != 0)
       csevere << startl << "Problem initialising acweightcopylock in slot " << i << "(" << perr << ")" << endl;
-    pthread_mutex_init(&(procslots[i].pcalcopylock), NULL);
+    perr = pthread_mutex_init(&(procslots[i].pcalcopylock), NULL);
     if(perr != 0)
       csevere << startl << "Problem initialising pcalcopylock in slot " << i << "(" << perr << ")" << endl;
     procslots[i].datalengthbytes = new int[numdatastreams];
@@ -473,7 +473,9 @@ void Core::loopprocess(int threadid)
     }
 
     //if necessary, allocate/reallocate space for the STAs
-    nowdumpingsta = config->dumpSTA();
+    nowdumpingsta = config->dumpSTA() || config->dumpKurtosis();
+    scratchspace->dumpsta = config->dumpSTA();
+    scratchspace->dumpkurtosis = config->dumpKurtosis();
     if(nowdumpingsta != dumpingsta) {
       if (scratchspace->starecord != 0) {
         delete scratchspace->starecord;
@@ -624,12 +626,12 @@ int Core::receivedata(int index, bool * terminate)
 
 void Core::processdata(int index, int threadid, int startblock, int numblocks, Mode ** modes, Polyco * currentpolyco, threadscratchspace * scratchspace)
 {
-  int status, perr, i, numfftloops;
+  int status, perr, i, numfftloops, numfftsprocessed;
   int resultindex, cindex, ds1index, ds2index, binloop;
   int xcblockcount, maxxcblocks, xcshiftcount;
   int acblockcount, maxacblocks, acshiftcount;
-  int freqindex, freqchannels, channelinc;
-  int xmacstridelength, xmacpasses, xmacstart, destbin, destchan, localfreqindex, parentfreqindex;
+  int freqchannels;
+  int xmacstridelength, xmacpasses, xmacstart, destbin, destchan, localfreqindex;
   int outputoffset, input1offset, input2offset, xmacmullength;
   double offsetmins, blockns;
   f32 bweight;
@@ -656,6 +658,9 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
     modes[j]->setValidFlags(&(procslots[index].controlbuffer[j][3]));
     modes[j]->setData(procslots[index].databuffer[j], procslots[index].datalengthbytes[j], procslots[index].controlbuffer[j][0], procslots[index].controlbuffer[j][1], procslots[index].controlbuffer[j][2]);
     modes[j]->setOffsets(procslots[index].offsets[0], procslots[index].offsets[1], procslots[index].offsets[2]);
+    modes[j]->setDumpKurtosis(scratchspace->dumpkurtosis);
+    if(scratchspace->dumpkurtosis)
+      modes[j]->zeroKurtosis();
     //reset pcal
     
     if(config->getDPhaseCalIntervalMHz(procslots[index].configindex, j) > 0)
@@ -731,12 +736,14 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
     //do the station-based processing for this batch of FFT chunks
     for(int j=0;j<numdatastreams;j++)
     {
+      numfftsprocessed = 0;
       for(int fftsubloop=0;fftsubloop<config->getNumBufferedFFTs(procslots[index].configindex);fftsubloop++)
       {
         i = fftloop*config->getNumBufferedFFTs(procslots[index].configindex) + fftsubloop + startblock;
 	if(i >= startblock+numblocks)
 	  break; //may not have to fully complete last fftloop
         scratchspace->dsweights[j][fftsubloop] = modes[j]->process(i, fftsubloop);
+        numfftsprocessed++;
       }
     }
 
@@ -782,19 +789,18 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
               {
                 if(config->getBFreqOddLSB(procslots[index].configindex, j, localfreqindex) > 0)
                 {
-                  //uh-oh.  Need to move the second of the two datastreams FFT results appropriately
-                  if(config->getBFreqOddLSB(procslots[index].configindex, j, localfreqindex) == 1)
+                  //uh-oh.  Need to move any LSB datastreams' FFT results appropriately
+                  if(config->getBFreqOddLSB(procslots[index].configindex, j, localfreqindex) > 0)
                   {
-                    input2offset = 1;
-                    if(x == xmacpasses-1)
-                      xmacmullength = xmacstridelength-1;
-                  }
-                  else
-                  {
-                    input1offset = 1;
                     outputoffset = 1;
                     if(x == xmacpasses-1)
                       xmacmullength = xmacstridelength-1;
+                    if(config->getBFreqOddLSB(procslots[index].configindex, j, localfreqindex) == 1)
+                      //just the first is LSB
+                      input2offset = 1;
+                    else if(config->getBFreqOddLSB(procslots[index].configindex, j, localfreqindex) == 2)
+                      //just the second is LSB
+                      input1offset = 1;
                   }
                 }
               }
@@ -876,7 +882,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
       }
     }
 
-    xcblockcount += config->getNumBufferedFFTs(procslots[index].configindex);
+    xcblockcount += numfftsprocessed;
     if(xcblockcount == maxxcblocks)
     {
       //shift/average and then lock results and copy data
@@ -897,7 +903,7 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
         modes[j]->zeroAutocorrelations();
     }
 
-    //finally, update the baselineweight in the binning, non-scrunching case
+    //finally, update the baselineweight if not doing any pulsar stuff or if scrunching
     if(!procslots[index].pulsarbin || procslots[index].scrunchoutput)
     {
       for(int fftsubloop=0;fftsubloop<config->getNumBufferedFFTs(procslots[index].configindex);fftsubloop++)
@@ -934,6 +940,9 @@ void Core::processdata(int index, int threadid, int startblock, int numblocks, M
   }
   if(acblockcount != 0) {
     averageAndSendAutocorrs(index, threadid, (startblock+acshiftcount*maxacblocks+((double)acblockcount)/2.0)*blockns, acblockcount*blockns, modes, scratchspace);
+  }
+  if(scratchspace->dumpkurtosis) {
+    averageAndSendKurtosis(index, threadid, (startblock + numblocks)*blockns/2.0, numblocks*blockns, numblocks, modes, scratchspace);
   }
 
   //lock the bweight copylock, so we're the only one adding to the result array (baseline weight section)
@@ -1037,7 +1046,7 @@ void Core::averageAndSendAutocorrs(int index, int threadid, double nsoffset, dou
   maxproducts = config->getMaxProducts();
 
   //if STA send needed but we can average datastream results in freq first, do so
-  if(scratchspace->starecord != 0 && config->getMinPostAvFreqChannels(procslots[index].configindex) >= config->getSTADumpChannels())
+  if(scratchspace->dumpsta && config->getMinPostAvFreqChannels(procslots[index].configindex) >= config->getSTADumpChannels())
   {
     for(int i=0;i<numdatastreams;i++) {
       modes[i]->averageFrequency();
@@ -1047,7 +1056,8 @@ void Core::averageAndSendAutocorrs(int index, int threadid, double nsoffset, dou
 
   //if required, send off a message with the STA results
   //(before averaging in case high spectral resolution for the dump is required)
-  if(scratchspace->starecord != 0) {
+  if(scratchspace->dumpsta) {
+    scratchspace->starecord->messageType = STA_AUTOCORRELATION;
     scratchspace->starecord->scan = procslots[index].offsets[0];
     scratchspace->starecord->sec = model->getScanStartSec(procslots[index].offsets[0], startmjd, startseconds) + procslots[index].offsets[1];
     scratchspace->starecord->ns = procslots[index].offsets[2] + int(nsoffset);
@@ -1058,9 +1068,9 @@ void Core::averageAndSendAutocorrs(int index, int threadid, double nsoffset, dou
     scratchspace->starecord->nswidth = int(nswidth);
     for (int i=0;i<numdatastreams;i++) {
       scratchspace->starecord->dsindex = i;
-      for (int j=0;j<config->getDNumTotalBands(procslots[index].configindex, i);j++) {
+      for (int j=0;j<config->getDNumRecordedBands(procslots[index].configindex, i);j++) {
         scratchspace->starecord->nChan = config->getSTADumpChannels();
-        freqindex = config->getDTotalFreqIndex(procslots[index].configindex, i, j);
+        freqindex = config->getDRecordedFreqIndex(procslots[index].configindex, i, j);
         freqchannels = config->getFNumChannels(freqindex);
         if(datastreamsaveraged)
           freqchannels /= config->getFChannelsToAverage(freqindex);
@@ -1195,6 +1205,41 @@ void Core::averageAndSendAutocorrs(int index, int threadid, double nsoffset, dou
     csevere << startl << "PROCESSTHREAD " << mpiid << "/" << threadid << " error trying unlock acweight copy mutex!!!" << endl;
 }
 
+void Core::averageAndSendKurtosis(int index, int threadid, double nsoffset, double nswidth, int numblocks, Mode ** modes, threadscratchspace * scratchspace)
+{
+  int status, freqchannels, freqindex;
+
+  //tell the modes to calculate the kurtosis and average it if need be
+  for(int i=0;i<numdatastreams;i++) {
+    modes[i]->calculateAndAverageKurtosis(numblocks, config->getSTADumpChannels());
+  }
+
+  scratchspace->starecord->messageType = STA_KURTOSIS;
+  scratchspace->starecord->scan = procslots[index].offsets[0];
+  scratchspace->starecord->sec = model->getScanStartSec(procslots[index].offsets[0], startmjd, startseconds) + procslots[index].offsets[1];
+  scratchspace->starecord->ns = procslots[index].offsets[2] + int(nsoffset);
+  if(scratchspace->starecord->ns >= 1000000000) {
+    scratchspace->starecord->ns -= 1000000000;
+    scratchspace->starecord->sec++;
+  }
+  scratchspace->starecord->nswidth = int(nswidth);
+  for (int i=0;i<numdatastreams;i++) {
+    scratchspace->starecord->dsindex = i;
+    for (int j=0;j<config->getDNumRecordedBands(procslots[index].configindex, i);j++) {
+      scratchspace->starecord->nChan = config->getSTADumpChannels();
+      freqindex = config->getDRecordedFreqIndex(procslots[index].configindex, i, j);
+      freqchannels = config->getFNumChannels(freqindex)/config->getFChannelsToAverage(freqindex);
+      if (freqchannels < scratchspace->starecord->nChan)
+        scratchspace->starecord->nChan = freqchannels;
+      scratchspace->starecord->bandindex = j;
+      status = vectorCopy_f32(modes[i]->getKurtosis(j), scratchspace->starecord->data, scratchspace->starecord->nChan);
+      if(status != vecNoErr)
+        cerror << startl << "Problem copying kurtosis results from mode to sta record!" << endl;
+      difxMessageSendBinary((const char *)(scratchspace->starecord), BINARY_STA, sizeof(DifxMessageSTARecord) + sizeof(f32)*scratchspace->starecord->nChan);
+    }
+  }
+}
+
 void Core::uvshiftAndAverage(int index, int threadid, double nsoffset, Polyco * currentpolyco, threadscratchspace * scratchspace)
 {
   int status, startbaselinefreq, atbaselinefreq, startbaseline, startfreq, endbaseline, binloop;
@@ -1318,8 +1363,12 @@ void Core::uvshiftAndAverage(int index, int threadid, double nsoffset, Polyco * 
     uvshiftAndAverageBaselineFreq(index, threadid, nsoffset, scratchspace, startfreq, i);
   }
 
+  //clear the thread cross-corr results
+  status = vectorZero_cf32(scratchspace->threadcrosscorrs, procslots[index].threadresultlength);
+  if(status != vecNoErr)
+    csevere << startl << "Error trying to zero threadcrosscorrs!!!" << endl;
+
   //clear the pulsar accumulation vector if necessary
-  //threadresults is cleared at the start of processData() so no need to do that now
   if(procslots[index].pulsarbin && procslots[index].scrunchoutput)
   {
     for(int f=0;f<config->getFreqTableLength();f++)
@@ -1363,7 +1412,9 @@ void Core::uvshiftAndAverageBaselineFreq(int index, int threadid, double nsoffse
   int antenna1index, antenna2index;
   int rotatestridelen, rotatesperstride, xmacstridelen, xmaccopylen, stridestoaverage, averagesperstride, averagelength;
   double bandwidth, lofrequency, channelbandwidth, stepbandwidth;
-  double pointingcentredelay1, pointingcentredelay2, applieddelay, turns, edgeturns;
+  double applieddelay, applieddelay1, applieddelay2, turns, edgeturns;
+  double pointingcentredelay1approx[2];
+  double pointingcentredelay2approx[2];
   double * phasecentredelay1;
   double * phasecentredelay2;
   cf32* srcpointer;
@@ -1389,8 +1440,9 @@ void Core::uvshiftAndAverageBaselineFreq(int index, int threadid, double nsoffse
 
     antenna1index = config->getDModelFileIndex(procslots[index].configindex, config->getBDataStream1Index(procslots[index].configindex, baseline));
     antenna2index = config->getDModelFileIndex(procslots[index].configindex, config->getBDataStream2Index(procslots[index].configindex, baseline));
-    model->calculateDelayInterpolator(procslots[index].offsets[0], procslots[index].offsets[1] + double(procslots[index].offsets[2]+nsoffset)/1000000000.0, 0.0, 0, antenna1index, 0, 0, &pointingcentredelay1);
-    model->calculateDelayInterpolator(procslots[index].offsets[0], procslots[index].offsets[1] + double(procslots[index].offsets[2]+nsoffset)/1000000000.0, 0.0, 0, antenna2index, 0, 0, &pointingcentredelay2);
+    //get the pointing centre interpolator, validity range aribitrarily set to 1us (approximately the tangent)
+    model->calculateDelayInterpolator(procslots[index].offsets[0], procslots[index].offsets[1] + double(procslots[index].offsets[2]+nsoffset)/1000000000.0, 0.000001, 1, antenna1index, 0, 1, pointingcentredelay1approx);
+    model->calculateDelayInterpolator(procslots[index].offsets[0], procslots[index].offsets[1] + double(procslots[index].offsets[2]+nsoffset)/1000000000.0, 0.000001, 1, antenna2index, 0, 1, pointingcentredelay2approx);
     for(int s=0;s<model->getNumPhaseCentres(procslots[index].offsets[0]);s++)
     {
       model->calculateDelayInterpolator(procslots[index].offsets[0], procslots[index].offsets[1] + double(procslots[index].offsets[2]+nsoffset)/1000000000.0, 0.0, 0, antenna1index, s+1, 0, &(phasecentredelay1[s]));
@@ -1452,8 +1504,13 @@ void Core::uvshiftAndAverageBaselineFreq(int index, int threadid, double nsoffse
       //cout << "phasecentredelay2[" << s << "] is " << phasecentredelay2[s] << endl;
       //cout << "pointingcentredelay1 is " << pointingcentredelay1 << endl;
       //cout << "pointingcentredelay2 is " << pointingcentredelay2 << endl;
-      applieddelay = (phasecentredelay2[s]-phasecentredelay1[s]) - (pointingcentredelay2-pointingcentredelay1);
-      //cout << "Applied delay is " << applieddelay << " because delta phasecentre delay for phase centre " << s << " is " << phasecentredelay2[s]-phasecentredelay1[s] << " and delta pointingcentredelay is " << pointingcentredelay2-pointingcentredelay1 << endl;
+      applieddelay1 = phasecentredelay1[s] - pointingcentredelay1approx[1];
+      applieddelay2 = phasecentredelay2[s] - pointingcentredelay2approx[1];
+      //make correction for geometric rate over the shifted sample range
+      applieddelay1 += applieddelay1*pointingcentredelay1approx[0];
+      applieddelay2 += applieddelay2*pointingcentredelay2approx[0];
+      //cout << "Applied delay is " << applieddelay2 - applieddelay1 << ", correction is " << applieddelay2 - applieddelay1 - saveddelay << endl;
+      applieddelay = applieddelay2 - applieddelay1;
       if(fabs(applieddelay) > 1.0e-20)
       {
         edgeturns = applieddelay*lofrequency;
@@ -1682,7 +1739,7 @@ void Core::createPulsarVaryingSpace(cf32******* pulsaraccumspace, s32**** bins, 
 
 void Core::allocateConfigSpecificThreadArrays(f32 **** baselineweight, int newconfigindex, int oldconfigindex, int threadid)
 {
-  int localfreqindex, numstrides, stridelen, status, binloop;
+  int localfreqindex, numstrides, binloop;
 
   if(oldconfigindex >= 0)
   {
@@ -1777,7 +1834,7 @@ void Core::updateconfig(int oldconfigindex, int configindex, int threadid, int &
   //get the config to create the appropriate Modes for us
   for(int i=0;i<numdatastreams;i++) {
     modes[i] = config->getMode(configindex, i);
-    if(!modes[i]->initialisedOK())
+    if(modes[i] == NULL || !modes[i]->initialisedOK())
       MPI_Abort(MPI_COMM_WORLD, 1);
     threadbytes[threadid] += modes[i]->getEstimatedBytes();
   }
@@ -1791,7 +1848,7 @@ void Core::updateconfig(int oldconfigindex, int configindex, int threadid, int &
     {
       //if we are not the first thread, create a copy of the Polyco for our use
       polycos[i] = (threadid==0)?currentpolycos[i]:new Polyco(*currentpolycos[i]);
-      if(threadid == 0)
+      if(threadid != 0)
         threadbytes[threadid] += polycos[i]->getEstimatedBytes();
     }
     //cinfo << startl << "Core " << mpiid << " thread " << threadid << ": polycos created/copied successfully!"  << endl;

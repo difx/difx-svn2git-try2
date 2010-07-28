@@ -33,7 +33,7 @@
 const float Mode::TINY = 0.000000001;
 
 Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandchan, int chanstoavg, int bpersend, int gsamples, int nrecordedfreqs, double recordedbw, double * recordedfreqclkoffs, double * recordedfreqlooffs, int nrecordedbands, int nzoombands, int nbits, int unpacksamp, bool fbank, int fringerotorder, int arraystridelen, bool cacorrs, double bclock)
-  : config(conf), configindex(confindex), datastreamindex(dsindex), recordedbandchannels(recordedbandchan), channelstoaverage(chanstoavg), blockspersend(bpersend), guardsamples(gsamples), twicerecordedbandchannels(recordedbandchan*2), numrecordedfreqs(nrecordedfreqs), numrecordedbands(nrecordedbands), numzoombands(nzoombands), numbits(nbits), unpacksamples(unpacksamp), recordedbandwidth(recordedbw), blockclock(bclock), filterbank(fbank), fringerotationorder(fringerotorder), calccrosspolautocorrs(cacorrs), arraystridelength(arraystridelen), recordedfreqclockoffsets(recordedfreqclkoffs), recordedfreqlooffsets(recordedfreqlooffs)
+  : config(conf), configindex(confindex), datastreamindex(dsindex), recordedbandchannels(recordedbandchan), channelstoaverage(chanstoavg), blockspersend(bpersend), guardsamples(gsamples), twicerecordedbandchannels(recordedbandchan*2), numrecordedfreqs(nrecordedfreqs), numrecordedbands(nrecordedbands), numzoombands(nzoombands), numbits(nbits), unpacksamples(unpacksamp), fringerotationorder(fringerotorder), arraystridelength(arraystridelen), recordedbandwidth(recordedbw), blockclock(bclock), filterbank(fbank), calccrosspolautocorrs(cacorrs), recordedfreqclockoffsets(recordedfreqclkoffs), recordedfreqlooffsets(recordedfreqlooffs)
 {
   int status, localfreqindex;
   int decimationfactor = config->getDDecimationFactor(configindex, datastreamindex);
@@ -269,6 +269,13 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
         autocorrelations[i][j+numrecordedbands] = &(autocorrelations[i][config->getDZoomFreqParentFreqIndex(confindex, dsindex, localfreqindex)][config->getDZoomFreqChannelOffset(confindex, dsindex, localfreqindex)/channelstoaverage]);
       }
     }
+
+    //kurtosis-specific stuff
+    dumpkurtosis = false; //off by default
+    s1 = 0;
+    s2 = 0;
+    sk = 0;
+    kscratch = 0;
   }
   // Phase cal stuff
   if(config->getDPhaseCalIntervalMHz(configindex, datastreamindex))
@@ -402,6 +409,20 @@ Mode::~Mode()
     delete[] extractor;
     delete[] pcalnbins;
   }
+
+  if(sk != 0) //also need to delete kurtosis stuff
+  {
+    for(int i=0;i<numrecordedbands;i++)
+    {
+      vectorFree(s1[i]);
+      vectorFree(s2[i]);
+      vectorFree(sk[i]);
+    }
+    delete [] s1;
+    delete [] s2;
+    delete [] sk;
+    vectorFree(kscratch);
+  }
 }
 
 float Mode::unpack(int sampleoffset)
@@ -460,7 +481,7 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
       if(status != vecNoErr)
         csevere << startl << "Error trying to zero fftoutputs when data is bad!" << endl;
     }
-    //cout << "Mode for DS " << datastreamindex << " is bailing out of index " << index << " because datalengthbytes is " << datalengthbytes << ", delays[index] was " << delays[index] << " and delays[index+1] was " << delays[index+1] << endl;
+    //cout << "Mode for DS " << datastreamindex << " is bailing out of index " << index << "/" << subloopindex << " which is scan " << currentscan << ", sec " << offsetseconds << ", ns " << offsetns << " because datalengthbytes is " << datalengthbytes << " and validflag was " << ((validflags[index/FLAGS_PER_INT] >> (index%FLAGS_PER_INT)) & 0x01) << endl;
     return 0.0; //don't process crap data
   }
 
@@ -764,6 +785,25 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
             break;
         }
 
+        if(dumpkurtosis) //do the necessary accumulation
+        {
+          status = vectorMagnitude_cf32(fftoutputs[j][subloopindex], kscratch, recordedbandchannels);
+          if(status != vecNoErr)
+            csevere << startl << "Error taking kurtosis magnitude!" << endl;
+          status = vectorSquare_f32_I(kscratch, recordedbandchannels);
+          if(status != vecNoErr)
+            csevere << startl << "Error in first kurtosis square!" << endl;
+          status = vectorAdd_f32_I(kscratch, s1[j], recordedbandchannels);
+          if(status != vecNoErr)
+            csevere << startl << "Error in kurtosis s1 accumulation!" << endl;
+          status = vectorSquare_f32_I(kscratch, recordedbandchannels);
+          if(status != vecNoErr)
+            csevere << startl << "Error in second kurtosis square!" << endl;
+          status = vectorAdd_f32_I(kscratch, s2[j], recordedbandchannels);
+          if(status != vecNoErr)
+            csevere << startl << "Error in kurtosis s2 accumulation!" << endl;
+        }
+
         //do the frac sample correct (+ phase shifting if applicable, + fringe rotate if its post-f)
         status = vectorMul_cf32_I(fracsamprotator, fftoutputs[j][subloopindex], recordedbandchannels);
         if(status != vecNoErr)
@@ -806,7 +846,7 @@ float Mode::process(int index, int subloopindex)  //frac sample error, fringedel
 void Mode::averageFrequency()
 {
   cf32 tempsum;
-  int status, sidebandoffset, outputchans;
+  int status, outputchans;
 
   if(channelstoaverage == 1)
     return; //no need to do anything;
@@ -816,21 +856,68 @@ void Mode::averageFrequency()
   {
     for(int j=0;j<numrecordedbands;j++)
     {
-      sidebandoffset = 0;
-      if(config->getDRecordedLowerSideband(configindex, datastreamindex, config->getDRecordedFreqIndex(configindex, datastreamindex, j)))
-        sidebandoffset = 1;
-      status = vectorMean_cf32(&(autocorrelations[i][j][sidebandoffset]), channelstoaverage, &tempsum, vecAlgHintFast);
+      status = vectorMean_cf32(autocorrelations[i][j], channelstoaverage, &tempsum, vecAlgHintFast);
       if(status != vecNoErr)
         cerror << startl << "Error trying to average in frequency!" << endl;
-      autocorrelations[i][j][sidebandoffset] = tempsum;
+      autocorrelations[i][j][0] = tempsum;
       for(int k=1;k<outputchans;k++)
       {
-        status = vectorMean_cf32(&(autocorrelations[i][j][k*channelstoaverage+sidebandoffset]), channelstoaverage, &(autocorrelations[i][j][k+sidebandoffset]), vecAlgHintFast);
+        status = vectorMean_cf32(&(autocorrelations[i][j][k*channelstoaverage]), channelstoaverage, &(autocorrelations[i][j][k]), vecAlgHintFast);
         if(status != vecNoErr)
           cerror << startl << "Error trying to average in frequency!" << endl;
       }
-      if(sidebandoffset == 0) //only need to move nyquist channel for USB data
-        autocorrelations[i][j][outputchans] = autocorrelations[i][j][recordedbandchannels];
+    }
+  }
+}
+
+void Mode::calculateAndAverageKurtosis(int numblocks, int maxchannels)
+{
+  int status, kchanavg;
+  bool nonzero;
+
+  for(int i=0;i<numrecordedbands;i++)
+  {
+    nonzero = false;
+    for(int j=0;j<recordedbandchannels;j++)
+    {
+      if(s1[i][j] > 0.0)
+      {
+        nonzero = true;
+        break;
+      }
+    }
+    if(!nonzero)
+      continue;
+    status = vectorSquare_f32_I(s1[i], recordedbandchannels);
+    if(status != vecNoErr)
+      cerror << startl << "Problem calculating kurtosis (squaring s1)" << endl;
+    status = vectorMulC_f32_I((f32)numblocks, s2[i], recordedbandchannels);
+    if(status != vecNoErr)
+      cerror << startl << "Problem calculating kurtosis (scaling s2)" << endl;
+    status = vectorDivide_f32(s1[i], s2[i], sk[i], recordedbandchannels);
+    if(status != vecNoErr)
+      cerror << startl << "Problem calculating kurtosis (s2/s1^2)" << endl;
+    status = vectorAddC_f32_I(-1.0, sk[i], recordedbandchannels);
+    if(status != vecNoErr)
+      cerror << startl << "Problem calculating kurtosis (sk - 1)" << endl;
+    status = vectorMulC_f32_I((f32)numblocks/(numblocks - 1.0), sk[i], recordedbandchannels);
+    if(status != vecNoErr)
+      cerror << startl << "Problem calculating kurtosis (sk * numblocks/(numblocks-1))" << endl;
+    status = vectorAddC_f32_I(-1.0, sk[i], recordedbandchannels);
+    if(status != vecNoErr)
+      cerror << startl << "Problem calculating kurtosis (sk - 1)" << endl;
+    if(maxchannels < recordedbandchannels)
+    {
+      kchanavg = recordedbandchannels/maxchannels;
+      status = vectorMulC_f32_I(1.0/((f32)kchanavg), sk[i], recordedbandchannels);
+      if(status != vecNoErr)
+        cerror << startl << "Problem calculating kurtosis (sk average)" << endl;
+      for(int j=0;j<maxchannels;j++)
+      {
+        sk[i][j] = sk[i][j*kchanavg];
+        for(int k=0;k<kchanavg;k++)
+          sk[i][j] += sk[i][j*kchanavg];
+      }
     }
   }
 }
@@ -848,6 +935,35 @@ void Mode::zeroAutocorrelations()
         cerror << startl << "Error trying to zero autocorrelations!" << endl;
       weights[i][j] = 0.0;
     }
+  }
+}
+
+void Mode::zeroKurtosis()
+{
+  int status;
+
+  if(sk == 0)
+  {
+    s1 = new f32*[numrecordedbands];
+    s2 = new f32*[numrecordedbands];
+    sk = new f32*[numrecordedbands];
+    kscratch = vectorAlloc_f32(recordedbandchannels);
+    for(int i=0;i<numrecordedbands;i++)
+    {
+      s1[i] = vectorAlloc_f32(recordedbandchannels);
+      s2[i] = vectorAlloc_f32(recordedbandchannels);
+      sk[i] = vectorAlloc_f32(recordedbandchannels);
+    }
+  }
+
+  for(int i=0;i<numrecordedbands;i++)
+  {
+    status = vectorZero_f32(s1[i], recordedbandchannels);
+    if(status != vecNoErr)
+      cerror << startl << "Error trying to zero kurtosis!" << endl;
+    status = vectorZero_f32(s2[i], recordedbandchannels);
+    if(status != vecNoErr)
+      cerror << startl << "Error trying to zero kurtosis!" << endl;
   }
 }
 
@@ -944,7 +1060,9 @@ LBAMode::LBAMode(Configuration * conf, int confindex, int dsindex, int recordedb
               outputshift = 3*(2-l) - 3*k;
             else
               outputshift = -k*samplesperblock + k + l;
-          else
+          else if (samplesperblock == 4) //64 MHz single pol
+	    outputshift = -2*l + 3;
+	  else
             outputshift = 0;
 
           //if(samplesperblock > 1 && numinputbands > 1) //32 MHz or 64 MHz dual pol
@@ -966,6 +1084,44 @@ LBAMode::LBAMode(Configuration * conf, int confindex, int dsindex, int recordedb
   {
     lookup[count + i] = unpackvalues[3]; //every sample is 11 = 3
   }
+}
+
+LBA8BitMode::LBA8BitMode(Configuration * conf, int confindex, int dsindex, int recordedbandchan, int chanstoavg, int bpersend, int gsamples, int nrecordedfreqs, double recordedbw, double * recordedfreqclkoffs, double * recordedfreqlooffs, int nrecordedbands, int nzoombands, int nbits, bool fbank, int fringerotorder, int arraystridelen, bool cacorrs)
+  : Mode(conf,confindex,dsindex,recordedbandchan,chanstoavg,bpersend,gsamples,nrecordedfreqs,recordedbw,recordedfreqclkoffs,recordedfreqlooffs,nrecordedbands,nzoombands,nbits,recordedbandchan*2,fbank,fringerotorder,arraystridelen,cacorrs,recordedbw*2.0)
+{}
+
+float LBA8BitMode::unpack(int sampleoffset)
+{
+  unsigned char * packed = (unsigned char *)(&(data[((unpackstartsamples/samplesperblock)*bytesperblocknumerator)/bytesperblockdenominator]));
+
+  for(int i=0;i<unpacksamples;i++)
+  {
+    for(int j=0;j<numrecordedbands;j++)
+    {
+      unpackedarrays[j][i] = (float)(*packed) - 128.0;
+      packed++;
+    }
+  }
+  return 1.0;
+}
+
+LBA16BitMode::LBA16BitMode(Configuration * conf, int confindex, int dsindex, int recordedbandchan, int chanstoavg, int bpersend, int gsamples, int nrecordedfreqs, double recordedbw, double * recordedfreqclkoffs, double * recordedfreqlooffs, int nrecordedbands, int nzoombands, int nbits, bool fbank, int fringerotorder, int arraystridelen, bool cacorrs)
+  : Mode(conf,confindex,dsindex,recordedbandchan,chanstoavg,bpersend,gsamples,nrecordedfreqs,recordedbw,recordedfreqclkoffs,recordedfreqlooffs,nrecordedbands,nzoombands,nbits,recordedbandchan*2,fbank,fringerotorder,arraystridelen,cacorrs,recordedbw*2.0)
+{}
+
+float LBA16BitMode::unpack(int sampleoffset)
+{
+  unsigned short * packed = (unsigned short *)(&(data[((unpackstartsamples/samplesperblock)*bytesperblocknumerator)/bytesperblockdenominator]));
+
+  for(int i=0;i<unpacksamples;i++)
+  {
+    for(int j=0;j<numrecordedbands;j++)
+    {
+      unpackedarrays[j][i] = (float)(*packed) - 32768.0;
+      packed++;
+    }
+  }
+  return 1.0;
 }
 
 const s16 LBAMode::stdunpackvalues[] = {MAX_S16/4, -MAX_S16/4 - 1, 3*MAX_S16/4, -3*MAX_S16/4 - 1};

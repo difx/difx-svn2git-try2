@@ -69,6 +69,8 @@ bool actOnCommand(Configuration * config, DifxMessageGeneric * difxmessage) {
         config->setDumpSTAState((paramvalue == "true") || (paramvalue == "True"));
       else if (paramname == "dumplta")
         config->setDumpLTAState((paramvalue == "true") || (paramvalue == "True"));
+      else if (paramname == "dumpkurtosis")
+        config->setDumpKurtosisState((paramvalue == "true") || (paramvalue == "True"));
       else if (paramname == "stachannels")
         config->setSTADumpChannels(atoi(pmessage->paramValue));
       else if (paramname == "ltachannels")
@@ -288,8 +290,8 @@ int main(int argc, char *argv[])
     monitoropt = string(argv[2]);
     size_t colindex1 = monitoropt.find_first_of(':');
     size_t colindex2 = monitoropt.find_last_of(':');
-    if(colindex2 == string::npos) 
-      // BUG: This does not work and skip ends up equaling port!!!!
+
+    if(colindex2 == colindex1) 
     {
       port = atoi(monitoropt.substr(colindex1 + 1).c_str());
       monitor_skip = 1;	
@@ -298,7 +300,6 @@ int main(int argc, char *argv[])
     {
       port = atoi(monitoropt.substr(colindex1 + 1, colindex2-colindex1-1).c_str());
       monitor_skip = atoi(monitoropt.substr(colindex2 + 1).c_str());
-
     }
     strcpy(monhostname, monitoropt.substr(2,colindex1-2).c_str());
   }
@@ -391,12 +392,13 @@ int main(int argc, char *argv[])
   delete [] coreids;
   delete [] datastreamids;
 
-  if(myID == 0) difxMessageSendDifxParameter("keepacting", "false", DIFX_MESSAGE_ALLMPIFXCORR);
-  perr = pthread_join(commandthread, NULL);
-  if(perr != 0) csevere << startl << "Error in closing commandthread!!!" << endl;
   if(manager) delete manager;
   if(stream) delete stream;
   if(core) delete core;
+  if(myID == 0) difxMessageSendDifxParameter("keepacting", "false", DIFX_MESSAGE_ALLMPIFXCORR);
+  perr = pthread_join(commandthread, NULL);
+  if(perr != 0) csevere << startl << "Error in closing commandthread!!!" << endl;
+
   //delete config;  	// FIXME!!! Revisit this commented out destructor sometime.
   			// It is currently commented out to prevent hang on exit
 

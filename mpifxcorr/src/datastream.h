@@ -19,8 +19,11 @@
 // $LastChangedDate$
 //
 //============================================================================
+
 #ifndef DATASTREAM_H
 #define DATASTREAM_H
+
+#define __STDC_LIMIT_MACROS
 
 #include <mpi.h>
 #include <string>
@@ -177,7 +180,7 @@ protected:
   * Attempts to open the next frame by reading data from the open network socket
   * @return 0 on failure, otherwise the framesize in bytes
   */
-  virtual int openframe();
+  virtual uint64_t openframe();
 
  /** 
   * Attempts to open a network socket to read data from
@@ -212,7 +215,7 @@ protected:
   * @param buffersegment The segment of the databuffer that this read will be stored in
   * @param framebytesremaining The number of bytes left in this frame before reading a new frame is necessary
   */
-  virtual void networkToMemory(int buffersegment, int & framebytesremaining);
+  virtual void networkToMemory(int buffersegment, uint64_t & framebytesremaining);
 
  /** 
   * Reads the specified number of bytes from the specified socket into the provided buffer

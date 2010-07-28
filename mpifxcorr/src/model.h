@@ -125,6 +125,7 @@ class Model{
     ///accessor methods for source information from a scan
     inline int getPointingCentreSourceIndex(int scan) { return scantable[scan].pointingcentre->index; }
     inline int getPhaseCentreSourceIndex(int scan, int phasecentre) { return scantable[scan].phasecentres[phasecentre]->index; }
+    inline source * getScanPointingCentreSource(int scan) { return scantable[scan].pointingcentre; }
     inline source * getScanPhaseCentreSource(int scan, int phasecentre) { return scantable[scan].phasecentres[phasecentre]; }
 
     ///accessor methods for antenna information
@@ -216,9 +217,9 @@ class Model{
     int modelmjd, modelstartseconds, numstations, numsources, numscans, numeops, numspacecraft;
     int polyorder, modelincsecs, estimatedbytes;
     bool opensuccess;
+    Configuration * config;
     string calcfilename, imfilename;
     double ** binomialcoeffs;
-    Configuration * config;
     station * stationtable;
     source * sourcetable;
     eop * eoptable;
