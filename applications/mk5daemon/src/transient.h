@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2008-2010 by Walter Brisken                             *
+ *   Copyright (C) 2010 by Walter Brisken                                  *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -27,23 +27,56 @@
  *
  *==========================================================================*/
 
-#ifndef __LOGGER_H__
-#define __LOGGER_H__
+#ifndef __TRANSIENT_H__
+#define __TRANSIENT_H__
 
-#include <cstdio>
+#include <string>
+#include <list>
 #include <pthread.h>
+#include <difxmessage.h>
 
-typedef struct
+using namespace std;
+
+class Event
 {
-	FILE *out;
-	time_t lastTime;
-	pthread_mutex_t lock;
-	char logPath[256];
-	char hostName[32];
-} Logger;
+public:
+	Event(double start, double stop, double pri) : 
+		startMJD(start), stopMJD(stop), priority(pri) {}
+	double startMJD, stopMJD, priority;
 
-Logger *newLogger(const char *logPath);
-void deleteLogger(Logger *log);
-int Logger_logData(Logger *log, const char *message);
+	friend bool operator< (Event &t1, Event &t2);
+};
+
+class EventQueue
+{
+public:
+	EventQueue(string id) : jobId(id), destDir("nowhere"), user("nobody"), maxSize(5) {}
+	string jobId;
+	string destDir;
+	string user;
+	unsigned int maxSize;
+	list<Event> events;
+	list<string> units;
+
+	void addMark5Unit(const char *unit);
+	void addEvent(const DifxMessageTransient *dt);
+	void setUser(const char *u);
+	int copy(double maxDuration);
+	void print() const;
+};
+
+class EventManager
+{
+public:
+	list<EventQueue> queues;
+	pthread_mutex_t lock;
+
+	EventManager();
+	~EventManager();
+	EventQueue *startJob(const char *jobId);
+	void stopJob(const char *jobId, double maxDuration);
+	bool addEvent(const DifxMessageTransient *dt);
+	void print();
+};
 
 #endif

@@ -19,31 +19,22 @@
 /*===========================================================================
  * SVN properties (DO NOT CHANGE)
  *
- * $Id$
- * $HeadURL$
- * $LastChangedRevision$
- * $Author$
- * $LastChangedDate$
+ * $Id: proc.h 1953 2010-02-10 20:57:48Z WalterBrisken $
+ * $HeadURL: https://svn.atnf.csiro.au/difx/applications/mk5daemon/branches/difx-1.5/src/proc.h $
+ * $LastChangedRevision: 1953 $
+ * $Author: WalterBrisken $
+ * $LastChangedDate: 2010-02-10 13:57:48 -0700 (Wed, 10 Feb 2010) $
  *
  *==========================================================================*/
 
-#ifndef __LOGGER_H__
-#define __LOGGER_H__
+#ifndef __PROC_H__
+#define __PROC_H__
 
-#include <cstdio>
-#include <pthread.h>
+/* routines to get useful information from /proc */
 
-typedef struct
-{
-	FILE *out;
-	time_t lastTime;
-	pthread_mutex_t lock;
-	char logPath[256];
-	char hostName[32];
-} Logger;
-
-Logger *newLogger(const char *logPath);
-void deleteLogger(Logger *log);
-int Logger_logData(Logger *log, const char *message);
+int procGetMem(int *memused, int *memtot);
+int procGetNet(long long *rx, long long *tx);
+int procGetCPU(float *l1, float *l5, float *l15);
+int procGetStreamstor(int *busy);
 
 #endif
