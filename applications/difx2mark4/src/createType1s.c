@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
+#include <difxio/difx_input.h>
 #include "difx2mark4.h"
 
 #define XS_CONVENTION
@@ -18,8 +19,10 @@
 #define SCALE 10000.0               // amplitude factor to normalize for fourfit
 
 //FIXME add other sanity checks from difx2fits fitsUV.c
+const int header_size = (8*sizeof(int)) + (5*sizeof(double)) + (2*sizeof(char)); 
+
 int RecordIsFlagged(vis_record *vr, const DifxJob *job)
-{
+    {
 	double mjd;
 	int a1, a2;
 	int i;
@@ -49,15 +52,17 @@ int RecordIsFlagged(vis_record *vr, const DifxJob *job)
 	}
 
 	return 0;
-}
+    }
 
 int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
-                  char *baseFile,   // string containing common part of difx file names
+		  int *jobId,
+		  int scanId,
                   char *node,       // directory for output fileset
                   char *rcode,      // 6 letter root suffix
                   struct stations *stns, // struct contains station name information
                   struct CommandLineOptions *opts, // ptr to input options
-                  char *rootname)   // full root file name
+                  char *rootname,   // full root file name
+		  FILE **vis_file)   
     {
     int i,
         ch,
@@ -69,11 +74,14 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
         nflagged,                   // number of visibility records flagged
         base_index[NUMFILS],        // base_index[i] contains baseline for file fout[i]
         n120[NUMFILS],              // # of records in each t120 file
-        n120_flipped;
+        n120_flipped,
+        currentScan,
+        noscan,
+        vis_file_status;
 
-    char inname[256],               // file name of input data file
-         dirname[256],
-         outname[256],
+    char inname[DIFXIO_FILENAME_LENGTH],               // file name of input data file
+         dirname[DIFXIO_FILENAME_LENGTH],
+         outname[DIFXIO_FILENAME_LENGTH],
          blines[NUMFILS][3],        // null-terminated baselines list
          poltab [4][3] = {"LL", "RR", "LR", "RL"},
          lchan_id[5],
@@ -83,8 +91,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
     double q_factor,                // quantization correction factor
            sb_factor[64];           // +1 | -1 for USB | LSB by channel
 
-    FILE *fin,
-         *fout[NUMFILS];
+    FILE *fout[NUMFILS];
     DIR *pdir;
     struct dirent *dent;
     struct tm *mod_time;
@@ -101,7 +108,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
         } u;
 
                                     // function prototypes
-    int get_vis (FILE *, int, vis_record *);
+    int get_vis_header (FILE *, vis_record *);
     void conv2date (double, struct date *);
     void write_t100 (struct type_100 *, FILE *);
     void write_t101 (struct type_101 *, FILE *);
@@ -117,7 +124,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
     // q_factor = (D->quantBits == 1) ? 1.57 : 1.13 / 3.219;
     q_factor = 1.0;
     if (opts->verbose > 0)
-        fprintf (stderr, "visibility scale factor %9.5lf\n", q_factor * SCALE);
+        printf ("      visibility scale factor %9.5lf\n", q_factor * SCALE);
                                     // compensate for LSB fringe rotator direction
     for (i=0; i<D->nFreq; i++)
         sb_factor[i] = ((D->freq+i)->sideband == 'U') ? 1.0 : -1.0;
@@ -148,10 +155,10 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
     t100.nindex = D->nFreq * D->nPolar;
     t100.nlags = nvis;
     strncpy (t100.rootname, rootname, 34);
-    conv2date (D->scan->mjdStart, &t100.start);
-    conv2date (D->scan->mjdEnd,   &t100.stop);
+    conv2date (D->scan[scanId].mjdStart, &t100.start);
+    conv2date (D->scan[scanId].mjdEnd,   &t100.stop);
     if (opts->verbose > 0)
-        fprintf (stderr, "mjdStart %g start %hd %hd %hd %hd %f\n", D->scan->mjdStart, 
+        printf ("      mjdStart %g start %hd %hd %hd %hd %f\n", D->scan[scanId].mjdStart, 
                  t100.start.year, t100.start.day, 
                  t100.start.hour, t100.start.minute, t100.start.second);
                                     // dummy procdate - *could* set to file creation time
@@ -171,54 +178,133 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
     u.t120.nlags = nvis;
     memcpy (u.t120.rootcode, rcode, 6);
 
-                                    // form directory name for input file
-    strcpy (dirname, baseFile);
-    strcat (dirname, ".difx");
-                                    // open input (SWIN) .difx file
-                                    // first open directory it resides in
-    pdir = opendir (dirname);
-    if (pdir == NULL)
-        {
-        perror ("difx2mark4");
-        fprintf (stderr, "fatal error opening input data directory %s\n", dirname);
-        return (-1);
-        }
-                                    // for now, assume there is only one datafile present
-    do
-        dent = readdir (pdir);
-    while                           // ignore ".", "..", and pcal file names
-        (strcmp (dent->d_name, ".") == 0 
-      || strcmp (dent->d_name, "..") == 0
-      || strncmp (dent->d_name, "PCAL", 4) == 0);
-
-    strcpy (inname, dirname);
-    strcat (inname, "/");
-    strcat (inname, dent->d_name);
-
-    fin = fopen (inname, "r");
-    if (fin == NULL)
-        {
-        perror ("difx2mark4");
-        fprintf (stderr, "fatal error opening input data file %s\n", inname);
-        return (-1);
-        }
-
-    fprintf (stderr, "opened input file %s\n", inname);
+                                    // only open new file if one isn't already open
                                     // loop over all records in input file
+    currentScan = -1;
     while (TRUE)
         {
-                                    // read a record from the input file
-        if (get_vis (fin, nvis, &rec))
-            break;                  // encountered a read error or EOF; stop looping
+        noscan=0;
+        if(*vis_file == 0)
+            {
+                                    // form directory name for input file
+            strcpy (dirname, D->job[*jobId].outputFile);
+                                    // open input (SWIN) .difx file
+                                    // first open directory it resides in
+            pdir = opendir (dirname);
+            if (pdir == NULL)
+                {
+                perror ("difx2mark4");
+                fprintf (stderr, "fatal error opening input data directory %s\n", dirname);
+                return (-1);
+                }
+                                    // for now, assume there is only one datafile present
+                                    // FIXME add support for
+                                    // - multiple files
+                                    // - multiple pulsar bins
+                                    // - multiple phase centres
+            do
+                dent = readdir (pdir);
+            while                       // ignore ".", "..", and pcal file names
+                (strcmp (dent->d_name, ".") == 0 
+              || strcmp (dent->d_name, "..") == 0
+              || strncmp (dent->d_name, "PCAL", 4) == 0);
 
+            strcpy (inname, dirname);
+            strcat (inname, "/");
+            strcat (inname, dent->d_name);
+
+            *vis_file = fopen (inname, "r");
+            if (*vis_file == NULL)
+                {
+                perror ("difx2mark4");
+                fprintf (stderr, "fatal error opening input data file %s\n", inname);
+                return (-1);
+                }
+
+            printf ("      opened input file %s\n", inname);
+            //printf ("      file pointer %x\n", *vis_file);
+            }
+                                    // read a record from the input file
+        vis_file_status = get_vis_header (*vis_file, &rec);
+        if (vis_file_status < 0)
+            {
+            if (vis_file_status == -1)
+                {
+                                    //EOF in .difx file
+                if (opts->verbose > 0)
+                    printf ("        EOF in input file\n");
+                fclose (*vis_file);
+                *vis_file = 0;
+                //printf ("      file pointer %x\n", *vis_file);
+                *(jobId) += 1;      // stop looping and increment job
+                if(*jobId == D->nJob)   
+                    break;          // final job
+                continue;
+                }
+            else if (vis_file_status == -2)
+                {
+                fprintf (stderr, "unreadable input file\n");
+                                    //unreadable .difx file
+                fclose (*vis_file);
+                *vis_file = 0;
+                *(jobId) += 1;      // stop looping and increment job
+                if(*jobId == D->nJob)   
+                    break;          // final job
+                continue;
+                }
+            }
+                                    // check for new scan
+        currentScan = DifxInputGetScanIdByJobId(D, rec.mjd+rec.iat/86400., *jobId);
+        
+        if (currentScan == -1)
+            {
+            printf ("      Header time (%d %6.1f) and jobId %d don't correspond to a scan\n",
+                    rec.mjd, rec.iat, *jobId);
+            noscan++;
+            }
+        else if (currentScan != scanId)
+            {
+            printf ("      Header time (%d %6.1f) indicates new scan %d (current scanId %d)\n",
+                    rec.mjd, rec.iat, currentScan, scanId);
+                                    // current header indicates start of new scan
+                                    //
+                                    // rewind back to the start of the 
+                                    // current header
+            fseek(*vis_file, -header_size, SEEK_CUR);
+            break;
+            }
+        if (opts->verbose > 2)
+            printf ("        valid header read\n");
+        if (opts->verbose > 2)
+            printf ("          bl=%d time=%d %13.6f config=%d source=%d freq=%d, pol=%s pb=%d\n",
+                    rec.baseline, rec.mjd, rec.iat, rec.config_index, rec.source_index, rec.freq_index, rec.pols, rec.pulsar_bin);
+
+                                    // read data associated with last header
+        if (fread (rec.comp, sizeof (float), 2 * nvis, *vis_file) <= 0)
+            {                       // encountered a read error or EOF
+            fprintf (stderr, "Error reading data from file\n");
+            fclose (*vis_file);
+            *vis_file = 0;           // stop looping and increment job
+                                    
+            *jobId += 1;               
+            if(*jobId == D->nJob)
+                break;
+            continue;
+            }
+        if (opts->verbose > 2)
+            printf ("        read %d floats\n", 2*nvis);
+        nread++;
                                     // check if either antenna is flagged a priori
                                     // for this baseline. If so, disregard and move on
-        nread++;
-        if (RecordIsFlagged(&rec, D->job)) //only one job for now
+        if (noscan || RecordIsFlagged(&rec, &D->job[*jobId]))
             {
+            if (opts->verbose > 1)
+                printf ("          flagged: antenna off source\n");
             nflagged++;
             continue;
             }
+
+
                                     // find the output file for this baseline
         for (n=0; n<NUMFILS; n++)
             {
@@ -238,7 +324,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                 blines[n][1] = (stns+k)->mk4_id;
                 blines[n][2] = 0;
                 if (opts->verbose > 0)
-                    fprintf (stderr, "rec.baseline %d blines <%s>\n", 
+                    printf ("rec.baseline %d blines <%s>\n", 
                              rec.baseline, blines[n]);
                 strcat (outname, &blines[n][0]);
                 strcat (outname, "..");
@@ -251,7 +337,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                     fprintf (stderr, "fatal error opening output type1 file %s\n", outname);
                     return (-1);
                     }
-                fprintf (stderr, "created type 1 output file %s\n", outname);
+                printf ("      created type 1 output file %s\n", outname);
 
                                     // construct and write type 000 record
                 stat (inname, &attrib);
@@ -335,27 +421,28 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                                     // write a type 120 record to the appropriate file
         write_t120 (&u.t120, fout[n]);
         n120[n]++;
-        }
+        } //We only break out of this loop at end of scan.
                                     // patch up each type 1 with correct # of records
     for (i=0; i<NUMFILS; i++)
         {
-        if (base_index[i] < 0)      // bail out at end of list
+        if (base_index[i] < 0)  // bail out at end of list
             break;
         if (opts->verbose > 0)
-            fprintf (stderr, "n120[%d] %d\n", i, n120[i]);
-                                    // position to ndrec in t100 record in file
+            printf ("n120[%d] %d\n", i, n120[i]);
+                                // position to ndrec in t100 record in file
         fseek (fout[i], 
               (long)(sizeof(t000)+((char *)&t100.ndrec-(char *)&t100.record_id)), 
               SEEK_SET);
-                                    // update with actual number of records written
+                                // update with actual number of records written
         n120_flipped = int_reverse (n120[i]);
         fwrite (&n120_flipped, sizeof (int), 1, fout[i]);
-                                    // close each output file
+                                // close each output file
         fclose (fout[i]);
         }
-    fclose (fin);
-                                    // print summary information
-    fprintf (stderr, "%8d DiFX visibility records read\n", nread);
-    fprintf (stderr, "%8d DiFX visibility records discarded (slew time)\n", nflagged);
-    return (0);
+                                // print summary information
+    printf ("      DiFX visibility records read       %8d\n", nread);
+    printf ("      DiFX visibility records discarded  %8d\n", nflagged);
+   // printf ("      file pointer %x\n", *vis_file);
+    return (currentScan);
     }
+// vim: shiftwidth=4:softtabstop=4:expandtab:cindent:cinoptions={1sf1s^-1s

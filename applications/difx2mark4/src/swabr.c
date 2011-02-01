@@ -116,3 +116,4 @@ double double_reverse (double j)
 		
 	return j;
     }
+// vim: shiftwidth=4:softtabstop=4:expandtab:cindent:cinoptions={1sf1s^-1s

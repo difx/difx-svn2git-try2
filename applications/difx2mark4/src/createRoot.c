@@ -9,11 +9,33 @@
 #include <ctype.h>
 #include "difx2mark4.h"
 
-int createRoot (char *baseFile,     // common part of difx fileset name
+int isValidAntenna(const DifxInput *D, char *antName, int jobId)
+    {
+    int antId, i;
+    char antUpper[DIFXIO_NAME_LENGTH];
+
+                                    //antenna in input?
+    for(i = 0; i < strlen(antName); i++)
+        antUpper[i] = toupper(antName[i]);
+    antUpper[i+1] = '\0';
+
+    antId = DifxInputGetAntennaId(D, antUpper);
+    if (antId < 0)
+        return(0);
+
+                                    //antenna in job?
+    if (DifxInputGetDatastreamId(D, jobId, antId) < 0)
+        return(0);
+
+    return(1);
+    }
+
+int createRoot (DifxInput *D,       // difx input structure pointer
+		int *jobId,
+		int scanId,
                 char *node,         // directory for output fileset
                 char *rcode,        // 6 letter root suffix
                 struct stations *stns, // station-relevant information
-                DifxInput *D,       // difx input structure pointer
                 struct CommandLineOptions *opts, // options pointer
                 char *rootname)     // address to write root filename into
     {
@@ -26,19 +48,17 @@ int createRoot (char *baseFile,     // common part of difx fileset name
         numchan,
         nsite = 0,
         durs,
-        tarco = FALSE;              // true iff target_correlator = has been done
+        tarco = FALSE,              // true iff target_correlator = has been done
+        sourceId;
 
-    char inname[256],
-         v2dname[256],
-         s[256],
+
+    char s[256],
          *pst[50],
-         scan[32],
-         mode[32],
-         source[32],
+         scan[DIFXIO_NAME_LENGTH],
+         source[DIFXIO_NAME_LENGTH],
          current_def[32],
-         current_scan[32],
+         current_scan[DIFXIO_NAME_LENGTH],
          buff[256],
-         antlist[256],
          *pchar,
          c,
          current_site[3],
@@ -69,7 +89,7 @@ int createRoot (char *baseFile,     // common part of difx fileset name
                            " ovex_file   = dummy;\n",
                            " cvex_file   = dummy;\n",
                            " svex_file   = dummy;\n",
-                           " AP_length   = 1.0 sec;\n",
+                           " AP_length   = 1.0 sec;\n",//FIXME
                            " speedup_factor = 1.0;\n",
                            " ref $CORR_CONFIG = CDUM;\n",
                            " ref $SU_CONFIG  = SDUM;\n",
@@ -106,22 +126,14 @@ int createRoot (char *baseFile,     // common part of difx fileset name
                                     // initialize memory as necessary
     current_def[0] = 0;
     current_scan[0] = 0;
-    inname[0] = 0;
 
-                                    // check number of scans in job is 1
-    if (D->nJob != 1)
-        {
-        perror ("difx2mark4");
-        fprintf (stderr, "Error: Only one job may be selected and this must contain only one scan\n");
-        return (-1);
-        }
                                     // create scan identifier
 
                                     // source name
     strcpy (source, D->source->name);
 
     if (opts->verbose > 0)
-        fprintf (stderr, "source %s\n", source);
+        printf ("      source %s\n", source);
                                     // modify source (change . to _) name
     i = 0;
     while (source[i] != 0)
@@ -130,60 +142,28 @@ int createRoot (char *baseFile,     // common part of difx fileset name
             source[i] = '_';
         i++;
         }
-                                    // form input file name
-    strcpy (v2dname, baseFile);
-                                    // see if base file name ends in _xxx
-    pchar = strrchr (v2dname, '_');
-    if (pchar != NULL)
-        *pchar = 0;                 // yes, truncate job# portion of name
-    strcat (v2dname, ".v2d");
 
-                                    // open vex2difx (.v2d) file
-    fv2d = fopen (v2dname, "r");
-    if (fv2d == NULL)
-        {
-        perror ("difx2mark4");
-        fprintf (stderr, "fatal error opening v2d file %s\n", v2dname);
-        return (-1);
-        }
-                                    // read v2d file pulling out vex file name
-    while (fgets (line, 256, fv2d) != NULL)
-        {
-        if ((pchar = strstr (line, "vex = ")) != NULL)
-            sscanf (pchar, "vex = %s", inname);
-        else if ((pchar = strstr (line, "antennas = ")) != NULL)
-            sscanf (pchar, "antennas = %s", antlist);
-        }
 
-    if (inname == NULL)
-        {
-        perror ("difx2mark4");
-        fprintf (stderr, "Error reading vex file name from v2d file %s\n", v2dname);
-        return (-1);
-        }
+    // FIXME inname for vexfile and antlist for job antennas
     
-
-    if (opts->verbose > 0)
-        {
-        fprintf (stderr, "vex file name <%s>\n", inname);
-        fprintf (stderr, "antenna list %s\n", antlist);
-        }
                                     // open input vex file
-    fin = fopen (inname, "r");
+    printf("      Opening %s\n", D->job[*jobId].vexFile);
+    fin = fopen (D->job[*jobId].vexFile, "r");
     if (fin == NULL)
         {
         perror ("difx2mark4");
-        fprintf (stderr, "fatal error opening input vex file %s\n", inname);
+        fprintf (stderr, "fatal error opening input vex file %s for job %d\n", D->job[*jobId].vexFile, *jobId);
         return (-1);
         }
 
                                     // create the new root file name
-    strcpy (rootname, node);
-    strcat (rootname, "/");
-    strcat (rootname, source);
-    strcat (rootname, ".");
-    strcat (rootname, rcode);
-    fprintf (stderr, "output rootfile: %s\n", rootname);
+    sprintf(rootname, "%s/%s.%s", node, source, rcode);
+//    strcpy (rootname, node);
+//    strcat (rootname, "/");
+//    strcat (rootname, source);
+//    strcat (rootname, ".");
+//    strcat (rootname, rcode);
+    printf ("      output rootfile: %s\n", rootname);
                                     // open output (root) file
     fout = fopen (rootname, "w");
     if (fout == NULL)
@@ -199,6 +179,7 @@ int createRoot (char *baseFile,     // common part of difx fileset name
         {
                                     // get all fields of this line
         strcpy (s, line);           // make a copy for (destructive) parsing
+        //fprintf(stderr, "%s\n", line);
         if ((pchar = strchr (s, '=')) != NULL)
             {
             n = pchar - s;
@@ -221,7 +202,7 @@ int createRoot (char *baseFile,     // common part of difx fileset name
                 {
                 match = TRUE;       // found it
                 if (opts->verbose > 0)
-                    fprintf (stderr, "processing %s block\n", blocks[i]);
+                    printf ("      processing %s block\n", blocks[i]);
                 break;
                 }
 
@@ -232,10 +213,16 @@ int createRoot (char *baseFile,     // common part of difx fileset name
             strncpy (current_def, pst[1], 32);
 
         if (strncmp ("scan", pst[0], strlen (pst[0])) == 0)
+            {
             strncpy (current_scan, pst[1], 32);
+            //fprintf(stderr, "scan=%s\n", current_scan);
+            }
                                     // remember the site ID for later
         if (strncmp (pst[0], "site_ID", 7) == 0)
+            {
             strncpy (current_site, pst[2], 3);
+            //fprintf(stderr, "site=%s\n", current_site);
+            }
 
                                     // switch to proper context for current block
         switch (current_block)
@@ -359,41 +346,51 @@ int createRoot (char *baseFile,     // common part of difx fileset name
                 if (strncmp (pst[0], "$SCHED", 6) == 0)
                     break;
                                     // skip line copy if we're within the wrong scan
-                else if (strcmp (current_scan, opts->scan) != 0) 
-                    line[0] = 0;    
+                else if (strcmp (current_scan, D->scan[scanId].identifier) != 0) 
+                    {
+                    line[0] = 0;
+                    continue;
+                    }
                                     // correct scan, insert one copy of ff ref time
                 else if (strncmp (pst[0], "scan", 4) == 0)
                     {
                     //FIXME calculate this properly taking into account different scan lengths
                     //      for different antennas. See also stcodes/compute_reftime.c
-                    conv2date (D->scan->mjdStart + D->scan->durSeconds / 172800.0, &caltime);
+                    conv2date (D->scan[scanId].mjdStart + D->scan[scanId].durSeconds / 172800.0, &caltime);
                     sprintf (buff, 
                              "    fourfit_reftime = %04hdy%03hdd%02hdh%02hdm%02ds;\n",
                              caltime.year, caltime.day, 
                              caltime.hour, caltime.minute, (int) caltime.second);
                     strcat (line, buff);
                     }
-                                    // omit stations that didn't get correlated from scan
+                                    // Check that station is in this scan
                 else if (strncmp (pst[0], "station", 7) == 0)
                     {
-                    if (strstr (antlist, pst[2]) == NULL)
+                    if(!isValidAntenna(D, pst[2], *jobId))
                         line[0] = 0;
                                     // this station participates, use difx start
                     else 
                         {
                         sprintf (buff, " 00 sec : %d sec : : : : 0 ; * overridden times\n", 
-                                 D->scan->durSeconds);
+                                 D->scan[scanId].durSeconds);
                         pchar = strchr (line, ':');
                         strcpy (pchar+2, buff);
                         }
                     }
                                     // sanity check that source matches difx's
+		sourceId = D->scan[scanId].pointingCentreSrc;
+		if(sourceId < 0)
+                    {
+                    fprintf (stderr, "Developer Error, pointing source Id < 0 for scan %s\n",
+                             D->scan[scanId].identifier);
+                    return (-1);
+                    }
                 else if (strncmp (pst[0], "source", 6) == 0)
                     {
-                    if (strcmp (pst[2], D->source->name))
+                    if (strcmp (pst[2], D->source[sourceId].name))
                         {
-                        fprintf (stderr, "difx source %s differs from %s - check scan!\n",
-                                 D->source->name, pst[2]);
+                        fprintf (stderr, "difx source %s differs from vex source %s - check scan %s!\n", 
+                                 D->source[sourceId].name, pst[2], D->scan[scanId].identifier);
                         return (-1);
                         }
                     }
@@ -401,7 +398,7 @@ int createRoot (char *baseFile,     // common part of difx fileset name
                 else if (strncmp (pst[0], "start", 6) == 0)
                     {
                                     // generate fresh scan start, in case it was overridden
-                    conv2date (D->scan->mjdStart, &caltime);
+                    conv2date (D->scan[scanId].mjdStart, &caltime);
                     sprintf (buff, "  start = %04hdy%03hdd%02hdh%02hdm%02ds;",
                          caltime.year, caltime.day, 
                          caltime.hour, caltime.minute, (int) caltime.second);
@@ -420,10 +417,7 @@ int createRoot (char *baseFile,     // common part of difx fileset name
                                     // FIXME difxio scan start time is time when first
                                     // antenna comes on source. It may also be different
                                     // if mjdStart is set to the middle of a scan in
-                                    // the .v2d file. For now we will copy the scan
-                                    // verbatim from the vex file to avoid having to 
-                                    // fiddle the individual antenna start and stop times
-                           
+                                    // the .v2d file.
                 break;
 
             case SCHEDULING_PARAMS: // the scheduling_params block is deleted
@@ -442,10 +436,10 @@ int createRoot (char *baseFile,     // common part of difx fileset name
                 else if (strncmp (pst[0], "enddef", 6) == 0)
                     {
                                     // if not in difx list, discard whole block
-                    if (strstr (antlist, current_site) == NULL)
+                    if(!isValidAntenna(D, current_site, *jobId))
                         {
                         if (opts->verbose > 0)
-                            fprintf (stderr, "discarding unused def for site %s\n",
+                            printf ("        discarding unused def for site %s\n",
                                      current_site);
                         line[0] = 0;
                         break;
@@ -453,7 +447,7 @@ int createRoot (char *baseFile,     // common part of difx fileset name
                     c = single_code (current_site);
                     if (c == 0)
                         {
-                        fprintf (stderr, "All 52 codes used up, no code for %c%c\n",
+                        printf ("      All 52 codes used up, no code for %c%c\n",
                                  current_site[0], current_site[1]);
                         return (-1);
                         }
@@ -485,7 +479,7 @@ int createRoot (char *baseFile,     // common part of difx fileset name
                     (stns+nsite)->mk4_id = c;
                     
                     if (opts->verbose > 0)
-                        fprintf (stderr, "intl_name %c%c difx_name %c%c mk4_id %c "
+                        fprintf ("        intl_name %c%c difx_name %c%c mk4_id %c "
                                          "difx site index %d\n",
                            *((stns+nsite)->intl_name), *((stns+nsite)->intl_name+1),
                            *((stns+nsite)->difx_name), *((stns+nsite)->difx_name+1),
@@ -550,11 +544,11 @@ int createRoot (char *baseFile,     // common part of difx fileset name
             current_def[0] = 0;
         }
 
-        fprintf (stderr, "number of stations: %d\n", nsite);
+        printf ("      number of stations: %d\n", nsite);
         if (nsite != D->nAntenna)
             {
-            fprintf (stderr, "ERROR: number of stations in v2d disagrees with nAntenna %d\n",
-                     D->nAntenna);
+            fprintf (stderr, "ERROR: number of sites in vex %d disagrees with nAntenna %d\n",
+                     nsite, D->nAntenna);
             return (-1);
             }
                                     // append extra statements to the end of the file
@@ -563,6 +557,7 @@ int createRoot (char *baseFile,     // common part of difx fileset name
         
                                     // generate and put out clock_early statements
         n = 0;
+
         while ((stns+n)->mk4_id != 0 && n < MAX_STN)
             {
             k = (stns+n)->dind;     // index into difx arrays for this station #n
@@ -640,3 +635,4 @@ void fake_bocf_period(char buff[256], DifxInput *D)
     sprintf (buff, " bocf_period = %d;\n*subintNS = %d;\n",
 	bocf_period, D->config->subintNS);
     }
+// vim: shiftwidth=4:softtabstop=4:expandtab:cindent:cinoptions={1sf1s^-1s

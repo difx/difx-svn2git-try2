@@ -25,13 +25,15 @@
 #define MAX_VIS 512
 #define MAX_STN 50
 #define MAX_FBANDS 20 
+#define EXP_CODE_LEN 4
 
 enum booleans {FALSE, TRUE};
 
 struct CommandLineOptions
     {
-    char *fitsFile;
+    char exp_no[EXP_CODE_LEN+1];
     char *baseFile[MAX_INPUT_FILES];
+    FILE **in;
     char *scan;
     int nBaseFile;
     int writemodel;

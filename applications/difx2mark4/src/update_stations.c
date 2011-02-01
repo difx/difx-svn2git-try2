@@ -163,3 +163,4 @@ int main(int argc, char **argv)
     return(ers);
 }
 #endif /* STANDALONE_CHECK */
+// vim: shiftwidth=4:softtabstop=4:expandtab:cindent:cinoptions={1sf1s^-1s
