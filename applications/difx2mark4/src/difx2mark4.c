@@ -66,20 +66,20 @@ static int usage (const char *pgm)
     }
 
                                     // global table of frequency bands
-struct fbands fband[MAX_FBANDS] = {'B',      0.0, 999999.9,  // default to band B
-                                   'I',    100.0,    150.0,
-                                   'G',    150.0,    225.0,
-                                   'P',    225.0,    390.0,
-                                   'L',    390.0,   1550.0,
-                                   'S',   1550.0,   3900.0,
-                                   'C',   3900.0,   6200.0,
-                                   'X',   6200.0,  10900.0,
-                                   'K',  10900.0,  36000.0,
-                                   'Q',  36000.0,  46000.0,
-                                   'V',  46000.0,  56000.0,
-                                   'W',  56000.0, 100000.0,
-                                   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-                                   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+struct fbands fband[MAX_FBANDS] = {{'B',      0.0, 999999.9},  // default to band B
+                                   {'I',    100.0,    150.0},
+                                   {'G',    150.0,    225.0},
+                                   {'P',    225.0,    390.0},
+                                   {'L',    390.0,   1550.0},
+                                   {'S',   1550.0,   3900.0},
+                                   {'C',   3900.0,   6200.0},
+                                   {'X',   6200.0,  10900.0},
+                                   {'K',  10900.0,  36000.0},
+                                   {'Q',  36000.0,  46000.0},
+                                   {'V',  46000.0,  56000.0},
+                                   {'W',  56000.0, 100000.0},
+                                   {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, 
+                                   {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
                                    
   
 int newScan(DifxInput *,  struct CommandLineOptions*, char *, int, int *, FILE **);
@@ -134,14 +134,9 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
     {
     DifxInput *D, *D1, *D2;
     // struct fitsPrivate outfile;
-    char node[DIFXIO_FILENAME_LENGTH*2+1],
-         site_ids[50],              // ordered, null-terminated list of side id's
-         stn_names[50][2];
-
-
+    char node[DIFXIO_FILENAME_LENGTH*2+1];
     int i, scanId, newScanId, oldJobId;
     int jobId = 0;
-    int error;
     int nConverted = 0;
     const char *difxVersion;
     FILE *vis_file = 0;
@@ -317,7 +312,7 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
                 *nScan += 1;
                 scanId = newScanId;
             }
-        if(nScan!=D->nScan -1)
+        if(*nScan!=D->nScan -1)
             printf("Warning, not all scans converted!\n");
         return jobId;
         }
@@ -326,7 +321,7 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
     
 int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanId, int *jobId, FILE **vis_file)
 {
-    int i, j, startJobId;
+    int startJobId;
     int nextScanId;
     time_t now;
     struct tm *t;
@@ -334,19 +329,8 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
          rootname[DIFXIO_NAME_LENGTH],             // full root filename
          path[DIFXIO_NAME_LENGTH+5];
 
-
-                                    // prototypes
     struct stations stns[MAX_STN];
 
-    char *root_id(int, int, int, int, int);
-    int createRoot (DifxInput *, int *, int, char *, char *, struct stations *,
-                    struct CommandLineOptions *, char *);
-    int createType1s (DifxInput *, int *, int, char *, char *, struct stations *,
-                      struct CommandLineOptions *, char *, FILE *);
-    int createType3s (DifxInput *, int, int, int, char *, char *, struct stations *,
-                      struct CommandLineOptions *);
-
-         
                                 // make scan directory
     snprintf(path, DIFXIO_NAME_LENGTH, "%s/%s", node, D->scan[scanId].identifier);
     //strncat(node, "/", DIFXIO_NAME_LENGTH);

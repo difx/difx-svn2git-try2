@@ -108,13 +108,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
         } u;
 
                                     // function prototypes
-    int get_vis_header (FILE *, vis_record *);
-    void conv2date (double, struct date *);
-    void write_t100 (struct type_100 *, FILE *);
-    void write_t101 (struct type_101 *, FILE *);
-    void write_t120 (struct type_120 *, FILE *);
     int RecordIsFlagged(vis_record *vr, const DifxJob *job);
-    char getband (double);
 
                                     // initialize memory as necessary
                                     // quantization correction factor is pi/2 for

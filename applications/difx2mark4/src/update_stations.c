@@ -33,7 +33,7 @@ static void dump_stations(char *file, char *suffix, char code_table[52][4])
     for (i=0; i<52 && code_table[i]; i++)   
 	fprintf(ofp, "%4.4s\n", code_table[i]);
     fflush(ofp);
-    close(ofp);
+    fclose(ofp);
     free(name);
 }
 

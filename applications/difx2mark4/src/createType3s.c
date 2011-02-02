@@ -68,8 +68,6 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
     FILE *fin;
     FILE *fout[NUMFILS];
 
-    DifxPolyModel *pdpm;
-
     struct type_000 t000;
     struct type_300 t300;
     struct type_301 t301;
@@ -196,7 +194,7 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                                         // read next input record
                 while (fgets (line, LINEMAX, fin) != NULL)
                     {
-                    sscanf (line, "%s%lf%lf%lf%d%d%d%d%d%n", &ant, &t, &tint, &cable_delay, 
+                    sscanf (line, "%s%lf%lf%lf%d%d%d%d%d%n", ant, &t, &tint, &cable_delay, 
                                      &npol, &nchan, &ntones, &nstates, &nrc, &nchars);
 
                                         // calculate and insert rot start time of record

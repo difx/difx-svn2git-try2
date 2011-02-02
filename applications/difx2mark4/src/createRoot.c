@@ -42,19 +42,16 @@ int createRoot (DifxInput *D,       // difx input structure pointer
     int i,
         k,
         n,
-        ret,
         match,
         current_block,
         numchan,
         nsite = 0,
-        durs,
         tarco = FALSE,              // true iff target_correlator = has been done
         sourceId;
 
 
     char s[256],
          *pst[50],
-         scan[DIFXIO_NAME_LENGTH],
          source[DIFXIO_NAME_LENGTH],
          current_def[32],
          current_scan[DIFXIO_NAME_LENGTH],
@@ -112,15 +109,10 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                            " enddef;\n",
                            "END_EXTRA"};
           
-    extern struct fbands fband[MAX_FBANDS];
 
     FILE *fin,
-         *fout,
-         *fv2d;
+         *fout;
                                     // function prototypes
-    char single_code (char *);
-    void conv2date (double, struct date *);
-    char getband (double);
     void fake_bocf_period(char [256], DifxInput *);
 
                                     // initialize memory as necessary
@@ -479,7 +471,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                     (stns+nsite)->mk4_id = c;
                     
                     if (opts->verbose > 0)
-                        fprintf ("        intl_name %c%c difx_name %c%c mk4_id %c "
+                        printf ("        intl_name %c%c difx_name %c%c mk4_id %c "
                                          "difx site index %d\n",
                            *((stns+nsite)->intl_name), *((stns+nsite)->intl_name+1),
                            *((stns+nsite)->difx_name), *((stns+nsite)->difx_name+1),
@@ -626,13 +618,13 @@ char getband (double freq)
  */
 void fake_bocf_period(char buff[256], DifxInput *D)
     {
-    unsigned long ap_in_sysclks, bocf_period, nn;
+    unsigned long ap_in_sysclks, bocf_period;
     ap_in_sysclks = rint((double)D->config->tInt * 32e6 / 1.0);
     bocf_period = (D->config->subintNS * 32) / 1000;
     if (ap_in_sysclks % bocf_period != 0)
 	bocf_period = ap_in_sysclks / 4;
 
-    sprintf (buff, " bocf_period = %d;\n*subintNS = %d;\n",
+    sprintf (buff, " bocf_period = %lu;\n*subintNS = %d;\n",
 	bocf_period, D->config->subintNS);
     }
 // vim: shiftwidth=4:softtabstop=4:expandtab:cindent:cinoptions={1sf1s^-1s
