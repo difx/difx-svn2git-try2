@@ -11,6 +11,9 @@
 
 int isValidAntenna(const DifxInput *D, char *antName, int jobId)
     {
+    /* if named antenna is present in the specified job, return
+     * difxio antenna Id. Otherwise return -1
+     */
     int antId, i;
     char antUpper[DIFXIO_NAME_LENGTH];
 
@@ -21,13 +24,13 @@ int isValidAntenna(const DifxInput *D, char *antName, int jobId)
 
     antId = DifxInputGetAntennaId(D, antUpper);
     if (antId < 0)
-        return(0);
+        return(-1);
 
                                     //antenna in job?
     if (DifxInputGetDatastreamId(D, jobId, antId) < 0)
-        return(0);
+        return(-1);
 
-    return(1);
+    return(antId);
     }
 
 int createRoot (DifxInput *D,       // difx input structure pointer
@@ -46,6 +49,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
         current_block,
         numchan,
         nsite = 0,
+        eop_found = FALSE,
         tarco = FALSE,              // true iff target_correlator = has been done
         sourceId;
 
@@ -273,10 +277,17 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                     line[0] = '*';  // comment out tape motion and tape
                                     // length commands, as S2 syntax
                                     // causes problems with vex parser
+                else if (strncmp (pst[0], "headstack", 9) == 0 &&
+                         strlen(pst[0]) == 9) 
+                    line[0] = '*';  // NRAO SCHED produces invalid
+                                    // headstack
                 break;
             case EOP:               // add dummy eop def
                 if (strncmp (pst[0], "$EOP", 4) == 0)
+                    {
+                    eop_found = TRUE;
                     strcat (line, "  def EOPXXX;\n  enddef;\n");
+                    }
                 break;
 
             case EXPER:             // modify target_correlator
@@ -299,7 +310,10 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                                     // insert channel names in chan_def stmts
                 else if (strncmp (pst[0], "chan_def", 8) == 0)
                     {
-                    sprintf (buff, "%c%02dU :", getband (atof (pst[3])), numchan++);
+                    if(pst[2][0] == '&')
+                        sprintf (buff, "%c%02dU :", getband (atof (pst[3])), numchan++);
+                    else
+                        sprintf (buff, "%c%02dU :", getband (atof (pst[2])), numchan++);
                     if (*pst[5] == 'L')
                         buff[3] = 'L';
 
@@ -358,7 +372,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                                     // Check that station is in this scan
                 else if (strncmp (pst[0], "station", 7) == 0)
                     {
-                    if(!isValidAntenna(D, pst[2], *jobId))
+                    if(isValidAntenna(D, pst[2], *jobId) < 0)
                         line[0] = 0;
                                     // this station participates, use difx start
                     else 
@@ -428,7 +442,8 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                 else if (strncmp (pst[0], "enddef", 6) == 0)
                     {
                                     // if not in difx list, discard whole block
-                    if(!isValidAntenna(D, current_site, *jobId))
+                    i = isValidAntenna(D, current_site, *jobId);
+                    if(i<0)
                         {
                         if (opts->verbose > 0)
                             printf ("        discarding unused def for site %s\n",
@@ -436,6 +451,8 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                         line[0] = 0;
                         break;
                         }
+                                    // keep track of difx index for this site
+                    (stns+nsite)->dind = i;
                     c = single_code (current_site);
                     if (c == 0)
                         {
@@ -452,21 +469,6 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                                     // generate difx name by shifting to upper case
                     for (i=0; i<2; i++)
                         (stns+nsite)->difx_name[i] = toupper (current_site[i]);
-                                    // find out difx antenna index for this site
-                    for (i=0; i<D->nAntenna; i++)
-                        if (memcmp ((stns+nsite)->difx_name, (D->antenna+i)->name, 2) == 0)
-                            {
-                                    // keep track of difx index for this site
-                            (stns+nsite)->dind = i;
-                            break;
-                            }
-                                    // bail out if antenna couldn't be found
-                    if (i == D->nAntenna)
-                        {
-                        fprintf (stderr, "Couldn't find site %c%c in difx antenna list\n",
-                                 (stns+nsite)->difx_name[0], (stns+nsite)->difx_name[1]);
-                        return (-1);
-                        }
                                     // file single letter code for future use
                     (stns+nsite)->mk4_id = c;
                     
@@ -587,6 +589,15 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                 fputs (extra_lines[i], fout);
             i++;
             }
+                                    // add fake EOP block no original
+                                    // EOP block was present
+        if(!eop_found)
+            {
+            //FIXME output difxio EOPs!
+            sprintf(line, "$EOP;\n def EOPXXX;\n enddef;");
+            fputs (line, fout); 
+            }
+
                                     // close input and output files
         fclose (fin);
         fclose (fout);
