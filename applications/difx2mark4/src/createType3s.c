@@ -9,10 +9,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include "difx2mark4.h"
+#include "other.h"
 
 
 #define NUMFILS 50                  // maximum number of station files
-#define LINEMAX 20000               // max size of a pcal file line
 #define NPC_TONES 64                // max number of pcal tones (and channels)
 
 int createType3s (DifxInput *D,     // difx input structure, already filled
@@ -27,7 +27,6 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
     {
     int i,
         j,
-        k,
         l,
         n,
         jf,
@@ -45,9 +44,15 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
         isb,
         record_chan,
         once = FALSE,
+        refDay,
+        start,
         nclock;
 
+        size_t linemax = 10000;
+
+
     double t,
+           mjd,
            tint,
            cable_delay,
            freq,
@@ -63,7 +68,7 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
          pcal_filnam[256],
          ant[16],
          buff[5],
-         line[LINEMAX];
+         *line;
 
     FILE *fin;
     FILE *fout[NUMFILS];
@@ -99,14 +104,25 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                                     // pre-calculate sample rate (samples/s)
     srate = 2e6 * D->freq->bw * D->freq->overSamp;
                                     // loop over all antennas in scan
-    for (n=0; n<D->nAntenna; n++)
+    line = calloc(linemax, sizeof(char));
+    if(line == 0)
         {
+        fprintf(stderr, "Error, malloc of line failed\n");
+        return (-1);
+        }
+                                    // doy of start of observation
+    mjd2dayno((int)(D->mjdStart), &refDay);
+
+    for (n = 0; n < D->nAntenna; n++)
+        {                           // n incremented at bottom 
+                                    // and at every continue
+        if (stns[n].invis == 0)
+            continue;
         strcpy (outname, node);     // form output file name
         strcat (outname, "/");
 
         outname[strlen(outname)+1] = 0;
-        k = (stns+n)->dind;
-        outname[strlen(outname)] = (stns+k)->mk4_id;
+        outname[strlen(outname)] = (stns+n)->mk4_id;
         strcat (outname, "..");
         strcat (outname, rcode);
                                     // now open the file just named
@@ -115,6 +131,7 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
             {
             perror ("difx2mark4");
             fprintf (stderr, "fatal error opening output type3 file %s\n", outname);
+            free(line);
             return (-1);
             }
         printf ("    created type 3 output file %s\n", outname);
@@ -124,14 +141,15 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
         fwrite (&t000, sizeof (t000), 1, fout[n]);
 
                                     // finish forming type 300 and write it
-        t300.id = (stns+k)->mk4_id;
-        memcpy (t300.intl_id, (stns+k)->intl_name, 2);
-        memcpy (t300.name, (stns+k)->difx_name, 2);
+        t300.id = (stns+n)->mk4_id;
+        memcpy (t300.intl_id, (stns+n)->intl_name, 2);
+        memcpy (t300.name, (stns+n)->difx_name, 2);
         t300.name[2] = 0;           // null terminate to form string
                                     // check that model was read in OK
         if (D->scan[scanId].im == 0)
             {
             fprintf (stderr, "ERROR: problem accessing model array\n");
+            free(line);
             return (-1);
             }
         t = (***(D->scan[scanId].im)).mjd + (***(D->scan[scanId].im)).sec / 86400.0;
@@ -192,10 +210,28 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                 {
                                         // input data is present - loop over records
                                         // read next input record
-                while (fgets (line, LINEMAX, fin) != NULL)
+                while (TRUE)
                     {
+                    i = getline(&line, &linemax, fin);
+                    if (i < 0)          //EOF
+                        break;
                     sscanf (line, "%s%lf%lf%lf%d%d%d%d%d%n", ant, &t, &tint, &cable_delay, 
                                      &npol, &nchan, &ntones, &nstates, &nrc, &nchars);
+                    mjd = t - refDay + (int)(D->mjdStart);
+
+                    if(mjd < D->scan[scanId].mjdStart)
+                                        // skip to next line
+                        {
+                        if (opts->verbose > 1)
+                            printf("pcal early %13.6f<%13.6f\n", mjd, D->scan[scanId].mjdStart);
+                        continue;
+                        }
+                    if(mjd > D->scan[scanId].mjdEnd)
+                        {
+                        if (opts->verbose > 1)
+                            printf("pcal late %13.6f>%13.6f\n", t, D->scan[scanId].mjdStart);
+                        break;
+                        }
 
                                         // calculate and insert rot start time of record
                     t309.rot = 3.2e7 * 8.64e4 * (t - 1.0);
@@ -278,8 +314,8 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                     }
                 }
             }
-
         }
+    free(line);
     return 0;
     }
 // vim: shiftwidth=4:softtabstop=4:expandtab:cindent:cinoptions={1sf1s^-1s

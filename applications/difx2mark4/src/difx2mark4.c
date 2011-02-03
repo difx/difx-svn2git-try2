@@ -309,11 +309,10 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
             if(newScanId < 0)
                 break;
             else
-                *nScan += 1;
                 scanId = newScanId;
+            *nScan += 1;
             }
-        if(*nScan!=D->nScan -1)
-            printf("Warning, not all scans converted!\n");
+        printf("%d of %d scans converted!\n", *nScan, D->nScan);
         return jobId;
         }
     return 0;
@@ -321,15 +320,16 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
     
 int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanId, int *jobId, FILE **vis_file)
 {
-    int startJobId;
-    int nextScanId;
+    int startJobId,
+        nextScanId,
+        i;
     time_t now;
     struct tm *t;
     char *rcode,                    // six-letter timecode suffix
          rootname[DIFXIO_NAME_LENGTH],             // full root filename
          path[DIFXIO_NAME_LENGTH+5];
 
-    struct stations stns[MAX_STN];
+    struct stations stns[D->nAntenna];
 
                                 // make scan directory
     snprintf(path, DIFXIO_NAME_LENGTH, "%s/%s", node, D->scan[scanId].identifier);
@@ -346,11 +346,17 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
     t = localtime(&now);
     rcode = root_id (t->tm_year, t->tm_yday+1,
                      t->tm_hour, t->tm_min, t->tm_sec);
-
+                                // initialise stns with all DiFX antennas
+    for (i = 0; i < D->nAntenna; i++)
+        {
+        stns[i].insite = 0;
+        stns[i].inscan = 0;
+        stns[i].invis = 0;
+        stns[i].mk4_id = 0;
+        strncpy (stns[i].difx_name, D->antenna[i].name, 2);
+        }
                                 // create root from vex file
     startJobId = *jobId;
-                                // create type1 files for each baseline
-
     printf ("    Generating root file\n");
     if (createRoot (D, jobId, scanId, path, rcode, stns, opts, rootname) < 0)
         {
@@ -358,7 +364,7 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
         fprintf (stderr, "Could not create root file\n");
         return -1;
         }
-                                // create type3 files for each station
+                                // create type1 files for each baseline
     printf ("    Generating Type 1s\n");
     nextScanId = createType1s (D, jobId, scanId, path, rcode, stns, opts, rootname, vis_file);
     //printf ("newScan file pointer %x\n", *vis_file);
@@ -369,6 +375,7 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
         return -1;
         }
 
+                                // create type3 files for each station
     printf ("    Generating Type 3s\n");
     if (createType3s (D, startJobId, *jobId, scanId, path, rcode, stns, opts) < 0)
         {

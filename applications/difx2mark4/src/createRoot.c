@@ -43,12 +43,12 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                 char *rootname)     // address to write root filename into
     {
     int i,
-        k,
         n,
         match,
         current_block,
         numchan,
         nsite = 0,
+        nant = 0,
         eop_found = FALSE,
         tarco = FALSE,              // true iff target_correlator = has been done
         sourceId;
@@ -126,7 +126,14 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                                     // create scan identifier
 
                                     // source name
-    strcpy (source, D->source->name);
+    sourceId = D->scan[scanId].pointingCentreSrc;
+    if (sourceId < 0 || sourceId > D->nSource)
+        {
+        printf("sourceId %d out of range\n", sourceId);
+        return (-1);
+        }
+
+    strcpy (source, D->source[sourceId].name);
 
     if (opts->verbose > 0)
         printf ("      source %s\n", source);
@@ -372,11 +379,14 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                                     // Check that station is in this scan
                 else if (strncmp (pst[0], "station", 7) == 0)
                     {
-                    if(isValidAntenna(D, pst[2], *jobId) < 0)
+                    i = isValidAntenna(D, pst[2], *jobId);
+                    if(i < 0)
                         line[0] = 0;
                                     // this station participates, use difx start
                     else 
                         {
+                        nant++;
+                        stns[i].inscan = TRUE;
                         sprintf (buff, " 00 sec : %d sec : : : : 0 ; * overridden times\n", 
                                  D->scan[scanId].durSeconds);
                         pchar = strchr (line, ':');
@@ -384,13 +394,6 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                         }
                     }
                                     // sanity check that source matches difx's
-		sourceId = D->scan[scanId].pointingCentreSrc;
-		if(sourceId < 0)
-                    {
-                    fprintf (stderr, "Developer Error, pointing source Id < 0 for scan %s\n",
-                             D->scan[scanId].identifier);
-                    return (-1);
-                    }
                 else if (strncmp (pst[0], "source", 6) == 0)
                     {
                     if (strcmp (pst[2], D->source[sourceId].name))
@@ -451,8 +454,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                         line[0] = 0;
                         break;
                         }
-                                    // keep track of difx index for this site
-                    (stns+nsite)->dind = i;
+                    stns[i].insite = TRUE;
                     c = single_code (current_site);
                     if (c == 0)
                         {
@@ -465,21 +467,17 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                     strcpy (line, def_block);
                     strcat (line, buff);
                                     // save 2-letter code for later use
-                    memcpy ((stns+nsite)->intl_name, current_site, 2);
-                                    // generate difx name by shifting to upper case
-                    for (i=0; i<2; i++)
-                        (stns+nsite)->difx_name[i] = toupper (current_site[i]);
+                    memcpy ((stns+i)->intl_name, current_site, 2);
                                     // file single letter code for future use
-                    (stns+nsite)->mk4_id = c;
+                    (stns+i)->mk4_id = c;
                     
                     if (opts->verbose > 0)
                         printf ("        intl_name %c%c difx_name %c%c mk4_id %c "
                                          "difx site index %d\n",
-                           *((stns+nsite)->intl_name), *((stns+nsite)->intl_name+1),
-                           *((stns+nsite)->difx_name), *((stns+nsite)->difx_name+1),
-                           (stns+nsite)->mk4_id, (stns+nsite)->dind);
+                           *((stns+i)->intl_name), *((stns+i)->intl_name+1),
+                           *((stns+i)->difx_name), *((stns+i)->difx_name+1),
+                           (stns+i)->mk4_id, i);
                     nsite++;
-                    (stns+nsite)->mk4_id = 0; // null-terminate list 
                     }
                 
                 else if (strncmp (pst[0], "$SITE", 5))
@@ -491,7 +489,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                 break;
 
             case SOURCE:
-                if (strncmp (D->source->name, current_def, strlen (D->source->name)) != 0
+                if (strncmp (D->source[sourceId].name, current_def, strlen (D->source[sourceId].name)) != 0
                  && current_def[0] != 0)
                     line[0] = 0;    // inside of unwanted def, delete stmt
                 break;
@@ -550,13 +548,11 @@ int createRoot (DifxInput *D,       // difx input structure pointer
         fputs (line, fout); 
         
                                     // generate and put out clock_early statements
-        n = 0;
-
-        while ((stns+n)->mk4_id != 0 && n < MAX_STN)
+        for(n = 0; n < D->nAntenna; n++)
             {
-            k = (stns+n)->dind;     // index into difx arrays for this station #n
-                                    // calculation time is ref epoch for linear model
-            conv2date ((D->antenna + k) -> clockrefmjd, &caltime);
+            if (!stns[n].inscan)
+                continue;
+            conv2date ((D->antenna + n) -> clockrefmjd, &caltime);
                                     // calculation time is epoch of start of validity
             conv2date (D->mjdStart, &valtime);
                                     // note that the difx clock convention is
@@ -565,10 +561,9 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                "%6.3lf usec : %04hdy%03hdd%02hdh%02hdm%02ds : %le ; enddef;\n", 
                 (stns + n)->intl_name[0], (stns + n)->intl_name[1], 
                 valtime.year, valtime.day, valtime.hour,
-                valtime.minute, (int)valtime.second, -(D->antenna+k)->clockcoeff[0],
+                valtime.minute, (int)valtime.second, -(D->antenna+n)->clockcoeff[0],
                 caltime.year, caltime.day, caltime.hour,
-                caltime.minute, (int)caltime.second, -1e-6 * (D->antenna+k)->clockcoeff[1]);
-            n++;
+                caltime.minute, (int)caltime.second, -1e-6 * (D->antenna+n)->clockcoeff[1]);
             fputs (line, fout); 
             }
 
@@ -601,7 +596,19 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                                     // close input and output files
         fclose (fin);
         fclose (fout);
-        return (1);
+        for(i = 0; i < D->nAntenna; i++)
+            {
+            if (stns[i].insite == TRUE && stns[i].inscan == FALSE)
+                fprintf(stderr, "Warning, extra antenna %c%c in $SITE block of root file\n",
+                        stns[i].difx_name[0], stns[i].difx_name[1]);
+            if (stns[i].insite == FALSE && stns[i].inscan == TRUE)
+                {
+                fprintf(stderr, "Error, antenna %c%c not in $SITE block of root file \n",
+                        stns[i].difx_name[0], stns[i].difx_name[1]);
+                return(-1);
+                }
+            }
+        return (nant);
     }
 
 char getband (double freq)

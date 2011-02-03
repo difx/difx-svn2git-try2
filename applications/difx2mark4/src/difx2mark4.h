@@ -77,7 +77,9 @@ typedef struct
 
 struct stations
     {
-    int dind;                       // index from difx number to this array
+    int insite;                     // in vex file $SITE block
+    int inscan;                     // in scan according to vex SCHED block
+    int invis;                      // visibilities found in .difx/ data for this antenna
     char mk4_id;                    // single char mk4 station code
     char intl_name[2];              // two letter international stn name
     char difx_name[2];              // two letter code used by difx

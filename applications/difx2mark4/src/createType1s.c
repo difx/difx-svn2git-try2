@@ -307,14 +307,16 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
             else if (base_index[n] < 0)
                 {                   // append new baseline to list
                 base_index[n] = rec.baseline;
+                (stns+rec.baseline/256-1)->invis = TRUE;
+                (stns+rec.baseline%256-1)->invis = TRUE;
                                     // create name & open new output file
                                     // assume that site ID order is same as station order
                                     // probably not valid, though - THIS NEEDS WORK!!  
                 strcpy (outname, node);
                 strcat (outname, "/");
-                k = (stns+rec.baseline/256-1)->dind;
+                k = rec.baseline/256-1;
                 blines[n][0] = (stns+k)->mk4_id;
-                k = (stns+rec.baseline%256-1)->dind;
+                k = rec.baseline%256-1;
                 blines[n][1] = (stns+k)->mk4_id;
                 blines[n][2] = 0;
                 if (opts->verbose > 0)
@@ -432,6 +434,11 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
         fwrite (&n120_flipped, sizeof (int), 1, fout[i]);
                                 // close each output file
         fclose (fout[i]);
+        }
+    for(i=0; i<D->nAntenna; i++)
+        {
+        if (stns[i].inscan && (!stns[i].invis))
+            fprintf(stderr, "Warning Station %c in scan in vex file but no visibilities found!");
         }
                                 // print summary information
     printf ("      DiFX visibility records read       %8d\n", nread);
