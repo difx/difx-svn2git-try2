@@ -140,6 +140,7 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
     int nConverted = 0;
     const char *difxVersion;
     FILE *vis_file = 0;
+    struct stat stat_s;
 
     difxVersion = getenv ("DIFX_VERSION");
     if(!difxVersion)
@@ -272,12 +273,16 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
     if(!opts->pretend)
         {
                                  // this is not a drill, start conversion
-                                 
-                                 // create output directory
-        if(mkdir(opts->exp_no, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+        stat(opts->exp_no, &stat_s);
+                                 // If directory already exists, use it!
+        if(!S_ISDIR(stat_s.st_mode))
             {
-            fprintf (stderr, "Error creating output directory %s\n", opts->exp_no);
-            return 0;
+                                // Otherwise create directory
+            if(mkdir(opts->exp_no, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+                {
+                fprintf (stderr, "Error creating output directory %s\n", opts->exp_no);
+                return 0;
+                }
             }
         strcpy (node, opts->exp_no);
 
@@ -291,7 +296,6 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
         scanId=0;
         oldJobId = -2;
         
-        //FIXME tick off scans as they are processed!!
         printf("\n");
         while (jobId < D->nJob)
             {
@@ -325,6 +329,7 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
         i;
     time_t now;
     struct tm *t;
+    struct stat stat_s;
     char *rcode,                    // six-letter timecode suffix
          rootname[DIFXIO_NAME_LENGTH],             // full root filename
          path[DIFXIO_NAME_LENGTH+5];
@@ -335,10 +340,14 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
     snprintf(path, DIFXIO_NAME_LENGTH, "%s/%s", node, D->scan[scanId].identifier);
     //strncat(node, "/", DIFXIO_NAME_LENGTH);
     //strncat(node, D->scan[scanId].identifier, DIFXIO_NAME_LENGTH);
-    if(mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+    stat(path, &stat_s);
+    if(!S_ISDIR(stat_s.st_mode))
         {
-        fprintf (stderr, "Error creating scan output directory '%s'\n", path);
-        return -1;
+        if(mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+            {
+                fprintf (stderr, "Error creating output directory %s\n", opts->exp_no);
+                return 0;
+            }
         }
     
                                 // generate 6-char rootcode timestamp

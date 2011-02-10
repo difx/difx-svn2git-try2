@@ -218,7 +218,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
             printf ("      opened input file %s\n", inname);
             //printf ("      file pointer %x\n", *vis_file);
             }
-                                    // read a record from the input file
+                                    // read a header from the input file
         vis_file_status = get_vis_header (*vis_file, &rec);
         if (vis_file_status < 0)
             {
