@@ -345,7 +345,7 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
         {
         if(mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
             {
-                fprintf (stderr, "Error creating output directory %s\n", opts->exp_no);
+                fprintf (stderr, "Error creating output directory %s\n", path);
                 return 0;
             }
         }
