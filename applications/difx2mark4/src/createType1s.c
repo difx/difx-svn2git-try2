@@ -104,7 +104,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
     union u_tag
         {
         struct type_120 t120;
-        float dummy[2058];          // reserve enough space for 1024 vis.
+        float dummy[2*MAX_VIS+10];  // reserve enough space for MAX_VIS visibilities
         } u;
 
                                     // function prototypes
@@ -132,6 +132,14 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
     nread = 0;
     nflagged = 0;
     nvis = D->nOutChan;
+                                    // make sure we don't overrun our arrays
+    if (nvis > MAX_VIS)
+        {
+        fprintf (stderr, 
+                "fatal error: # visibilities (%d) exceeds array dimension (%d)\n",
+                nvis, MAX_VIS);
+        return (-1);
+        }
                                     // clear record areas
     memset (&t000, 0, sizeof (t000));
     memset (&t100, 0, sizeof (t100));

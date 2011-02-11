@@ -14,7 +14,7 @@ void write_t120 (struct type_120 *pt120,
     union u_tag
         {
         struct type_120 t120;
-        float dummy[2058];              // large enough for 1024 lags
+        float dummy[2*MAX_VIS+10];  // large enough for MAX_VIS lags
         } u;
 
     nbytes = (char *) &u.t120.ld.spec[0].re - (char *) &u + 8 * pt120->nlags;
@@ -38,4 +38,3 @@ void write_t120 (struct type_120 *pt120,
     fwrite (&u.t120, (int) nbytes, 1, fout);
     return;
     }
-// vim: shiftwidth=4:softtabstop=4:expandtab:cindent:cinoptions={1sf1s^-1s
