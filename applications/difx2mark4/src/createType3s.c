@@ -187,7 +187,7 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                     if (l < nclock) // add in those clock coefficients that are valid
                         t301.delay_spline[l] -= 1e-6 * clock[l];
 
-                    t302.phase_spline[l] = t301.delay_spline[l] * (D->freq+j)->freq;
+                    t302.phase_spline[l] = t301.delay_spline[l] * (D->freq+i)->freq;
                     }
 
                 write_t301 (&t301, fout[n]);

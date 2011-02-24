@@ -135,7 +135,7 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
     DifxInput *D, *D1, *D2;
     // struct fitsPrivate outfile;
     char node[DIFXIO_FILENAME_LENGTH*2+1];
-    int i, scanId, newScanId, oldJobId;
+    int i, scanId, newScanId, oldJobId, err;
     int jobId = 0;
     int nConverted = 0;
     const char *difxVersion;
@@ -273,16 +273,27 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
     if(!opts->pretend)
         {
                                  // this is not a drill, start conversion
-        stat(opts->exp_no, &stat_s);
+        err = stat(opts->exp_no, &stat_s);
+                                 // err true if file doesn't exist
+        if(!err)
+            {
+            if(S_ISDIR(stat_s.st_mode))
+                {
                                  // If directory already exists, use it!
-        if(!S_ISDIR(stat_s.st_mode))
+                if(opts->verbose > 1)
+                    printf ("Using existing directory %s\n", opts->exp_no);
+                }
+            else
+                err = 1;
+            }
+        else if(err)
             {
                                 // Otherwise create directory
-            if(mkdir(opts->exp_no, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
-                {
-                fprintf (stderr, "Error creating output directory %s\n", opts->exp_no);
-                return 0;
-                }
+                if(mkdir(opts->exp_no, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+                    {
+                    fprintf (stderr, "Error creating output directory %s\n", opts->exp_no);
+                    return 0;
+                    }
             }
         strcpy (node, opts->exp_no);
 
@@ -326,7 +337,8 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
 {
     int startJobId,
         nextScanId,
-        i;
+        i,
+        err;
     time_t now;
     struct tm *t;
     struct stat stat_s;
@@ -340,9 +352,21 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
     snprintf(path, DIFXIO_NAME_LENGTH, "%s/%s", node, D->scan[scanId].identifier);
     //strncat(node, "/", DIFXIO_NAME_LENGTH);
     //strncat(node, D->scan[scanId].identifier, DIFXIO_NAME_LENGTH);
-    stat(path, &stat_s);
-    if(!S_ISDIR(stat_s.st_mode))
+    err = stat(path, &stat_s);
+    if(!err)
         {
+        if(S_ISDIR(stat_s.st_mode))
+            {
+                             // If directory already exists, use it!
+            if(opts->verbose > 1)
+                printf ("Using existing directory %s\n", path);
+            }
+        else
+            err = 1;
+            }
+    else if(err)
+        {
+                                // Otherwise create directory
         if(mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
             {
                 fprintf (stderr, "Error creating output directory %s\n", path);

@@ -161,11 +161,6 @@ int createRoot (DifxInput *D,       // difx input structure pointer
 
                                     // create the new root file name
     sprintf(rootname, "%s/%s.%s", node, source, rcode);
-//    strcpy (rootname, node);
-//    strcat (rootname, "/");
-//    strcat (rootname, source);
-//    strcat (rootname, ".");
-//    strcat (rootname, rcode);
     printf ("      output rootfile: %s\n", rootname);
                                     // open output (root) file
     fout = fopen (rootname, "w");
