@@ -537,12 +537,6 @@ int createRoot (DifxInput *D,       // difx input structure pointer
         }
 
         printf ("      number of stations: %d\n", nsite);
-        if (nsite != D->nAntenna)
-            {
-            fprintf (stderr, "ERROR: number of sites in vex %d disagrees with nAntenna %d\n",
-                     nsite, D->nAntenna);
-            return (-1);
-            }
                                     // append extra statements to the end of the file
         strcpy (line, "$CLOCK;\n");
         fputs (line, fout); 
