@@ -9,9 +9,9 @@
 #include <ctype.h>
 #include "difx2mark4.h"
 
-int isValidAntenna(const DifxInput *D, char *antName, int jobId)
+int isValidAntenna(const DifxInput *D, char *antName, int scanId)
     {
-    /* if named antenna is present in the specified job, return
+    /* if named antenna is present in the specified scan, return
      * difxio antenna Id. Otherwise return -1
      */
     int antId, i;
@@ -26,8 +26,8 @@ int isValidAntenna(const DifxInput *D, char *antName, int jobId)
     if (antId < 0)
         return(-1);
 
-                                    //antenna in job?
-    if (DifxInputGetDatastreamId(D, jobId, antId) < 0)
+                                    //antenna in scan?
+    if (D->scan[scanId].im[antId] == 0)
         return(-1);
 
     return(antId);
@@ -56,10 +56,12 @@ int createRoot (DifxInput *D,       // difx input structure pointer
 
     char s[256],
          *pst[50],
-         source[DIFXIO_NAME_LENGTH],
+         source[DIFXIO_NAME_LENGTH], // for filename only, otherwise get from D
          current_def[32],
          current_scan[DIFXIO_NAME_LENGTH],
          buff[256],
+         hms[18],
+         dms[18],
          *pchar,
          c,
          current_site[3],
@@ -138,6 +140,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
     if (opts->verbose > 0)
         printf ("      source %s\n", source);
                                     // modify source (change . to _) name
+                                    // for filename only
     i = 0;
     while (source[i] != 0)
         {
@@ -284,13 +287,9 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                     line[0] = '*';  // NRAO SCHED produces invalid
                                     // headstack
                 break;
-            case EOP:               // add dummy eop def
-                if (strncmp (pst[0], "$EOP", 4) == 0)
-                    {
-                    eop_found = TRUE;
-                    strcat (line, "  def EOPXXX;\n  enddef;\n");
-                    }
-                break;
+            case EOP:            //the EOP section will be replaced from difx input
+                    line[0] = 0;
+                    break;
 
             case EXPER:             // modify target_correlator
                 if (strcmp (pst[0], "target_correlator") == 0)
@@ -329,7 +328,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
             case GLOBAL:
                                     // insert a dummy EOP ref (which is fine for fourfit)
                 if (strncmp (pst[0], "$GLOBAL", 7) == 0)
-                    strcat (line, "    ref $EOP = EOPXXX;\n"); 
+                    strcat (line, "    ref $EOP = EOP_DIFX_INPUT;\n"); 
                 else if (strncmp (pst[0], "ref", 3) == 0 
                       && strncmp (pst[1], "$SCHEDULING_PARAMS", 18) == 0)
                     line[0] = '*';  // comment out ref to deleted section 
@@ -374,7 +373,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                                     // Check that station is in this scan
                 else if (strncmp (pst[0], "station", 7) == 0)
                     {
-                    i = isValidAntenna(D, pst[2], *jobId);
+                    i = isValidAntenna(D, pst[2], scanId);
                     if(i < 0)
                         line[0] = 0;
                                     // this station participates, use difx start
@@ -388,14 +387,22 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                         strcpy (pchar+2, buff);
                         }
                     }
-                                    // sanity check that source matches difx's
+                                    // source name may have been changed in .v2d
+                                    // set to difx input source name
                 else if (strncmp (pst[0], "source", 6) == 0)
                     {
-                    if (strcmp (pst[2], D->source[sourceId].name))
+                    sprintf (buff, "  source = %s;",
+                            D->source[sourceId].name);
+
+                    if ((pchar = strchr (line, ';')) == NULL)
                         {
-                        fprintf (stderr, "difx source %s differs from vex source %s - check scan %s!\n", 
-                                 D->source[sourceId].name, pst[2], D->scan[scanId].identifier);
-                        return (-1);
+                        strcpy (line, buff);
+                        strcat (line, "\n");
+                        }
+                    else            // copy rest of stmts from the start line
+                        {
+                        strcat (buff, pchar+1);
+                        strcpy (line, buff);
                         }
                     }
                                     // process start
@@ -440,7 +447,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                 else if (strncmp (pst[0], "enddef", 6) == 0)
                     {
                                     // if not in difx list, discard whole block
-                    i = isValidAntenna(D, current_site, *jobId);
+                    i = isValidAntenna(D, current_site, scanId);
                     if(i<0)
                         {
                         if (opts->verbose > 0)
@@ -483,11 +490,9 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                     }
                 break;
 
-            case SOURCE:
-                if (strncmp (D->source[sourceId].name, current_def, strlen (D->source[sourceId].name)) != 0
-                 && current_def[0] != 0)
-                    line[0] = 0;    // inside of unwanted def, delete stmt
-                break;
+            case SOURCE:           // source block will be generated from the difx_input
+                    line[0] = 0;
+                    break;
 
             case STATION:           // need to add ref to clock section
                 if (strncmp (pst[0], "enddef", 6) == 0)
@@ -533,8 +538,22 @@ int createRoot (DifxInput *D,       // difx input structure pointer
 
         printf ("      number of stations: %d\n", nsite);
                                     // append extra statements to the end of the file
+
+                                    // generate source section from difx header
+        rad2hms(D->source[sourceId].ra, hms);
+        rad2dms(D->source[sourceId].dec, dms);
+        fprintf (fout, "$SOURCE;\n");
+        fprintf (fout, "* Generated from DiFX input by difx2mark4\n");
+        fprintf (fout, "def %s;\n", D->source[sourceId].name);
+        fprintf (fout, " source_name = %s;\n", D->source[sourceId].name);
+        fprintf (fout, " ra = %s; dec =  %s; ref_coord_frame = J2000;\n",
+                 hms,
+                 dms);
+        fprintf (fout, "enddef;\n\n");
+
         strcpy (line, "$CLOCK;\n");
         fputs (line, fout); 
+        fprintf (fout, "* Generated from DiFX input by difx2mark4\n");
         
                                     // generate and put out clock_early statements
         for(n = 0; n < D->nAntenna; n++)
@@ -556,6 +575,11 @@ int createRoot (DifxInput *D,       // difx input structure pointer
             fputs (line, fout); 
             }
 
+        //FIXME output difxio EOPs
+        fprintf(fout, "\n$EOP;\n");
+        fprintf (fout, "* Generated from DiFX input by difx2mark4\n");
+        fprintf(fout, "def EOP_DIFX_INPUT;\nenddef;\n\n");
+
         i = 0;
         while (strncmp (extra_lines[i], "END_EXTRA", 9))
             {
@@ -573,15 +597,6 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                 fputs (extra_lines[i], fout);
             i++;
             }
-                                    // add fake EOP block no original
-                                    // EOP block was present
-        if(!eop_found)
-            {
-            //FIXME output difxio EOPs!
-            sprintf(line, "$EOP;\n def EOPXXX;\n enddef;");
-            fputs (line, fout); 
-            }
-
                                     // close input and output files
         fclose (fin);
         fclose (fout);

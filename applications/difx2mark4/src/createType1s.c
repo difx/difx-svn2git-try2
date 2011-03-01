@@ -210,6 +210,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                 (strcmp (dent->d_name, ".") == 0 
               || strcmp (dent->d_name, "..") == 0
               || strncmp (dent->d_name, "PCAL", 4) == 0);
+            free(pdir);
 
             strcpy (inname, dirname);
             strcat (inname, "/");
@@ -446,7 +447,8 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
     for(i=0; i<D->nAntenna; i++)
         {
         if (stns[i].inscan && (!stns[i].invis))
-            fprintf(stderr, "Warning Station %c in scan in vex file but no visibilities found!");
+            fprintf(stderr, "Warning Station %c%c in scan in vex file but no visibilities found!\n",
+                    stns[i].difx_name[0], stns[i].difx_name[1]);
         }
                                 // print summary information
     printf ("      DiFX visibility records read       %8d\n", nread);

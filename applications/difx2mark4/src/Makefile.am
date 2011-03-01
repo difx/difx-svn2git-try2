@@ -22,7 +22,7 @@ difx2mark4_SOURCES = \
 	write_t301.c \
 	write_t302.c \
 	write_t309.c \
-	mjd2str.c \
+	other.c \
 	mk4_typedefs.h \
 	type_000.h \
 	type_100.h \

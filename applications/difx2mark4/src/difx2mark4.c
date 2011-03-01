@@ -36,8 +36,8 @@ static int usage (const char *pgm)
         program, version, author);
     fprintf (stderr, "A program to convert DiFX format data to "
         "mark4\n\n");
-    fprintf (stderr, "Usage : %s -s <scan_id> [options] <baseFilename1> "
-        "[<baseFilename2> ... ] [<outfile>]\n\n", pgm);
+    fprintf (stderr, "Usage : %s [options] <baseFilename1> "
+        "[<baseFilename2> ... ] \n\n", pgm);
     fprintf (stderr, "It assumed that SWIN format visibility file(s) "
         "to be converted live\n");
     fprintf (stderr, "in directory <baseFilename>.difx/\n");
@@ -58,8 +58,17 @@ static int usage (const char *pgm)
     fprintf (stderr, "  --verbose\n");
     fprintf (stderr, "  -v                  Be verbose.  -v -v for more!\n");
     fprintf (stderr, "\n");
-    fprintf (stderr, "  -b <code> <flow> <fhigh>\n");
-    fprintf (stderr, " to specify non-default frequency band codes\n");
+    fprintf (stderr, "  --difx\n");
+    fprintf (stderr, "  -d                  Run on all .difx files in directory\n");
+    fprintf (stderr, "\n");
+    fprintf (stderr, "  --override-version  Ignore difx versions\n");
+    fprintf (stderr, "\n");
+    fprintf (stderr, "  --experiment-number\n");
+    fprintf (stderr, "  -e                  Set the experiment number (default 1234)\n");
+    fprintf (stderr, "                      Must be a four-digit number\n");
+    fprintf (stderr, "\n");
+    fprintf (stderr, "  --pretend\n");
+    fprintf (stderr, "  -p                  dry run\n");
     fprintf (stderr, "\n");
 
     return 0;
@@ -147,7 +156,6 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
         printf ("Warning: env. var. DIFX_VERSION is not set\n");
 
     D = 0;
-    //opts->dontCombine = TRUE;       // for now, don't allow file combining
 
     for(i = 0; i < opts->nBaseFile; i++)
         {
@@ -328,6 +336,7 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
             *nScan += 1;
             }
         printf("%d of %d scans converted!\n", *nScan, D->nScan);
+        deleteDifxInput(D);
         return jobId;
         }
     return 0;
@@ -447,6 +456,7 @@ void deleteCommandLineOptions(struct CommandLineOptions *opts)
                 free(opts->baseFile[i]);
                 }
             }
+        free(opts->in);
         free(opts);
         }
     }
@@ -565,14 +575,6 @@ struct CommandLineOptions *parseCommandLine(int argc, char **argv)
                         if(j==4)
                             strncpy(opts->exp_no, argv[i], 4+1);
                         }
-                else if(strcmp (argv[i], "--scan") == 0 ||
-                   strcmp (argv[i], "-s") == 0)
-                    {
-                    i++;
-                    opts->scan = strdup (argv[i]);
-                    printf ("Processing scan %s\n", 
-                        opts->scan);
-                    }
                 else if(strcmp (argv[i], "--deltat") == 0 ||
                     strcmp (argv[i], "-t") == 0)
                     {

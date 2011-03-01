@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 /* locals */
 static int monlen[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
@@ -148,3 +149,52 @@ int mjd2date		/* convert MJD to date */
     return 0;
 }
 
+int rad2dms	/* convert radians to degrees, minutes and seconds (vex format)*/
+    (
+    double r,		/* input radians */
+    char *pstring	/* returned string ('\0' terminated) */
+    )
+{
+    int degrees;
+    int minutes;
+    double seconds;
+    /* convert to degrees*/
+    r *= 180 / M_PI;
+    degrees = r;
+    r -= degrees;
+    r *= 60;
+    if (r < 0)
+       r *= -1;
+    minutes = r;
+    r -= minutes;
+    r *= 60;
+    seconds = r;
+    seconds += 0.5e-6;
+    sprintf (pstring, "%02dd%02d'%09.6f\"", degrees, minutes, seconds);
+
+    return 0;
+}
+
+int rad2hms	/* convert radians to hours, minutes and seconds (vex format)*/
+    (
+    double r,		/* input radians */
+    char *pstring	/* returned string ('\0' terminated) */
+    )
+{
+    int hours;
+    int minutes;
+    double seconds;
+    /* convert to degrees*/
+    r *= 12 / M_PI;
+    hours = r;
+    r -= hours;
+    r *= 60;
+    minutes = r;
+    r -= minutes;
+    r *= 60;
+    seconds = r;
+    seconds += 0.5e-7;
+    sprintf (pstring, "%02dh%02dm%010.7fs", hours, minutes, seconds);
+
+    return 0;
+}
