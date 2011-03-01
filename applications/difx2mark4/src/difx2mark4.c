@@ -391,7 +391,6 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
                                 // initialise stns with all DiFX antennas
     for (i = 0; i < D->nAntenna; i++)
         {
-        stns[i].insite = 0;
         stns[i].inscan = 0;
         stns[i].invis = 0;
         stns[i].mk4_id = 0;

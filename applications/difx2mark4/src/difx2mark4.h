@@ -77,7 +77,6 @@ typedef struct
 
 struct stations
     {
-    int insite;                     // in vex file $SITE block
     int inscan;                     // in scan according to vex SCHED block
     int invis;                      // visibilities found in .difx/ data for this antenna
     char mk4_id;                    // single char mk4 station code

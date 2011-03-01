@@ -456,7 +456,6 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                         line[0] = 0;
                         break;
                         }
-                    stns[i].insite = TRUE;
                     c = single_code (current_site);
                     if (c == 0)
                         {
@@ -600,18 +599,6 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                                     // close input and output files
         fclose (fin);
         fclose (fout);
-        for(i = 0; i < D->nAntenna; i++)
-            {
-            if (stns[i].insite == TRUE && stns[i].inscan == FALSE)
-                fprintf(stderr, "Warning, extra antenna %c%c in $SITE block of root file\n",
-                        stns[i].difx_name[0], stns[i].difx_name[1]);
-            if (stns[i].insite == FALSE && stns[i].inscan == TRUE)
-                {
-                fprintf(stderr, "Error, antenna %c%c not in $SITE block of root file \n",
-                        stns[i].difx_name[0], stns[i].difx_name[1]);
-                return(-1);
-                }
-            }
         return (nant);
     }
 
