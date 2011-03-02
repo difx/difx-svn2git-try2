@@ -324,6 +324,12 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
                 printf("Processing job %d/%d\n", jobId, D->nJob);
                 oldJobId = jobId;
                 }
+            if(D->scan[scanId].identifier[0] == 0)
+                {
+                fprintf(stderr, "Developer Error (difxio) scanId %d has no scan identifier!\n", scanId);
+                scanId++;
+                return -1;
+                }
             printf("  Processing scan %d/%d: %s\n", scanId, D->nScan, D->scan[scanId].identifier);
                                                 // convert scan
                                                 // scanId and j can be incremented
