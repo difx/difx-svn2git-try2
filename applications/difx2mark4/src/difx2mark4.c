@@ -408,7 +408,6 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
     printf ("    Generating root file\n");
     if (createRoot (D, jobId, scanId, path, rcode, stns, opts, rootname) < 0)
         {
-        deleteDifxInput(D);
         fprintf (stderr, "Could not create root file\n");
         return -1;
         }
@@ -418,7 +417,6 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
     //printf ("newScan file pointer %x\n", *vis_file);
     if (nextScanId < 0)
         {
-        deleteDifxInput(D);
         fprintf (stderr, "Could not create type 1 files\n");
         return -1;
         }
@@ -427,7 +425,6 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
     printf ("    Generating Type 3s\n");
     if (createType3s (D, startJobId, *jobId, scanId, path, rcode, stns, opts) < 0)
         {
-        deleteDifxInput(D);
         fprintf (stderr, "Could not create type 3 files\n");
         return -1;
         }

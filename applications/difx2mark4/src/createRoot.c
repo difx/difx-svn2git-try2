@@ -50,6 +50,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
         nsite = 0,
         nant = 0,
         eop_found = FALSE,
+        scan_found = FALSE,
         tarco = FALSE,              // true iff target_correlator = has been done
         sourceId;
 
@@ -363,6 +364,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                     {
                     //FIXME calculate this properly taking into account different scan lengths
                     //      for different antennas. See also stcodes/compute_reftime.c
+                    scan_found = TRUE;
                     conv2date (D->scan[scanId].mjdStart + D->scan[scanId].durSeconds / 172800.0, &caltime);
                     sprintf (buff, 
                              "    fourfit_reftime = %04hdy%03hdd%02hdh%02hdm%02ds;\n",
@@ -535,6 +537,14 @@ int createRoot (DifxInput *D,       // difx input structure pointer
             current_def[0] = 0;
         }
 
+        if(scan_found == FALSE)
+            {
+            fprintf(stderr, "Error: scan with Id %d and identifier \"%s\" cannot be found in vex file\n",
+                    scanId, D->scan[scanId].identifier);
+            fclose (fin);
+            fclose (fout);
+            return(-1);
+            }
         printf ("      number of stations: %d\n", nsite);
                                     // append extra statements to the end of the file
 
