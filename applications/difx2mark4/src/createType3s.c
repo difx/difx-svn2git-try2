@@ -27,6 +27,7 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
     {
     int i,
         j,
+        b,
         l,
         n,
         jf,
@@ -71,7 +72,7 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
          *line;
 
     FILE *fin;
-    FILE *fout[NUMFILS];
+    FILE *fout;
 
     struct type_000 t000;
     struct type_300 t300;
@@ -126,8 +127,8 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
         strcat (outname, "..");
         strcat (outname, rcode);
                                     // now open the file just named
-        fout[n] = fopen (outname, "w");
-        if (fout[n] == NULL)
+        fout = fopen (outname, "w");
+        if (fout == NULL)
             {
             perror ("difx2mark4");
             fprintf (stderr, "fatal error opening output type3 file %s\n", outname);
@@ -138,7 +139,7 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                                     // all files need a type 000 record
         strcpy (t000.date, "2001001-123456");
         strcpy (t000.name, outname);
-        fwrite (&t000, sizeof (t000), 1, fout[n]);
+        fwrite (&t000, sizeof (t000), 1, fout);
 
                                     // finish forming type 300 and write it
         t300.id = (stns+n)->mk4_id;
@@ -157,7 +158,7 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
 
         t300.model_interval = (float)(***(D->scan[scanId].im)).validDuration;
         t300.nsplines = (short int) D->scan[scanId].nPoly;
-        write_t300 (&t300, fout[n]);
+        write_t300 (&t300, fout);
 
                                     // construct type 301 and 302's and write them
                                     // loop over channels
@@ -190,8 +191,8 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                     t302.phase_spline[l] = t301.delay_spline[l] * (D->freq+i)->freq;
                     }
 
-                write_t301 (&t301, fout[n]);
-                write_t302 (&t302, fout[n]);
+                write_t301 (&t301, fout);
+                write_t302 (&t302, fout);
                 }
             }
 
@@ -257,11 +258,11 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                                         // swap sign of imaginary part
                                 squad *= -1;
                                 nchars += mchars;
-                                for (j=0; j<D->nFreq*npol; j++)
+                                for (b=0; b<D->nFreq*npol; b++)
                                     {
-                                    jf = j / npol;
+                                    jf = b / npol;
                                         // skip over non-matching polarizations
-                                    if (np != j % npol)
+                                    if (np != b % npol)
                                         continue;  
                                     isb = ((D->freq+jf)->sideband == 'U') ? 1 : -1;
                                     f_rel = isb * (freq - (D->freq+jf)->freq);
@@ -269,9 +270,9 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                                     if (f_rel > 0.0 && f_rel < (D->freq+jf)->bw)
                                         // yes, insert phasor info into correct slot
                                         {
-                                        sprintf (buff, "%c%02dU", getband (D->freq[jf].freq), j);
+                                        sprintf (buff, "%c%02dU", getband (D->freq[jf].freq), b);
                                         buff[3] = (D->freq+jf)->sideband;
-                                        strcpy (t309.chan[j].chan_name, buff);
+                                        strcpy (t309.chan[b].chan_name, buff);
 
                                         // find out which tone slot this goes in
                                         for (i=0; i<NPC_TONES; i++)
@@ -298,10 +299,10 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                                             }
                                         // renormalize correlations to those created in the DOM
                                         norm_corr = - isb * floor (cquad * srate * t309.acc_period * 128.0 + 0.5);
-                                        memcpy (&t309.chan[j].acc[i][0], &norm_corr, 4);
+                                        memcpy (&t309.chan[b].acc[i][0], &norm_corr, 4);
 
                                         norm_corr = floor (squad * srate * t309.acc_period * 128.0 + 0.5);
-                                        memcpy (&t309.chan[j].acc[i][1], &norm_corr, 4);
+                                        memcpy (&t309.chan[b].acc[i][1], &norm_corr, 4);
 
                                         // tone freqs (in Hz) are spread through channel recs
                                         t309.chan[i].freq = 1e6 * isb * f_rel;
@@ -310,10 +311,12 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                                     }
                                 }
                                         // write output record
-                    write_t309 (&t309, fout[n]);
+                    write_t309 (&t309, fout);
                     }
+                fclose(fin);
                 }
             }
+        fclose(fout);
         }
     free(line);
     return 0;

@@ -331,7 +331,21 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
             if (base_index[n] == rec.baseline)
                 break;              // found baseline, exit loop
             else if (base_index[n] < 0)
-                {                   // append new baseline to list
+                {                   
+                                    // first check that both antennas are in the
+                                    // rootfile
+                if((stns+rec.baseline/256-1)->inscan != TRUE ||
+                   (stns+rec.baseline%256-1)->inscan != TRUE)
+                    {
+                    fprintf(stderr, "WARNING Visibility found from baseline %c%c-%c%c which shouldn't be in scan!\n",
+                            (stns+rec.baseline/256-1)->intl_name[0],
+                            (stns+rec.baseline/256-1)->intl_name[1],
+                            (stns+rec.baseline%256-1)->intl_name[0],
+                            (stns+rec.baseline%256-1)->intl_name[1]);
+                    break;
+                    }
+
+                                    // append new baseline to list
                 base_index[n] = rec.baseline;
                 (stns+rec.baseline/256-1)->invis = TRUE;
                 (stns+rec.baseline%256-1)->invis = TRUE;
@@ -413,6 +427,10 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                 break;
                 }                   // end of block to append new baseline
             }                       // either found baseline file or created new one
+                                    // unless record was invalid:
+        if (base_index[n] < 0)
+            continue;               // to next record 
+
                                     // copy visibilities into type 120 record
         for (i=0; i<nvis; i++)
             {                       // conjugate LSB for rotator direction difference
