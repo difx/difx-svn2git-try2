@@ -223,13 +223,13 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                                         // skip to next line
                         {
                         if (opts->verbose > 1)
-                            printf("pcal early %13.6f<%13.6f\n", mjd, D->scan[scanId].mjdStart);
+                            printf("      pcal early %13.6f<%13.6f\n", mjd, D->scan[scanId].mjdStart);
                         continue;
                         }
                     if(mjd > D->scan[scanId].mjdEnd)
                         {
                         if (opts->verbose > 1)
-                            printf("pcal late %13.6f>%13.6f\n", t, D->scan[scanId].mjdStart);
+                            printf("      pcal late %13.6f>%13.6f\n", t, D->scan[scanId].mjdStart);
                         break;
                         }
 
@@ -239,8 +239,8 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                     t309.acc_period =  D->config->tInt;
                                         // debug print
                     if (opts->verbose > 1)
-                        printf ("pcal record ant %s t %lf tint %lf cable_delay %lf"
-                                 "\nrot %lf acc_period %lf\n",
+                        printf ("      pcal record ant %s t %lf tint %lf cable_delay %lf"
+                              "\n      rot %lf acc_period %lf\n",
                                  ant, t, tint, cable_delay, t309.rot, t309.acc_period);
                                         // initialize list of next available tone location
                     for (i=0; i<NPC_TONES; i++)

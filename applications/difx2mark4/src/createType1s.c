@@ -62,10 +62,12 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                   struct stations *stns, // struct contains station name information
                   struct CommandLineOptions *opts, // ptr to input options
                   char *rootname,   // full root file name
-		  FILE **vis_file)   
+		  FILE **vis_file,
+                  char *corrdate)  // file pointer to open file 
     {
     int i,
         ch,
+        err,
         k,
         n,
         nvis,
@@ -226,6 +228,21 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
 
             printf ("      opened input file %s\n", inname);
             //printf ("      file pointer %x\n", *vis_file);
+            err = stat (inname, &attrib);
+            if (err)
+                {
+                fprintf (stderr, "Warning: error stating file %s\n", inname);
+                fprintf (stderr, "         t000.date will be set to 2000001-000000\n");
+                sprintf (corrdate, "2000001-000000");
+                }
+            else
+                {
+                mod_time = gmtime (&(attrib.st_mtime));
+                snprintf (corrdate, 16, "%4d%03d-%02d%02d%02d", 
+                         mod_time->tm_year+1900,
+                         mod_time->tm_yday, mod_time->tm_hour,
+                         mod_time->tm_min,  mod_time->tm_sec);
+                }
             }
                                     // read a header from the input file
         vis_file_status = get_vis_header (*vis_file, &rec);
@@ -329,7 +346,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                 blines[n][1] = (stns+k)->mk4_id;
                 blines[n][2] = 0;
                 if (opts->verbose > 0)
-                    printf ("rec.baseline %d blines <%s>\n", 
+                    printf ("      rec.baseline %d blines <%s>\n", 
                              rec.baseline, blines[n]);
                 strcat (outname, &blines[n][0]);
                 strcat (outname, "..");
@@ -345,13 +362,10 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                 printf ("      created type 1 output file %s\n", outname);
 
                                     // construct and write type 000 record
-                stat (inname, &attrib);
-                mod_time = gmtime (&(attrib.st_mtime));
-                sprintf (buff, "%4d%03d-%02d%02d%02d", mod_time->tm_year+1900,
-                         mod_time->tm_yday, mod_time->tm_hour,
-                         mod_time->tm_min,  mod_time->tm_sec);
-                strcpy (t000.date, buff);
-                strcpy (t000.name, outname);
+                strncpy (t000.date, corrdate, 16);
+                if (opts->verbose > 0)
+                    printf ("        t000.date will be set to %s\n",corrdate);
+                strncpy (t000.name, outname, 40);
                 fwrite (&t000, sizeof (t000), 1, fout[n]);
 
                                     // construct and write type 100 record
@@ -433,7 +447,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
         if (base_index[i] < 0)  // bail out at end of list
             break;
         if (opts->verbose > 0)
-            printf ("n120[%d] %d\n", i, n120[i]);
+            printf ("      n120[%d] %d\n", i, n120[i]);
                                 // position to ndrec in t100 record in file
         fseek (fout[i], 
               (long)(sizeof(t000)+((char *)&t100.ndrec-(char *)&t100.record_id)), 

@@ -109,7 +109,7 @@ int createRoot (DifxInput *, int *, int, char *, char *, struct stations *,
 char getband (double);
                                     // createType1s.c
 int createType1s (DifxInput *, int *, int, char *, char *, struct stations *,
-                  struct CommandLineOptions *, char *, FILE **);
+                  struct CommandLineOptions *, char *, FILE **, char *);
                                     // createType3s.c
 int createType3s (DifxInput *, int, int, int, char *, char *, struct stations *,
                   struct CommandLineOptions *);

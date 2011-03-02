@@ -91,7 +91,7 @@ struct fbands fband[MAX_FBANDS] = {{'B',      0.0, 999999.9},  // default to ban
                                    {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
                                    
   
-int newScan(DifxInput *,  struct CommandLineOptions*, char *, int, int *, FILE **);
+int newScan(DifxInput *,  struct CommandLineOptions*, char *, int, int *, FILE **, char *);
 
 int main(int argc, char **argv)
     {
@@ -148,6 +148,7 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
     int jobId = 0;
     int nConverted = 0;
     const char *difxVersion;
+    char corrdate[16];
     FILE *vis_file = 0;
     struct stat stat_s;
 
@@ -327,7 +328,7 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
                                                 // convert scan
                                                 // scanId and j can be incremented
                                                 // by newScan
-            newScanId = newScan(D, opts, node, scanId, &jobId, &vis_file);
+            newScanId = newScan(D, opts, node, scanId, &jobId, &vis_file, corrdate);
             //printf ("newScan file pointer %x\n", vis_file);
             if(newScanId < 0)
                 break;
@@ -342,7 +343,7 @@ int convertMark4 (struct CommandLineOptions *opts, int *nScan)
     return 0;
     }
     
-int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanId, int *jobId, FILE **vis_file)
+int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanId, int *jobId, FILE **vis_file, char *corrdate)
 {
     int startJobId,
         nextScanId,
@@ -407,7 +408,7 @@ int newScan(DifxInput *D, struct CommandLineOptions *opts, char *node, int scanI
         }
                                 // create type1 files for each baseline
     printf ("    Generating Type 1s\n");
-    nextScanId = createType1s (D, jobId, scanId, path, rcode, stns, opts, rootname, vis_file);
+    nextScanId = createType1s (D, jobId, scanId, path, rcode, stns, opts, rootname, vis_file, corrdate);
     //printf ("newScan file pointer %x\n", *vis_file);
     if (nextScanId < 0)
         {
