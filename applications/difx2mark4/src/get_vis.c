@@ -25,10 +25,10 @@ int get_vis_header (FILE *fin,             // SWIN format file with visibilities
         return (-1);
 
     if(pr->sync == VISRECORD_SYNC_WORD_DIFX1) //old style ascii header
-    {
-            fprintf(stderr, "Error: difx2mark4 will not work with DiFX 1.x data\n");
-            return -2;
-    }
+        {
+        fprintf(stderr, "Error: difx2mark4 will not work with DiFX 1.x data\n");
+        return -2;
+        }
     else if(pr->sync == VISRECORD_SYNC_WORD_DIFX2) //new style binary header
         {
         fread (&pr->version, sizeof (int), 1, fin);

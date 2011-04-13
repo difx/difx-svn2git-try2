@@ -16,9 +16,9 @@
 #define NPC_TONES 64                // max number of pcal tones (and channels)
 
 int createType3s (DifxInput *D,     // difx input structure, already filled
-		  int startJob,
+                  int startJob,
                   int endJob,
-		  int scanId,
+                  int scanId,
                   char *node,       // directory for output fileset
                   char *rcode,      // 6 letter root suffix
                   struct stations *stns, // structure containing names of stations
@@ -198,7 +198,7 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
 
                                     // construct type 309 pcal records and write them
                                     // check to see if there is a input pcal file for this antenna
-        for (j = startJob; j <= endJob; j++)
+        for (j = startJob; j < endJob; j++)
             {
             strncpy (pcal_filnam, D->job[j].outputFile, 242);
             strcat (pcal_filnam, "/PCAL_"); 
@@ -206,7 +206,8 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
             
             fin = fopen (pcal_filnam, "r");
             if (fin == NULL)
-                printf ("      No input phase cal for antenna %s\n", t300.name);
+                printf ("      No input phase cal file %s for antenna %s\n",
+                        pcal_filnam, t300.name);
             else
                 {
                                         // input data is present - loop over records
@@ -239,7 +240,7 @@ int createType3s (DifxInput *D,     // difx input structure, already filled
                                         // pcal integration period same as main AP
                     t309.acc_period =  D->config->tInt;
                                         // debug print
-                    if (opts->verbose > 1)
+                    if (opts->verbose > 2)
                         printf ("      pcal record ant %s t %lf tint %lf cable_delay %lf"
                               "\n      rot %lf acc_period %lf\n",
                                  ant, t, tint, cable_delay, t309.rot, t309.acc_period);

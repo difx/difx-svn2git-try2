@@ -18,53 +18,20 @@
 #define NUMFILS 80                  // max number of type 1 output files
 #define SCALE 10000.0               // amplitude factor to normalize for fourfit
 
-//FIXME add other sanity checks from difx2fits fitsUV.c
-const int header_size = (8*sizeof(int)) + (5*sizeof(double)) + (2*sizeof(char)); 
-
-int RecordIsFlagged(vis_record *vr, const DifxJob *job)
-    {
-	double mjd;
-	int a1, a2;
-	int i;
-
-
-	if(job->nFlag <= 0)
-	{
-		return 0;
-	}
-
-	mjd = vr->mjd + vr->iat/86400.;
-	a1  = (vr->baseline/256) - 1;
-	a2  = (vr->baseline%256) - 1;
-
-	for(i = 0; i < job->nFlag; i++)
-	{
-		if(job->flag[i].mjd1 <= mjd &&
-		   job->flag[i].mjd2 >= mjd)
-		{
-			if(job->flag[i].antennaId == a1 ||
-			   job->flag[i].antennaId == a2)
-			{
-                                //fprintf (stderr, "flagged visibility baseline %d-%d mjd %f\n", a1+1, a2+1, mjd);
-				return 1;
-			}
-		}
-	}
-
-	return 0;
-    }
 
 int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
-		  int *jobId,
-		  int scanId,
-                  char *node,       // directory for output fileset
-                  char *rcode,      // 6 letter root suffix
-                  struct stations *stns, // struct contains station name information
-                  struct CommandLineOptions *opts, // ptr to input options
-                  char *rootname,   // full root file name
-		  FILE **vis_file,
-                  char *corrdate)  // file pointer to open file 
+          int *jobId,
+          int scanId,
+          char *node,               // directory for output fileset
+          char *rcode,              // 6 letter root suffix
+          struct stations *stns,    // struct contains station name information
+          struct CommandLineOptions *opts, // ptr to input options
+          char *rootname,           // full root file name
+          FILE **vis_file,
+          char *corrdate)           // file pointer to open file 
     {
+    const int header_size = (8*sizeof(int)) + (5*sizeof(double)) + (2*sizeof(char)); 
+
     int i,
         ch,
         err,
@@ -72,6 +39,8 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
         n,
         nvis,
         pol,
+        a1, a2,                     // antenna indices for current baseline, 0-relative
+        blind,                      // baseline index into the baseline array structure
         nread,                      // number of visibility records read
         nflagged,                   // number of visibility records flagged
         base_index[NUMFILS],        // base_index[i] contains baseline for file fout[i]
@@ -81,7 +50,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
         noscan,
         vis_file_status;
 
-    char inname[DIFXIO_FILENAME_LENGTH],               // file name of input data file
+    char inname[DIFXIO_FILENAME_LENGTH],    // file name of input data file
          dirname[DIFXIO_FILENAME_LENGTH],
          outname[DIFXIO_FILENAME_LENGTH],
          blines[NUMFILS][3],        // null-terminated baselines list
@@ -110,7 +79,8 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
         } u;
 
                                     // function prototypes
-    int RecordIsFlagged(vis_record *vr, const DifxJob *job);
+    int recordIsFlagged (vis_record *, const DifxJob *);
+    int getBaselineIndex (DifxInput *, int, int);
 
                                     // initialize memory as necessary
                                     // quantization correction factor is pi/2 for
@@ -156,7 +126,6 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
     memcpy (t100.record_id, "100", 3);
     memcpy (t100.version_no, "00", 2);
     memcpy (t100.unused1,   "000", 3);
-    t100.nindex = D->nFreq * D->nPolar;
     t100.nlags = nvis;
     strncpy (t100.rootname, rootname, 34);
     conv2date (D->scan[scanId].mjdStart, &t100.start);
@@ -274,7 +243,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                 }
             }
                                     // check for new scan
-        currentScan = DifxInputGetScanIdByJobId(D, rec.mjd+rec.iat/86400., *jobId);
+        currentScan = DifxInputGetScanIdByJobId (D, rec.mjd+rec.iat/86400., *jobId);
         
         if (currentScan == -1)
             {
@@ -294,10 +263,12 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
             break;
             }
         if (opts->verbose > 2)
+            {
             printf ("        valid header read\n");
-        if (opts->verbose > 2)
             printf ("          bl=%d time=%d %13.6f config=%d source=%d freq=%d, pol=%s pb=%d\n",
-                    rec.baseline, rec.mjd, rec.iat, rec.config_index, rec.source_index, rec.freq_index, rec.pols, rec.pulsar_bin);
+                    rec.baseline, rec.mjd, rec.iat, rec.config_index, rec.source_index, 
+                    rec.freq_index, rec.pols, rec.pulsar_bin);
+            }
 
                                     // read data associated with last header
         if (fread (rec.comp, sizeof (float), 2 * nvis, *vis_file) <= 0)
@@ -312,11 +283,11 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
             continue;
             }
         if (opts->verbose > 2)
-            printf ("        read %d floats\n", 2*nvis);
+            printf ("        read %d complex visibilities\n", nvis);
         nread++;
                                     // check if either antenna is flagged a priori
                                     // for this baseline. If so, disregard and move on
-        if (noscan || RecordIsFlagged(&rec, &D->job[*jobId]))
+        if (noscan || recordIsFlagged(&rec, &D->job[*jobId]))
             {
             if (opts->verbose > 1)
                 printf ("          flagged: antenna off source\n");
@@ -332,36 +303,42 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                 break;              // found baseline, exit loop
             else if (base_index[n] < 0)
                 {                   
+                                    // compute antenna indices
+                a1 = rec.baseline / 256 - 1;
+                a2 = rec.baseline % 256 - 1;
                                     // first check that both antennas are in the
                                     // rootfile
-                if((stns+rec.baseline/256-1)->inscan != TRUE ||
-                   (stns+rec.baseline%256-1)->inscan != TRUE)
+                if((stns + a1)->inscan != TRUE || (stns + a2)->inscan != TRUE)
                     {
-                    fprintf(stderr, "WARNING Visibility found from baseline %c%c-%c%c which shouldn't be in scan!\n",
-                            (stns+rec.baseline/256-1)->intl_name[0],
-                            (stns+rec.baseline/256-1)->intl_name[1],
-                            (stns+rec.baseline%256-1)->intl_name[0],
-                            (stns+rec.baseline%256-1)->intl_name[1]);
+                    fprintf (stderr, 
+                      "WARNING Visibility found for baseline %c%c-%c%c which isn't in scan!\n",
+                            (stns + a1)->intl_name[0], (stns + a1)->intl_name[1],
+                            (stns + a2)->intl_name[0], (stns + a2)->intl_name[1]);
                     break;
+                    }
+                                    // determine which baseline array to use
+                if ((blind = getBaselineIndex (D, a1, a2)) < 0)
+                    {
+                    fprintf (stderr, 
+                            "WARNING Couldn't properly identify baseline %d in .input file.\n",
+                            rec.baseline);
+                    blind = 0;      // use first one in list and muster on
                     }
 
                                     // append new baseline to list
                 base_index[n] = rec.baseline;
-                (stns+rec.baseline/256-1)->invis = TRUE;
-                (stns+rec.baseline%256-1)->invis = TRUE;
+                (stns + a1)->invis = TRUE;
+                (stns + a2)->invis = TRUE;
                                     // create name & open new output file
                                     // assume that site ID order is same as station order
                                     // probably not valid, though - THIS NEEDS WORK!!  
                 strcpy (outname, node);
                 strcat (outname, "/");
-                k = rec.baseline/256-1;
-                blines[n][0] = (stns+k)->mk4_id;
-                k = rec.baseline%256-1;
-                blines[n][1] = (stns+k)->mk4_id;
+                blines[n][0] = (stns+a1)->mk4_id;
+                blines[n][1] = (stns+a2)->mk4_id;
                 blines[n][2] = 0;
                 if (opts->verbose > 0)
-                    printf ("      rec.baseline %d blines <%s>\n", 
-                             rec.baseline, blines[n]);
+                    printf ("      rec.baseline %d blines <%s>\n", rec.baseline, blines[n]);
                 strcat (outname, &blines[n][0]);
                 strcat (outname, "..");
                 strcat (outname, rcode);
@@ -387,19 +364,20 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                 write_t100 (&t100, fout[n]);
 
                                     // construct and write type 101 records
-                t101.index = 0;
-                for (i=0; i<D->nFreq; i++)
+                for (i=0; i<D->baseline[blind].nFreq; i++)
                     {
+                                    // generate index that is 10 * freq_index + pol
+                    t101.index = 10 * i;
                                     // prepare ID strings for both pols, if there
-                    ch = (D->nPolar > 1) ? 2 * i     : i;
+                    ch = (D->baseline[blind].nPolProd[i] > 1) ? 2 * i     : i;
                     sprintf (lchan_id, "%c%02d?", getband (D->freq[i].freq), ch);
                     lchan_id[3] = (D->freq+i)->sideband;
 
-                    ch = (D->nPolar > 1) ? 2 * i + 1 : i;
+                    ch = (D->baseline[blind].nPolProd[i] > 1) ? 2 * i + 1 : i;
                     sprintf (rchan_id, "%c%02d?", getband (D->freq[i].freq), ch);
                     rchan_id[3] = (D->freq+i)->sideband;
                                     // loop over 1, 2, or 4 pol'n. products
-                    for (pol=0; pol<D->nPolar; pol++)
+                    for (pol=0; pol<D->baseline[blind].nPolProd[i]; pol++)
                         {
                         t101.index++;
                         switch (pol)
@@ -446,14 +424,17 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                 }
             }
         strncpy (u.t120.baseline, blines[n], 2);
+                                    // FIXME (perhaps) -assumes all freqs have same PolProds as 0
                                     // insert index# for this channel
-        u.t120.index = D->nPolar * rec.freq_index + 1;
+        u.t120.index = 10 * (rec.freq_index % D->baseline[blind].nFreq) + 1;
                                     // tack on offset that represents polarization
                                     // iff there is more than one polarization present
-        if (D->nPolar > 1)
+        if (D->baseline[blind].nPolProd[0] > 1)
             for (i=0; i<4; i++)     
                 if (strncmp (poltab[i], rec.pols, 2) == 0)
                     u.t120.index += i;
+
+        t100.nindex = D->baseline[blind].nFreq * D->baseline[blind].nPolProd[0];
         u.t120.ap = n120[n] / t100.nindex;
                                     // write a type 120 record to the appropriate file
         write_t120 (&u.t120, fout[n]);
@@ -488,4 +469,54 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
    // printf ("      file pointer %x\n", *vis_file);
     return (currentScan);
     }
+
+                                    // determine which baseline array matches the input antennas
+int getBaselineIndex (DifxInput *D, int a1, int a2)
+    {
+    int i;
+
+    for (i=0; i<D->nBaseline; i++)
+        if ((D->datastream[D->baseline[i].dsA].antennaId == a1
+         && D->datastream[D->baseline[i].dsB].antennaId == a2)
+        || a1 == a2 &&              // for autocorrelations, only one end needs to match
+           (D->datastream[D->baseline[i].dsA].antennaId == a1
+         || D->datastream[D->baseline[i].dsB].antennaId == a2))
+            return i;
+         
+    return -1;
+    }
+
+
+//FIXME add other sanity checks from difx2fits fitsUV.c
+
+int recordIsFlagged (vis_record *vr, const DifxJob *job)
+    {
+    double mjd;
+    int a1, a2;
+    int i;
+
+
+    if(job->nFlag <= 0)
+        return 0;
+
+    mjd = vr->mjd + vr->iat/86400.;
+    a1  = (vr->baseline/256) - 1;
+    a2  = (vr->baseline%256) - 1;
+
+    for(i = 0; i < job->nFlag; i++)
+        {
+        if(job->flag[i].mjd1 <= mjd &&
+           job->flag[i].mjd2 >= mjd)
+            {
+            if(job->flag[i].antennaId == a1 ||
+               job->flag[i].antennaId == a2)
+                {
+                                //fprintf (stderr, "flagged visibility baseline %d-%d mjd %f\n", a1+1, a2+1, mjd);
+                return 1;
+                }
+            }
+        }
+    return 0;
+    }
+
 // vim: shiftwidth=4:softtabstop=4:expandtab:cindent:cinoptions={1sf1s^-1s

@@ -9,30 +9,6 @@
 #include <ctype.h>
 #include "difx2mark4.h"
 
-int isValidAntenna(const DifxInput *D, char *antName, int scanId)
-    {
-    /* if named antenna is present in the specified scan, return
-     * difxio antenna Id. Otherwise return -1
-     */
-    int antId, i;
-    char antUpper[DIFXIO_NAME_LENGTH];
-
-                                    //antenna in input?
-    for(i = 0; i < strlen(antName); i++)
-        antUpper[i] = toupper(antName[i]);
-    antUpper[i+1] = '\0';
-
-    antId = DifxInputGetAntennaId(D, antUpper);
-    if (antId < 0)
-        return(-1);
-
-                                    //antenna in scan?
-    if (D->scan[scanId].im[antId] == 0)
-        return(-1);
-
-    return(antId);
-    }
-
 int createRoot (DifxInput *D,       // difx input structure pointer
 		int *jobId,
 		int scanId,
@@ -121,6 +97,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
          *fout;
                                     // function prototypes
     void fake_bocf_period(char [256], DifxInput *);
+    int isValidAntenna(const DifxInput *, char *, int);
 
                                     // initialize memory as necessary
     current_def[0] = 0;
@@ -154,7 +131,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
     // FIXME inname for vexfile and antlist for job antennas
     
                                     // open input vex file
-    printf("      Opening %s\n", D->job[*jobId].vexFile);
+    printf("      Opening vex file <%s>\n", D->job[*jobId].vexFile);
     fin = fopen (D->job[*jobId].vexFile, "r");
     if (fin == NULL)
         {
@@ -450,7 +427,7 @@ int createRoot (DifxInput *D,       // difx input structure pointer
                     {
                                     // if not in difx list, discard whole block
                     i = isValidAntenna(D, current_site, scanId);
-                    if(i<0)
+                    if (i < 0)
                         {
                         if (opts->verbose > 0)
                             printf ("        discarding unused def for site %s\n",
@@ -646,4 +623,29 @@ void fake_bocf_period(char buff[256], DifxInput *D)
     sprintf (buff, " bocf_period = %lu;\n*subintNS = %d;\n",
 	bocf_period, D->config->subintNS);
     }
+
+int isValidAntenna(const DifxInput *D, char *antName, int scanId)
+    {
+    /* if named antenna is present in the specified scan, return
+     * difxio antenna Id. Otherwise return -1
+     */
+    int antId, i;
+    char antUpper[DIFXIO_NAME_LENGTH];
+
+                                    //antenna in input?
+    for(i = 0; i < strlen(antName); i++)
+        antUpper[i] = toupper(antName[i]);
+    antUpper[i+1] = '\0';
+
+    antId = DifxInputGetAntennaId(D, antUpper);
+    if (antId < 0)
+        return(-1);
+
+                                    //antenna in scan?
+    if (D->scan[scanId].im[antId] == 0)
+        return(-1);
+
+    return(antId);
+    }
+
 // vim: shiftwidth=4:softtabstop=4:expandtab:cindent:cinoptions={1sf1s^-1s
