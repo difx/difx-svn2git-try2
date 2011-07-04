@@ -60,4 +60,7 @@ export PYTHONPATH=<path to python libs>
 
 The python libs are located under libraries/python/trunk in the DiFX svn checkout tree.
 
- 
+6) Verify installation Python DB Module 
+
+difxqueue (for mysql) requires the MySQLdb python package. Make sure this is installed on your system.
+For RHEL the relavant package is: MySQL-python.
