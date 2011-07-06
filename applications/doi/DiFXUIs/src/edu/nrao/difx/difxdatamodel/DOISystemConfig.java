@@ -35,22 +35,17 @@ public class DOISystemConfig extends DiFXObject
 
     public static String getConfigFile() throws Exception
     {   
-        String difxRoot = "";
+        //  See if a DIFXROOT environment variable has been defined.  If not,
+        //  guess that the current working directory is the DIFXROOT.
+        String difxRoot = System.getenv( "DIFXROOT" );
+        if ( difxRoot == null )
+            difxRoot = System.getProperty( "user.dir" );
         
-        // look for setup file in the DIFX_ROOT/conf  directory
-        if ((difxRoot = System.getenv("DIFXROOT")) != null)
+        configFile = difxRoot + "/conf/DOISystemConfig.xml";
+        File f = new File( configFile );
+        if (!f.exists())
         {
-               configFile = difxRoot + "/conf/DOISystemConfig.xml";
-               File f = new File( configFile );
-               if (!f.exists())
-               {
-                   throw new Exception (configFile + " does not exist.");
-               }
-            
-        }
-        else
-        {
-            throw new Exception ("Environment variable DIFXROOT not defined");
+            throw new Exception ( "configuration file \"" + configFile + "\" does not exist.");
         }
       
         return configFile;

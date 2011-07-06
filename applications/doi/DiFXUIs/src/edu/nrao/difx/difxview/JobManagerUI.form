@@ -1,8 +1,7 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.1" encoding="UTF-8" ?>
 
 <Form version="1.5" maxVersion="1.5" type="org.netbeans.modules.form.forminfo.JFrameFormInfo">
   <Properties>
-    <Property name="defaultCloseOperation" type="int" value="0"/>
     <Property name="title" type="java.lang.String" value="Job Manager"/>
   </Properties>
   <SyntheticProperties>
@@ -25,11 +24,11 @@
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
               <Component id="jobToolBar" min="-2" max="-2" attributes="1"/>
-              <EmptySpace pref="379" max="32767" attributes="0"/>
+              <EmptySpace pref="423" max="32767" attributes="0"/>
               <Component id="diskToolBar" min="-2" max="-2" attributes="0"/>
           </Group>
           <Component id="bottomPanel" alignment="1" max="32767" attributes="0"/>
-          <Component id="statusPanel" alignment="0" pref="663" max="32767" attributes="0"/>
+          <Component id="statusPanel" alignment="0" pref="674" max="32767" attributes="0"/>
           <Component id="stationPanel" alignment="1" max="32767" attributes="0"/>
       </Group>
     </DimensionLayout>
@@ -464,9 +463,9 @@
       <Layout>
         <DimensionLayout dim="0">
           <Group type="103" groupAlignment="0" attributes="0">
-              <EmptySpace min="0" pref="659" max="32767" attributes="0"/>
+              <EmptySpace min="0" pref="670" max="32767" attributes="0"/>
               <Group type="103" rootIndex="1" groupAlignment="0" attributes="0">
-                  <Component id="stationsScrollPane" alignment="0" pref="659" max="32767" attributes="0"/>
+                  <Component id="stationsScrollPane" alignment="0" pref="670" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
