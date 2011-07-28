@@ -73,7 +73,8 @@ public class ProcessMessageThread implements Runnable
    public synchronized void processMessage(DatagramPacket packet)
    {
       //System.out.printf("**************** Process message queue process message packet. \n");
-
+      //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "got a packet" );
+      
       // Process message into DiFXMessage
       // printPacket(packet);
       DifxMessage difxMsg = mThePacketProcessor.ConvertToJAXB(packet);

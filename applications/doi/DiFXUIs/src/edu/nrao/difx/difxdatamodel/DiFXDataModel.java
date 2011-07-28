@@ -6,6 +6,7 @@ package edu.nrao.difx.difxdatamodel;
 
 import edu.nrao.difx.difxdatabase.DBConnection;
 import edu.nrao.difx.difxdatamodel.DiFXSystemStatus.JobStates;
+import edu.nrao.difx.difxview.MessageDisplayPanel;
 import edu.nrao.difx.xmllib.difxmessage.*;
 
 
@@ -48,6 +49,9 @@ public class DiFXDataModel {
 
    // private number of records read from the database
    private int mRecCount = 0;
+   
+   // internal message collection/display
+   private MessageDisplayPanel _messageDisplayPanel;
 
    public DiFXDataModel() 
    {
@@ -480,46 +484,48 @@ public class DiFXDataModel {
 
    // Process the DifxMessage into the Data Model
    //    This method is always called via the DiFX Controller
-   public synchronized void serviceDataModel(DifxMessage difxMsg)
-   {
-      // -- Convert a DifxMessage into a DiFXObject
+    public synchronized void serviceDataModel(DifxMessage difxMsg) {
+        // -- Convert a DifxMessage into a DiFXObject
 
-      // Determine the type of message
-      Header header = difxMsg.getHeader();
-      if (header.getType().equalsIgnoreCase("DifxStatusMessage"))
-      {
-         processDifxStatusMessage(difxMsg);
-      }
-      else if (header.getType().equalsIgnoreCase("Mark5StatusMessage"))
-      {
-         processMark5StatusMessage(difxMsg);
+        // Determine the type of message and send to the appropriate processor
+        //BLAT
+        Header header = difxMsg.getHeader();
 
-         // Determine state of all queued jobs
-         // determineStateOfAllJobs();
-      }
-      else if (header.getType().equalsIgnoreCase("DifxLoadMessage"))
-      {
-         processDifxLoadMessage(difxMsg);
-      }
-      else if (header.getType().equalsIgnoreCase("DifxAlertMessage"))
-      {
-         processDifxAlertMessage(difxMsg);
-      }
-      else if (header.getType().equalsIgnoreCase("DOIMessage"))
-      {
-         processDOIMessage(difxMsg);
-      }
-      else if (header.getType().equalsIgnoreCase("DoiErrorMessage"))
-      {
-         processDOIMessage(difxMsg);
-      }
-      
-      // Notify listeners to update thier view...Move into UpdateViewThread
-      // NotifyListeners();
+        if (header.getType().equalsIgnoreCase("DifxStatusMessage")) {
+            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DifxStatusMessage");
+            processDifxStatusMessage(difxMsg);
+ 
+        } else if (header.getType().equalsIgnoreCase("Mark5StatusMessage")) {
+            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "Mark5StatusMessage");
+            processMark5StatusMessage(difxMsg);
 
-      // clean up
-      header = null;
-   }
+        } else if (header.getType().equalsIgnoreCase("DifxLoadMessage")) {
+            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DifxLoadMessage");
+            processDifxLoadMessage(difxMsg);
+
+        } else if (header.getType().equalsIgnoreCase("DifxAlertMessage")) {
+            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DifxAlertMessage");
+            processDifxAlertMessage(difxMsg);
+
+        } else if (header.getType().equalsIgnoreCase("DOIMessage")) {
+            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DOIMessage");
+            processDOIMessage(difxMsg);
+
+        } else if (header.getType().equalsIgnoreCase("DoiErrorMessage")) {
+            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DoiErrorMessage");
+            processDOIMessage(difxMsg);
+
+        } else {
+            java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.WARNING, "unknown DiFX message: \"" +
+                     header.getType() + "\"" );
+        }
+
+        // Notify listeners to update thier view...Move into UpdateViewThread
+        // NotifyListeners();
+
+        // clean up
+        header = null;
+    }
 
    private synchronized void processDifxStatusMessageOld(DifxMessage difxMsg)
    {
@@ -1277,6 +1283,13 @@ System.out.println("DifXDataModel job free resources complete.");
          System.err.println("uncaught exception: " + e);
       }
    }
+   
+   public void messageDisplayPanel( MessageDisplayPanel newPanel ) {
+       _messageDisplayPanel = newPanel;
+   }
+   public MessageDisplayPanel messageDisplayPanel() {
+       return _messageDisplayPanel;
+   }
 
    private synchronized void processDifxAlertMessage(DifxMessage difxMsg)
    {
@@ -1301,6 +1314,35 @@ System.out.println("DifXDataModel job free resources complete.");
 
             // add check for high water mark, and clear text area if exceeded. . .
             this.addAlert(strToAdd);
+            
+            //  Send this alert to the internal messaging system, unless we don't
+            //  have access to it - in which case we simply use the logging
+            //  system.
+            if ( _messageDisplayPanel != null ) {
+                if ( difxMsg.getBody().getDifxAlert().getSeverity() < 3 )
+                    _messageDisplayPanel.error( 0, difxMsg.getHeader().getFrom() + " : " +
+                          difxMsg.getHeader().getIdentifier(),
+                          difxMsg.getBody().getDifxAlert().getAlertMessage().toString() );
+                else if ( difxMsg.getBody().getDifxAlert().getSeverity() < 4 )
+                    _messageDisplayPanel.warning( 0, difxMsg.getHeader().getFrom() + " : " +
+                          difxMsg.getHeader().getIdentifier(),
+                          difxMsg.getBody().getDifxAlert().getAlertMessage().toString() );
+                else
+                    _messageDisplayPanel.message( 0, difxMsg.getHeader().getFrom() + " : " +
+                          difxMsg.getHeader().getIdentifier(),
+                          difxMsg.getBody().getDifxAlert().getAlertMessage().toString() );
+            }
+            else {
+                if ( difxMsg.getBody().getDifxAlert().getSeverity() < 3 )
+                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, 
+                          difxMsg.getBody().getDifxAlert().getAlertMessage().toString() );
+                else if ( difxMsg.getBody().getDifxAlert().getSeverity() < 4 )
+                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.WARNING, 
+                        difxMsg.getBody().getDifxAlert().getAlertMessage().toString() );
+                else
+                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, 
+                        difxMsg.getBody().getDifxAlert().getAlertMessage().toString() );
+            }
          }
       }
       catch (Exception e)
@@ -2242,6 +2284,9 @@ System.out.println("DifXDataModel job free resources complete.");
                jobName      = null;
             }
          } // -- if (!exists)
+      }
+      else {
+          System.out.println( "DiFXDataModel.java(2247): " + difxObj.getObjType() );
       }
 
    }

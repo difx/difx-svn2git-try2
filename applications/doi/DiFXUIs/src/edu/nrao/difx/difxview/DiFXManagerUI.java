@@ -19,6 +19,7 @@ import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
 
 import javax.swing.JSplitPane;
+import javax.swing.UIManager;
 
 
 /**
@@ -41,7 +42,17 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
     JobManagerUI mCurrentJM;
 
     /** Creates new form DiFXManagerUI */
-    public DiFXManagerUI() {
+    public DiFXManagerUI() {        
+        //  This is supposed to set the look and feel.  Using the "cross platform"
+        //  look and feel makes the menu look the same everywhere.
+        try {
+            UIManager.setLookAndFeel( UIManager.getCrossPlatformLookAndFeelClassName() );
+        }
+        catch ( Exception e ) {
+            //  This thing throws exceptions, but we ignore them.  Shouldn't hurt
+            //  us - if the look and feel isn't set, the default should at least
+            //  be visible.
+        }
         initComponents();
         
         //  Set the static message collector.  We want it to absorb logging
@@ -55,6 +66,7 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
         
         // Create multi cast thread and data model
         mDataModel = new DiFXDataModel();
+        mDataModel.messageDisplayPanel( messageCenter );
         mController = new DiFXController();
         
         mitigateErrorManager.initialize( messageCenter, mDataModel, mController );
@@ -78,7 +90,6 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
         addWindowListener(this);
         
 //        java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, "WHAT IS THIS??");
-
     }
     
     /*
@@ -209,11 +220,12 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
         queueManagerButton = new javax.swing.JButton();
         mainSplitPane = new javax.swing.JSplitPane();
         topSplitPane = new javax.swing.JSplitPane();
-        jTabbedPane1 = new javax.swing.JTabbedPane();
-        queueManagerPanel = new edu.nrao.difx.difxview.QueueManagerPanel();
+        jPanel2 = new javax.swing.JPanel();
+        queuePanel = new javax.swing.JPanel();
+        queueBrowserPanel1 = new edu.nrao.difx.difxview.QueueBrowserPanel();
         bottomSplitPane = new javax.swing.JSplitPane();
-        messageCenter = new edu.nrao.difx.difxview.MessageDisplayPanel();
         mitigateErrorManager = new edu.nrao.difx.difxview.MitigateErrorManagerPanel();
+        messageCenter = new edu.nrao.difx.difxview.MessageDisplayPanel();
 
         aboutItem.setText("About");
         popupMenu.add(aboutItem);
@@ -221,7 +233,6 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setTitle("NRAO DiFX Manager 2.0");
         setName("DiFXManager"); // NOI18N
-        setPreferredSize(new java.awt.Dimension(1100, 800));
         setSize(new java.awt.Dimension(1100, 800));
 
         resourceManagerButton.setText("Resource Manager");
@@ -288,15 +299,41 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
         topSplitPane.setDividerSize(3);
         topSplitPane.setResizeWeight(1.0);
 
-        jTabbedPane1.addTab("Queue Manager", queueManagerPanel);
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 0, Short.MAX_VALUE)
+        );
+        jPanel2Layout.setVerticalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 395, Short.MAX_VALUE)
+        );
 
-        topSplitPane.setLeftComponent(jTabbedPane1);
+        topSplitPane.setRightComponent(jPanel2);
+
+        javax.swing.GroupLayout queuePanelLayout = new javax.swing.GroupLayout(queuePanel);
+        queuePanel.setLayout(queuePanelLayout);
+        queuePanelLayout.setHorizontalGroup(
+            queuePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 1332, Short.MAX_VALUE)
+            .addGroup(queuePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addComponent(queueBrowserPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 1332, Short.MAX_VALUE))
+        );
+        queuePanelLayout.setVerticalGroup(
+            queuePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 395, Short.MAX_VALUE)
+            .addGroup(queuePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addComponent(queueBrowserPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 395, Short.MAX_VALUE))
+        );
+
+        topSplitPane.setLeftComponent(queuePanel);
 
         mainSplitPane.setLeftComponent(topSplitPane);
 
         bottomSplitPane.setDividerSize(3);
-        bottomSplitPane.setLeftComponent(messageCenter);
         bottomSplitPane.setRightComponent(mitigateErrorManager);
+        bottomSplitPane.setLeftComponent(messageCenter);
 
         mainSplitPane.setRightComponent(bottomSplitPane);
 
@@ -314,8 +351,8 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
                 .addComponent(jobManagerButton, javax.swing.GroupLayout.PREFERRED_SIZE, 101, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(queueManagerButton, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(705, Short.MAX_VALUE))
-            .addComponent(mainSplitPane, javax.swing.GroupLayout.DEFAULT_SIZE, 1273, Short.MAX_VALUE)
+                .addContainerGap(773, Short.MAX_VALUE))
+            .addComponent(mainSplitPane, javax.swing.GroupLayout.DEFAULT_SIZE, 1341, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -428,20 +465,19 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
                 view.setTitle(view.getTitle() + " " + DOISystemConfig.DOIVersion);
 
                 if (messageCtr != null) {
-                    messageCtr.message("***************** DiFX Manager attach listener. \n");
+                    messageCtr.message( 0, null, "***************** DiFX Manager attach listener. \n");
                 } else {
                     System.out.println("***************** DiFX Manager attach listener. \n");
                 }
 
-                // read the configuration file
+                //  Read the GUI configuration file, if one exists.
                 try {
-                    readSystemConfig(DOISystemConfig.getConfigFile());
+                    readSystemConfig( DOISystemConfig.getConfigFile() );
                 } catch (Exception ex) {
                     java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE,
                             ex.getMessage() );
                     //System.exit(1);     
                 }
-//                readSystemConfig(DOISystemConfig.ConfigFile);
                 connectToDB();
                 readResourcesConfig(DOISystemConfig.ResourcesFile);
 
@@ -479,7 +515,7 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem aboutItem;
     private javax.swing.JSplitPane bottomSplitPane;
-    private javax.swing.JTabbedPane jTabbedPane1;
+    private javax.swing.JPanel jPanel2;
     private javax.swing.JButton jobManagerButton;
     private javax.swing.JSplitPane mainSplitPane;
     private edu.nrao.difx.difxview.MessageDisplayPanel messageCenter;
@@ -487,8 +523,9 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
     private javax.swing.JButton modulesButton;
     private javax.swing.JPopupMenu popupMenu;
     private javax.swing.JButton projectManagerButton;
+    private edu.nrao.difx.difxview.QueueBrowserPanel queueBrowserPanel1;
     private javax.swing.JButton queueManagerButton;
-    private edu.nrao.difx.difxview.QueueManagerPanel queueManagerPanel;
+    private javax.swing.JPanel queuePanel;
     private javax.swing.JButton resourceManagerButton;
     private javax.swing.JSplitPane topSplitPane;
     // End of variables declaration//GEN-END:variables

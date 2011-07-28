@@ -112,7 +112,7 @@ public class MitigateErrorManagerPanel extends javax.swing.JPanel {
       if (mDataModel != null)
       {
           if (messageCtr != null) {
-              messageCtr.message("***************** Mitigate Error Manager attach listener.\n");
+              messageCtr.message( 0, null, "***************** Mitigate Error Manager attach listener.\n");
           } else {
               System.out.println("***************** Mitigate Error Manager attach listener.");
           }
@@ -136,7 +136,7 @@ public class MitigateErrorManagerPanel extends javax.swing.JPanel {
       else
       {
           if ( messageCtr != null )
-              messageCtr.warning( "***************** Mitigate Error Manager listener not attached .\n" );
+              messageCtr.warning( 0, null, "***************** Mitigate Error Manager listener not attached .\n" );
           else
               System.out.println( "***************** Mitigate Error Manager listener not attached .\n" );
       }
@@ -148,7 +148,7 @@ public class MitigateErrorManagerPanel extends javax.swing.JPanel {
       if (mDataModel != null)
       {
           if ( messageCtr != null )
-              messageCtr.message( "***************** Mitigate Error Manager detach listener. \n" );
+              messageCtr.message( 0, null, "***************** Mitigate Error Manager detach listener. \n" );
           else
               System.out.printf( "***************** Mitigate Error Manager detach listener. \n" );
           mDataModel.detachListener(mListener);
@@ -156,7 +156,7 @@ public class MitigateErrorManagerPanel extends javax.swing.JPanel {
       else
       {
           if ( messageCtr != null )
-              messageCtr.warning( "***************** Mitigate Error Manager listener not detached. \n" );
+              messageCtr.warning( 0, null, "***************** Mitigate Error Manager listener not detached. \n" );
           else
               System.out.println( "***************** Mitigate Error Manager listener not detached. \n" );
       }
@@ -265,7 +265,7 @@ public class MitigateErrorManagerPanel extends javax.swing.JPanel {
       else // -- lost the datamodel
       {
           if ( messageCtr != null )
-              messageCtr.warning( "***************** Mitigate Error Manager data model not defined. \n" );
+              messageCtr.warning( 0, null, "***************** Mitigate Error Manager data model not defined. \n" );
           else
               System.out.printf("***************** Mitigate Error Manager data model not defined. \n");
       }
