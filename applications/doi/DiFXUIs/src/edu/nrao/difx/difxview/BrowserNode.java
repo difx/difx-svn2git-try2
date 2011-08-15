@@ -42,7 +42,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
         addMouseMotionListener( this );
         _mouseIn = false;
         _label = new JLabel( name );
-        _label.setFont( new Font( "Dialog", Font.BOLD, 14 ) );
+        _label.setFont( new Font( "Dialog", Font.BOLD, 12 ) );
         this.add( _label );
         createAdditionalItems();
         setLevel( 0 );
@@ -132,8 +132,14 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
     public void setWidth( int newVal ) {
         _xSize = newVal;
         Dimension d = this.getSize();
-        this.setSize( _xSize, d.width );
+        this.setSize( _xSize, d.height );
         positionItems();
+        //  Do we really want to do this?  This makes all child nodes the same
+        //  width....which seems like the right thing to do for my specific purposes
+        //  right now, but maybe isn't really.
+        for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
+            iter.next().setWidth( _xSize );
+        }
     }
     
     /*
@@ -167,7 +173,11 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
         }
     }
     
-    public ArrayDeque children() {
+    public void backgroundColor( Color newColor ) {
+        _backgroundColor = newColor;
+    }
+    
+    public ArrayDeque<BrowserNode> children() {
         return _children;
     }
     
@@ -208,7 +218,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
             g.setColor( Color.GRAY );
             g.fillPolygon( xpts, ypts, 3 );
         }
-    }
+   }
     
     @Override
     public void mouseClicked( MouseEvent e ) {
@@ -262,6 +272,10 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
     public void mouseDragged( MouseEvent e ) {
         Container foo = this.getParent();
         foo.dispatchEvent( e );
+    }
+    
+    public String name() {
+        return _label.getText();
     }
     
     protected boolean _open;

@@ -30,6 +30,7 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
     public MessageDisplayPanel() {
         initComponents();
         _browser.setBackground( Color.BLACK );
+        /*
         warning( 0, "test", "warning" );
         warning( 0, "test", "warning" );
         warning( 0, "test", "warning" );
@@ -120,6 +121,7 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
         message( 0, "test", "message" );
         message( 0, "test", "message" );
         message( 0, "test", "message" );
+         */
     }
     
     public void initComponents() {

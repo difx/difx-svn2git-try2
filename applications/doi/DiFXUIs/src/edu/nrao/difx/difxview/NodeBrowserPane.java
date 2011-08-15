@@ -31,6 +31,10 @@ public class NodeBrowserPane extends BrowserNode {
     @Override
     public void setBounds( int x, int y, int w, int h ) {
         super.setBounds( x, y, w, h );
+        //  Propogate the new width to all children.
+        for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
+            iter.next().setWidth( w );
+        }
         measureDataBounds();
     }
     

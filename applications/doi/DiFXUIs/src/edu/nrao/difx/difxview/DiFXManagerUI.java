@@ -55,6 +55,9 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
         }
         initComponents();
         
+        HardwareMonitorPanel hardwareMonitor = new HardwareMonitorPanel();
+        topSplitPane.setRightComponent( hardwareMonitor );
+
         //  Set the static message collector.  We want it to absorb logging
         //  messages as well.
         messageCtr = messageCenter;
@@ -70,16 +73,20 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
         mController = new DiFXController();
         
         mitigateErrorManager.initialize( messageCenter, mDataModel, mController );
+        
+        hardwareMonitor.dataModel( mDataModel );
+        mDataModel.notifyListeners();
+        hardwareMonitor.controller( mController );
 
         /*
          * By default, set the main frame to take over the screen and subwindow
          * sizes to appropriate values.  The user should be able to change these
          * and have the changes stick the next time they start the application.
          */
-        mainSplitPane.setResizeWeight( 0.75 );
-        topSplitPane.setResizeWeight( 0.75 );
+        mainSplitPane.setResizeWeight( 0.5 );
+        topSplitPane.setResizeWeight( 0.5 );
         setDividerLocation( mainSplitPane, 0.75 );
-        setDividerLocation( topSplitPane, 0.8 );
+        setDividerLocation( topSplitPane, 0.5 );
         setDividerLocation( bottomSplitPane, 0.6 );
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         //setBounds(0,0,screenSize.width, screenSize.height);
@@ -96,6 +103,7 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
      * This is a function swiped from the following web link:
      * http://blog.darevay.com/2011/06/jsplitpainintheass-a-less-abominable-fix-for-setdividerlocation/
      * It tries to fix the idiotic behavior of "setDividerLocation" for JSplitPanes.
+     * It kind of works....mostly....sometimes....
      */
     public static JSplitPane setDividerLocation(final JSplitPane splitter,
             final double proportion) {

@@ -43,7 +43,7 @@ public class QueueBrowserPanel extends JPanel {
         _browserPane.setBackground( Color.WHITE );
         _mainLabel = new JLabel( "Queue Browser" );
         _mainLabel.setBounds( 5, 0, 150, 20 );
-        _mainLabel.setFont( new Font( "Dialog", Font.BOLD, 14 ) );
+        _mainLabel.setFont( new Font( "Dialog", Font.BOLD, 12 ) );
         add( _mainLabel );
         ProjectNode project1 = new ProjectNode( "Project 1" );
         _browserPane.addNode( project1 );

@@ -252,7 +252,7 @@ public class ModuleManagerUI extends javax.swing.JFrame
             @Override
             public void update()
             {
-               // System.out.printf("***************** Module Manager service data model and view. \n");
+               //System.out.printf("***************** Module Manager service data model and view. \n");
                // ServiceDataModel();
                updateView();
             // System.out.println("***************** Moduel Manager Update data model and view complete. \n");

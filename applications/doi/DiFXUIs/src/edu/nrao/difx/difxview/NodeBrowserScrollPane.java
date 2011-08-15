@@ -55,6 +55,12 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
         //  This turns momentum on or off.
         momentumOn( true );
         
+        //  This determines the direction stuff moves when you spin the mouse
+        //  wheel.  -1 is conventional, but not entirely intuitive.  1 is the
+        //  opposite direction.  You can also change the magnitude of scrolling
+        //  by making this number bigger.
+        _scrollSense = -1;
+        
         //  Set ourselves up to respond to a repeating timeout roughly 50 times
         //  a second.  This is used for animation of the browser content.  The
         //  time interval is set to match the timing of drag and mouse wheel
@@ -70,6 +76,10 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
         //  The yOffset tracks where the browser data are located vertically.
         //  It is measured in pixels.
         _yOffset = 0;
+        
+        //  The scrolledToEnd flag tells us when we have scrolled to the
+        //  bottom of the screen.
+        _scrolledToEnd = true;
     
     }
     
@@ -130,21 +140,24 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
     }
     
     public boolean scrolledToEnd() {
-        if ( _scrollable )
-            return ( _scrollBar.getValue() == _scrollBar.getMaximum() - _scrollBar.getVisibleAmount() );
-        else
-            return true;
+        return _scrolledToEnd;
+//        if ( _scrollable )
+//            return ( _scrollBar.getValue() >= _scrollBar.getMaximum() - _scrollBar.getVisibleAmount() );
+//        else
+//            return true;
     }
     
     public void scrollToEnd() {
         if ( _scrollable ) {
             _scrollBar.setValue( _scrollBar.getMaximum() ); 
         }
+        _scrolledToEnd = true;
     }
     
     public void scrollToTop() {
         if ( _scrollable ) {
             _scrollBar.setValue( 0 );
+            _scrolledToEnd = false;
         }
     }
     
@@ -183,6 +196,7 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
         }
         else {
             _scrollable = true;
+            testScrollBar();
         }
     }
     
@@ -267,16 +281,29 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
             _decayCount = 10;
             _decayStartCount = 10;
             _lastY = e.getY();
+            testScrollBar();
         }
     }
     
     @Override
     public void mouseWheelMoved( MouseWheelEvent e ) {
         if ( _scrollable ) {
-            _offsetMotion = 2 * e.getScrollAmount() * e.getWheelRotation();
+            _offsetMotion = _scrollSense * 2 * e.getScrollAmount() * e.getWheelRotation();
             _decayCount = 10;
             _decayStartCount = 10;
+            testScrollBar();
         }
+    }
+    
+    /*
+     * Set the direction and magnitude of the scrolling triggered by the mouse
+     * wheel.  A value of -1 is conventional.
+     */
+    public void scrollSense( int newVal ) {
+        _scrollSense = newVal;
+    }
+    public int scrollSense() {
+        return _scrollSense;
     }
     
     @Override
@@ -289,10 +316,25 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
             _yOffset = -e.getValue();
             browserPane.yOffset( _yOffset );
             this.updateUI();
+            testScrollBar();
             //  This stuff could be used instead if momentum was desired.
             //_offsetMotion = -e.getValue() - _yOffset;
             //_decayCount = 10;
             //_decayStartCount = 10;
+        }
+    }
+    
+    /*
+     * This function is used internally to determine if the scrollbar has been
+     * positioned at the bottom by the user.  It might be useful to something
+     * outside the class, thus it is made public.
+     */
+    public void testScrollBar() {
+        if ( _scrollable ) {
+            if ( _scrollBar.getValue() >= _scrollBar.getMaximum() - _scrollBar.getVisibleAmount() )
+                _scrolledToEnd = true;
+            else
+                _scrolledToEnd = false;
         }
     }
     
@@ -321,6 +363,8 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
     protected int _lastX;
     protected boolean _scrolling;
     protected boolean _momentumOn;
+    protected int _scrollSense;
+    protected boolean _scrolledToEnd;
     
     static protected int SCROLLBAR_WIDTH = 16;
     
