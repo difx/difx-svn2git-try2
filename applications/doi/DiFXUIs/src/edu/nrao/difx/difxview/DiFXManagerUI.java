@@ -74,6 +74,7 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
         
         mitigateErrorManager.initialize( messageCenter, mDataModel, mController );
         
+        queueBrowserPanel1.dataModel( mDataModel );
         hardwareMonitor.dataModel( mDataModel );
         mDataModel.notifyListeners();
         hardwareMonitor.controller( mController );

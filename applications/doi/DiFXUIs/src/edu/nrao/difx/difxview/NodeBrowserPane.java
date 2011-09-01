@@ -35,15 +35,20 @@ public class NodeBrowserPane extends BrowserNode {
         for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
             iter.next().setWidth( w );
         }
-        measureDataBounds();
+        measureDataBounds( h );
     }
     
-    public void measureDataBounds() {
+    public void measureDataBounds( int h ) {
         //  Offset the top of the browser data by an amount determined above this
         //  class.
         int yOffset = _yOffset;
         for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
-            yOffset += iter.next().setDrawConditions( yOffset, true );
+            //  Don't bother setting the draw conditions for items that fall off the
+            //  bottom of the browser window.
+            if ( yOffset < h )
+                yOffset += iter.next().setDrawConditions( yOffset, true );
+            else
+                iter.next();
         }
         //  Measure the total height of the data currently displayed in the
         //  browser.

@@ -21,6 +21,10 @@ import java.text.DecimalFormat;
 
 import edu.nrao.difx.difxdatamodel.*;
 
+import mil.navy.usno.plotlib.PlotWindow;
+import mil.navy.usno.plotlib.Plot2DObject;
+import mil.navy.usno.plotlib.Track2D;
+
 /**
  *
  * @author jspitzak
@@ -61,6 +65,23 @@ public class ClusterNode extends BrowserNode {
         _cpuLoad = new ColumnTextArea();
         _cpuLoad.justify( ColumnTextArea.RIGHT );
         this.add( _cpuLoad );
+        _cpuLoadPlot = new PlotWindow();
+        this.add( _cpuLoadPlot );
+        _cpuPlot = new Plot2DObject();
+        _cpuLoadPlot.add2DPlot( _cpuPlot );
+        _cpuPlot.name( "CPU Plot" );
+        _cpuPlot.drawBackground( true );
+        _cpuPlot.drawFrame( true );
+        _cpuPlot.frameColor( Color.GRAY );
+        _cpuPlot.clip( true );
+        _cpuPlot.addTopGrid( Plot2DObject.X_AXIS, 10.0, Color.BLACK );
+        _cpuTrack = new Track2D();
+        _cpuTrack.fillCurve( true );
+        _cpuPlot.addTrack( _cpuTrack );
+        _cpuTrack.color( Color.GREEN );
+        _cpuTrack.sizeLimit( 200 );
+        _cpuPlot.frame( 0.0, 0.0, 1.0, 1.0 );
+        _cpuPlot.backgroundColor( Color.BLACK );
         _usedMem = new ColumnTextArea();
         _usedMem.justify( ColumnTextArea.RIGHT );
         this.add( _usedMem );
@@ -70,6 +91,23 @@ public class ClusterNode extends BrowserNode {
         _memLoad = new ColumnTextArea();
         _memLoad.justify( ColumnTextArea.RIGHT );
         this.add( _memLoad );
+        _memLoadPlot = new PlotWindow();
+        this.add( _memLoadPlot );
+        _memPlot = new Plot2DObject();
+        _memLoadPlot.add2DPlot( _memPlot );
+        _memPlot.name( "Mem Plot" );
+        _memPlot.drawBackground( true );
+        _memPlot.drawFrame( true );
+        _memPlot.frameColor( Color.GRAY );
+        _memPlot.clip( true );
+        _memPlot.addTopGrid( Plot2DObject.X_AXIS, 10.0, Color.BLACK );
+        _memTrack = new Track2D();
+        _memTrack.fillCurve( true );
+        _memPlot.addTrack( _memTrack );
+        _memTrack.color( Color.GREEN );
+        _memTrack.sizeLimit( 200 );
+        _memPlot.frame( 0.0, 0.0, 1.0, 1.0 );
+        _memPlot.backgroundColor( Color.BLACK );
         _netRxRate = new ColumnTextArea();
         _netRxRate.justify( ColumnTextArea.RIGHT );
         this.add( _netRxRate );
@@ -102,7 +140,7 @@ public class ClusterNode extends BrowserNode {
         //  Then everything else.  For items that are simply values (as opposed
         //  to plots) we show labels backed by alternating colors so the columns
         //  will be easy to follow.
-        _colorColumn = true;
+        _colorColumn = false;
         if( _showNumCPUs )
             setTextArea( _numCPUs, 70 );
         if ( _showNumCores )
@@ -120,23 +158,33 @@ public class ClusterNode extends BrowserNode {
             else
                 _state.setBackground( Color.GREEN );
             _xOff += 70;
+            _colorColumn = false;
         }
         if ( _showEnabled ) {
             _enabledLight.setBounds( _xOff + 30, 6, 10, 10 );
             _xOff += 70;
+            _colorColumn = false;
         }
         if ( _showCpuLoad )
             setTextArea( _cpuLoad, 70 );
-        //if ( _showCpuLoadPlot )
-        //
+        if ( _showCpuLoadPlot ) {
+            _cpuLoadPlot.setBounds( _xOff, 1, 70, _ySize - 2 );
+            _cpuPlot.resizeBasedOnWindow( 70, _ySize - 2 );
+            _xOff += 70;
+            _colorColumn = false;
+        }
         if ( _showUsedMem )
             setTextArea( _usedMem, 70 );
         if ( _showTotalMem )
             setTextArea( _totalMem, 70 );
         if ( _showMemLoad )
             setTextArea( _memLoad, 70 );
-        //if ( _showMemLoadPlot )
-        //
+        if ( _showMemLoadPlot ) {
+            _memLoadPlot.setBounds( _xOff, 1, 70, _ySize - 2 );
+            _memPlot.resizeBasedOnWindow( 70, _ySize - 2 );
+            _xOff += 70;
+            _colorColumn = false;
+        }
         if ( _showNetRxRate )
             setTextArea( _netRxRate, 70 );
         if ( _showNetTxRate )
@@ -146,7 +194,7 @@ public class ClusterNode extends BrowserNode {
     /*
      * Private function used repeatedly in positionItems().
      */
-    private void setTextArea( Component area, int xSize ) {
+    protected void setTextArea( Component area, int xSize ) {
         area.setBounds( _xOff, 1, xSize, _ySize - 2);
         _xOff += xSize;
         if ( _colorColumn )
@@ -223,7 +271,7 @@ public class ClusterNode extends BrowserNode {
 
     public void showCpuLoadPlot( boolean newVal ) {
         _showCpuLoadPlot = newVal;
-        //_networkActivity.setVisible( _showNetworkActivity );            
+        _cpuLoadPlot.setVisible( newVal );            
     }
 
     public void showUsedMem( boolean newVal ) {
@@ -243,7 +291,7 @@ public class ClusterNode extends BrowserNode {
 
     public void showMemLoadPlot( boolean newVal ) {
         _showMemLoadPlot = newVal;
-        //_networkActivity.setVisible( _showNetworkActivity );            
+        _memLoadPlot.setVisible( newVal );            
     }
 
     public void showNetRxRate( boolean newVal ) {
@@ -271,9 +319,17 @@ public class ClusterNode extends BrowserNode {
             _state.setText( "" + dataNode.getState() );
         else
             _state.setText( "Lost" );
-        _cpuLoad.setText( String.format( "%10.3f", dataNode.getCpuLoad() ) );
+        _cpuLoad.setText( String.format( "%10.1f", 100.0 * dataNode.getCpuLoad() ) );
+        _cpuPlot.limits( (double)(_cpuTrackSize - 100), (double)(_cpuTrackSize), 0.0, 100.0 );
+        _cpuTrack.add( (double)(_cpuTrackSize), 100.0 * dataNode.getCpuLoad() );
+        _cpuTrackSize += 1;
+        _cpuLoadPlot.updateUI();
         _enabledLight.on( dataNode.getEnabled() );
-        _memLoad.setText( String.format( "%10.3f", dataNode.getMemLoad() ) );
+        _memLoad.setText( String.format( "%10.1f", 100.0 * dataNode.getMemLoad() ) );
+        _memPlot.limits( (double)(_memTrackSize - 100), (double)(_memTrackSize), 0.0, 100.0 );
+        _memTrack.add( (double)(_memTrackSize), 100.0 * dataNode.getMemLoad() );
+        _memTrackSize += 1;
+        _memLoadPlot.updateUI();
         _totalMem.setText( String.format( "%10d", dataNode.getTotalMem() ) );
         _usedMem.setText( String.format( "%10d", dataNode.getUsedMem() ) );
         //  Convert transmit and receive rates to Mbits/second (instead of Bytes/sec).
@@ -292,9 +348,9 @@ public class ClusterNode extends BrowserNode {
                     _monitor.setState( dataNode.getState() );
             else
                     _monitor.setState( "Lost" );
-            _monitor.setCpuLoad( dataNode.getCpuLoad() );
+            _monitor.setCpuLoad( (float)100.0 * dataNode.getCpuLoad() );
             _monitor.setSysEnabled( dataNode.getEnabled() );
-            _monitor.setMemLoad( dataNode.getMemLoad() );
+            _monitor.setMemLoad( (float)100.0 * dataNode.getMemLoad() );
             _monitor.setTotalMem( dataNode.getTotalMem() );
             _monitor.setUsedMem( dataNode.getUsedMem() );
             _monitor.setNetRxRate( newRx );
@@ -321,6 +377,10 @@ public class ClusterNode extends BrowserNode {
     ActivityMonitorLight _enabledLight;
     ColumnTextArea _cpuLoad;
     boolean _showCpuLoad;
+    PlotWindow _cpuLoadPlot;
+    Plot2DObject _cpuPlot;
+    Track2D _cpuTrack;
+    int _cpuTrackSize;
     boolean _showCpuLoadPlot;
     ColumnTextArea _usedMem;
     boolean _showUsedMem;
@@ -328,6 +388,10 @@ public class ClusterNode extends BrowserNode {
     boolean _showTotalMem;
     ColumnTextArea _memLoad;
     boolean _showMemLoad;
+    PlotWindow _memLoadPlot;
+    Plot2DObject _memPlot;
+    Track2D _memTrack;
+    int _memTrackSize;
     boolean _showMemLoadPlot;
     ColumnTextArea _netRxRate;
     boolean _showNetRxRate;

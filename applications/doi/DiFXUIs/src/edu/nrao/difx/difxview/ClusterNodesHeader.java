@@ -43,16 +43,26 @@ public class ClusterNodesHeader extends BrowserNode {
         _enabled = new ColumnTextArea( "Enabled" );
         this.add( _enabled );
         _cpuLoad = new ColumnTextArea( "CPU Usage" );
+        _cpuLoad.setToolTipText( "CPU Usage (%)" );
         this.add( _cpuLoad );
+        _cpuLoadPlot = new ColumnTextArea( "CPU Usage" );
+        _cpuLoadPlot.setToolTipText( "Plot of CPU Usage (%)" );
+        this.add( _cpuLoadPlot );
         _usedMem = new ColumnTextArea( "Used Mem" );
         this.add( _usedMem );
         _totalMem = new ColumnTextArea( "Total Mem");
         this.add( _totalMem );
         _memLoad = new ColumnTextArea( "Mem Usage" );
+        _memLoad.setToolTipText( "Memory Usage (%)" );
         this.add( _memLoad );
+        _memLoadPlot = new ColumnTextArea( "Mem Usage" );
+        _memLoadPlot.setToolTipText( "Plot of Memory Usage (%)" );
+        this.add( _memLoadPlot );
         _netRxRate = new ColumnTextArea( "Rx Rate" );
+        _netRxRate.setToolTipText( "Receive Rate (Mbits/s)" );
         this.add( _netRxRate );
         _netTxRate = new ColumnTextArea( "Tx Rate" );
+        _netTxRate.setToolTipText( "Transmit Rate (Mbits/s)" );
         this.add( _netTxRate );
         //  Create a popup menu that allows us to turn things on and off
         _popup = new JPopupMenu();
@@ -196,16 +206,30 @@ public class ClusterNodesHeader extends BrowserNode {
             setTextArea( _enabled, 70 );
         if ( _showCpuLoad.getState() )
             setTextArea( _cpuLoad, 70 );
-        //if ( _showCpuLoadPlot )
-        //
+        if ( _showCpuLoadPlot.getState() ) {
+            //  If the header "CPU Usage" is already displayed for the previous
+            //  column, don't repeat it.
+            if ( _showCpuLoad.getState() )
+                _cpuLoadPlot.setText( "" );
+            else
+                _cpuLoadPlot.setText( "CPU Usage" );
+            setTextArea( _cpuLoadPlot, 70 );
+        }
         if ( _showUsedMem.getState() )
             setTextArea( _usedMem, 70 );
         if ( _showTotalMem.getState() )
             setTextArea( _totalMem, 70 );
         if ( _showMemLoad.getState() )
             setTextArea( _memLoad, 70 );
-        //if ( _showMemLoadPlot )
-        //
+        if ( _showMemLoadPlot.getState() ) {
+            //  As with the CPU plot - don't repeat a column header if it is
+            //  already there.
+            if ( _showMemLoad.getState() )
+                _memLoad.setText( "" );
+            else
+                _memLoad.setText( "Mem Usage" );
+            setTextArea( _memLoadPlot, 70 );
+        }
         if ( _showNetRxRate.getState() )
             setTextArea( _netRxRate, 70 );
         if ( _showNetTxRate.getState() )
@@ -284,11 +308,11 @@ public class ClusterNodesHeader extends BrowserNode {
         _state.setVisible( _showState.getState() );
         _enabled.setVisible( _showEnabled.getState() );
         _cpuLoad.setVisible( _showCpuLoad.getState() );
-        //_cpuLoadPlot.setVisible( _showCpuLoadPlot.getState() );
+        _cpuLoadPlot.setVisible( _showCpuLoadPlot.getState() );
         _usedMem.setVisible( _showUsedMem.getState() );
         _totalMem.setVisible( _showTotalMem.getState() );
         _memLoad.setVisible( _showMemLoad.getState() );
-        //_memLoadPlot.setVisible( _showMemLoadPlot.getState() );
+        _memLoadPlot.setVisible( _showMemLoadPlot.getState() );
         _netRxRate.setVisible( _showNetRxRate.getState() );
         _netTxRate.setVisible( _showNetTxRate.getState() );
         this.updateUI();
@@ -320,9 +344,11 @@ public class ClusterNodesHeader extends BrowserNode {
     ColumnTextArea _state;
     ColumnTextArea _enabled;
     ColumnTextArea _cpuLoad;
+    ColumnTextArea _cpuLoadPlot;
     ColumnTextArea _usedMem;
     ColumnTextArea _totalMem;
     ColumnTextArea _memLoad;
+    ColumnTextArea _memLoadPlot;
     ColumnTextArea _netRxRate;
     ColumnTextArea _netTxRate;
 

@@ -424,6 +424,7 @@ public class DiFXDataModel {
         // Determine the type of message and send to the appropriate processor
         //BLAT
         Header header = difxMsg.getHeader();
+        System.out.println( "type is " + header.getType() );
 
         if (header.getType().equalsIgnoreCase("DifxStatusMessage")) {
             //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DifxStatusMessage");
@@ -461,6 +462,7 @@ public class DiFXDataModel {
         header = null;
     }
 
+/*
     private synchronized void processDifxStatusMessageOld(DifxMessage difxMsg) {
         // -- catch some exceptions and keep the program from terminating. . .
         // Message must originate from mpifxcorr or swc000
@@ -718,13 +720,15 @@ public class DiFXDataModel {
         // --      (difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("swc000"   )) )
 
     }
+     * 
+     */
 
     private synchronized void processDifxStatusMessage(DifxMessage difxMsg) {
         // -- catch some exceptions and keep the program from terminating. . .
         // Message must originate from mpifxcorr or swc000
         int len = (difxMsg.getHeader().getFrom().trim().length());
-        if ((difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("mpifxcorr"))
-                || (difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("swc000"))) {
+//        if ((difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("mpifxcorr"))
+//                || (difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("swc000"))) {
 
             // -- Update the jobs status, no need to call UpdateDataModel()
             Job job = getJob(difxMsg.getHeader().getIdentifier());
@@ -999,11 +1003,40 @@ public class DiFXDataModel {
                 queue = null;
 
             } // -- if (job != null)
+            else {
+                //  Create a new job, hand it a copy of data model for verification
+//                Job newJob = new Job(this);
+//
+//                // Fill in the values from difx message
+//                newJob.setObjType("job");
+//                newJob.setObjName(difxMsg.getBody().getDoiJob().getJobName());
+//                newJob.setObjId(0);
+//                newJob.setJobPath(difxMsg.getBody().getDoiJob().getJobPath());
+//                newJob.setProjectName(difxMsg.getBody().getDoiJob().getProjectName());
+//                newJob.setProjectPath(difxMsg.getBody().getDoiJob().getProjectPath());
+//                newJob.setSegment(difxMsg.getBody().getDoiJob().getSegment());
+//                newJob.setJobPass(difxMsg.getBody().getDoiJob().getJobPass());
+//                newJob.setJobNumber(difxMsg.getBody().getDoiJob().getJobNumber());
+//                newJob.setPriority(difxMsg.getBody().getDoiJob().getPriority());
+//                newJob.setActualSpeedUp(difxMsg.getBody().getDoiJob().getActualSpeedUp());
+//                newJob.setPredictedSpeedUp(difxMsg.getBody().getDoiJob().getPredictedSpeedUp());
+//                newJob.setJobStartTimeMJD(BigDecimal.valueOf(difxMsg.getBody().getDoiJob().getJobStartTimeMJD()));
+//                newJob.setJobStopTimeMJD(BigDecimal.valueOf(difxMsg.getBody().getDoiJob().getJobStopTimeMJD()));
+//                newJob.setNumAntennas(difxMsg.getBody().getDoiJob().getNumAntennas());
+//                newJob.setDbJob(difxMsg.getBody().getDoiJob().isDbJob());
+//
+//                // Read the newJob's data file
+//                job.readJobData();
+//
+//                // Put the newJob into the data model
+//                updateDataModel( newJob );
+
+            }
 
             // clean up
             job = null;
 
-        } // -- if ( (difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("mpifxcorr")) ||
+        //} // -- if ( (difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("mpifxcorr")) ||
         // --      (difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("swc000"   )) )
 
     }
@@ -2242,7 +2275,7 @@ public class DiFXDataModel {
 
     //protected synchronized void NotifyListeners()
     public synchronized void notifyListeners() {
-        //System.out.printf("******** Data model notify listeners. \n");
+//        System.out.printf("******** Data model notify listeners. \n");
 
         if (mListeners != null) {
             Iterator it = mListeners.iterator();

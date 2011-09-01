@@ -89,8 +89,8 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
      */
     public void listChange() {
         boolean scrolledToEnd = scrolledToEnd();
-        browserPane.measureDataBounds();
         Dimension d = getSize();
+        browserPane.measureDataBounds( d.height );
         _scrollBar.setValues( -_yOffset, d.height, 0, browserPane.dataHeight() );
         if ( -_yOffset > browserPane.dataHeight() - d.height ) {
             _yOffset = - ( browserPane.dataHeight() - d.height );
@@ -122,8 +122,8 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
     
     public void clear() {
         browserPane.clear();
-        browserPane.measureDataBounds();
         Dimension d = getSize();
+        browserPane.measureDataBounds( d.height );
         _scrollBar.setValues( -_yOffset, d.height, 0, browserPane.dataHeight() ); 
         testScrollBar( d.height );
     }
@@ -133,8 +133,8 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
      */
     public void addNode( BrowserNode newNode ) {
         browserPane.addChild( newNode );
-        browserPane.measureDataBounds();
         Dimension d = getSize();
+        browserPane.measureDataBounds( d.height );
         _scrollBar.setValues( -_yOffset, d.height, 0, browserPane.dataHeight() ); 
         testScrollBar( d.height );
     }

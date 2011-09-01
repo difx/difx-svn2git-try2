@@ -136,24 +136,6 @@ public class HardwareMonitorPanel extends JPanel {
                 _mk5Modules.addChild( mk5Module );
             }
             mk5Module.setData( thisMark5 );
-            //getNumCPUs(),    j, 1);
-            //getNumCores(),   j, 2);
-            //getBogusGHz(),   j, 3);
-            //getTypeString(), j, 4);
-            //getEnabled(),    j, 5);
-            //   if (mark5Units.get(i).isStatusCurrent() == true)
-            //   {
-            //      tableModel.setValueAt(mark5Units.get(i).getState(), j, 6);
-            //   }
-            //   else
-            //   {
-            //      tableModel.setValueAt("Lost", j, 6);
-
-               //getCpuLoad(),    j, 7);
-              //getMemLoad(),    j, 8);
-               //getNetRxRate(),  j, 9);
-              //getNetTxRate(),  j, 10);
-
         }
     }
 

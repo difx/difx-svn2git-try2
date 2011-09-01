@@ -32,6 +32,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
     
     public BrowserNode( String name ) {
         _open = true;
+        _inBounds = true;
         _showThis = true;
         _ySize = 20;
         _xSize = 500;
@@ -95,6 +96,10 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
         }
         if ( !_showThis )
             height = 0;
+        if ( yOffset + height < 0 )
+            inBounds( false );
+        else
+            inBounds( true );
         return height;
     }
     
@@ -187,6 +192,8 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
 
     @Override
     public void paintComponent( Graphics g ) {
+        if ( !_inBounds )
+            return;
         super.paintComponent( g );
         Dimension d = this.getSize();
         if ( _mouseIn )
@@ -278,8 +285,16 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
         return _label.getText();
     }
     
+    /*
+     * Set whether this object is "in bounds", i.e. whether it can be displayed.
+     */
+    public void inBounds( boolean newVal ) {
+        _inBounds = newVal;
+    }
+    
     protected boolean _open;
     protected boolean _showThis;
+    protected boolean _inBounds;
     protected int _ySize;
     protected int _xSize;
     protected int _level;

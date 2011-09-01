@@ -4,20 +4,18 @@
  */
 package edu.nrao.difx.difxview;
 
-/**
- *
- * @author jspitzak
- */
 import javax.swing.JPanel;
 import javax.swing.JLabel;
 
 import java.awt.Font;
 import java.awt.Color;
 
-/**
- *
- * @author jspitzak
- */
+import java.util.List;
+import java.util.Iterator;
+
+import edu.nrao.difx.difxdatamodel.*;
+import edu.nrao.difx.difxcontroller.*;
+
 public class QueueBrowserPanel extends JPanel {
 
     public QueueBrowserPanel() {
@@ -88,7 +86,70 @@ public class QueueBrowserPanel extends JPanel {
 
     }
     
+    /*
+     * Set the data model, which provides us with data from DiFX.
+     */
+    public void dataModel( DiFXDataModel newModel ) {
+        _mDataModel = newModel;
+        // create a listener that calls our local function
+        _mListener = new MessageListener() {
+            @Override
+            public void update() {
+                serviceDataUpdate();
+            }
+        };
+        // hand DataModel a call back listener
+        _mDataModel.attachListener( _mListener );
+    }
+    
+    /*
+     * This method services a data message from the data model.  It adds information
+     * about any projects or jobs to appropriate lists, creating new nodes on the lists
+     * as new items appear.
+     */
+    protected void serviceDataUpdate() {
+        
+        //  This would be unlikely...
+        if ( _mDataModel == null )
+            return;
+        
+        //  Get all jobs the data model knows about.
+        List<Job> jobs = _mDataModel.getJobs();
+        
+        //  Change the displayed properties for each job.
+        if ( jobs == null ) {
+            System.out.println( "no jobs" );
+        }
+        else {
+            //  Run through each unit in the list of Mark5 modules and change their 
+            //  displayed properties.
+            for ( Iterator<Job> iter = jobs.iterator(); iter.hasNext(); ) {
+                Job thisJob = iter.next();
+                System.out.println( thisJob.getJobID() ); 
+                //  Find the node in our browser that represents this unit.
+                JobNode processor = null;
+//                for ( Iterator<BrowserNode> iter2 = _clusterNodes.children().iterator(); iter2.hasNext(); ) {
+//                    BrowserNode thisModule = iter2.next();
+//                    if ( thisModule.name().equals( thisProcessor.getObjName() ) )
+//                        processor = (ClusterNode)thisModule;
+//                }
+//                //  If there was no node representing this unit, create one.
+//                if ( processor == null ) {
+//                    processor = new ClusterNode( thisProcessor.getObjName() );
+//                    _clusterNodes.addChild( processor );
+//                }
+//                //  Update the processor with new data.
+//                processor.setData( thisProcessor );
+            }
+        }
+        
+    }
+        
+
     private NodeBrowserScrollPane _browserPane;
     private JLabel _mainLabel;
+    DiFXDataModel  _mDataModel;
+    DiFXController _mController;
+    MessageListener _mListener;
     
 }
