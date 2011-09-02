@@ -1,10 +1,5 @@
 /*
- * This panel contains a NodeBrowserPane object.  It measures the size of the
- * NodeBrowserPane and adds a scrollbar if necessary.  The reason it doesn't simply
- * inherit the NodeBrowserPane is simple, if silly - the NodeBrowserPane does a lot of
- * drawing that might fall out of bounds and obscure things like the frame and
- * scrollbars.  By putting it in a sub-panel, anything drawn in it is effectively
- * clipped.
+ * This panel shows a browse-able list of messages.
  */
 package edu.nrao.difx.difxview;
 
@@ -25,6 +20,12 @@ import javax.swing.Timer;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.Font;
+
+import java.util.ArrayDeque;
+import java.util.Iterator;
 
 import javax.swing.JScrollBar;
 
@@ -32,13 +33,14 @@ import javax.swing.JScrollBar;
  *
  * @author jspitzak
  */
-public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener, 
+public class MessageScrollPane extends JPanel implements MouseMotionListener, 
         MouseWheelListener, AdjustmentListener {
     
-    public NodeBrowserScrollPane() {
+    public MessageScrollPane() {
         this.setLayout( null );
-        browserPane = new NodeBrowserPane();
-        this.add( browserPane );
+        _messageList = new ArrayDeque<MessageNode>();
+        this.setBackground( Color.BLACK );
+        this.messageFont( new Font( "MONO", Font.PLAIN, 12 ) );
         _scrollBar = new JScrollBar( JScrollBar.VERTICAL );
         this.add( _scrollBar );
         _scrollBar.addAdjustmentListener( this );
@@ -84,36 +86,57 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
     }
     
     /*
+     * Measure the height of all (visible) messages in the list.
+     */
+    public int measureDataHeight() {
+        int height = 0;
+        synchronized( _messageList ) {
+            for ( Iterator<MessageNode> iter = _messageList.iterator(); iter.hasNext(); ) {
+                MessageNode thisMessage = iter.next();
+                if ( thisMessage.showThis() )
+                    height += messageHeight();
+            }
+        }
+        Dimension d = getSize();
+        height += d.height - ( d.height / messageHeight() ) * messageHeight();
+        return height;
+    }
+    
+    public int messageHeight() {
+        if ( _messageFont != null )
+            return _messageFont.getSize();
+        else
+            return 15;
+    }
+    /*
      * Adjust the browser to a change in the list.  This needs to be done when
      * the list is edited in any way.
      */
     public void listChange() {
         boolean scrolledToEnd = scrolledToEnd();
         Dimension d = getSize();
-        browserPane.measureDataBounds();
-        _scrollBar.setValues( -_yOffset, d.height, 0, browserPane.dataHeight() );
-        if ( -_yOffset > browserPane.dataHeight() - d.height ) {
-            _yOffset = - ( browserPane.dataHeight() - d.height );
-            _scrollBar.setValues( -_yOffset, d.height, 0, browserPane.dataHeight() );
+        int dataHeight = measureDataHeight();
+        _scrollBar.setValues( -_yOffset, d.height, 0, dataHeight );
+        if ( -_yOffset > dataHeight - d.height ) {
+            _yOffset = - ( dataHeight - d.height );
+            _scrollBar.setValues( -_yOffset, d.height, 0, dataHeight );
         }
         testScrollBar( d.height );
         if ( scrolledToEnd )
             scrollToEnd();
-        _scrollBar.updateUI();
-        browserPane.yOffset( _yOffset );
-        browserPane.updateUI();
+        this.updateUI();
     }
     
     public void setYOffset( int newOffset ) {
         Dimension d = getSize();
         int offset;
-        if ( newOffset > browserPane.dataHeight() - d.height )
-            offset = -( browserPane.dataHeight() - d.height );
+        int dataHeight = measureDataHeight();
+        if ( newOffset > dataHeight - d.height )
+            offset = -( dataHeight - d.height );
         else
             offset = -newOffset;
-        _scrollBar.setValues( offset, d.height, 0, browserPane.dataHeight() );
-        browserPane.yOffset( -offset );
-        browserPane.updateUI();
+        _scrollBar.setValues( offset, d.height, 0, dataHeight );
+        this.updateUI();
     }
     
     public int getYOffset() {
@@ -121,30 +144,33 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
     }
     
     public void clear() {
-        browserPane.clear();
+        synchronized( _messageList ) {
+            _messageList.clear();
+        }
         Dimension d = getSize();
-        browserPane.measureDataBounds();
-        _scrollBar.setValues( -_yOffset, d.height, 0, browserPane.dataHeight() ); 
+        int dataHeight = measureDataHeight();
+        _scrollBar.setValues( -_yOffset, d.height, 0, dataHeight ); 
         testScrollBar( d.height );
     }
     
-    /*
-     * Used to add a "top level" node to the browser panel.
-     */
-    public void addNode( BrowserNode newNode ) {
-        browserPane.addChild( newNode );
+    public void addMessage( MessageNode newNode ) {
+        synchronized( _messageList ) {
+            _messageList.add( newNode );
+        }
         Dimension d = getSize();
-        browserPane.measureDataBounds();
-        _scrollBar.setValues( -_yOffset, d.height, 0, browserPane.dataHeight() ); 
+        int dataHeight = measureDataHeight();
+        _scrollBar.setValues( -_yOffset, d.height, 0, dataHeight ); 
         testScrollBar( d.height );
+    }
+    
+    public void removeMessage( MessageNode newNode ) {
+        synchronized( _messageList ) {
+            _messageList.remove( newNode );
+        }
     }
     
     public boolean scrolledToEnd() {
         return _scrolledToEnd;
-//        if ( _scrollable )
-//            return ( _scrollBar.getValue() >= _scrollBar.getMaximum() - _scrollBar.getVisibleAmount() );
-//        else
-//            return true;
     }
     
     public void scrollToEnd() {
@@ -162,35 +188,25 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
     }
     
     @Override
-    public void setBackground( Color newColor ) {
-        if ( browserPane != null )
-            browserPane.setBackground( newColor );
-        super.setBackground( newColor );
-    }
-    
-    @Override
     public void setBounds( int x, int y, int w, int h ) {
         super.setBounds( x, y, w, h ); 
-        browserPane.setBounds( 1, 1, w - 2, h - 2 );
         testScrollBar( h );
         if ( _scrollable ) {
             //  We need to resize the browserPane now to avoid the scrollbar.
-            browserPane.setBounds( 1, 1, w - SCROLLBAR_WIDTH - 2, h - 2 );
             _scrollBar.setBounds( w - SCROLLBAR_WIDTH - 1, 1, SCROLLBAR_WIDTH, h - 2);
             _scrollBar.setVisible( true );
         }
         else {
             _yOffset = 0;
-            browserPane.yOffset( _yOffset );
-            this.updateUI();
             _scrollBar.setVisible( false );
+            this.updateUI();
         }
     }
     
     public void testScrollBar( int h ) {
         //  See if there are enough data in the browser window to require a
         //  scrollbar.
-        _minYOffset = h - browserPane.dataHeight();
+        _minYOffset = h - measureDataHeight();
         if ( _minYOffset >= 0 ) {
             _scrollable = false;
         }
@@ -202,14 +218,35 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
     
     @Override
     public void paintComponent( Graphics g ) {
+        //  Use anti-aliasing on the text (looks much better)
+        Graphics2D g2 = (Graphics2D)( g.create() );
+        g2.setRenderingHint( RenderingHints.KEY_ANTIALIASING,
+                     RenderingHints.VALUE_ANTIALIAS_ON );
+        //  Draw the text in a clipped area.
+        g2.setFont( _messageFont );
         Dimension d = getSize();
+        if ( _scrollable )
+            g2.setClip( 0, 0, d.width - SCROLLBAR_WIDTH, d.height );
+        g2.setColor( this.getBackground() );
+        g2.fillRect( 0, 0, d.width  - 1, d.height - 1 );
+        int y = _yOffset;
+        synchronized( _messageList ) {
+            for ( Iterator<MessageNode> iter = _messageList.iterator(); iter.hasNext(); ) {
+                MessageNode thisMessage = iter.next();
+                if ( thisMessage.showThis() ) {
+                    y += messageHeight();
+                    if ( y > 0 && y < d.height + messageHeight() )
+                        thisMessage.draw( g2, 0, y );
+                }
+            }
+        }
         //  Draw the scrollbar.
         if ( _scrollable ) {
             g.setColor( Color.LIGHT_GRAY );
             g.fillRect( d.width - SCROLLBAR_WIDTH, 0, SCROLLBAR_WIDTH, d.height );
             g.setColor( Color.BLACK );
             g.drawRect( d.width - SCROLLBAR_WIDTH, 0, SCROLLBAR_WIDTH, d.height );
-            _scrollBar.setValues( -_yOffset, d.height, 0, browserPane.dataHeight() ); 
+            _scrollBar.setValues( -_yOffset, d.height, 0, measureDataHeight() );        //  SHOULD THIS BE HERE??
         }
         g.setColor( Color.BLACK );
         g.drawRect( 0, 0, d.width  - 1, d.height - 1 );
@@ -258,7 +295,6 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
                 _yOffset += _offsetMotion;
                 _offsetMotion = 0;
             }
-            browserPane.yOffset( _yOffset );
             this.updateUI();
         }
         //  This is needed incase closing a browser node makes the data smaller
@@ -314,7 +350,6 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
             //  Momentum just doesn't look very good...so I'm making the
             //  adjustment directly.
             _yOffset = -e.getValue();
-            browserPane.yOffset( _yOffset );
             this.updateUI();
             testScrollBar();
             //  This stuff could be used instead if momentum was desired.
@@ -342,15 +377,17 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
         _momentumOn = newVal;
     }
     
-    /*
-     * Give access to the browser pane, which is actually the top level node to
-     * the tree of nodes that are displayed.
-     */
-    public BrowserNode browserTopNode() {
-        return browserPane;
+    void messageFont( Font newFont ) {
+        _messageFont = newFont;
     }
     
-    protected NodeBrowserPane browserPane;
+    /*
+     * Give access to the message list.
+     */
+    public ArrayDeque<MessageNode> messageList() { return _messageList; }
+    
+    //protected NodeBrowserPane browserPane;
+    protected ArrayDeque<MessageNode> _messageList;
     protected JScrollBar _scrollBar;
 
     protected int _yOffset;
@@ -365,6 +402,7 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
     protected boolean _momentumOn;
     protected int _scrollSense;
     protected boolean _scrolledToEnd;
+    protected Font _messageFont;
     
     static protected int SCROLLBAR_WIDTH = 16;
     

@@ -25,17 +25,17 @@ import javax.swing.JOptionPane;
  *
  * @author jspitzak
  */
-public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPane {
+public class MessageDisplayPanel extends JPanel {
     
     public MessageDisplayPanel() {
         initComponents();
-        _browser.setBackground( Color.BLACK );
+        _messageBrowser.setBackground( Color.BLACK );
     }
     
     public void initComponents() {
         setLayout( null );
-        _browser = new NodeBrowserScrollPane();
-        this.add( _browser );
+        _messageBrowser = new MessageScrollPane();
+        this.add( _messageBrowser );
         _menuBar = new JMenuBar();
         this.add( _menuBar );
         _showMenu = new JMenu( "  Show  " );
@@ -72,20 +72,6 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
             }
         });
         _showMenu.add( _showMessages );
-        _showChecked = new JCheckBoxMenuItem( "Checked", true );
-        _showChecked.addActionListener( new java.awt.event.ActionListener() {
-            public void actionPerformed( java.awt.event.ActionEvent e ) {
-                showCheckedAction( e );
-            }
-        });
-        _showMenu.add( _showChecked );
-        _showUnchecked = new JCheckBoxMenuItem( "Unchecked", true );
-        _showUnchecked.addActionListener( new java.awt.event.ActionListener() {
-            public void actionPerformed( java.awt.event.ActionEvent e ) {
-                showUncheckedAction( e );
-            }
-        });
-        _showMenu.add( _showUnchecked );
 
         //  Include menu items
         _showDate = new JCheckBoxMenuItem( "Date", false );
@@ -176,20 +162,6 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
             }
         });
         _navigateMenu.add( _nextWarning );
-        _previousChecked = new JMenuItem( "Previous Checked" );
-        _previousChecked.addActionListener( new java.awt.event.ActionListener() {
-            public void actionPerformed( java.awt.event.ActionEvent e ) {
-                previousCheckedAction( e );
-            }
-        });
-        _navigateMenu.add( _previousChecked );
-        _nextChecked = new JMenuItem( "Next Checked" );
-        _nextChecked.addActionListener( new java.awt.event.ActionListener() {
-            public void actionPerformed( java.awt.event.ActionEvent e ) {
-                nextCheckedAction( e );
-            }
-        });
-        _navigateMenu.add( _nextChecked );
 
         //  Clear menu items
         _clearAll = new JMenuItem( "Errors, Warnings and Messages" );
@@ -213,25 +185,11 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
             }
         });
         _clearMenu.add( _clearMessages );
-        _clearChecked = new JMenuItem( "Checked" );
-        _clearChecked.addActionListener( new java.awt.event.ActionListener() {
-            public void actionPerformed( java.awt.event.ActionEvent e ) {
-                clearCheckedAction( e );
-            }
-        });
-        _clearMenu.add( _clearChecked );
-        _clearUnchecked = new JMenuItem( "Unchecked" );
-        _clearUnchecked.addActionListener( new java.awt.event.ActionListener() {
-            public void actionPerformed( java.awt.event.ActionEvent e ) {
-                clearUncheckedAction( e );
-            }
-        });
-        _clearMenu.add( _clearUnchecked );
     }
     
     @Override
     public void setBounds( int x, int y, int w, int h ) {
-        _browser.setBounds( 0, 20, w, h - 20 );
+        _messageBrowser.setBounds( 0, 20, w, h - 20 );
         _menuBar.setBounds( 0, 0, w, 20 );
         super.setBounds( x, y, w, h );
     }
@@ -245,7 +203,7 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
     }
         
     protected void clearAllAction( java.awt.event.ActionEvent e ) {
-        _browser.clear();
+        _messageBrowser.clear();
     }
     
     /*
@@ -253,64 +211,25 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
      * informational.
      */
     protected void clearWarningsAndMessagesAction( java.awt.event.ActionEvent e ) {
-        BrowserNode topNode = _browser.browserTopNode();
-        ArrayDeque<MessageNode> removeList = new ArrayDeque<MessageNode>();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+        for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
             MessageNode thisMessage = (MessageNode)( iter.next() );
             if ( thisMessage.severity() != MessageNode.ERROR )
-                removeList.add( thisMessage );
+                _messageBrowser.removeMessage( thisMessage );
         }
-        for ( Iterator<MessageNode> iter = removeList.iterator(); iter.hasNext(); ) {
-                topNode.removeChild( iter.next() );
-        }
-        _browser.listChange();
+        _messageBrowser.listChange();
     }
     
     protected void clearMessagesAction( java.awt.event.ActionEvent e ) {
-        BrowserNode topNode = _browser.browserTopNode();
-        ArrayDeque<MessageNode> removeList = new ArrayDeque<MessageNode>();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+        for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
             MessageNode thisMessage = (MessageNode)( iter.next() );
             if ( thisMessage.severity() == MessageNode.INFO )
-                removeList.add( thisMessage );
+                _messageBrowser.removeMessage( thisMessage );
         }
-        for ( Iterator<MessageNode> iter = removeList.iterator(); iter.hasNext(); ) {
-                topNode.removeChild( iter.next() );
-        }
-        _browser.listChange();
-    }
-    
-    protected void clearCheckedAction( java.awt.event.ActionEvent e ) {
-        BrowserNode topNode = _browser.browserTopNode();
-        ArrayDeque<MessageNode> removeList = new ArrayDeque<MessageNode>();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
-            MessageNode thisMessage = (MessageNode)( iter.next() );
-            if ( thisMessage.starred() )
-                removeList.add( thisMessage );
-        }
-        for ( Iterator<MessageNode> iter = removeList.iterator(); iter.hasNext(); ) {
-                topNode.removeChild( iter.next() );
-        }
-        _browser.listChange();
-    }
-    
-    protected void clearUncheckedAction( java.awt.event.ActionEvent e ) {
-        BrowserNode topNode = _browser.browserTopNode();
-        ArrayDeque<MessageNode> removeList = new ArrayDeque<MessageNode>();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
-            MessageNode thisMessage = (MessageNode)( iter.next() );
-            if ( !thisMessage.starred() )
-                removeList.add( thisMessage );
-        }
-        for ( Iterator<MessageNode> iter = removeList.iterator(); iter.hasNext(); ) {
-                topNode.removeChild( iter.next() );
-        }
-        _browser.listChange();
+        _messageBrowser.listChange();
     }
     
     protected void showDateAction( java.awt.event.ActionEvent e ) {
-        BrowserNode topNode = _browser.browserTopNode();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+        for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
             MessageNode thisMessage = (MessageNode)( iter.next() );
             thisMessage.showDate( _showDate.isSelected() );
         }
@@ -318,8 +237,7 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
     }
     
     protected void showTimeAction( java.awt.event.ActionEvent e ) {
-        BrowserNode topNode = _browser.browserTopNode();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+        for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
             MessageNode thisMessage = (MessageNode)( iter.next() );
             thisMessage.showTime( _showTime.isSelected() );
         }
@@ -327,8 +245,7 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
     }
     
     protected void showSourceAction( java.awt.event.ActionEvent e ) {
-        BrowserNode topNode = _browser.browserTopNode();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+        for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
             MessageNode thisMessage = (MessageNode)( iter.next() );
             thisMessage.showSource( _showSource.isSelected() );
         }
@@ -336,48 +253,27 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
     }
     
     protected void showErrorsAction( java.awt.event.ActionEvent e ) {
-        BrowserNode topNode = _browser.browserTopNode();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+        for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
             MessageNode thisMessage = (MessageNode)( iter.next() );
             thisMessage.showErrors( _showErrors.isSelected() );
         }
-        _browser.listChange();
+        _messageBrowser.listChange();
     }
     
     protected void showWarningsAction( java.awt.event.ActionEvent e ) {
-        BrowserNode topNode = _browser.browserTopNode();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+        for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
             MessageNode thisMessage = (MessageNode)( iter.next() );
             thisMessage.showWarnings( _showWarnings.isSelected() );
         }
-        _browser.listChange();
+        _messageBrowser.listChange();
     }
     
     protected void showMessagesAction( java.awt.event.ActionEvent e ) {
-        BrowserNode topNode = _browser.browserTopNode();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+        for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
             MessageNode thisMessage = (MessageNode)( iter.next() );
             thisMessage.showMessages( _showMessages.isSelected() );
         }
-        _browser.listChange();
-    }
-    
-    protected void showCheckedAction( java.awt.event.ActionEvent e ) {
-        BrowserNode topNode = _browser.browserTopNode();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
-            MessageNode thisMessage = (MessageNode)( iter.next() );
-            thisMessage.showChecked( _showChecked.isSelected() );
-        }
-        _browser.listChange();
-    }
-    
-    protected void showUncheckedAction( java.awt.event.ActionEvent e ) {
-        BrowserNode topNode = _browser.browserTopNode();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
-            MessageNode thisMessage = (MessageNode)( iter.next() );
-            thisMessage.showUnchecked( _showUnchecked.isSelected() );
-        }
-        _browser.listChange();
+        _messageBrowser.listChange();
     }
     
     protected void buildFilterMenu() {
@@ -441,21 +337,20 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
      * display the results.
      */
     protected void runFilter() {
-        BrowserNode topNode = _browser.browserTopNode();
-        for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+        for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
             MessageNode thisMessage = (MessageNode)( iter.next() );
             thisMessage.applyFilter( _filterSource.isSelected(), _filterMessage.isSelected(),
                     _currentFilter );
         }
-        _browser.listChange();
+        _messageBrowser.listChange();
     }
     
         public void navigateTopAction( java.awt.event.ActionEvent e ) {
-            _browser.scrollToTop();
+            _messageBrowser.scrollToTop();
         }
         
         public void navigateBottomAction( java.awt.event.ActionEvent e ) {
-            _browser.scrollToEnd();
+            _messageBrowser.scrollToEnd();
         }
         
         /*
@@ -463,16 +358,15 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
          * the browser to it.
          */
         public void previousErrorAction( java.awt.event.ActionEvent e ) {
-            int yOffset = _browser.getYOffset();
+            int yOffset = _messageBrowser.getYOffset();
             MessageNode goToNode = null;
             int newOffset = 0;
             int nodeOffset = 0;
-            BrowserNode topNode = _browser.browserTopNode();
-            for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+            for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
                 MessageNode thisMessage = (MessageNode)( iter.next() );
                 //  Measure the vertical offset of each message.  Make sure each
                 //  is visible before we consider it.
-                if ( thisMessage._showThis ) {
+                if ( thisMessage.showThis() ) {
                     //  Now see if the message is of the correct type - error in
                     //  this case.
                     if ( thisMessage.severity() == MessageNode.ERROR ) {
@@ -481,11 +375,11 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
                             newOffset = -nodeOffset;
                         }
                     }
-                    nodeOffset += thisMessage.setDrawConditions( nodeOffset, true );
+                    nodeOffset += _messageBrowser.messageHeight();
                 }
             }
             if ( goToNode != null )
-                _browser.setYOffset( newOffset );
+                _messageBrowser.setYOffset( newOffset );
         }
         
         /*
@@ -493,12 +387,11 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
          * to it.
          */
         public void nextErrorAction( java.awt.event.ActionEvent e ) {
-            int yOffset = _browser.getYOffset();
+            int yOffset = _messageBrowser.getYOffset();
             MessageNode goToNode = null;
             int newOffset = 0;
             int nodeOffset = 0;
-            BrowserNode topNode = _browser.browserTopNode();
-            for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+            for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
                 MessageNode thisMessage = (MessageNode)( iter.next() );
                 //  Measure the vertical offset of each message.  Make sure each
                 //  is visible before we consider it.
@@ -511,20 +404,19 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
                             newOffset = -nodeOffset;
                         }
                     }
-                    nodeOffset += thisMessage.setDrawConditions( nodeOffset, true );
+                    nodeOffset += _messageBrowser.messageHeight();
                 }
             }
             if ( goToNode != null )
-                _browser.setYOffset( newOffset );
+                _messageBrowser.setYOffset( newOffset );
         }
         
         public void previousWarningAction( java.awt.event.ActionEvent e ) {
-            int yOffset = _browser.getYOffset();
+            int yOffset = _messageBrowser.getYOffset();
             MessageNode goToNode = null;
             int newOffset = 0;
             int nodeOffset = 0;
-            BrowserNode topNode = _browser.browserTopNode();
-            for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+            for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
                 MessageNode thisMessage = (MessageNode)( iter.next() );
                 //  Measure the vertical offset of each message.  Make sure each
                 //  is visible before we consider it.
@@ -538,20 +430,19 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
                             newOffset = -nodeOffset;
                         }
                     }
-                    nodeOffset += thisMessage.setDrawConditions( nodeOffset, true );
+                    nodeOffset += _messageBrowser.messageHeight();
                 }
             }
             if ( goToNode != null )
-                _browser.setYOffset( newOffset );
+                _messageBrowser.setYOffset( newOffset );
         }
         
         public void nextWarningAction( java.awt.event.ActionEvent e ) {
-            int yOffset = _browser.getYOffset();
+            int yOffset = _messageBrowser.getYOffset();
             MessageNode goToNode = null;
             int newOffset = 0;
             int nodeOffset = 0;
-            BrowserNode topNode = _browser.browserTopNode();
-            for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
+            for ( Iterator<MessageNode> iter = _messageBrowser.messageList().iterator(); iter.hasNext(); ) {
                 MessageNode thisMessage = (MessageNode)( iter.next() );
                 //  Measure the vertical offset of each message.  Make sure each
                 //  is visible before we consider it.
@@ -565,65 +456,13 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
                             newOffset = -nodeOffset;
                         }
                     }
-                    nodeOffset += thisMessage.setDrawConditions( nodeOffset, true );
+                    nodeOffset += _messageBrowser.messageHeight();
                 }
             }
             if ( goToNode != null )
-                _browser.setYOffset( newOffset );
+                _messageBrowser.setYOffset( newOffset );
         }
-        
-        public void previousCheckedAction( java.awt.event.ActionEvent e ) {
-            int yOffset = _browser.getYOffset();
-            MessageNode goToNode = null;
-            int newOffset = 0;
-            int nodeOffset = 0;
-            BrowserNode topNode = _browser.browserTopNode();
-            for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
-                MessageNode thisMessage = (MessageNode)( iter.next() );
-                //  Measure the vertical offset of each message.  Make sure each
-                //  is visible before we consider it.
-                if ( thisMessage._showThis ) {
-                    //  Now see if the message is of the correct type - error in
-                    //  this case.
-                    if ( thisMessage.starred() ) {
-                        if ( -nodeOffset > yOffset ) {
-                            goToNode = thisMessage;
-                            newOffset = -nodeOffset;
-                        }
-                    }
-                    nodeOffset += thisMessage.setDrawConditions( nodeOffset, true );
-                }
-            }
-            if ( goToNode != null )
-                _browser.setYOffset( newOffset );
-        }
-        
-        public void nextCheckedAction( java.awt.event.ActionEvent e ) {
-            int yOffset = _browser.getYOffset();
-            MessageNode goToNode = null;
-            int newOffset = 0;
-            int nodeOffset = 0;
-            BrowserNode topNode = _browser.browserTopNode();
-            for ( Iterator<BrowserNode> iter = topNode.childrenIterator(); iter.hasNext(); ) {
-                MessageNode thisMessage = (MessageNode)( iter.next() );
-                //  Measure the vertical offset of each message.  Make sure each
-                //  is visible before we consider it.
-                if ( thisMessage._showThis ) {
-                    //  Now see if the message is of the correct type - error in
-                    //  this case.
-                    if ( thisMessage.starred() ) {
-                        if ( goToNode == null && -nodeOffset < yOffset ) {
-                            goToNode = thisMessage;
-                            newOffset = -nodeOffset;
-                        }
-                    }
-                    nodeOffset += thisMessage.setDrawConditions( nodeOffset, true );
-                }
-            }
-            if ( goToNode != null )
-                _browser.setYOffset( newOffset );
-        }
-        
+                
     /*
      * Set a "handler" to sponge up log messages and display them on this
      * message panel.  Logging can be broken into individual logs, which are
@@ -636,7 +475,7 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
     }
     
     public void message( long time, String source, String newText ) {
-        boolean scrollToEnd = _browser.scrolledToEnd();
+        boolean scrollToEnd = _messageBrowser.scrolledToEnd();
         if ( time == 0 ) {
             Calendar cal = Calendar.getInstance();
             time = cal.getTimeInMillis();
@@ -651,16 +490,14 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
         node.showErrors( _showErrors.isSelected() );
         node.showWarnings( _showWarnings.isSelected() );
         node.showMessages( _showMessages.isSelected() );
-        node.showChecked( _showChecked.isSelected() );
-        node.showUnchecked( _showUnchecked.isSelected() );
         node.applyFilter( _filterSource.isSelected(), _filterMessage.isSelected(), _currentFilter );
-        _browser.addNode( node );
+        _messageBrowser.addMessage( node );
         if ( scrollToEnd )
-            _browser.scrollToEnd();
+            _messageBrowser.scrollToEnd();
     }
 
     public void warning( long time, String source, String newText ) {
-        boolean scrollToEnd = _browser.scrolledToEnd();
+        boolean scrollToEnd = _messageBrowser.scrolledToEnd();
         if ( time == 0 ) {
             Calendar cal = Calendar.getInstance();
             time = cal.getTimeInMillis();
@@ -675,16 +512,14 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
         node.showErrors( _showErrors.isSelected() );
         node.showWarnings( _showWarnings.isSelected() );
         node.showMessages( _showMessages.isSelected() );
-        node.showChecked( _showChecked.isSelected() );
-        node.showUnchecked( _showUnchecked.isSelected() );
         node.applyFilter( _filterSource.isSelected(), _filterMessage.isSelected(), _currentFilter );
-        _browser.addNode( node );
+        _messageBrowser.addMessage( node );
         if ( scrollToEnd )
-            _browser.scrollToEnd();
+            _messageBrowser.scrollToEnd();
     }
 
     public void error( long time, String source, String newText ) {
-        boolean scrollToEnd = _browser.scrolledToEnd();
+        boolean scrollToEnd = _messageBrowser.scrolledToEnd();
         if ( time == 0 ) {
             Calendar cal = Calendar.getInstance();
             time = cal.getTimeInMillis();
@@ -699,12 +534,10 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
         node.showErrors( _showErrors.isSelected() );
         node.showWarnings( _showWarnings.isSelected() );
         node.showMessages( _showMessages.isSelected() );
-        node.showChecked( _showChecked.isSelected() );
-        node.showUnchecked( _showUnchecked.isSelected() );
         node.applyFilter( _filterSource.isSelected(), _filterMessage.isSelected(), _currentFilter );
-        _browser.addNode( node );
+        _messageBrowser.addMessage( node );
         if ( scrollToEnd )
-            _browser.scrollToEnd();
+            _messageBrowser.scrollToEnd();
     }
     
     private InternalLoggingHandler internalLoggingHandler;
@@ -729,7 +562,7 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
      * also add Objects, but publish() ignores those.
      */
     private class InternalLoggingHandler extends java.util.logging.Handler {
-                public InternalLoggingHandler( MessageDisplayPanel newOutput ) {
+        public InternalLoggingHandler( MessageDisplayPanel newOutput ) {
             output = newOutput;
             //includeTime = true;
             //includeSource = true;
@@ -773,7 +606,7 @@ public class MessageDisplayPanel extends JPanel { //extends NodeBrowserScrollPan
         private MessageDisplayPanel output;
     }
     
-    protected NodeBrowserScrollPane _browser;
+    protected MessageScrollPane _messageBrowser;
     protected JButton _clearButton;
     protected JMenuBar _menuBar;
     protected JMenu _clearMenu;

@@ -35,21 +35,22 @@ public class NodeBrowserPane extends BrowserNode {
         for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
             iter.next().setWidth( w );
         }
-        measureDataBounds( h );
+        measureDataBounds();
     }
     
-    public void measureDataBounds( int h ) {
+    public void measureDataBounds() {
         //  Offset the top of the browser data by an amount determined above this
         //  class.
         int yOffset = _yOffset;
+        long startTime = System.nanoTime();
         for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
             //  Don't bother setting the draw conditions for items that fall off the
             //  bottom of the browser window.
-            if ( yOffset < h )
-                yOffset += iter.next().setDrawConditions( yOffset, true );
-            else
-                iter.next();
+            yOffset += iter.next().setDrawConditions( yOffset, true );
         }
+        long endTime = System.nanoTime();
+        if ( _children.size() > 100 )
+            System.out.println( _children.size() + " in " + ( (double)( endTime - startTime ) / 1000000.0 ) );
         //  Measure the total height of the data currently displayed in the
         //  browser.
         _dataHeight = yOffset - _yOffset;
@@ -61,9 +62,13 @@ public class NodeBrowserPane extends BrowserNode {
     
     @Override
     public void paintComponent( Graphics g ) {
+        long startTime = System.nanoTime();
         Dimension d = getSize();
         g.setColor( this.getBackground() );
         g.fillRect( 0, 0, d.width, d.height );
+        long endTime = System.nanoTime();
+        if ( _children.size() > 100 )
+            System.out.println( "drawn in " + ( (double)( endTime - startTime ) / 1000000.0 ) );
     }
     
     public void yOffset( int newOffset ) {

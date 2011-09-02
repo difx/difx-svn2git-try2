@@ -424,7 +424,6 @@ public class DiFXDataModel {
         // Determine the type of message and send to the appropriate processor
         //BLAT
         Header header = difxMsg.getHeader();
-        System.out.println( "type is " + header.getType() );
 
         if (header.getType().equalsIgnoreCase("DifxStatusMessage")) {
             //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DifxStatusMessage");
