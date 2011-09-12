@@ -475,7 +475,6 @@ public class MessageDisplayPanel extends JPanel {
     }
     
     public void message( long time, String source, String newText ) {
-        boolean scrollToEnd = _messageBrowser.scrolledToEnd();
         if ( time == 0 ) {
             Calendar cal = Calendar.getInstance();
             time = cal.getTimeInMillis();
@@ -492,12 +491,9 @@ public class MessageDisplayPanel extends JPanel {
         node.showMessages( _showMessages.isSelected() );
         node.applyFilter( _filterSource.isSelected(), _filterMessage.isSelected(), _currentFilter );
         _messageBrowser.addMessage( node );
-        if ( scrollToEnd )
-            _messageBrowser.scrollToEnd();
     }
 
     public void warning( long time, String source, String newText ) {
-        boolean scrollToEnd = _messageBrowser.scrolledToEnd();
         if ( time == 0 ) {
             Calendar cal = Calendar.getInstance();
             time = cal.getTimeInMillis();
@@ -514,12 +510,9 @@ public class MessageDisplayPanel extends JPanel {
         node.showMessages( _showMessages.isSelected() );
         node.applyFilter( _filterSource.isSelected(), _filterMessage.isSelected(), _currentFilter );
         _messageBrowser.addMessage( node );
-        if ( scrollToEnd )
-            _messageBrowser.scrollToEnd();
     }
 
     public void error( long time, String source, String newText ) {
-        boolean scrollToEnd = _messageBrowser.scrolledToEnd();
         if ( time == 0 ) {
             Calendar cal = Calendar.getInstance();
             time = cal.getTimeInMillis();
@@ -536,8 +529,6 @@ public class MessageDisplayPanel extends JPanel {
         node.showMessages( _showMessages.isSelected() );
         node.applyFilter( _filterSource.isSelected(), _filterMessage.isSelected(), _currentFilter );
         _messageBrowser.addMessage( node );
-        if ( scrollToEnd )
-            _messageBrowser.scrollToEnd();
     }
     
     private InternalLoggingHandler internalLoggingHandler;

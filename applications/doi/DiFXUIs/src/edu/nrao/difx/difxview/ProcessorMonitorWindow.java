@@ -123,6 +123,8 @@ public class ProcessorMonitorWindow extends JFrame {
         _receivePlot.deleteTopGrids();
         _receivePlot.addTopGrid( Plot2DObject.X_AXIS, 10.0, Color.GRAY );
         _receivePlot.addTopGrid( Plot2DObject.Y_AXIS, _receiveMax / 10.0, Color.GRAY );
+        _receivePlot.deleteLabels();
+        _receivePlot.addLabels( Plot2DObject.Y_AXIS, _receiveMax / 4.0 );
         _receivePlot.limits( (double)(_receiveTrackSize - 100), (double)(_receiveTrackSize), 0.0, _receiveMax );
         _receiveTrack.add( (double)(_receiveTrackSize), (double)(newVal) );
         _receiveTrackSize += 1;
@@ -134,6 +136,8 @@ public class ProcessorMonitorWindow extends JFrame {
         _transmitPlot.deleteTopGrids();
         _transmitPlot.addTopGrid( Plot2DObject.X_AXIS, 10.0, Color.GRAY );
         _transmitPlot.addTopGrid( Plot2DObject.Y_AXIS, _transmitMax / 10.0, Color.GRAY );
+        _transmitPlot.deleteLabels();
+        _transmitPlot.addLabels( Plot2DObject.Y_AXIS, _transmitMax / 4.0 );
         _transmitPlot.limits( (double)(_transmitTrackSize - 100), (double)(_transmitTrackSize), 0.0, _transmitMax );
         _transmitTrack.add( (double)(_transmitTrackSize), (double)(newVal) );
         _transmitTrackSize += 1;

@@ -108,6 +108,7 @@ public class HardwareMonitorPanel extends JPanel {
                 //  If there was no node representing this unit, create one.
                 if ( processor == null ) {
                     processor = new ClusterNode( thisProcessor.getObjName() );
+                    processor.difxController( _mController );
                     _clusterNodes.addChild( processor );
                 }
                 //  Update the processor with new data.
@@ -117,25 +118,43 @@ public class HardwareMonitorPanel extends JPanel {
             
         
         //  Get all of the Mark5 units that the data model knows about.
-        List<Mark5Unit> mark5Units = _mDataModel.getMark5Units();
+        List<Mark5Unit> mark5Units = _mDataModel.getMark5Units();        
         
         //  Run through each unit in the list of Mark5 modules and change their 
         //  displayed properties.
         for ( Iterator<Mark5Unit> iter = mark5Units.iterator(); iter.hasNext(); ) {
             Mark5Unit thisMark5 = iter.next();
-            //  Find the node in our browser that represents this unit.
-            Mark5Node mk5Module = null;
-            for ( Iterator<BrowserNode> iter2 = _mk5Modules.children().iterator(); iter2.hasNext(); ) {
+            //  This is to accomodate a seeming bug in mk5daemon, or somewhere else
+            //  up the messaging pipeline.  If a processor is rebooted, messages relating
+            //  to this action (i.e. "state = rebooting") come as if from a mark5,
+            //  rather than a processor.  So we check the name of each "mark5" against
+            //  the list of known processors first, and if found we assume the mark5
+            //  is actually a processor.
+            ClusterNode processor = null;
+            for ( Iterator<BrowserNode> iter2 = _clusterNodes.children().iterator(); iter2.hasNext(); ) {
                 BrowserNode thisModule = iter2.next();
-                if ( thisModule.name().equals( thisMark5.getObjName() ) )
-                    mk5Module = (Mark5Node)thisModule;
+                if ( thisModule.name().equals( thisMark5.getObjName() ) ) {
+                    processor = (ClusterNode)thisModule;
+                    processor.setData( thisMark5 );
+                }
             }
-            //  If there was no node representing this unit, create one.
-            if ( mk5Module == null ) {
-                mk5Module = new Mark5Node( thisMark5.getObjName() );
-                _mk5Modules.addChild( mk5Module );
+            //  Now we may continue knowing this is a Mark 5.
+            if ( processor == null ) {
+                //  Find the node in our browser that represents this unit.
+                Mark5Node mk5Module = null;
+                for ( Iterator<BrowserNode> iter2 = _mk5Modules.children().iterator(); iter2.hasNext(); ) {
+                    BrowserNode thisModule = iter2.next();
+                    if ( thisModule.name().equals( thisMark5.getObjName() ) )
+                        mk5Module = (Mark5Node)thisModule;
+                }
+                //  If there was no node representing this unit, create one.
+                if ( mk5Module == null ) {
+                    mk5Module = new Mark5Node( thisMark5.getObjName() );
+                    mk5Module.difxController( _mController );
+                    _mk5Modules.addChild( mk5Module );
+                }
+                mk5Module.setData( thisMark5 );
             }
-            mk5Module.setData( thisMark5 );
         }
     }
 

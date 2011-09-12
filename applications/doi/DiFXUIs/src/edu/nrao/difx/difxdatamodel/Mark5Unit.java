@@ -8,7 +8,7 @@ import edu.nrao.difx.xmllib.difxmessage.*;
 
 import java.math.BigDecimal;
 
-public class Mark5Unit extends ProcessorNode {//DiFXObject {
+public class Mark5Unit extends ProcessorNode {
 
     public enum Mark5Commands {
 

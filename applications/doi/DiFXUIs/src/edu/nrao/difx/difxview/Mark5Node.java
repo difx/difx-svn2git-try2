@@ -6,6 +6,14 @@ package edu.nrao.difx.difxview;
 
 import edu.nrao.difx.difxdatamodel.Mark5Unit;
 
+import javax.swing.JSeparator;
+import javax.swing.JMenuItem;
+
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
+
+import java.awt.Color;
+
 /**
  *
  * @author jspitzak
@@ -51,38 +59,110 @@ public class Mark5Node extends ClusterNode {
         _currentJob = new ColumnTextArea();
         _currentJob.justify( ColumnTextArea.RIGHT );
         this.add( _currentJob );
+        _popup.add( new JSeparator() );
+        JMenuItem startItem = new JMenuItem( "Start" );
+        startItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                sendDiFXCommandMessage( "StartMark5A" );
+            }
+        });
+        _popup.add( startItem );
+        JMenuItem stopItem = new JMenuItem( "Stop" );
+        stopItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                sendDiFXCommandMessage( "StopMark5A" );
+            }
+        });
+        _popup.add( stopItem );
+        JMenuItem clearItem = new JMenuItem( "Clear" );
+        clearItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                sendDiFXCommandMessage( "Clear" );
+            }
+        });
+        _popup.add( clearItem );
+        JMenuItem copyItem = new JMenuItem( "Copy" );
+        copyItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                sendDiFXCommandMessage( "Copy" );
+            }
+        });
+        _popup.add( copyItem );
+        JMenuItem getVSNItem = new JMenuItem( "Get VSN" );
+        getVSNItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                sendDiFXCommandMessage( "GetVSN" );
+            }
+        });
+        _popup.add( getVSNItem );
+        JMenuItem getLoadItem = new JMenuItem( "Get Load" );
+        getLoadItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                sendDiFXCommandMessage( "GetLoad" );
+            }
+        });
+        _popup.add( getLoadItem );
+        JMenuItem getDirItem = new JMenuItem( "Get Directory" );
+        getDirItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                sendDiFXCommandMessage( "GetDir" );
+            }
+        });
+        _popup.add( getDirItem );
     }
     
     @Override
     public void positionItems() {
         super.positionItems();
         if ( _showStateChanged ) {
-            _stateChanged.setBounds( _xOff + 30, 6, 10, 10 );
-            _xOff += 70;
+            _stateChanged.setBounds( _xOff + ( _widthStateChanged - 10 ) / 2, 6, 10, 10 );
+            _xOff += _widthStateChanged;
             _colorColumn = false;
         }
-        if ( _showBankAVSN )
-            setTextArea( _bankAVSN, 70 );
-        if ( _showBankBVSN )
-            setTextArea( _bankBVSN, 70 );
+        if ( _showBankAVSN ) {
+            _bankAVSN.setBounds( _xOff, 1, _widthBankAVSN, _ySize - 2);
+            if ( _activeBank.getText().equalsIgnoreCase( "A" ) ) {
+                _bankAVSN.setForeground( Color.BLACK );
+                _bankAVSN.setBackground( Color.GREEN );
+            }
+            else {
+                _bankAVSN.setForeground( Color.DARK_GRAY );
+                _bankAVSN.setBackground( Color.LIGHT_GRAY );
+            }
+            _xOff += _widthBankAVSN;
+            _colorColumn = false;
+        }
+        if ( _showBankBVSN ) {
+            _bankBVSN.setBounds( _xOff, 1, _widthBankBVSN, _ySize - 2);
+            if ( _activeBank.getText().equalsIgnoreCase( "B" ) ) {
+                _bankBVSN.setForeground( Color.BLACK );
+                _bankBVSN.setBackground( Color.GREEN );
+            }
+            else {
+                _bankBVSN.setForeground( Color.DARK_GRAY );
+                _bankBVSN.setBackground( Color.LIGHT_GRAY );
+            }
+            _xOff += _widthBankBVSN;
+            _colorColumn = false;
+        }
         if ( _showStatusWord )
-            setTextArea( _statusWord, 70 );
+            setTextArea( _statusWord, _widthStatusWord );
         if ( _showActiveBank )
-            setTextArea( _activeBank, 70 );
+            setTextArea( _activeBank, _widthActiveBank );
         if ( _showScanNumber )
-            setTextArea( _scanNumber, 70 );
+            setTextArea( _scanNumber, _widthScanNumber );
 
         if ( _showScanName )
-            setTextArea( _scanName, 70 );
+            setTextArea( _scanName, _widthScanName );
         if ( _showPosition )
-            setTextArea( _position, 70 );
+            setTextArea( _position, _widthPosition );
         if ( _showPlayRate )
-            setTextArea( _playRate, 70 );
+            setTextArea( _playRate, _widthPlayRate );
         if ( _showDataMJD )
-            setTextArea( _dataMJD, 70 );
+            setTextArea( _dataMJD, _widthDataMJD );
         if ( _showCurrentJob )
-            setTextArea( _currentJob, 200 );
-}
+            setTextArea( _currentJob, _widthCurrentJob );
+    }
     
     
     public void showStateChanged( boolean newVal ) {
@@ -145,6 +225,18 @@ public class Mark5Node extends ClusterNode {
         _currentJob.setText( newData.getCurrentJob() );
     }
     
+    public void widthStateChanged( int newVal ) { _widthStateChanged = newVal; }
+    public void widthBankAVSN( int newVal ) { _widthBankAVSN = newVal; }
+    public void widthBankBVSN( int newVal ) { _widthBankBVSN = newVal; }
+    public void widthStatusWord( int newVal ) { _widthStatusWord = newVal; }
+    public void widthActiveBank( int newVal ) { _widthActiveBank = newVal; }
+    public void widthScanNumber( int newVal ) { _widthScanNumber = newVal; }
+    public void widthScanName( int newVal ) { _widthScanName = newVal; }
+    public void widthPosition( int newVal ) { _widthPosition = newVal; }
+    public void widthPlayRate( int newVal ) { _widthPlayRate = newVal; }
+    public void widthDataMJD( int newVal ) { _widthDataMJD = newVal; }
+    public void widthCurrentJob( int newVal ) { _widthCurrentJob = newVal; }
+    
     protected ActivityMonitorLight _stateChanged;
     protected boolean _showStateChanged;
     protected ColumnTextArea _bankAVSN;
@@ -167,5 +259,17 @@ public class Mark5Node extends ClusterNode {
     protected boolean _showDataMJD;
     protected ColumnTextArea _currentJob;
     protected boolean _showCurrentJob;
+
+    protected int _widthStateChanged;
+    protected int _widthBankAVSN;
+    protected int _widthBankBVSN;
+    protected int _widthStatusWord;
+    protected int _widthActiveBank;
+    protected int _widthScanNumber;
+    protected int _widthScanName;
+    protected int _widthPosition;
+    protected int _widthPlayRate;
+    protected int _widthDataMJD;
+    protected int _widthCurrentJob;
 
 }

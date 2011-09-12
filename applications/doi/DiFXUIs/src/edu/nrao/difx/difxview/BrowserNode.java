@@ -16,10 +16,13 @@ import java.awt.Graphics;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Container;
+import java.awt.Insets;
 
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
 
 import java.util.ArrayDeque;
 import java.util.Iterator;
@@ -45,6 +48,16 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
         _label = new JLabel( name );
         _label.setFont( new Font( "Dialog", Font.BOLD, 12 ) );
         this.add( _label );
+        _popupButton = new JButton( "\u25be" );  //  this is a little down arrow
+        _popupButton.setMargin( new Insets( 0, 0, 2, 0 ) );
+        _popupButton.setVisible( false );
+        _popupButton.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                if ( _popup != null )
+                    _popup.show( _popupButton, 0, 0 );
+            }
+        });
+        this.add( _popupButton );
         createAdditionalItems();
         setLevel( 0 );
         _highlightColor = Color.LIGHT_GRAY;
@@ -225,7 +238,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
             g.setColor( Color.GRAY );
             g.fillPolygon( xpts, ypts, 3 );
         }
-   }
+    }
     
     @Override
     public void mouseClicked( MouseEvent e ) {
@@ -304,5 +317,6 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
     protected Color _highlightColor;
     protected JLabel _label;
     protected JPopupMenu _popup;
+    protected JButton _popupButton;
 
 }

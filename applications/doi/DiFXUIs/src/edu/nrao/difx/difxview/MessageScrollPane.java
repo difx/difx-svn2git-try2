@@ -154,12 +154,15 @@ public class MessageScrollPane extends JPanel implements MouseMotionListener,
     }
     
     public void addMessage( MessageNode newNode ) {
+        boolean atEnd = scrolledToEnd();
         synchronized( _messageList ) {
             _messageList.add( newNode );
         }
         Dimension d = getSize();
         int dataHeight = measureDataHeight();
-        _scrollBar.setValues( -_yOffset, d.height, 0, dataHeight ); 
+        _scrollBar.setValues( -_yOffset, d.height, 0, dataHeight );
+        if ( atEnd )
+            scrollToEnd();
         testScrollBar( d.height );
     }
     

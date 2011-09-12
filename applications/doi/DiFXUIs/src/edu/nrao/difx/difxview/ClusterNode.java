@@ -7,6 +7,7 @@ package edu.nrao.difx.difxview;
 
 import javax.swing.JPopupMenu;
 import javax.swing.JMenuItem;
+import javax.swing.JSeparator;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -19,11 +20,17 @@ import java.awt.Component;
 
 import java.text.DecimalFormat;
 
-import edu.nrao.difx.difxdatamodel.*;
-
 import mil.navy.usno.plotlib.PlotWindow;
 import mil.navy.usno.plotlib.Plot2DObject;
 import mil.navy.usno.plotlib.Track2D;
+
+import edu.nrao.difx.difxcontroller.DiFXController;
+import edu.nrao.difx.difxdatamodel.ProcessorNode;
+import edu.nrao.difx.xmllib.difxmessage.ObjectFactory;
+import edu.nrao.difx.xmllib.difxmessage.Header;
+import edu.nrao.difx.xmllib.difxmessage.Body;
+import edu.nrao.difx.xmllib.difxmessage.DifxCommand;
+import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 
 /**
  *
@@ -35,6 +42,7 @@ public class ClusterNode extends BrowserNode {
         super( name );
         _columnColor = new Color( 204, 204, 255 );
         _dec = new DecimalFormat();
+        _popupButton.setVisible( true );
     }
     
     @Override
@@ -78,7 +86,7 @@ public class ClusterNode extends BrowserNode {
         _cpuTrack = new Track2D();
         _cpuTrack.fillCurve( true );
         _cpuPlot.addTrack( _cpuTrack );
-        _cpuTrack.color( Color.GREEN );
+        _cpuTrack.color( new Color( 210, 190, 130 ) );
         _cpuTrack.sizeLimit( 200 );
         _cpuPlot.frame( 0.0, 0.0, 1.0, 1.0 );
         _cpuPlot.backgroundColor( Color.BLACK );
@@ -104,7 +112,7 @@ public class ClusterNode extends BrowserNode {
         _memTrack = new Track2D();
         _memTrack.fillCurve( true );
         _memPlot.addTrack( _memTrack );
-        _memTrack.color( Color.GREEN );
+        _memTrack.color( new Color( 50, 250, 200 ) );
         _memTrack.sizeLimit( 200 );
         _memPlot.frame( 0.0, 0.0, 1.0, 1.0 );
         _memPlot.backgroundColor( Color.BLACK );
@@ -116,14 +124,38 @@ public class ClusterNode extends BrowserNode {
         this.add( _netTxRate );
         //  Create a popup menu appropriate to a "job".
         _popup = new JPopupMenu();
-        JMenuItem menuItem;
-        menuItem = new JMenuItem( "Show Monitor for \"" + _label.getText() + "\"" );
-        menuItem.addActionListener(new ActionListener() {
+        JMenuItem headerItem = new JMenuItem( "Cotrols for \"" + _label.getText() + "\"" );
+        _popup.add( headerItem );
+        _popup.add( new JSeparator() );
+        JMenuItem monitorItem;
+        monitorItem = new JMenuItem( "Show Monitor Plots" );
+        monitorItem.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 monitorAction( e );
             }
         });
-        _popup.add( menuItem );
+        _popup.add( monitorItem );
+        JMenuItem resetItem = new JMenuItem( "Reset" );
+        resetItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                sendDiFXCommandMessage( "ResetMark5" );
+            }
+        });
+        _popup.add( resetItem );
+        JMenuItem rebootItem = new JMenuItem( "Reboot" );
+        rebootItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                sendDiFXCommandMessage( "Reboot" );
+            }
+        });
+        _popup.add( rebootItem );
+        JMenuItem powerOffItem = new JMenuItem( "Power Off" );
+        powerOffItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                sendDiFXCommandMessage( "Poweroff" );
+            }
+        });
+        _popup.add( powerOffItem );
     }
     
     @Override
@@ -137,58 +169,98 @@ public class ClusterNode extends BrowserNode {
         //  We always show the name of the node
         _label.setBounds( _xOff, 0, 180, _ySize );
         _xOff += 180;
+        _popupButton.setBounds( _xOff + 2, 2, 16, _ySize - 4 );//16, _ySize - 4 );
+        _xOff += 20;
         //  Then everything else.  For items that are simply values (as opposed
         //  to plots) we show labels backed by alternating colors so the columns
         //  will be easy to follow.
         _colorColumn = false;
         if( _showNumCPUs )
-            setTextArea( _numCPUs, 70 );
+            setTextArea( _numCPUs, _widthNumCPUs );
         if ( _showNumCores )
-            setTextArea( _numCores, 70 );
+            setTextArea( _numCores, _widthNumCores );
         if ( _showBogusGHz )
-            setTextArea( _bogusGHz, 70 );
+            setTextArea( _bogusGHz, _widthBogusGHz );
         if ( _showType )
-            setTextArea( _type, 70 );
+            setTextArea( _type, _widthType );
         if ( _showTypeString )
-            setTextArea( _typeString, 70 );
+            setTextArea( _typeString, _widthTypeString );
         if ( _showState ) {
-            _state.setBounds( _xOff, 1, 70, _ySize - 2);
-            if ( _state.getText().equals( "Lost" ) )
+            _state.setBounds( _xOff, 1, _widthState, _ySize - 2);
+            //       Assign a background color that is appropriate to the "state"
+            //  string.  Note that this is a bit kludgey - most of the states apply
+            //  to Mark5Nodes (a class that inherits this one).  In fact, the only
+            //  "state" that is transmitted from difx is for Mark5s.  The "state"
+            //  that applies to cluster nodes is manufactured based on message
+            //  timeliness, and can only be "Lost" or "Idle".  "Lost" actually
+            //  appears quite a bit (more than it should) so I've made it yellow
+            //  instead of the seemingly more logical red.
+            //       The Mark5 states are taken verbatim out of the XML messages
+            //  from difx.  The text is defined in the file:
+            //     .../difx/libraries/difxmessage/trunk/difxmessage/difxmessage.c
+            if ( _state.getText().equals( "Error" ) ||
+                 _state.getText().equals( "PowerOff" ) ||
+                 _state.getText().equals( "CondError" ) )
                 _state.setBackground( Color.RED );
-            else
+            else if ( _state.getText().equals( "Lost" ) ||
+                 _state.getText().equals( "Resetting" ) ||
+                 _state.getText().equals( "Rebooting" ) ||
+                 _state.getText().equals( "NoMoreData" ) ||
+                 _state.getText().equals( "PlayInvalid" ) ||
+                 _state.getText().equals( "Condition" ) )
+                _state.setBackground( Color.YELLOW );
+            else if ( _state.getText().equals( "Opening" ) ||
+                 _state.getText().equals( "Open" ) ||
+                 _state.getText().equals( "Close" ) ||
+                 _state.getText().equals( "GetDirectory" ) ||
+                 _state.getText().equals( "GotDirectory" ) ||
+                 _state.getText().equals( "Play" ) ||
+                 _state.getText().equals( "Busy" ) ||
+                 _state.getText().equals( "Initializing" ) ||
+                 _state.getText().equals( "PlayStart" ) ||
+                 _state.getText().equals( "Copy" ) )
                 _state.setBackground( Color.GREEN );
-            _xOff += 70;
+            else if ( _state.getText().equals( "Online" ) ||
+                 _state.getText().equals( "Idle" ) ||
+                 _state.getText().equals( "NoData" ) ||
+                 _state.getText().equals( "Test" ) ||
+                 _state.getText().equals( "TestWrite" ) ||
+                 _state.getText().equals( "TestRead" ) )
+                _state.setBackground( Color.LIGHT_GRAY );
+            else
+                _state.setBackground( Color.WHITE );
+            _xOff += _widthState;
             _colorColumn = false;
         }
         if ( _showEnabled ) {
-            _enabledLight.setBounds( _xOff + 30, 6, 10, 10 );
-            _xOff += 70;
+            _enabledLight.setBounds( _xOff + ( _widthEnabled - 10 ) / 2, 6, 10, 10 );
+            _xOff += _widthEnabled;
             _colorColumn = false;
         }
         if ( _showCpuLoad )
-            setTextArea( _cpuLoad, 70 );
+            setTextArea( _cpuLoad, _widthCpuLoad );
         if ( _showCpuLoadPlot ) {
-            _cpuLoadPlot.setBounds( _xOff, 1, 70, _ySize - 2 );
-            _cpuPlot.resizeBasedOnWindow( 70, _ySize - 2 );
-            _xOff += 70;
+            _cpuLoadPlot.setBounds( _xOff, 1, _widthCpuLoadPlot, _ySize - 2 );
+            _cpuPlot.resizeBasedOnWindow( _widthCpuLoadPlot, _ySize - 2 );
+            _xOff += _widthCpuLoadPlot;
             _colorColumn = false;
         }
         if ( _showUsedMem )
-            setTextArea( _usedMem, 70 );
+            setTextArea( _usedMem, _widthUsedMem );
         if ( _showTotalMem )
-            setTextArea( _totalMem, 70 );
+            setTextArea( _totalMem, _widthTotalMem );
         if ( _showMemLoad )
-            setTextArea( _memLoad, 70 );
+            setTextArea( _memLoad, _widthMemLoad );
         if ( _showMemLoadPlot ) {
-            _memLoadPlot.setBounds( _xOff, 1, 70, _ySize - 2 );
-            _memPlot.resizeBasedOnWindow( 70, _ySize - 2 );
-            _xOff += 70;
+            _memLoadPlot.setBounds( _xOff, 1, _widthMemLoadPlot, _ySize - 2 );
+            _memPlot.resizeBasedOnWindow( _widthMemLoadPlot, _ySize - 2 );
+            _xOff += _widthMemLoadPlot;
             _colorColumn = false;
         }
         if ( _showNetRxRate )
-            setTextArea( _netRxRate, 70 );
+            setTextArea( _netRxRate, _widthNetRxRate );
         if ( _showNetTxRate )
-            setTextArea( _netTxRate, 70 );
+            setTextArea( _netTxRate, _widthNetTxRate );
     }
     
     /*
@@ -224,6 +296,53 @@ public class ClusterNode extends BrowserNode {
         _monitor.setVisible( true );
     }
     
+    /*
+     * Send a command to the processor.
+     * This function was swiped from the difxdatamodel.Mark5Unit class in the
+     * original difx design.  It has been simplified and somewhat altered.  This
+     * seemed a more logical place for it than where it was.
+     * 
+     * Allowed commands are:
+     *  "GetVSN"
+     *  "GetLoad"
+     *  "GetDir"
+     *  "ResetMark5"
+     *  "StartMark5A"
+     *  "StopMark5A"
+     *  "Clear"
+     *  "Reboot"
+     *  "Poweroff"
+     *  "Copy"
+     */
+    protected void sendDiFXCommandMessage( String cmd ) {
+        System.out.println( cmd );
+        if ( _difxController != null ) {
+            ObjectFactory factory = new ObjectFactory();
+
+            // Create header
+            Header header = factory.createHeader();
+            header.setFrom( "doi" );
+            header.setTo( _label.getText() );
+            header.setMpiProcessId( "-1" );
+            header.setIdentifier( "doi" );
+            header.setType( "DifxCommand" );
+
+            // Create mark5 command
+            DifxCommand mark5Command = factory.createDifxCommand();
+            mark5Command.setCommand( cmd );
+
+            // Create the XML defined messages and process through the system
+            Body body = factory.createBody();
+            body.setDifxCommand( mark5Command );
+
+            DifxMessage difxMsg = factory.createDifxMessage();
+            difxMsg.setHeader( header );
+            difxMsg.setBody( body );
+            
+            _difxController.writeToSocket( difxMsg );
+        }
+    }
+
     public void showNetworkActivity( boolean newVal ) {
         _showNetworkActivity = newVal;
         _networkActivity.setVisible( _showNetworkActivity );            
@@ -304,7 +423,23 @@ public class ClusterNode extends BrowserNode {
         _netTxRate.setVisible( newVal );
     }
 
-     /*
+    public void widthNumCPUs( int newVal ) { _widthNumCPUs = newVal; }
+    public void widthNumCores( int newVal ) { _widthNumCores = newVal; }
+    public void widthBogusGHz( int newVal ) { _widthBogusGHz = newVal; }
+    public void widthType( int newVal ) { _widthType = newVal; }
+    public void widthTypeString( int newVal ) { _widthTypeString = newVal; }
+    public void widthState( int newVal ) { _widthState = newVal; }
+    public void widthEnabled( int newVal ) { _widthEnabled = newVal; }
+    public void widthCpuLoad( int newVal ) { _widthCpuLoad = newVal; }
+    public void widthCpuLoadPlot( int newVal ) { _widthCpuLoadPlot = newVal; }
+    public void widthUsedMem( int newVal ) { _widthUsedMem = newVal; }
+    public void widthTotalMem( int newVal ) { _widthTotalMem = newVal; }
+    public void widthMemLoad( int newVal ) { _widthMemLoad = newVal; }
+    public void widthMemLoadPlot( int newVal ) { _widthMemLoadPlot = newVal; }
+    public void widthNetRxRate( int newVal ) { _widthNetRxRate = newVal; }
+    public void widthNetTxRate( int newVal ) { _widthNetTxRate = newVal; }
+
+    /*
      * Use the data contained in a "ProcessorNode" (from the difxdatamodel) to
      * set fields here.  These are all individually formatted.
      */
@@ -356,7 +491,11 @@ public class ClusterNode extends BrowserNode {
             _monitor.setNetRxRate( newRx );
             _monitor.setNetTxRate( newTx );
         }
-   }
+    }
+    
+    public void difxController( DiFXController newController ) {
+        _difxController = newController;
+    }
     
     ProcessorMonitorWindow _monitor;
     ActivityMonitorLight _networkActivity;
@@ -403,4 +542,22 @@ public class ClusterNode extends BrowserNode {
     int _xOff;
     DecimalFormat _dec;
 
+    int _widthNumCPUs;
+    int _widthNumCores;
+    int _widthBogusGHz;
+    int _widthType;
+    int _widthTypeString;
+    int _widthState;
+    int _widthEnabled;
+    int _widthCpuLoad;
+    int _widthCpuLoadPlot;
+    int _widthUsedMem;
+    int _widthTotalMem;
+    int _widthMemLoad;
+    int _widthMemLoadPlot;
+    int _widthNetRxRate;
+    int _widthNetTxRate;
+
+    DiFXController _difxController;
+    
 }
