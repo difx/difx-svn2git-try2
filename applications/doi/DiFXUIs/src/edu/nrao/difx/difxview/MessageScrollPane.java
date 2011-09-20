@@ -40,7 +40,7 @@ public class MessageScrollPane extends JPanel implements MouseMotionListener,
         this.setLayout( null );
         _messageList = new ArrayDeque<MessageNode>();
         this.setBackground( Color.BLACK );
-        this.messageFont( new Font( "MONO", Font.PLAIN, 12 ) );
+        this.messageFont( new Font( "courier new", Font.BOLD, 12 ) );
         _scrollBar = new JScrollBar( JScrollBar.VERTICAL );
         this.add( _scrollBar );
         _scrollBar.addAdjustmentListener( this );

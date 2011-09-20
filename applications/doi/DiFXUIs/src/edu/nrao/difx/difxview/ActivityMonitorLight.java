@@ -3,7 +3,7 @@
  * (such as network traffic - which is what it was originally designed for).
  * The light is normally "off", indicating no acitivity.  When activity occurs,
  * a call to the "data()" function will turn the light on for a short period
- * of time (set using the "onDuration()" function).  If no acitivity occurs for
+ * of time (set using the "onDuration()" function).  If no activity occurs for
  * a period of time (i.e. there are no calls to "data()") the light will display
  * a warning color.  After a further period with no activity it will display an
  * "alert" color.  All periods of time and colors can be changed, if desired.

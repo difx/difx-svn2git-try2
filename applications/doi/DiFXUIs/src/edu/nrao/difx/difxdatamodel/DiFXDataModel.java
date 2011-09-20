@@ -20,6 +20,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.event.EventListenerList;
 /**
  *
  * @author mguerra
@@ -30,6 +31,7 @@ public class DiFXDataModel {
     private DiFXSystemStatus mSystemStatus = new DiFXSystemStatus();
     private List<Module> mModules = new ArrayList<Module>();
     private List<Mark5Unit> mMark5Units = new ArrayList<Mark5Unit>(24);
+    private ProcessorNode mManagerNode = new ProcessorNode();
     private List<ProcessorNode> mProcessorNodes = new ArrayList<ProcessorNode>(10);
     private List<Job> mJobs = new ArrayList<Job>();
     private List<Project> mProjects = new ArrayList<Project>();
@@ -37,6 +39,8 @@ public class DiFXDataModel {
     private Queue mQueue = new Queue(this);
     private DBConnection mDBConnection = null;
     private List<Object> mListeners = Collections.synchronizedList(new ArrayList<Object>());
+    //  Listeners for different types of incoming data
+    EventListenerList _hardwareMessageListeners;
     // alert messages
     private ArrayList<String> mAlerts = new ArrayList<String>();
     private ArrayList<String> mErrors = new ArrayList<String>();
@@ -46,12 +50,16 @@ public class DiFXDataModel {
     private MessageDisplayPanel _messageDisplayPanel;
 
     public DiFXDataModel() {
-        // nothing to do
+        _hardwareMessageListeners = new EventListenerList();
     }
 
     public void setDBConnection() {
         mDBConnection = new edu.nrao.difx.difxdatabase.DBConnection(DOISystemConfig.DB_URL, DOISystemConfig.ORACLE_JDBC_DRIVER,
                 DOISystemConfig.DB_SID, DOISystemConfig.DB_PWD);
+    }
+
+    public void addHardwareMessageListener( AttributedMessageListener a ) {
+        _hardwareMessageListeners.add( AttributedMessageListener.class, a );
     }
 
     /**
@@ -203,11 +211,38 @@ public class DiFXDataModel {
     }
 
     /**
+     * Returns a space separated list of nodes contained in the mProcessorNodes
+     * arrayList.
+     * @return the list of processing nodes (space separated)
+     */
+    public String getProcessorNodesAsString() {
+        String processorString = "";
+
+        Iterator it = this.mProcessorNodes.iterator();
+
+        while (it.hasNext()) {
+            ProcessorNode node = (ProcessorNode) it.next();
+
+            processorString += node.getObjName() + " ";
+        }
+
+        return (processorString.trim());
+    }
+
+    /**
      * Appends a processing node to the current list of processing nodes
      * @param procNode
      */
     public void addProcessorNode(ProcessorNode procNode) {
         mProcessorNodes.add(procNode);
+    }
+
+    /**
+     * Removes a  node from the list of available processing nodes
+     * @param procNode 
+     */
+    public void removeProcessorNode(ProcessorNode procNode) {
+        mProcessorNodes.remove(procNode);
     }
 
     /**
@@ -411,9 +446,6 @@ public class DiFXDataModel {
     public synchronized void serviceDataModel(DiFXObject difxObj) {
         // -- just pass it through
         updateDataModel(difxObj);
-
-        // leave the notify/update up to thier view...View's are updated in separate thread.
-        // NotifyListeners();
     }
 
     // Process the DifxMessage into the Data Model
@@ -454,273 +486,9 @@ public class DiFXDataModel {
                     + header.getType() + "\"");
         }
 
-        // Notify listeners to update thier view...Move into UpdateViewThread
-        // NotifyListeners();
-
         // clean up
         header = null;
     }
-
-/*
-    private synchronized void processDifxStatusMessageOld(DifxMessage difxMsg) {
-        // -- catch some exceptions and keep the program from terminating. . .
-        // Message must originate from mpifxcorr or swc000
-        int len = (difxMsg.getHeader().getFrom().trim().length());
-        if ((difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("mpifxcorr"))
-                || (difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("swc000"))) {
-
-            // Update the jobs status, no need to call UpdateDataModel()
-            Job job = getJob(difxMsg.getHeader().getIdentifier());
-            String seqNum = difxMsg.getBody().getSeqNumber();
-
-            if (job != null) {
-                // set the current job
-                getQueue().setCurrentJob(job);
-
-                // Get current/previous job state, save it for an error comparision
-                DiFXSystemStatus.JobStates previousState = job.getState();
-
-                // Current job is running - set the job running alert once only
-                if (difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase("Running")
-                        && (previousState == DiFXSystemStatus.JobStates.READY)) {
-                    // set the current wall time
-                    job.setStartWallTimeUTC(System.currentTimeMillis());
-
-                    String stateString = difxMsg.getBody().getDifxStatus().getState();
-                    Calendar cal = Calendar.getInstance();
-                    SimpleDateFormat sdf = new SimpleDateFormat(DiFXSystemConfig.DATE_TIME_FORMAT);
-                    String timeStamp = sdf.format(cal.getTime());
-
-                    String strToAdd = timeStamp + " "
-                            + difxMsg.getHeader().getFrom() + " : "
-                            + difxMsg.getHeader().getIdentifier() + " : "
-                            + stateString + " : "
-                            + difxMsg.getBody().getDifxStatus().getMessage().toString() + "\n";
-
-                    this.addAlert(strToAdd);
-
-                } // -- if ( difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase("Running") &&
-                // --      (previousState == DiFXSystemStatus.JobStates.READY) )
-
-                // For jobs, convert difxmessage into status, run state may not change
-                String newStatus = (difxMsg.getBody().getDifxStatus()).getState();
-                job.setStatus(DiFXSystemStatus.ConvertDiFXStatusIntoQueueJobStatus(newStatus));
-                //System.out.printf("***************** Job(%s) currstatus(%s) prevstatestr(%s) prevstate(%s) seqNum(%s). \n",
-                //                  job.getObjName(), job.getStatus(), job.getStateString(), previousState, seqNum);
-
-                if (newStatus.equalsIgnoreCase("Done")) {
-                    // Free the jobs resources
-                    //job.setStarted(false);
-                    System.out.println("***************** Job free resources.");
-                    job.freeResources();
-                    System.out.println("***************** Job free resources complete.");
-
-                    // stop correlation complete (100%), change state
-                    job.setCompletion(100.00f);
-
-                    // update job states so we can run another job
-                    System.out.printf("DifXDataModel determineStateOfAllJobs().");
-                    determineStateOfAllJobs();
-                    System.out.printf("DifXDataModel determineStateOfAllJobs() complete.");
-
-                } // Current job running, determine lost resources
-                else if (newStatus.equalsIgnoreCase("Running")) {
-                    job.setAllResponding(job.isAllResponding());
-
-                } // -- if ( newStatus.equalsIgnoreCase("MpiDone") )
-                else if (newStatus.equalsIgnoreCase("MpiDone")) {
-                    System.out.println("DifXDataModel job free resources.");
-                    job.freeResources();
-                    System.out.println("DifXDataModel job free resources complete.");
-
-                    if (previousState == DiFXSystemStatus.JobStates.RUNNING) {
-                        job.setState(DiFXSystemStatus.JobStates.UNKNOWN);
-                        getQueue().setCurrentJob(job);
-                    } else if (previousState != DiFXSystemStatus.JobStates.DONE) {
-                        job.setState(DiFXSystemStatus.JobStates.UNKNOWN);
-                        getQueue().setCurrentJob(job);
-                    } else if (previousState == DiFXSystemStatus.JobStates.KILLED) {
-                        job.setState(DiFXSystemStatus.JobStates.KILLED);
-                    }
-
-                    // Time stamp completion
-                    job.setCorrelationStopUTC();
-
-                } // -- if ( newStatus.equalsIgnoreCase("Done") )
-
-                // If not in an error condition, continue processing jobs
-                if ((previousState != DiFXSystemStatus.JobStates.KILLED)
-                        && (job.isUnknown() != true)) {
-                    job.setState(DiFXSystemStatus.ConvertJobStatus(job.getStatus()));
-                    if (job.getState() == JobStates.COMPLETE) {
-                        try {
-                            // Reset and post complete records to database
-                            postUpdatesToDatabase(job); // MAG
-                            job.setStarted(false);
-                        } catch (Exception ex) {
-                            Logger.getLogger(DiFXDataModel.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-
-                    } // -- if (job.getState() == JobStates.COMPLETE)
-
-                    job.setMessage(difxMsg.getBody().getDifxStatus().getMessage());
-                    job.setVisibilityMJD(new BigDecimal(difxMsg.getBody().getDifxStatus().getVisibilityMJD().trim()));
-                    job.setStatusTimeStampUTC();
-
-                    float completion = job.calculatePercentComplete();
-                    if ((completion >= 0.000f) && (completion <= 100.000f)) {
-                        job.setCompletion(completion);
-                    }
-
-                    // Assign min weight to antenna
-                    if (difxMsg.getBody().getDifxStatus().getWeight() != null) {
-                        if (difxMsg.getBody().getDifxStatus().getWeight().isEmpty() == false) {
-                            // process all the <antenna, weight> tuples
-                            Iterator<Weight> wit = difxMsg.getBody().getDifxStatus().getWeight().iterator();
-                            while (wit.hasNext() == true) {
-                                Weight weight = wit.next();
-
-                                // test weight
-                                if ((weight.getAnt() != null)
-                                        && (weight.getWt() != null)) {
-                                    // zero-based
-                                    Module mod = job.getModule(Integer.parseInt(weight.getAnt().trim()));
-                                    if (mod != null) {
-                                        mod.setWeight(Float.parseFloat(weight.getWt()));
-                                        mod.setStatusTimeStampUTC();
-                                    }
-                                    mod = null;
-                                } else // -- invalid
-                                {
-                                    System.out.printf("***************** Data model DiFX Status invalid weight. \n");
-                                }
-
-                            } // -- while (wit.hasNext() == true)
-
-                        } // -- if ( difxMsg.getBody().getDifxStatus().getWeight().isEmpty() == false )
-
-                    } // -- if ( difxMsg.getBody().getDifxStatus().getWeight() != null )
-
-                } // -- if ( previousState != DiFXSystemStatus.JobStates.KILLED )
-
-            } // -- if (job != null)
-
-            // Lets update the queue status, and maybe start another job
-            Queue queue = getQueue();
-            if (queue != null) {
-                // Time stamp the status
-                queue.setStatusTimeStampUTC();
-
-                // Current job in error
-                if (difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase("Aborting")
-                        || difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase("Terminating")
-                        || difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase("Terminated")
-                        || difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase("Crashed")) {
-                    String stateString = difxMsg.getBody().getDifxStatus().getState();
-                    Calendar cal = Calendar.getInstance();
-                    SimpleDateFormat sdf = new SimpleDateFormat(DiFXSystemConfig.DATE_TIME_FORMAT);
-                    String timeStamp = sdf.format(cal.getTime());
-
-                    String strToAdd = timeStamp + " "
-                            + difxMsg.getHeader().getFrom() + " : "
-                            + difxMsg.getHeader().getIdentifier() + " : "
-                            + stateString + " : "
-                            + difxMsg.getBody().getDifxStatus().getMessage().toString() + "\n";
-
-                    this.addAlert(strToAdd);
-
-                    // Error occured, stop, change state. . .But do not get next job
-                    queue.stopError();
-
-                } // Current job spawning - just print message, do not print every run message
-                else if (difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase("Spawning")) {
-                    String stateString = difxMsg.getBody().getDifxStatus().getState();
-                    Calendar cal = Calendar.getInstance();
-                    SimpleDateFormat sdf = new SimpleDateFormat(DiFXSystemConfig.DATE_TIME_FORMAT);
-                    String timeStamp = sdf.format(cal.getTime());
-
-                    String strToAdd = timeStamp + " "
-                            + difxMsg.getHeader().getFrom() + " : "
-                            + difxMsg.getHeader().getIdentifier() + " : "
-                            + stateString + " : "
-                            + difxMsg.getBody().getDifxStatus().getMessage().toString() + "\n";
-
-                    this.addAlert(strToAdd);
-
-                } // Current job starting - just print message, do not print every run message
-                else if (difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase("Starting")) {
-                    String stateString = difxMsg.getBody().getDifxStatus().getState();
-                    Calendar cal = Calendar.getInstance();
-                    SimpleDateFormat sdf = new SimpleDateFormat(DiFXSystemConfig.DATE_TIME_FORMAT);
-                    String timeStamp = sdf.format(cal.getTime());
-
-                    String strToAdd = timeStamp + " "
-                            + difxMsg.getHeader().getFrom() + " : "
-                            + difxMsg.getHeader().getIdentifier() + " : "
-                            + stateString + " : "
-                            + difxMsg.getBody().getDifxStatus().getMessage().toString() + "\n";
-
-                    this.addAlert(strToAdd);
-
-                } // Current job done, change state
-                else if (difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase("Done")) {
-                    String stateString = difxMsg.getBody().getDifxStatus().getState();
-                    Calendar cal = Calendar.getInstance();
-                    SimpleDateFormat sdf = new SimpleDateFormat(DiFXSystemConfig.DATE_TIME_FORMAT);
-                    String timeStamp = sdf.format(cal.getTime());
-
-                    String strToAdd = timeStamp + " "
-                            + difxMsg.getHeader().getFrom() + " : "
-                            + difxMsg.getHeader().getIdentifier() + " : "
-                            + stateString + " : "
-                            + difxMsg.getBody().getDifxStatus().getMessage().toString() + "\n";
-
-                    this.addAlert(strToAdd);
-
-                    // -- verify no jobs to run before changing that state . . .
-                    //if (queue.allJobsDoneComplete())
-                    //if (queue.anyJobsToRun() == false)
-                    //{
-                    // Verify no jobs to run before changing that state, if no jobs
-                    // stop queue and correlation complete (100%)
-                    queue.stopDone();
-                    //}
-
-                }// Mpi Done, change state, run next job
-                else if (difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase("MpiDone")) {
-                    String stateString = difxMsg.getBody().getDifxStatus().getState();
-                    Calendar cal = Calendar.getInstance();
-                    SimpleDateFormat sdf = new SimpleDateFormat(DiFXSystemConfig.DATE_TIME_FORMAT);
-                    String timeStamp = sdf.format(cal.getTime());
-
-                    String strToAdd = timeStamp + " "
-                            + difxMsg.getHeader().getFrom() + " : "
-                            + difxMsg.getHeader().getIdentifier() + " : "
-                            + stateString + " : "
-                            + difxMsg.getBody().getDifxStatus().getMessage().toString() + "\n";
-
-                    this.addAlert(strToAdd);
-
-                    // -- verify that all jobs are done before changing that state . . .
-                    //if (queue.allJobsFinished())
-                    //{
-                    // stop mpi processes ended, change state, run next
-                    queue.stopMPIDone();
-                    //}
-                }
-
-            } // -- if (queue != null)
-
-            // clean up
-            job = null;
-            queue = null;
-
-        } // -- if ( (difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("mpifxcorr")) ||
-        // --      (difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("swc000"   )) )
-
-    }
-     * 
-     */
 
     private synchronized void processDifxStatusMessage(DifxMessage difxMsg) {
         // -- catch some exceptions and keep the program from terminating. . .
@@ -1102,6 +870,16 @@ public class DiFXDataModel {
                 existingM5 = null;
                 mark5 = null;
             }
+
+            //  Dispatch a message to each of the listeners interested in the
+            //  receipt of a hardware-related message.
+            Object[] listeners = _hardwareMessageListeners.getListenerList();
+            int numListeners = listeners.length;
+            for ( int i = 0; i < numListeners; i+=2 ) {
+                if ( listeners[i] == AttributedMessageListener.class )
+                    ((AttributedMessageListener)listeners[i+1]).update( difxMsg.getHeader().getFrom() );
+            }
+
         } catch (Exception e) {
             System.err.println("uncaught exception: " + e);
         }
@@ -1181,6 +959,16 @@ public class DiFXDataModel {
                 existingProc = null;
                 proc = null;
             }
+            
+            //  Dispatch a message to each of the listeners interested in the
+            //  receipt of a hardware-related message.
+            Object[] listeners = _hardwareMessageListeners.getListenerList();
+            int numListeners = listeners.length;
+            for ( int i = 0; i < numListeners; i+=2 ) {
+                if ( listeners[i] == AttributedMessageListener.class )
+                    ((AttributedMessageListener)listeners[i+1]).update( difxMsg.getHeader().getFrom() );
+            }
+
         } catch (Exception e) {
             System.err.println("uncaught exception: " + e);
         }
@@ -2272,7 +2060,6 @@ public class DiFXDataModel {
         } // -- if (jobs != null)
     }
 
-    //protected synchronized void NotifyListeners()
     public synchronized void notifyListeners() {
 //        System.out.printf("******** Data model notify listeners. \n");
 

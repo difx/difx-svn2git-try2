@@ -61,14 +61,21 @@ public class HardwareMonitorPanel extends JPanel {
     public void dataModel( DiFXDataModel newModel ) {
         _mDataModel = newModel;
         // create a listener that calls our local function
-        _mListener = new MessageListener() {
+//        _mListener = new MessageListener() {
+//            @Override
+//            public void update() {
+//                serviceDataUpdate();
+//            }
+//        };
+//        // hand DataModel a call back listener
+//        _mDataModel.attachListener( _mListener );
+        _mDataModel.addHardwareMessageListener( new AttributedMessageListener() {
             @Override
-            public void update() {
-                serviceDataUpdate();
+            public void update( String source ) {
+                //System.out.println( "message from \"" + source + "\"" );
+                serviceUpdate( source );
             }
-        };
-        // hand DataModel a call back listener
-        _mDataModel.attachListener( _mListener );
+        } );
     }
     
     /*
@@ -156,6 +163,84 @@ public class HardwareMonitorPanel extends JPanel {
                 mk5Module.setData( thisMark5 );
             }
         }
+    }
+    
+    /*
+     * A message has been received from the named processor/mark5.  Update the
+     * data associated with it.
+     */
+    protected void serviceUpdate( String nodeName ) {
+        
+        //  First see if the data model considers this a "processor" by locating
+        //  it in the data model's list of processors.
+        List<ProcessorNode> processorNodes = _mDataModel.getProcessorNodes();
+        if ( processorNodes != null ) {
+            for ( Iterator<ProcessorNode> iter = processorNodes.iterator(); iter.hasNext(); ) {
+                ProcessorNode thisProcessor = iter.next();
+                if ( nodeName.equals( thisProcessor.getObjName() ) ) {
+                    //  Okay, we've found it.  Now locate it in OUR list of processors, if
+                    //  we know about it.
+                    ClusterNode processor = null;
+                    for ( Iterator<BrowserNode> iter2 = _clusterNodes.children().iterator(); iter2.hasNext(); ) {
+                        BrowserNode thisModule = iter2.next();
+                        if ( thisModule.name().equals( thisProcessor.getObjName() ) )
+                            processor = (ClusterNode)thisModule;
+                    }
+                    //  If there was no node representing this unit in our list, create one.
+                    if ( processor == null ) {
+                        processor = new ClusterNode( thisProcessor.getObjName() );
+                        processor.difxController( _mController );
+                        _clusterNodes.addChild( processor );
+                    }
+                    //  Update the processor with new data.
+                    processor.setData( thisProcessor );
+                    //  We are done if we've made it here - bail out.
+                    return;
+                }
+            }
+        }
+        
+        //  If a processor was not found, try the list of Mark5 units.
+        List<Mark5Unit> mark5Units = _mDataModel.getMark5Units();        
+        if ( mark5Units != null ) {
+            for ( Iterator<Mark5Unit> iter = mark5Units.iterator(); iter.hasNext(); ) {
+                Mark5Unit thisMark5 = iter.next();
+                if ( nodeName.equals( thisMark5.getObjName() ) ) {
+                    //  Found our node name in the Mark 5 list.  Now locate it in our
+                    //  lists.  First,  to accomodate a seeming bug in mk5daemon, or somewhere else
+                    //  up the messaging pipeline, we try our list of processors.  If a processor
+                    //  is rebooted, messages relating to this action (i.e. "state = rebooting")
+                    //  come as if from a mark5, rather than a processor.  So we check the name of 
+                    //  each "mark5" against the list of known processors first, and if found we 
+                    //  assume the mark5 is actually a processor.
+                    ClusterNode processor = null;
+                    for ( Iterator<BrowserNode> iter2 = _clusterNodes.children().iterator(); iter2.hasNext(); ) {
+                        BrowserNode thisModule = iter2.next();
+                        if ( thisModule.name().equals( thisMark5.getObjName() ) ) {
+                            processor = (ClusterNode)thisModule;
+                            processor.setData( thisMark5 );
+                            return;
+                        }
+                    }
+                    //  Now we may continue knowing this is a Mark 5.
+                    Mark5Node mk5Module = null;
+                    for ( Iterator<BrowserNode> iter2 = _mk5Modules.children().iterator(); iter2.hasNext(); ) {
+                        BrowserNode thisModule = iter2.next();
+                        if ( thisModule.name().equals( thisMark5.getObjName() ) )
+                            mk5Module = (Mark5Node)thisModule;
+                    }
+                    //  If there was no node representing this unit, create one.
+                    if ( mk5Module == null ) {
+                        mk5Module = new Mark5Node( thisMark5.getObjName() );
+                        mk5Module.difxController( _mController );
+                        _mk5Modules.addChild( mk5Module );
+                    }
+                    mk5Module.setData( thisMark5 );
+                    return;
+                }
+            }
+        }
+
     }
 
     

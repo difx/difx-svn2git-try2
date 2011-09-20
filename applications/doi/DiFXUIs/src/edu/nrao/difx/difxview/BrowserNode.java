@@ -1,7 +1,25 @@
 /*
- * This is a generic browser node, developed for the queue browser of the DiFX
- * GUI.  This class contains some limited drawing capability - it will draw
- * itself based on where it lies in the hierarchy (and whether it is "open").
+ * This is a generic browser node which can be used as part of a browser display
+ * hierarchy (the NodeBrowserPane is designed to contain a hierarchy of BrowserNodes).
+ * This class can contain a list of "child" BrowserNodes, and be part of a list
+ * under a "parent".  A BrowserNode can be "open" or "closed", which determines 
+ * whether is children are displayed or not.
+ * 
+ * What makes this class different from normal browser content is that because it
+ * is a JPanel it is not limited to text, nor limited in size and shape for that
+ * matter.  It can contain other widgets - buttons, drawings, etc.
+ * 
+ * By default this class has a number of controls included.  There is a little
+ * arrow drawn on the left side to indicate that it has children and whether it
+ * is open or not.  There is a popup menu that can be accessed by the right mouse
+ * button or by clicking an button with a little down arrow (this button is not
+ * visible by default, but can be made so using the visiblePopupButton() function).
+ * These necessitate the capturing of mouse motion and click events, the functions
+ * for which can be overridden.
+ * 
+ * Each BrowserNode is indented by an multiple of its level in the parent/child
+ * hierarchy.  This can be changed using the levelOffset() function.  The default
+ * offset is 30 pixels, which works pretty well with the open/close arrow.
  */
 package edu.nrao.difx.difxview;
 
@@ -62,6 +80,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
         setLevel( 0 );
         _highlightColor = Color.LIGHT_GRAY;
         _backgroundColor = Color.WHITE;
+        _levelOffset = 30;
     }
     
     /*
@@ -131,7 +150,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
      * method should be overridden by any inheriting classes that add new items.
      */
     public void positionItems() {
-        _label.setBounds( _level * 30, 0, 150, _ySize );
+        _label.setBounds( _level * _levelOffset, 0, 150, _ySize );
     }
     
     /*
@@ -218,7 +237,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
         if ( _children.size() > 0 ) {
             int xpts[] = new int[3];
             int ypts[] = new int[3];
-            int levelOffset = ( _level - 1 ) * 30;
+            int levelOffset = ( _level - 1 ) * _levelOffset;
             if (_open) {
                 //  "Open" objects have an arrow that points down.
                 xpts[0] = levelOffset + 10;
@@ -242,7 +261,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
     
     @Override
     public void mouseClicked( MouseEvent e ) {
-        int levelOffset = ( _level - 1 ) * 30;
+        int levelOffset = ( _level - 1 ) * _levelOffset;
         if ( e.getX() > levelOffset + 5 && e.getX() < levelOffset + 25 ) {
             _open = !_open;
             this.updateUI();
@@ -305,6 +324,10 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
         _inBounds = newVal;
     }
     
+    public void levelOffset( int newVal ) { _levelOffset = newVal; }
+    public int levelOffset() { return _levelOffset; }
+    public void visiblePopupButton( boolean newVal ) { _popupButton.setVisible( newVal ); }
+    
     protected boolean _open;
     protected boolean _showThis;
     protected boolean _inBounds;
@@ -318,5 +341,6 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
     protected JLabel _label;
     protected JPopupMenu _popup;
     protected JButton _popupButton;
+    protected int _levelOffset;
 
 }
