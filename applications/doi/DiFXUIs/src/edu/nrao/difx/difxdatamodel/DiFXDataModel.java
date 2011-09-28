@@ -6,8 +6,9 @@ package edu.nrao.difx.difxdatamodel;
 
 import edu.nrao.difx.difxdatabase.DBConnection;
 import edu.nrao.difx.difxdatamodel.DiFXSystemStatus.JobStates;
-import edu.nrao.difx.difxview.MessageDisplayPanel;
+import mil.navy.usno.widgetlib.MessageDisplayPanel;
 import edu.nrao.difx.xmllib.difxmessage.*;
+
 
 
 import edu.nrao.difx.xmllib.difxmessage.DifxStatus.Weight;
@@ -41,6 +42,7 @@ public class DiFXDataModel {
     private List<Object> mListeners = Collections.synchronizedList(new ArrayList<Object>());
     //  Listeners for different types of incoming data
     EventListenerList _hardwareMessageListeners;
+    EventListenerList _jobMessageListeners;
     // alert messages
     private ArrayList<String> mAlerts = new ArrayList<String>();
     private ArrayList<String> mErrors = new ArrayList<String>();
@@ -51,6 +53,7 @@ public class DiFXDataModel {
 
     public DiFXDataModel() {
         _hardwareMessageListeners = new EventListenerList();
+        _jobMessageListeners = new EventListenerList();
     }
 
     public void setDBConnection() {
@@ -60,6 +63,10 @@ public class DiFXDataModel {
 
     public void addHardwareMessageListener( AttributedMessageListener a ) {
         _hardwareMessageListeners.add( AttributedMessageListener.class, a );
+    }
+
+    public void addJobMessageListener( AttributedMessageListener a ) {
+        _jobMessageListeners.add( AttributedMessageListener.class, a );
     }
 
     /**
@@ -491,6 +498,21 @@ public class DiFXDataModel {
     }
 
     private synchronized void processDifxStatusMessage(DifxMessage difxMsg) {
+        
+        //======================================================================
+        //  This is new stuff....
+        //  Dispatch a message to each of the listeners interested in the
+        //  receipt of messages that relate to jobs (which status messages tend
+        //  to be about).
+        Object[] listeners = _jobMessageListeners.getListenerList();
+        int numListeners = listeners.length;
+        for ( int i = 0; i < numListeners; i+=2 ) {
+            if ( listeners[i] == AttributedMessageListener.class )
+                ((AttributedMessageListener)listeners[i+1]).update( difxMsg );
+        }
+        //
+        //======================================================================
+        
         // -- catch some exceptions and keep the program from terminating. . .
         // Message must originate from mpifxcorr or swc000
         int len = (difxMsg.getHeader().getFrom().trim().length());
@@ -877,7 +899,7 @@ public class DiFXDataModel {
             int numListeners = listeners.length;
             for ( int i = 0; i < numListeners; i+=2 ) {
                 if ( listeners[i] == AttributedMessageListener.class )
-                    ((AttributedMessageListener)listeners[i+1]).update( difxMsg.getHeader().getFrom() );
+                    ((AttributedMessageListener)listeners[i+1]).update( difxMsg );
             }
 
         } catch (Exception e) {
@@ -966,7 +988,7 @@ public class DiFXDataModel {
             int numListeners = listeners.length;
             for ( int i = 0; i < numListeners; i+=2 ) {
                 if ( listeners[i] == AttributedMessageListener.class )
-                    ((AttributedMessageListener)listeners[i+1]).update( difxMsg.getHeader().getFrom() );
+                    ((AttributedMessageListener)listeners[i+1]).update( difxMsg );
             }
 
         } catch (Exception e) {
@@ -983,6 +1005,30 @@ public class DiFXDataModel {
     }
 
     private synchronized void processDifxAlertMessage(DifxMessage difxMsg) {
+        
+        //  Dispatch a message to each of the listeners interested in alerts.  Most
+        //  alerts have information about jobs, but some are from hardware.  The
+        //  hardware alerts *appear* to only come from mk5daemon, so we key on it
+        //  when deciding where to send them.
+        if ( difxMsg.getHeader().getIdentifier().trim().equals( "mk5daemon" ) ) {
+            Object[] listeners = _hardwareMessageListeners.getListenerList();
+            int numListeners = listeners.length;
+            for ( int i = 0; i < numListeners; i+=2 ) {
+                if ( listeners[i] == AttributedMessageListener.class )
+                    ((AttributedMessageListener)listeners[i+1]).update( difxMsg );
+            }
+        }
+        else if ( difxMsg.getHeader().getIdentifier().trim().equals( "doi" ) ) {
+        }
+        else {
+            Object[] listeners = _jobMessageListeners.getListenerList();
+            int numListeners = listeners.length;
+            for ( int i = 0; i < numListeners; i+=2 ) {
+                if ( listeners[i] == AttributedMessageListener.class )
+                    ((AttributedMessageListener)listeners[i+1]).update( difxMsg );
+            }
+        }
+        
         // -- catch some exceptions and keep the program from terminating. . .
         try {
             // Just store the alert message, no need to create an object and call updateDataModel()

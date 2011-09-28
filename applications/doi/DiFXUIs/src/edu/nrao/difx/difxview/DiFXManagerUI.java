@@ -5,6 +5,7 @@
  */
 package edu.nrao.difx.difxview;
 
+import mil.navy.usno.widgetlib.MessageDisplayPanel;
 import java.awt.Toolkit;
 import java.awt.Dimension;
 import java.awt.event.WindowListener;
@@ -234,7 +235,7 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
         queueBrowserPanel1 = new edu.nrao.difx.difxview.QueueBrowserPanel();
         bottomSplitPane = new javax.swing.JSplitPane();
         mitigateErrorManager = new edu.nrao.difx.difxview.MitigateErrorManagerPanel();
-        messageCenter = new edu.nrao.difx.difxview.MessageDisplayPanel();
+        messageCenter = new mil.navy.usno.widgetlib.MessageDisplayPanel();
 
         aboutItem.setText("About");
         popupMenu.add(aboutItem);
@@ -527,7 +528,7 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
     private javax.swing.JPanel jPanel2;
     private javax.swing.JButton jobManagerButton;
     private javax.swing.JSplitPane mainSplitPane;
-    private edu.nrao.difx.difxview.MessageDisplayPanel messageCenter;
+    private mil.navy.usno.widgetlib.MessageDisplayPanel messageCenter;
     private edu.nrao.difx.difxview.MitigateErrorManagerPanel mitigateErrorManager;
     private javax.swing.JButton modulesButton;
     private javax.swing.JPopupMenu popupMenu;

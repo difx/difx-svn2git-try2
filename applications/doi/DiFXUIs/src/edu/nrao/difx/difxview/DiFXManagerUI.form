@@ -283,7 +283,7 @@
                 </Constraint>
               </Constraints>
             </Component>
-            <Component class="edu.nrao.difx.difxview.MessageDisplayPanel" name="messageCenter">
+            <Component class="mil.navy.usno.widgetlib.MessageDisplayPanel" name="messageCenter">
               <Constraints>
                 <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JSplitPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JSplitPaneSupportLayout$JSplitPaneConstraintsDescription">
                   <JSplitPaneConstraints position="left"/>

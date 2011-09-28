@@ -5,6 +5,7 @@
  */
 package edu.nrao.difx.difxview;
 
+import mil.navy.usno.widgetlib.BrowserNode;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JSeparator;

@@ -4,6 +4,7 @@
  */
 package edu.nrao.difx.difxview;
 
+import mil.navy.usno.widgetlib.ActivityMonitorLight;
 import edu.nrao.difx.difxdatamodel.Mark5Unit;
 
 import javax.swing.JSeparator;

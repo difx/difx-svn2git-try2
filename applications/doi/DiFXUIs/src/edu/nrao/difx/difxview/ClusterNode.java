@@ -5,6 +5,8 @@
  */
 package edu.nrao.difx.difxview;
 
+import mil.navy.usno.widgetlib.BrowserNode;
+import mil.navy.usno.widgetlib.ActivityMonitorLight;
 import javax.swing.JPopupMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JSeparator;
@@ -31,7 +33,7 @@ import edu.nrao.difx.xmllib.difxmessage.Header;
 import edu.nrao.difx.xmllib.difxmessage.Body;
 import edu.nrao.difx.xmllib.difxmessage.DifxCommand;
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
-
+import edu.nrao.difx.xmllib.difxmessage.DifxAlert;
 /**
  *
  * @author jspitzak
@@ -135,6 +137,14 @@ public class ClusterNode extends BrowserNode {
             }
         });
         _popup.add( monitorItem );
+        JMenuItem alertItem;
+        alertItem = new JMenuItem( "Show Alert Messages" );
+        alertItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                alertWindowAction( e );
+            }
+        });
+        _popup.add( alertItem );
         JMenuItem resetItem = new JMenuItem( "Reset" );
         resetItem.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
@@ -156,6 +166,9 @@ public class ClusterNode extends BrowserNode {
             }
         });
         _popup.add( powerOffItem );
+        _alertWindow = new MessageWindow( "" );
+        _alertWindow.setTitle( "Alerts for " + _label.getText() );
+        _alertWindow.setBounds( 200, 200, 700, 300 );
     }
     
     @Override
@@ -294,6 +307,18 @@ public class ClusterNode extends BrowserNode {
             _monitor.setTitle( _label.getText() );
         }
         _monitor.setVisible( true );
+    }
+    
+    /*
+     * Show the alert message window.
+     */
+    public void alertWindowAction( ActionEvent e ) {
+        if ( _alertWindow == null ) {
+            _alertWindow = new MessageWindow( "" );
+            _alertWindow.setTitle( "Alerts for " + _label.getText() );
+            _alertWindow.setBounds( 200, 200, 500, 400 );
+        }
+        _alertWindow.setVisible( true );
     }
     
     /*
@@ -493,11 +518,20 @@ public class ClusterNode extends BrowserNode {
         }
     }
     
+    public void newAlert( DifxMessage difxMsg ) {
+        _alertWindow.messagePanel().message( 0, 
+                ( difxMsg.getHeader().getFrom() + 
+                " severity " + 
+                difxMsg.getBody().getDifxAlert().getSeverity() ),
+                difxMsg.getBody().getDifxAlert().getAlertMessage() );
+    }
+    
     public void difxController( DiFXController newController ) {
         _difxController = newController;
     }
     
     ProcessorMonitorWindow _monitor;
+    MessageWindow _alertWindow;
     ActivityMonitorLight _networkActivity;
     boolean _showNetworkActivity;
     ColumnTextArea _numCPUs;

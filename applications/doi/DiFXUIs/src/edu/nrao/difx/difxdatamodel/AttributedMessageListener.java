@@ -1,10 +1,11 @@
 /*
  * This is a simple message listener structure that allows us to include a
- * String as data.
+ * DifxMessage as data.
  */
 package edu.nrao.difx.difxdatamodel;
 
 import java.util.EventListener;
+import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 
 /**
  *
@@ -12,6 +13,6 @@ import java.util.EventListener;
  */
 public interface AttributedMessageListener extends EventListener {
     
-    public void update( String data );
+    public void update( DifxMessage data );
     
 }

@@ -4,6 +4,9 @@
  */
 package edu.nrao.difx.difxview;
 
+import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
+import mil.navy.usno.widgetlib.BrowserNode;
+import mil.navy.usno.widgetlib.ActivityMonitorLight;
 import javax.swing.JPanel;
 import javax.swing.JLabel;
 
@@ -15,6 +18,8 @@ import java.util.Iterator;
 
 import edu.nrao.difx.difxdatamodel.*;
 import edu.nrao.difx.difxcontroller.*;
+
+import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 
 /**
  *
@@ -71,9 +76,8 @@ public class HardwareMonitorPanel extends JPanel {
 //        _mDataModel.attachListener( _mListener );
         _mDataModel.addHardwareMessageListener( new AttributedMessageListener() {
             @Override
-            public void update( String source ) {
-                //System.out.println( "message from \"" + source + "\"" );
-                serviceUpdate( source );
+            public void update( DifxMessage data ) {
+                serviceUpdate( data );
             }
         } );
     }
@@ -169,7 +173,11 @@ public class HardwareMonitorPanel extends JPanel {
      * A message has been received from the named processor/mark5.  Update the
      * data associated with it.
      */
-    protected void serviceUpdate( String nodeName ) {
+    protected void serviceUpdate( DifxMessage difxMsg ) {
+        
+        //  We've got the entire message to deal with here...maybe we want to do
+        //  more than this with it?
+        String nodeName = difxMsg.getHeader().getFrom();
         
         //  First see if the data model considers this a "processor" by locating
         //  it in the data model's list of processors.
@@ -192,8 +200,13 @@ public class HardwareMonitorPanel extends JPanel {
                         processor.difxController( _mController );
                         _clusterNodes.addChild( processor );
                     }
-                    //  Update the processor with new data.
-                    processor.setData( thisProcessor );
+                    //  If this is an "alert" relating to this processor, send it to the
+                    //  processing node.  Otherwise, update the processor with new data
+                    //  from the data base.
+                    if ( difxMsg.getBody().getDifxAlert() != null )
+                        processor.newAlert( difxMsg );
+                    else
+                        processor.setData( thisProcessor );
                     //  We are done if we've made it here - bail out.
                     return;
                 }
@@ -235,7 +248,13 @@ public class HardwareMonitorPanel extends JPanel {
                         mk5Module.difxController( _mController );
                         _mk5Modules.addChild( mk5Module );
                     }
-                    mk5Module.setData( thisMark5 );
+                    //  If this is an "alert" relating to this mark5, send it to the
+                    //  processing node.  Otherwise, update the mark5 with new data
+                    //  from the data base.
+                    if ( difxMsg.getBody().getDifxAlert() != null )
+                        mk5Module.newAlert( difxMsg );
+                    else
+                        mk5Module.setData( thisMark5 );
                     return;
                 }
             }

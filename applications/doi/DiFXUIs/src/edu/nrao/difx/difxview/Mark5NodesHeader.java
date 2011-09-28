@@ -4,6 +4,7 @@
  */
 package edu.nrao.difx.difxview;
 
+import mil.navy.usno.widgetlib.BrowserNode;
 import javax.swing.JCheckBoxMenuItem;
 
 import java.awt.event.ActionListener;
