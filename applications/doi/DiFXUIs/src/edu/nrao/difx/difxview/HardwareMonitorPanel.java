@@ -6,8 +6,8 @@ package edu.nrao.difx.difxview;
 
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.BrowserNode;
-import mil.navy.usno.widgetlib.ActivityMonitorLight;
-import javax.swing.JPanel;
+import mil.navy.usno.widgetlib.TearOffPanel;
+
 import javax.swing.JLabel;
 
 import java.awt.Font;
@@ -25,7 +25,7 @@ import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
  *
  * @author jspitzak
  */
-public class HardwareMonitorPanel extends JPanel {
+public class HardwareMonitorPanel extends TearOffPanel {
 
     public HardwareMonitorPanel() {
         initComponents();
@@ -57,9 +57,8 @@ public class HardwareMonitorPanel extends JPanel {
         _mk5Modules = new Mark5NodesHeader( "Mark5 Modules" );
         _mk5Modules.backgroundColor( new Color( 255, 204, 153 ) );
         _browserPane.addNode( _mk5Modules );
-        ActivityMonitorLight foo = new ActivityMonitorLight();
     }
-    
+         
     /*
      * Set the data model, which provides us with data from DiFX.
      */

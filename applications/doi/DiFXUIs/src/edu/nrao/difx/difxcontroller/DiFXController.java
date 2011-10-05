@@ -95,7 +95,7 @@ public class DiFXController {
    }
 
    // Init the view, model and message listener
-   public void initialize(DiFXDataModel model, DiFXManagerUI view)
+   public void initialize(DiFXDataModel model, JFrame view)
    {
       // initialize the model and view
       mDataModel = model;

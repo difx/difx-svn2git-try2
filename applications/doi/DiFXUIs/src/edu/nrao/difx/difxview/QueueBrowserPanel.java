@@ -6,6 +6,8 @@ package edu.nrao.difx.difxview;
 
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.BrowserNode;
+import mil.navy.usno.widgetlib.TearOffPanel;
+
 import javax.swing.JPanel;
 import javax.swing.JLabel;
 
@@ -22,7 +24,7 @@ import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 import edu.nrao.difx.xmllib.difxmessage.DifxStatus;
 import edu.nrao.difx.xmllib.difxmessage.DifxStatus.Weight;
 
-public class QueueBrowserPanel extends JPanel {
+public class QueueBrowserPanel extends TearOffPanel {
 
     public QueueBrowserPanel() {
         setLayout( null );

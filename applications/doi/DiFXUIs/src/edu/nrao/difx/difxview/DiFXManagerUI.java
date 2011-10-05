@@ -462,7 +462,7 @@ public class DiFXManagerUI extends javax.swing.JFrame implements WindowListener 
      * 
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
+    public static void mainiac(String args[]) {
 
         java.awt.EventQueue.invokeLater(new Runnable() {
 
