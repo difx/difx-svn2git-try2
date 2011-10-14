@@ -5,7 +5,7 @@
 
 package edu.nrao.difx.difxutilities;
 
-import edu.nrao.difx.difxdatamodel.DOISystemConfig;
+import edu.nrao.difx.difxview.SystemSettings;
 import edu.nrao.difx.difxdatamodel.DiFXSystemConfig;
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -29,7 +29,7 @@ public class SendMessage {
       System.out.println();
    }
 
-    public static void writeToSocket(String outString)
+    public static void writeToSocket( String outString, SystemSettings systemSettings )
     {
         try
         {
@@ -38,8 +38,8 @@ public class SendMessage {
             // Marchall bytes, create packet and send
             byte[] buffer = outString.getBytes();            
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length,
-                                                       InetAddress.getByName(DOISystemConfig.IpAddress),
-                                                       DOISystemConfig.Port);
+                                                       InetAddress.getByName( systemSettings.ipAddress() ),
+                                                       systemSettings.port() );
             //printPacket(packet);
             sock.setTimeToLive(5);
             sock.send(packet);

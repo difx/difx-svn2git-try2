@@ -26,6 +26,8 @@ import java.text.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import edu.nrao.difx.difxview.SystemSettings;
+
 public class Queue extends DiFXObject
 {
    public enum QueueStopEvents {
@@ -65,14 +67,16 @@ public class Queue extends DiFXObject
    // Pause queue
    private boolean mPause = false;
 
-   private Queue()
-   {
-      // some jobs need to verify, so hand it the datamodel
-      this.setDataModel(null);
-   }
+   protected SystemSettings _systemSettings;
+   
+    private Queue( SystemSettings systemSettings ) {
+        _systemSettings = systemSettings;
 
-   public Queue(DiFXDataModel model)
-   {
+        // some jobs need to verify, so hand it the datamodel
+        this.setDataModel(null);
+    }
+
+    public Queue(DiFXDataModel model) {
       // some jobs need to verify, so hand it the datamodel
       this.setDataModel(model);
    }
@@ -925,7 +929,7 @@ System.out.printf("Add disjoint job ==> %s %s %s %s. \n", job.getObjName(), job.
                job.setCorrelationStartUTC();
                setCurrentJob(job);
 
-               SendMessage.writeToSocket( xmlString );
+               SendMessage.writeToSocket( xmlString, _systemSettings );
             }
             else
             {
@@ -963,7 +967,7 @@ System.out.printf("Add disjoint job ==> %s %s %s %s. \n", job.getObjName(), job.
                 // do not set the current job to null until the mpidone is received.
                 // setCurrentJob(null);
 
-                SendMessage.writeToSocket( xmlString );
+                SendMessage.writeToSocket( xmlString, _systemSettings );
             }
             else
             {
@@ -1124,7 +1128,7 @@ System.out.printf("Add disjoint job ==> %s %s %s %s. \n", job.getObjName(), job.
             setCurrentJob(null);
 
             // do not send until fully tested.
-            SendMessage.writeToSocket( xmlString );
+            SendMessage.writeToSocket( xmlString, _systemSettings );
          }
          else
          {
@@ -1154,7 +1158,7 @@ System.out.printf("Add disjoint job ==> %s %s %s %s. \n", job.getObjName(), job.
             setCurrentJob(null);
 
             // do not send until fully tested.
-            SendMessage.writeToSocket( xmlString );
+            SendMessage.writeToSocket( xmlString, _systemSettings );
          }
          else
          {

@@ -4,7 +4,7 @@
  */
 package edu.nrao.difx.difxcontroller;
 
-import edu.nrao.difx.difxdatamodel.DOISystemConfig;
+import edu.nrao.difx.difxview.SystemSettings;
 import edu.nrao.difx.difxdatamodel.DiFXSystemConfig;
 import java.net.*;
 import java.io.*;
@@ -25,11 +25,14 @@ public class ReadMessageThread implements Runnable
 
    // -- always start the process message thread before this thread.
    private ProcessMessageThread mMessageQueue;
+   
+   SystemSettings _systemSettings;
 
    // Constructor, give the thread a name
-   public ReadMessageThread(String name)
+   public ReadMessageThread( String name, SystemSettings systemSettings )
    {
       mThreadName = name;
+      _systemSettings = systemSettings;
    }
 
    // Stop thread
@@ -71,8 +74,8 @@ public class ReadMessageThread implements Runnable
             String startDate = Calendar.getInstance().getTime().toString();
 
             // create socket and join group
-            int    port    = DOISystemConfig.Port;
-            String address = DOISystemConfig.IpAddress;
+            int    port    = _systemSettings.port();
+            String address = _systemSettings.ipAddress();
 
             // create multicast socket
             MulticastSocket socket = new MulticastSocket(port);
@@ -86,7 +89,7 @@ public class ReadMessageThread implements Runnable
                try
                {
                   // create buffer and datagram packet
-                  byte[] buffer = new byte[DOISystemConfig.BufferSize];    //1050
+                  byte[] buffer = new byte[_systemSettings.bufferSize()];    //1050
                   DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
                   // Wait for datagram packet

@@ -227,7 +227,6 @@ public class ResourceManagerUI extends javax.swing.JFrame
       // check dataModel and hand it an implementation of update()...
       if (mDataModel != null)
       {
-         this.setTitle(this.getTitle() + " " + DOISystemConfig.DOIVersion);
          System.out.println("***************** Resource Manager attach listener.");
 
          // create listener implementation of update()...

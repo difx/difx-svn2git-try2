@@ -6,7 +6,6 @@
 package edu.nrao.difx.difxview;
 
 import edu.nrao.difx.difxcontroller.DiFXController;
-import edu.nrao.difx.difxdatamodel.DOISystemConfig;
 
 import edu.nrao.difx.difxdatamodel.DiFXDataModel;
 import edu.nrao.difx.difxdatamodel.Mark5Unit;
@@ -242,7 +241,6 @@ public class ModuleManagerUI extends javax.swing.JFrame
       // Hand the thread manager the implementation of update()...
       if (mDataModel != null)
       {
-         this.setTitle(this.getTitle() + " " + DOISystemConfig.DOIVersion);
          System.out.println("***************** Module Manager attach listener.");
 
          // create listener implementation of update()...

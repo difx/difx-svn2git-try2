@@ -5,7 +5,6 @@
 package edu.nrao.difx.difxview;
 
 import mil.navy.usno.widgetlib.MessageDisplayPanel;
-import edu.nrao.difx.difxutilities.BareBonesBrowserLaunch;
 
 import java.awt.Toolkit;
 import java.awt.Dimension;
@@ -42,48 +41,59 @@ public class DiFXUI extends JFrame implements WindowListener {
 
     //  This thing collects messages for us.  It is static so we can use it in
     //  the "main" method.
-    private static MessageDisplayPanel messageCtr = null;
+    //private static MessageDisplayPanel messageCtr = null;
     
-    private static final long serialVersionUID = 1;
+    //private static final long serialVersionUID = 1;
     // Allow only one controller and data model instance
-    static DiFXDataModel mDataModel;
-    static DiFXController mController;
+//    static DiFXDataModel _dataModel;
+//    static DiFXController _difxController;
     // Keep a copy of the current running job
-    JobManagerUI mCurrentJM;
+    //JobManagerUI mCurrentJM;
 
-    public DiFXUI() {        
-        //  This is supposed to set the look and feel.  Using the "cross platform"
-        //  look and feel makes the menu look the same everywhere.
-        try {
-            UIManager.setLookAndFeel( UIManager.getCrossPlatformLookAndFeelClassName() );
-        }
-        catch ( Exception e ) {
-            //  This thing throws exceptions, but we ignore them.  Shouldn't hurt
-            //  us - if the look and feel isn't set, the default should at least
-            //  be visible.
-        }
+    public DiFXUI( String settingsFile ) {
+        
+        //  Produce system settings using the settings file that came from command
+        //  line arguments (which might be null, indicating we should use default
+        //  values).
+        _systemSettings = new SystemSettings( settingsFile );
+
+        //  With system settings finalized, we may now connect to the database.
+        //connectToDB();
+        //readResourcesConfig( _systemSettings.resourcesFile() );
+
+        _systemSettings.setLookAndFeel();
+        
+        //  This function builds all of the GUI components.
         initComponents();
         
-        //  Set the static message collector.  We want it to absorb logging
-        //  messages as well.
-        messageCtr = _messageCenter;
-        //  Set the message center to absorb "logging" messages as well.  The
+        //  Set the message center to absorb "logging" messages.  The
         //  "global" string tells it to capture everything (you can specify more
         //  restrictive names if you are perverse enough to delve into the Java
         //  logging system).
-        messageCtr.captureLogging( "global" );
+        _messageCenter.captureLogging( "global" );
         
-        // Create multi cast thread and data model
-        mDataModel = new DiFXDataModel();
-        mDataModel.messageDisplayPanel( _messageCenter );
-        mController = new DiFXController();
+        //  Create a "data model" for processing incoming data transmissions
+        _dataModel = new DiFXDataModel( _systemSettings );
+        _dataModel.messageDisplayPanel( _messageCenter );
         
-        //mitigateErrorManager.initialize( messageCenter, mDataModel, mController );
+        //  The DiFX Controller runs threads (why, I'm not sure...)
+        _difxController = new DiFXController( _systemSettings );
+                try {
+                    _difxController.startController();
+                } catch (InterruptedException ex) {
+                    // threads failed so log an error
+                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex);
+                }
+
+                // initialize controller with model, view
+                _difxController.initialize( _dataModel, this );
         
-        _queueBrowser.dataModel( mDataModel );
-        _hardwareMonitor.dataModel( mDataModel );
-        mDataModel.notifyListeners();
-        _hardwareMonitor.controller( mController );
+        //mitigateErrorManager.initialize( messageCenter, _dataModel, _difxController );
+        
+        _queueBrowser.dataModel( _dataModel );
+        _hardwareMonitor.dataModel( _dataModel );
+        _dataModel.notifyListeners();
+        _hardwareMonitor.controller( _difxController );
 
         /*
          * By default, set the main frame to take over the screen and subwindow
@@ -98,6 +108,9 @@ public class DiFXUI extends JFrame implements WindowListener {
          */
         addWindowListener(this);
         
+        /*
+         * This stuff is used to trap resize events.
+         */
         _this = this;
 		this.addComponentListener(new java.awt.event.ComponentAdapter() 
 		{
@@ -113,43 +126,6 @@ public class DiFXUI extends JFrame implements WindowListener {
 //        java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, "WHAT IS THIS??");
     }
     
-    /*
-     * This is a function swiped from the following web link:
-     * http://blog.darevay.com/2011/06/jsplitpainintheass-a-less-abominable-fix-for-setdividerlocation/
-     * It tries to fix the idiotic behavior of "setDividerLocation" for JSplitPanes.
-     * It kind of works....mostly....sometimes....
-     */
-//    public static JSplitPane setDividerLocation(final JSplitPane splitter,
-//            final double proportion) {
-//        if (splitter.isShowing()) {
-//            if (splitter.getWidth() > 0 && splitter.getHeight() > 0) {
-//                splitter.setDividerLocation(proportion);
-//            } else {
-//                splitter.addComponentListener(new ComponentAdapter() {
-//
-//                    @Override
-//                    public void componentResized(ComponentEvent ce) {
-//                        splitter.removeComponentListener(this);
-//                        setDividerLocation(splitter, proportion);
-//                    }
-//                });
-//            }
-//        } else {
-//            splitter.addHierarchyListener(new HierarchyListener() {
-//
-//                @Override
-//                public void hierarchyChanged(HierarchyEvent e) {
-//                    if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0
-//                            && splitter.isShowing()) {
-//                        splitter.removeHierarchyListener(this);
-//                        setDividerLocation(splitter, proportion);
-//                    }
-//                }
-//            });
-//        }
-//        return splitter;
-//    }
-
     /*
      * Window event methods - we need each of these, even though we are only
      * interested in the "Closing" method.
@@ -183,47 +159,44 @@ public class DiFXUI extends JFrame implements WindowListener {
     public void windowDeiconified(WindowEvent e) {
     }
 
-    private static void serviceDataModel() {
-        // Add code to update the resource objects
-        // System.out.printf("***************** Static - DiFX Manager service data model. \n");
-        if (mDataModel != null) {
-            // Flag the resources that can not communicate
-            mDataModel.determineLostResources();
+    //  Commented out Oct 11, 2011
+    //  Called from the main() function.  Not sure why.  Seems fine without it.
+//    private static void serviceDataModel() {
+//        // Add code to update the resource objects
+//        // System.out.printf("***************** Static - DiFX Manager service data model. \n");
+//        if (_dataModel != null) {
+//            // Flag the resources that can not communicate
+//            _dataModel.determineLostResources();
+//
+//            // Determine state of all queued jobs  -- done for each mark5status
+//            // _dataModel.determineStateOfAllJobs();
+//        }
+//        // System.out.printf("***************** Static - DiFX Manager service data model complete. \n");
+//    }
 
-            // Determine state of all queued jobs  -- done for each mark5status
-            // mDataModel.determineStateOfAllJobs();
-        }
-        // System.out.printf("***************** Static - DiFX Manager service data model complete. \n");
-    }
+//    private static void readResourcesConfig(String fileToOpen) {
+//        //System.out.printf("***************** DiFX Manager read resources config file data. \n");
+//        if (_dataModel != null) {
+//            // read resource config data
+//            _dataModel.readResourcesConfig(fileToOpen);
+//        }
+//    }
 
-    private static void updateView() {
-        // Add code to update the GUI with resource object
-        //System.out.printf("***************** Static - DiFX Manager update the view. \n");
-    }
+//    private static void readSystemConfig(String fileToOpen) {
+//        //System.out.printf("***************** DiFX Manager read resources config file data. \n");
+//        if (_dataModel != null) {
+//            // read resource config data
+//            _dataModel.readSystemConfig(fileToOpen);
+//        }
+//    }
 
-    private static void readResourcesConfig(String fileToOpen) {
-        //System.out.printf("***************** DiFX Manager read resources config file data. \n");
-        if (mDataModel != null) {
-            // read resource config data
-            mDataModel.readResourcesConfig(fileToOpen);
-        }
-    }
-
-    private static void readSystemConfig(String fileToOpen) {
-        //System.out.printf("***************** DiFX Manager read resources config file data. \n");
-        if (mDataModel != null) {
-            // read resource config data
-            mDataModel.readSystemConfig(fileToOpen);
-        }
-    }
-
-    private static void connectToDB() {
-        //System.out.printf("***************** DiFX Manager read resources config file data. \n");
-        if (mDataModel != null) {
-            // read resource config data
-            mDataModel.setDBConnection();
-        }
-    }
+//    private static void connectToDB() {
+//        //System.out.printf("***************** DiFX Manager read resources config file data. \n");
+//        if (_dataModel != null) {
+//            // read resource config data
+//            _dataModel.setDBConnection();
+//        }
+//    }
     
     @Override
     public void setBounds( int x, int y, int w, int h ) {
@@ -380,13 +353,34 @@ public class DiFXUI extends JFrame implements WindowListener {
         } );
         helpMenu.add( aboutItem );
         helpMenu.add( new JSeparator() );
-        JMenuItem helpIndexItem = new JMenuItem( "Help Index" );
+        JMenuItem helpIndexItem = new JMenuItem( "GUI Documentation Index" );
         helpIndexItem.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                helpAction( "index" );
+                _systemSettings.launchGUIHelp( "index.html" );
             }
         } );
         helpMenu.add( helpIndexItem );
+        JMenuItem launchUsersGroupItem = new JMenuItem( "DiFX Users Group" );
+        launchUsersGroupItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _systemSettings.launchDiFXUsersGroup();
+            }
+        } );
+        helpMenu.add( launchUsersGroupItem );
+        JMenuItem launchWikiItem = new JMenuItem( "DiFX Wiki" );
+        launchWikiItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _systemSettings.launchDiFXWiki();
+            }
+        } );
+        helpMenu.add( launchWikiItem );
+        JMenuItem launchSVNItem = new JMenuItem( "DiFX svn" );
+        launchSVNItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _systemSettings.launchDiFXSVN();
+            }
+        } );
+        helpMenu.add( launchSVNItem );
         _menuBar.add( helpMenu );
         this.add( _menuBar );
         this.add( _mainSplitPane );
@@ -394,7 +388,7 @@ public class DiFXUI extends JFrame implements WindowListener {
     }                  
 
     private void exitOperation() {
-        mController.stopController();
+        _difxController.stopController();
         System.exit(0);
     }
     
@@ -402,6 +396,7 @@ public class DiFXUI extends JFrame implements WindowListener {
      * Bring up a window containing settings for the GUI.
      */
     private void showSettingsAction() {
+        _systemSettings.setVisible( true );
     }
     
     /*
@@ -444,8 +439,10 @@ public class DiFXUI extends JFrame implements WindowListener {
      */
     protected void hardwareMonitorTearOffEvent() {
         if ( _hardwareMonitor.tearOffState() ) {
-            if ( _hardwareMonitorWindow == null )
+            if ( _hardwareMonitorWindow == null ) {
                 _hardwareMonitorWindow = new JFrame();
+                _hardwareMonitorWindow.setDefaultCloseOperation( javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE );
+            }
             _hardwareMonitorWindow.setSize( _hardwareMonitor.getWidth(), _hardwareMonitor.getHeight() );
             _hardwareMonitorWindow.add( _hardwareMonitor );
             _hardwareMonitorWindow.setVisible( true );
@@ -470,8 +467,10 @@ public class DiFXUI extends JFrame implements WindowListener {
      */
     protected void queueBrowserTearOffEvent() {
         if ( _queueBrowser.tearOffState() ) {
-            if ( _queueBrowserWindow == null )
+            if ( _queueBrowserWindow == null ) {
                 _queueBrowserWindow = new JFrame();
+                _queueBrowserWindow.setDefaultCloseOperation( javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE );
+            }
             _queueBrowserWindow.setSize( _queueBrowser.getWidth(), _queueBrowser.getHeight() );
             _queueBrowserWindow.add( _queueBrowser );
             _queueBrowserWindow.setVisible( true );
@@ -493,29 +492,29 @@ public class DiFXUI extends JFrame implements WindowListener {
     private void projectManagerButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                     
 
         // Display the GUI
-        ProjectManagerUI thePM = ProjectManagerUI.instance(mDataModel, mController);
+        ProjectManagerUI thePM = ProjectManagerUI.instance( _systemSettings, _dataModel, _difxController);
         // singleton, attach listener in the ProjectManagerUI class not here.
         // thePM.attachListenerCallback();
         thePM.setVisible(true);
-        mDataModel.notifyListeners();
+        _dataModel.notifyListeners();
 
     }                                                    
 
     private void resourceManagerButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                      
 
         // Display the GUI
-        ResourceManagerUI theRM = ResourceManagerUI.instance(mDataModel, mController);
+        ResourceManagerUI theRM = ResourceManagerUI.instance(_dataModel, _difxController);
         // singleton, attach listener in the ResourceManagerUI class not here.
         //theRM.attachListenerCallback();
         theRM.setVisible(true);
-        mDataModel.notifyListeners();
+        _dataModel.notifyListeners();
 
     }                                                     
 
     private void jobManagerButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                 
 
         // Display the GUI, get current job running
-        Queue queue = mDataModel.getQueue();
+        Queue queue = _dataModel.getQueue();
         if (queue != null) {
             Job job = queue.getCurrentJob();
             String jobName = null;
@@ -529,7 +528,7 @@ public class DiFXUI extends JFrame implements WindowListener {
                 job = null;
             }
 
-            JobManagerUI theJM = new JobManagerUI(mDataModel, mController, jobName, true);
+            JobManagerUI theJM = new JobManagerUI(_dataModel, _difxController, jobName, true);
             theJM.attachListenerCallback();
             theJM.setVisible(true);
 
@@ -543,22 +542,22 @@ public class DiFXUI extends JFrame implements WindowListener {
     private void modulesButtonActionPerformed(java.awt.event.ActionEvent evt) {                                              
 
         // Display the GUI
-        ModuleManagerUI theMM = ModuleManagerUI.instance(mDataModel, mController);
+        ModuleManagerUI theMM = ModuleManagerUI.instance(_dataModel, _difxController);
         // singleton, attach listener in the ResourceManagerUI class not here.
         // theMM.attachListenerCallback();
         theMM.setVisible(true);
-        mDataModel.notifyListeners();
+        _dataModel.notifyListeners();
 
     }                                             
 
     private void queueManagerButtonActionPerformed(java.awt.event.ActionEvent evt)                                                   
     {                                                       
         // Display the GUI
-        QueueManagerUI theQM = QueueManagerUI.instance(mDataModel, mController);
+        QueueManagerUI theQM = QueueManagerUI.instance(_dataModel, _difxController);
         // singleton, attach listener in the QueueManagerUI class not here.
         // theQM.attachListenerCallback();
         theQM.setVisible(true);
-        mDataModel.notifyListeners();
+        _dataModel.notifyListeners();
 
     }
     
@@ -567,82 +566,72 @@ public class DiFXUI extends JFrame implements WindowListener {
      * passed so that the window pops up near the mouse.
      */
     protected void aboutAction( ActionEvent e ) {
+        if ( _aboutWindow == null )
+            _aboutWindow = new VersionWindow();
+        _aboutWindow.setBounds( 150, 20, 300, 100 );
+        _aboutWindow.setVisible( true );
     }
     
-    /*
-     * Launch a browser containing help on a given topic.  The topic is described
-     * by the passed string.
-     */
-    protected void helpAction( String topic ) {
-        //BareBonesBrowserLaunch.openURL( "file:///Users/jspitzak/fltk2/documentation/index.html" );
-        BareBonesBrowserLaunch.openURL( "http://www.nyt.com" );
-    }
-
-
     /**
      * This is the main entry point of the GUI
      * 
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
+    public static void main( final String args[] ) {
 
-        java.awt.EventQueue.invokeLater(new Runnable() {
+        //  Why did we do this????  Seems fine without it...
+        //java.awt.EventQueue.invokeLater(new Runnable() {
 
-            @Override
-            public void run() {
-                // create manager UI
-                DiFXUI view = new DiFXUI();
-
+            //@Override
+            //public void run() {
+                
+                // Create manager UI using the first command line argument as a system settings
+                // file.
+                String settingsFile = null;
+                if ( args.length > 1 )
+                    settingsFile = args[1];
+                DiFXUI view = new DiFXUI( settingsFile );
                 view.setVisible(true);
-                view.setTitle(view.getTitle() + " " + DOISystemConfig.DOIVersion);
+                view.setTitle( view.getTitle() + " " + VersionWindow.version() );
 
-                if (messageCtr != null) {
-                    messageCtr.message( 0, null, "***************** DiFX Manager attach listener. \n");
-                } else {
-                    System.out.println("***************** DiFX Manager attach listener. \n");
-                }
-
-                //  Read the GUI configuration file, if one exists.
-                try {
-                    readSystemConfig( DOISystemConfig.getConfigFile() );
-                } catch (Exception ex) {
-                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE,
-                            ex.getMessage() );
-                    //System.exit(1);     
-                }
-                connectToDB();
-                readResourcesConfig(DOISystemConfig.ResourcesFile);
+//                if (messageCtr != null) {
+//                    messageCtr.message( 0, null, "***************** DiFX Manager attach listener. \n");
+//                } else {
+//                    System.out.println("***************** DiFX Manager attach listener. \n");
+//                }
 
                 // attach the listener and implementation of update()...
-                mDataModel.attachListener(new MessageListener() {
-
-                    @Override
-                    public void update() {
-                        //System.out.printf("***************** DiFX Manager service data model and view. \n");
-                        serviceDataModel();
-                        //UpdateView();
-                        //System.out.println("***************** DiFX Manager service data model and view complete. \n");
-                    }
-                });
+                //  Commented out Oct 11, 2011
+                //  Not sure what purpose this serves.
+//                _dataModel.attachListener(new MessageListener() {
+//
+//                    @Override
+//                    public void update() {
+//                        //System.out.printf("***************** DiFX Manager service data model and view. \n");
+//                        serviceDataModel();
+//                        //UpdateView();
+//                        //System.out.println("***************** DiFX Manager service data model and view complete. \n");
+//                    }
+//                });
 
                 // kick start the message threads....start controller
-                try {
-                    mController.startController();
-                } catch (InterruptedException ex) {
-                    // threads failed so log an error
-                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex);
-                }
-
-                // initialize controller with model, view
-                mController.initialize(mDataModel, view);
+//                try {
+//                    _difxController.startController();
+//                } catch (InterruptedException ex) {
+//                    // threads failed so log an error
+//                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex);
+//                }
+//
+//                // initialize controller with model, view
+//                _difxController.initialize(_dataModel, view);
 
                 // diplay the error UI
-                //MitigateErrorManagerUI theMEM = MitigateErrorManagerUI.instance(mDataModel, mController);
+                //MitigateErrorManagerUI theMEM = MitigateErrorManagerUI.instance(_dataModel, _difxController);
                 //theMEM.setVisible(true);
 
 
-            }
-        });
+            //}
+        //});
     }
                     
     protected HardwareMonitorPanel _hardwareMonitor;
@@ -657,5 +646,10 @@ public class DiFXUI extends JFrame implements WindowListener {
     protected JFrame _hardwareMonitorWindow;
     protected JFrame _queueBrowserWindow;
     protected double _dividerLocation;
+    protected VersionWindow _aboutWindow;
+    
+    protected SystemSettings _systemSettings;
 
+    protected DiFXDataModel _dataModel;
+    protected DiFXController _difxController;
 }

@@ -4,6 +4,7 @@
  */
 package edu.nrao.difx.difxdatamodel;
 
+import edu.nrao.difx.difxview.SystemSettings;
 import edu.nrao.difx.difxdatabase.DBConnection;
 import edu.nrao.difx.difxdatamodel.DiFXSystemStatus.JobStates;
 import mil.navy.usno.widgetlib.MessageDisplayPanel;
@@ -38,7 +39,8 @@ public class DiFXDataModel {
     private List<Project> mProjects = new ArrayList<Project>();
     private List<JobProject> mJobsProjects = new ArrayList<JobProject>();
     private Queue mQueue = new Queue(this);
-    private DBConnection mDBConnection = null;
+    //private DBConnection mDBConnection = null;
+    private DBConnection _dbConnection;
     private List<Object> mListeners = Collections.synchronizedList(new ArrayList<Object>());
     //  Listeners for different types of incoming data
     EventListenerList _hardwareMessageListeners;
@@ -50,15 +52,29 @@ public class DiFXDataModel {
     private int mRecCount = 0;
     // internal message collection/display
     private MessageDisplayPanel _messageDisplayPanel;
+    
+    // Contains all settings used to run the GUI
+    SystemSettings _systemSettings;
 
-    public DiFXDataModel() {
+    public DiFXDataModel( SystemSettings newSettings ) {
         _hardwareMessageListeners = new EventListenerList();
         _jobMessageListeners = new EventListenerList();
+        _systemSettings = newSettings;
+        updateFromSystemSettings();
     }
 
-    public void setDBConnection() {
-        mDBConnection = new edu.nrao.difx.difxdatabase.DBConnection(DOISystemConfig.DB_URL, DOISystemConfig.ORACLE_JDBC_DRIVER,
-                DOISystemConfig.DB_SID, DOISystemConfig.DB_PWD);
+//    public void setDBConnection() {
+//        mDBConnection = new edu.nrao.difx.difxdatabase.DBConnection( _systemSettings.dbURL(), _systemSettings.oracleJdbcDriver(),
+//                _systemSettings.dbSID(), _systemSettings.dbPWD() );
+//    }
+
+    /*
+     * Alter things based on changed system settings.
+     */
+    private void updateFromSystemSettings() {
+        _dbConnection = new edu.nrao.difx.difxdatabase.DBConnection( _systemSettings.dbURL(), _systemSettings.oracleJdbcDriver(),
+                _systemSettings.dbSID(), _systemSettings.dbPWD() );
+        readResourcesConfig( _systemSettings.resourcesFile() );
     }
 
     public void addHardwareMessageListener( AttributedMessageListener a ) {
@@ -431,13 +447,13 @@ public class DiFXDataModel {
     }
 
     // Queue get/set methods
-    public DBConnection getDBConnection() {
-        return this.mDBConnection;
+    public DBConnection dbConnection() {
+        return _dbConnection;
     }
 
-    public void setDBConnection(DBConnection newDBConnection) {
-        this.mDBConnection = newDBConnection;
-    }
+//    public void setDBConnection(DBConnection newDBConnection) {
+//        this.mDBConnection = newDBConnection;
+//    }
 
     // Listener attach/detach methods
     public void attachListener(MessageListener l) {
@@ -1102,8 +1118,8 @@ public class DiFXDataModel {
             processDOIJobCommandMessage(difxMsg);
         } else if (body.getDoiQueueCommand() != null) {
             processDOIQueueCommandMessage(difxMsg);
-        } else if (body.getDoiSystemConfig() != null) {
-            processDOISystemConfigMessage(difxMsg);
+//        } else if (body.getDoiSystemConfig() != null) {
+//            processDOISystemConfigMessage(difxMsg);
         } else if (body.getDoiError() != null) {
             processDOIErrorMessage(difxMsg);
         }
@@ -1335,27 +1351,24 @@ public class DiFXDataModel {
         // command it
     }
 
-    private void processDOISystemConfigMessage(DifxMessage difxMsg) {
-        // fill in the System Config object
-        // DOISystemConfig config = new DOISystemConfig();
-
-        DOISystemConfig.DiFXHome = (difxMsg.getBody().getDoiSystemConfig()).getDifxHome();
-        DOISystemConfig.ResourcesFile = (difxMsg.getBody().getDoiSystemConfig()).getResourcesFile();
-        DOISystemConfig.DB_HOST = (difxMsg.getBody().getDoiSystemConfig()).getDbHost();
-        DOISystemConfig.DB_SID = (difxMsg.getBody().getDoiSystemConfig()).getDbSID();
-        DOISystemConfig.DB_PWD = (difxMsg.getBody().getDoiSystemConfig()).getDbPassword();
-        DOISystemConfig.ORACLE_JDBC_DRIVER = (difxMsg.getBody().getDoiSystemConfig()).getDbJdbcDriver();
-        DOISystemConfig.ORACLE_JDBC_PORT = (difxMsg.getBody().getDoiSystemConfig()).getDbJdbcPort();
-        DOISystemConfig.DB_URL = (difxMsg.getBody().getDoiSystemConfig()).getDbUrl();
-        DOISystemConfig.IpAddress = (difxMsg.getBody().getDoiSystemConfig()).getIpAddress();
-        DOISystemConfig.Port = (difxMsg.getBody().getDoiSystemConfig()).getPort();
-        DOISystemConfig.BufferSize = (difxMsg.getBody().getDoiSystemConfig()).getBufferSize();
-        DOISystemConfig.LoggingEnabled = (difxMsg.getBody().getDoiSystemConfig()).isLoggingEnabled();
-        DOISystemConfig.StatusValidDuration = (difxMsg.getBody().getDoiSystemConfig()).getStatusValidDuration();
-
-        // updateDataModel(config);
-        // config = null;
-    }
+//    private void processDOISystemConfigMessage(DifxMessage difxMsg) {
+//        _systemSettings.home( (difxMsg.getBody().getDoiSystemConfig()).getDifxHome() );
+//        _systemSettings.resourcesFile( (difxMsg.getBody().getDoiSystemConfig()).getResourcesFile() );
+//        _systemSettings.dbHost( (difxMsg.getBody().getDoiSystemConfig()).getDbHost() );
+//        _systemSettings.dbSID( (difxMsg.getBody().getDoiSystemConfig()).getDbSID() );
+//        _systemSettings.dbPWD( (difxMsg.getBody().getDoiSystemConfig()).getDbPassword() );
+//        _systemSettings.oracleJdbcDriver( (difxMsg.getBody().getDoiSystemConfig()).getDbJdbcDriver() );
+//        _systemSettings.oracleJdbcPort( (difxMsg.getBody().getDoiSystemConfig()).getDbJdbcPort() );
+//        _systemSettings.dbURL( (difxMsg.getBody().getDoiSystemConfig()).getDbUrl() );
+//        _systemSettings.ipAddress( (difxMsg.getBody().getDoiSystemConfig()).getIpAddress() );
+//        _systemSettings.port( (difxMsg.getBody().getDoiSystemConfig()).getPort() );
+//        _systemSettings.bufferSize( (difxMsg.getBody().getDoiSystemConfig()).getBufferSize() );
+//        _systemSettings.loggingEnabled( (difxMsg.getBody().getDoiSystemConfig()).isLoggingEnabled() );
+//        _systemSettings.statusValidDuration( (difxMsg.getBody().getDoiSystemConfig()).getStatusValidDuration() );
+//
+//        // updateDataModel(config);
+//        // config = null;
+//    }
 
     private void processDOIErrorMessage(DifxMessage difxMsg) {
         // -- catch some exceptions and keep the program from terminating. . .
@@ -1440,37 +1453,37 @@ public class DiFXDataModel {
      * Reads an external config file that contains paramters to be set by the user.
      * @param fileToOpen the full path name of the config file
      */
-    public void readSystemConfig(String fileToOpen) {
-        ObjectFactory factory = new ObjectFactory();
-        DoiSystemConfig doiConfig = factory.createDoiSystemConfig();
-
-        try {
-            javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance(doiConfig.getClass().getPackage().getName());
-            javax.xml.bind.Unmarshaller unmarshaller = jaxbCtx.createUnmarshaller();
-            doiConfig = (DoiSystemConfig) unmarshaller.unmarshal(new java.io.File(fileToOpen));
-
-            Header header = factory.createHeader();
-            header.setFrom("DOIView");
-            header.setTo("DOIModel");
-            header.setMpiProcessId("0");
-            header.setIdentifier("doi");
-            header.setType("DOIMessage");
-
-            Body body = factory.createBody();
-
-            // set resource data into the body
-            body.setDoiSystemConfig(doiConfig);
-
-            // update the data model with DifxMessage
-            DifxMessage difxMsg = factory.createDifxMessage();
-            difxMsg.setHeader(header);
-            difxMsg.setBody(body);
-            serviceDataModel(difxMsg);
-        } catch (javax.xml.bind.JAXBException ex) {
-            // XXXTODO Handle exception
-            java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex);
-        }
-    }
+//    public void readSystemConfig(String fileToOpen) {
+//        ObjectFactory factory = new ObjectFactory();
+//        DoiSystemConfig doiConfig = factory.createDoiSystemConfig();
+//
+//        try {
+//            javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance(doiConfig.getClass().getPackage().getName());
+//            javax.xml.bind.Unmarshaller unmarshaller = jaxbCtx.createUnmarshaller();
+//            doiConfig = (DoiSystemConfig) unmarshaller.unmarshal(new java.io.File(fileToOpen));
+//
+//            Header header = factory.createHeader();
+//            header.setFrom("DOIView");
+//            header.setTo("DOIModel");
+//            header.setMpiProcessId("0");
+//            header.setIdentifier("doi");
+//            header.setType("DOIMessage");
+//
+//            Body body = factory.createBody();
+//
+//            // set resource data into the body
+//            body.setDoiSystemConfig(doiConfig);
+//
+//            // update the data model with DifxMessage
+//            DifxMessage difxMsg = factory.createDifxMessage();
+//            difxMsg.setHeader(header);
+//            difxMsg.setBody(body);
+//            serviceDataModel(difxMsg);
+//        } catch (javax.xml.bind.JAXBException ex) {
+//            // XXXTODO Handle exception
+//            java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex);
+//        }
+//    }
 
     public void readResourcesConfig(String fileToOpen) {
         //System.out.printf("******** Data model read resources config file data. \n");
@@ -1538,11 +1551,11 @@ public class DiFXDataModel {
         mRecCount = 0;
 
         // Connect to DB
-        mDBConnection.connectToDB();
+        _dbConnection.connectToDB();
 
         // get all data from DIFXQUEUE
         // ResultSet rs = mDBConnection.selectData("select * from DIFXQUEUE where INPUT_FILE like \'%.input\' and STATUS != \'COMPLETE\' order by PRIORITY, JOB_START ASC");
-        ResultSet rs = mDBConnection.selectData("select * from vDOIQueue ");
+        ResultSet rs = _dbConnection.selectData("select * from vDOIQueue ");
         // fetch each row from the result set
         while (rs.next()) {
             mRecCount++;
@@ -1656,17 +1669,17 @@ public class DiFXDataModel {
         } // --  while (rs.next())
 
         // Close DB connection
-        mDBConnection.close();
+        _dbConnection.close();
         return mRecCount;
     }
 
     public void postUpdatesToDatabase(Job job) throws Exception {
 
         if ((job != null) && (job.isDbJob())) {
-            mDBConnection.connectToDB();
+            _dbConnection.connectToDB();
 
             // -- Update queue data
-            int updateData = mDBConnection.updateData("update DIFXQUEUE set STATUS = "
+            int updateData = _dbConnection.updateData("update DIFXQUEUE set STATUS = "
                     + "\'" + job.getStateString() + "\'"
                     + "where INPUT_FILE = "
                     + "\'" + job.getInputFile() + "\'");
@@ -1684,7 +1697,7 @@ public class DiFXDataModel {
             String stop = formatter.format(dStop);
 
             // -- Insert log data
-            mDBConnection.insertData("insert into DIFXLOG (PROPOSAL, SEGMENT, JOB_PASS, JOB_NUMBER, CORR_START, CORR_STOP, SPEEDUP, INPUT_FILE, OUTPUT_FILE, OUTPUT_SIZE, CORR_STATUS) values ("
+            _dbConnection.insertData("insert into DIFXLOG (PROPOSAL, SEGMENT, JOB_PASS, JOB_NUMBER, CORR_START, CORR_STOP, SPEEDUP, INPUT_FILE, OUTPUT_FILE, OUTPUT_SIZE, CORR_STATUS) values ("
                     + "\'" + job.getProjectName() + "\', "
                     + "\'" + job.getSegment().trim() + "\', "
                     + "\'" + job.getJobPass() + "\', "
@@ -1698,7 +1711,7 @@ public class DiFXDataModel {
                     + "\'" + job.getStateString() + "\'  "
                     + ")");
 
-            mDBConnection.close();
+            _dbConnection.close();
 
         } // -- if ( (job != null) && (job.isDbJob()) )
     }

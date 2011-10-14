@@ -4,7 +4,7 @@
  */
 package edu.nrao.difx.difxcontroller;
 
-import edu.nrao.difx.difxdatamodel.DOISystemConfig;
+import edu.nrao.difx.difxview.SystemSettings;
 import java.net.*;
 import java.util.*;
 
@@ -30,11 +30,11 @@ public class ProcessMessageThread implements Runnable
    private JAXBPacketProcessor mThePacketProcessor;
 
    // Constructor, give the thread a name
-   public ProcessMessageThread(String name)
+   public ProcessMessageThread(String name, SystemSettings systemSettings )
    {
       mThreadName         = name;
       mBlockQueue         = new LinkedBlockingQueue<DatagramPacket>();
-      mThePacketProcessor = new JAXBPacketProcessor(DOISystemConfig.DiFXJaxbPackage);
+      mThePacketProcessor = new JAXBPacketProcessor( systemSettings.jaxbPackage() );
    }
 
    // Stop thread

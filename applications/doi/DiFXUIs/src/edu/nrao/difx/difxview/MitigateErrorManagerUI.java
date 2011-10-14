@@ -11,7 +11,6 @@
 package edu.nrao.difx.difxview;
 
 import edu.nrao.difx.difxcontroller.DiFXController;
-import edu.nrao.difx.difxdatamodel.DOISystemConfig;
 import edu.nrao.difx.difxdatamodel.DiFXDataModel;
 import edu.nrao.difx.difxdatamodel.DiFXSystemConfig;
 import edu.nrao.difx.difxdatamodel.Job;
@@ -106,7 +105,6 @@ public class MitigateErrorManagerUI extends javax.swing.JFrame
       // check dataModel and hand it an implementation of update()...
       if (mDataModel != null)
       {
-         this.setTitle(this.getTitle() + " " + DOISystemConfig.DOIVersion);
          System.out.println("***************** Mitigate Error Manager attach listener.");
 
          // create listener implementation of update()...

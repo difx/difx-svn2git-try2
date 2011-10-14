@@ -49,12 +49,16 @@ public class ProjectManagerUI extends javax.swing.JFrame
    int mTotalDuration;
    boolean mUpdate;
    
+   SystemSettings _systemSettings;
+   
    // Custom table sorter
    TableRowSorter<TableModel> mSorter;
 
    /** Creates new form ProjectManagerUI */
-   private ProjectManagerUI()
+   private ProjectManagerUI( SystemSettings systemSettings )
    {
+       _systemSettings = systemSettings;
+       
       // initialize GUI controls
       initComponents();
       
@@ -76,8 +80,10 @@ public class ProjectManagerUI extends javax.swing.JFrame
    }
 
    /** Creates new form ProjectManagerUI */
-   private ProjectManagerUI(DiFXDataModel theModel)
+   private ProjectManagerUI( SystemSettings systemSettings, DiFXDataModel theModel)
    {
+       _systemSettings = systemSettings;
+       
       // initialize GUI controls and data model
       initComponents();
 
@@ -99,8 +105,10 @@ public class ProjectManagerUI extends javax.swing.JFrame
    }
 
    /** Creates new form ProjectManagerUI */
-   public ProjectManagerUI(DiFXDataModel theModel, DiFXController theController)
+   public ProjectManagerUI( SystemSettings systemSettings, DiFXDataModel theModel, DiFXController theController)
    {
+       _systemSettings = systemSettings;
+       
       // initialize GUI controls and data model
       initComponents();
       
@@ -121,11 +129,11 @@ public class ProjectManagerUI extends javax.swing.JFrame
       mSorter.setRowFilter(RowFilter.regexFilter("^[a-zA-Z]", 0));
    }
 
-   public static ProjectManagerUI instance(DiFXDataModel theModel, DiFXController theController)
+   public static ProjectManagerUI instance( SystemSettings systemSettings, DiFXDataModel theModel, DiFXController theController)
    {
       if (mInstance == null)
       {
-         mInstance = new ProjectManagerUI(theModel, theController);
+         mInstance = new ProjectManagerUI( systemSettings, theModel, theController);
          mInstance.attachListenerCallback();
       }
 
@@ -295,7 +303,6 @@ public class ProjectManagerUI extends javax.swing.JFrame
       // Hand the thread manager the implementation of update()...
       if (mDataModel != null)
       {
-         this.setTitle(this.getTitle() + " " + DOISystemConfig.DOIVersion);
          System.out.println("***************** Project Manager attach listener.");
 
          // create listener implementation of update()...
@@ -721,7 +728,7 @@ public class ProjectManagerUI extends javax.swing.JFrame
        final JFileChooser fc = new JFileChooser();
 
        fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
-       fc.setCurrentDirectory(new File(DOISystemConfig.DiFXHome));
+       fc.setCurrentDirectory( new File( _systemSettings.home() ) );
        fc.setApproveButtonText("Select Project");
 
        // in response to a button click:
@@ -1014,6 +1021,7 @@ public class ProjectManagerUI extends javax.swing.JFrame
    /**
     * @param args the command line arguments
     */
+    /*
    public static void main(String args[])
    {
 
@@ -1031,6 +1039,8 @@ public class ProjectManagerUI extends javax.swing.JFrame
          }
       });
    }
+     * */
+   
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton addButton;
     private javax.swing.JToolBar appsToolBar;

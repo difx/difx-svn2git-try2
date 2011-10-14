@@ -12,7 +12,6 @@ package edu.nrao.difx.difxview;
 
 import mil.navy.usno.widgetlib.MessageDisplayPanel;
 import edu.nrao.difx.difxcontroller.DiFXController;
-import edu.nrao.difx.difxdatamodel.DOISystemConfig;
 import edu.nrao.difx.difxdatamodel.DiFXDataModel;
 import edu.nrao.difx.difxdatamodel.DiFXSystemConfig;
 import edu.nrao.difx.difxdatamodel.Job;

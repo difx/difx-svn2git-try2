@@ -27,13 +27,16 @@ public class DiFXController {
 
    // Call back listener
    MessageListener mListener;
+   
+   SystemSettings _systemSettings;
 
    // Constructor
-   public DiFXController()
+   public DiFXController( SystemSettings systemSettings )
    {
-      // create thread manager, set the view and datamodel in the Initialize 
-      // method
-      DiFXController.mThreadMgr = new ThreadManager();
+       _systemSettings = systemSettings;
+       // create thread manager, set the view and datamodel in the Initialize 
+       // method
+       DiFXController.mThreadMgr = new ThreadManager( systemSettings );
    }
 
    // Methods specific to the thread manager
@@ -147,7 +150,7 @@ public class DiFXController {
       // Conversation succesful, so send the XML
       if (xmlString != null)
       {
-          SendMessage.writeToSocket( xmlString );
+          SendMessage.writeToSocket( xmlString, _systemSettings );
       }
       else
       {

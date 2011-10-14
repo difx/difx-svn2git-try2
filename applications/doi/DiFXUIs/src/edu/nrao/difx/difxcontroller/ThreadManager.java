@@ -8,6 +8,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 
+import edu.nrao.difx.difxview.SystemSettings;
+
 /**
  *
  * @author mguerra
@@ -20,12 +22,12 @@ public class ThreadManager {
    private JobStateThread        mJobStateThread;
    private ExecutorService       mThreadExecutor;
 
-   public ThreadManager()
+   public ThreadManager( SystemSettings systemSettings )
    {
       // create thread manager with multisocket, message queue, and update view threads, and
       // an executor to manage the threads.
-      mReadThread     = new ReadMessageThread("ReadMessageThread");
-      mProcessThread  = new ProcessMessageThread("ProcessMessageThread");
+      mReadThread     = new ReadMessageThread( "ReadMessageThread", systemSettings );
+      mProcessThread  = new ProcessMessageThread("ProcessMessageThread", systemSettings );
       mUpdateThread   = new UpdateViewThread("UpdateViewThread");
       mJobStateThread = new JobStateThread("JobStateThread");
       mThreadExecutor = Executors.newFixedThreadPool(4);
@@ -96,34 +98,34 @@ public class ThreadManager {
    /**
     * @param args the command line arguments
     */
-   public static void main(String args[]) throws InterruptedException {
-      ReadMessageThread messageThread1 = new ReadMessageThread("MessageThread1");
-      ReadMessageThread messageThread2 = new ReadMessageThread("MessageThread2");
-      ReadMessageThread messageThread3 = new ReadMessageThread("MessageThread3");
-
-      System.out.println("Thread manager starting threads. \n");
-
-      ExecutorService threadExecutor = Executors.newFixedThreadPool(3);
-
-      threadExecutor.execute(messageThread1);
-      threadExecutor.execute(messageThread2);
-      threadExecutor.execute(messageThread3);
-
-      Thread.sleep(25);
-
-      threadExecutor.shutdown();
-      try {
-         if (!threadExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-            threadExecutor.shutdownNow();
-            if (!threadExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-               System.err.println("Pool did not terminate");
-            }
-         }
-      } catch (InterruptedException e) {
-         threadExecutor.shutdownNow();
-         Thread.currentThread().interrupt();
-      }
-
-      System.out.println("Thread manager started threads, main thread ends \n");
-   }
+//   public static void main(String args[]) throws InterruptedException {
+//      ReadMessageThread messageThread1 = new ReadMessageThread("MessageThread1");
+//      ReadMessageThread messageThread2 = new ReadMessageThread("MessageThread2");
+//      ReadMessageThread messageThread3 = new ReadMessageThread("MessageThread3");
+//
+//      System.out.println("Thread manager starting threads. \n");
+//
+//      ExecutorService threadExecutor = Executors.newFixedThreadPool(3);
+//
+//      threadExecutor.execute(messageThread1);
+//      threadExecutor.execute(messageThread2);
+//      threadExecutor.execute(messageThread3);
+//
+//      Thread.sleep(25);
+//
+//      threadExecutor.shutdown();
+//      try {
+//         if (!threadExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+//            threadExecutor.shutdownNow();
+//            if (!threadExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+//               System.err.println("Pool did not terminate");
+//            }
+//         }
+//      } catch (InterruptedException e) {
+//         threadExecutor.shutdownNow();
+//         Thread.currentThread().interrupt();
+//      }
+//
+//      System.out.println("Thread manager started threads, main thread ends \n");
+//   }
 }

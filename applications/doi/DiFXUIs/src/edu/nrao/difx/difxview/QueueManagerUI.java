@@ -1129,7 +1129,7 @@ public class QueueManagerUI extends javax.swing.JFrame
 			// connect and query the database
 			if (mDataModel != null)
 			{
-				DBConnection dBConnection = mDataModel.getDBConnection();
+				DBConnection dBConnection = mDataModel.dbConnection();
 				if (dBConnection != null)
 				{
 					try
@@ -1161,7 +1161,7 @@ public class QueueManagerUI extends javax.swing.JFrame
 			// connect and query the database
 			if (mDataModel != null)
 			{
-				DBConnection dBConnection = mDataModel.getDBConnection();
+				DBConnection dBConnection = mDataModel.dbConnection();
 				if (dBConnection != null)
 				{
 					try
@@ -1626,7 +1626,6 @@ public int expandJTreeNode (javax.swing.JTree tree,
       // check dataModel and hand it an implementation of update()...
       if (mDataModel != null)
       {
-         this.setTitle(this.getTitle() + " " + DOISystemConfig.DOIVersion);
          System.out.println("***************** Queue Manager attach listener.");
 
          // create listener implementation of update()...
