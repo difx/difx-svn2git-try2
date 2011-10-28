@@ -11,6 +11,10 @@
  * network messaging, a procedure for which no facilities exist.  My belief that
  * this was rather strange might mean I didn't understand why it was valuable.
  * In any case it has been swept away.  
+ * 
+ * This class generates events when items are changed.  For instance, any change to
+ * database parameters produces a "databaseChangeEvent".  Other classes can set
+ * themselves up to listen for these using the "databaseChangeListener()" function.
  */
 package edu.nrao.difx.difxview;
 
@@ -23,6 +27,12 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentEvent;
 import java.awt.Dimension;
+import java.awt.Color;
+import java.util.Calendar;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.FileWriter;
 
 import javax.swing.JTextField;
 import javax.swing.JLabel;
@@ -30,15 +40,26 @@ import javax.swing.JButton;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
-import javax.swing.JSeparator;
 import javax.swing.UIManager;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.JPasswordField;
 
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.IndexedPanel;
+import mil.navy.usno.widgetlib.NumberBox;
+import mil.navy.usno.plotlib.PlotWindow;
+import mil.navy.usno.plotlib.Plot2DObject;
+import mil.navy.usno.plotlib.Track2D;
+import mil.navy.usno.widgetlib.PingTest;
+import mil.navy.usno.widgetlib.MessageScrollPane;
+import mil.navy.usno.widgetlib.MessageNode;
 
 import javax.swing.JFrame;
+
+import edu.nrao.difx.difxdatabase.DBConnection;
+
+import java.sql.ResultSet;
 
 public class SystemSettings extends JFrame {
     
@@ -112,54 +133,38 @@ public class SystemSettings extends JFrame {
         //  values.
         _this = this;
         this.setLayout( null );
-        this.setSize( 700, 500 );
+        this.setSize( 800, 715 );
+        this.setTitle( "DiFX GUI Settings" );
         Dimension d = this.getSize();
         _menuBar = new JMenuBar();
         _menuBar.setVisible( true );
-        JMenu fileMenu = new JMenu( " File " );
-        JMenuItem openItem = new JMenuItem( "Open Settings File..." );
-        openItem.setToolTipText( "Open a settings file" );
-        openItem.addActionListener( new ActionListener() {
+//        JMenu fileMenu = new JMenu( " File " );
+//        JMenuItem openItem = new JMenuItem( "Open Settings File..." );
+//        JMenuItem closeItem = new JMenuItem( "Close" );
+//        closeItem.setToolTipText( "Close this window." );
+//        closeItem.addActionListener( new ActionListener() {
+//            public void actionPerformed( ActionEvent e ) {
+//                closeWindow();
+//            }
+//        } );
+//        fileMenu.add( closeItem );
+//        _menuBar.add( fileMenu );
+        JMenu helpMenu = new JMenu( "  Help  " );
+        _menuBar.add( helpMenu );
+        JMenuItem settingsHelpItem = new JMenuItem( "Settings Help" );
+        settingsHelpItem.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                openSettingsFile();
+                launchGUIHelp( "settings.html" );
             }
         } );
-        fileMenu.add( openItem );
-        JMenuItem saveItem = new JMenuItem( "Save Settings" );
-        saveItem.setToolTipText( "Save current settings to the given file name." );
-        saveItem.addActionListener( new ActionListener() {
+        helpMenu.add( settingsHelpItem );
+        JMenuItem helpIndexItem = new JMenuItem( "Help Index" );
+        helpIndexItem.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                saveSettings();
+                launchGUIHelp( "index.html" );
             }
         } );
-        fileMenu.add( saveItem );
-        JMenuItem saveAsItem = new JMenuItem( "Save Settings To..." );
-        saveAsItem.setToolTipText( "Save the current settings to a new file name." );
-        saveAsItem.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                saveSettingsAs();
-            }
-        } );
-        fileMenu.add( saveAsItem );
-        fileMenu.add( new JSeparator() );
-        JMenuItem defaultItem = new JMenuItem( "Set Defaults" );
-        defaultItem.setToolTipText( "Reset all settings to system default values." );
-        saveItem.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                setDefaults();
-            }
-        } );
-        fileMenu.add( defaultItem );
-        fileMenu.add( new JSeparator() );
-        JMenuItem closeItem = new JMenuItem( "Close" );
-        closeItem.setToolTipText( "Close this window." );
-        closeItem.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                closeWindow();
-            }
-        } );
-        fileMenu.add( closeItem );
-        _menuBar.add( fileMenu );
+        helpMenu.add( helpIndexItem );
         this.add( _menuBar );
         _scrollPane = new NodeBrowserScrollPane();
         _scrollPane.addTimeoutEventListener( new ActionListener() {
@@ -179,17 +184,121 @@ public class SystemSettings extends JFrame {
         settingsFileLabel.setBounds( 10, 25, 100, 25 );
         settingsFileLabel.setHorizontalAlignment( JLabel.RIGHT );
         settingsFilePanel.add( settingsFileLabel );
+        JButton loadFromFileButton = new JButton( "Open..." );
+        loadFromFileButton.setBounds( 115, 55, 100, 25 );
+        loadFromFileButton.setToolTipText( "Open a settings file" );
+        loadFromFileButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                openSettingsFile();
+            }
+        } );
+        settingsFilePanel.add( loadFromFileButton );
+        JButton saveButton = new JButton( "Save" );
+        saveButton.setBounds( 220, 55, 100, 25 );
+        saveButton.setToolTipText( "Save current settings to the given file name." );
+        saveButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                saveSettings();
+            }
+        } );
+        settingsFilePanel.add( saveButton );
+        JButton saveAsButton = new JButton( "Save As..." );
+        saveAsButton.setBounds( 325, 55, 100, 25 );
+        saveAsButton.setToolTipText( "Save the current settings to a new file name." );
+        saveAsButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                saveSettingsAs();
+            }
+        } );
+        settingsFilePanel.add( saveAsButton );
+        JButton defaultsButton = new JButton( "Defaults" );
+        defaultsButton.setBounds( 430, 55, 100, 25 );
+        defaultsButton.setToolTipText( "Reset all settings to internal default values." );
+        defaultsButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                setDefaults();
+            }
+        } );
+        settingsFilePanel.add( defaultsButton );
         
         IndexedPanel networkPanel = new IndexedPanel( "Broadcast Network" );
-        networkPanel.openHeight( 100 );
+        networkPanel.openHeight( 170 );
         networkPanel.closedHeight( 20 );
         _scrollPane.addNode( networkPanel );
+        _ipAddress = new JTextField();
+        _ipAddress.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                generateBroadcastChangeEvent();
+            }
+        } );
+        networkPanel.add( _ipAddress );
+        JLabel ipAddressLabel = new JLabel( "Group IP Address:" );
+        ipAddressLabel.setBounds( 10, 25, 150, 25 );
+        ipAddressLabel.setHorizontalAlignment( JLabel.RIGHT );
+        networkPanel.add( ipAddressLabel );
+        _port = new NumberBox();
+        _port.setHorizontalAlignment( NumberBox.LEFT );
+        _port.minimum( 0 );
+        _port.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                generateBroadcastChangeEvent();
+            }
+        } );
+        networkPanel.add( _port );
+        JLabel portLabel = new JLabel( "Port:" );
+        portLabel.setBounds( 10, 55, 150, 25 );
+        portLabel.setHorizontalAlignment( JLabel.RIGHT );
+        networkPanel.add( portLabel );
+        _bufferSize = new NumberBox();
+        _bufferSize.setHorizontalAlignment( NumberBox.LEFT );
+        _bufferSize.minimum( 0 );
+        _bufferSize.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                generateBroadcastChangeEvent();
+            }
+        } );
+        networkPanel.add( _bufferSize );
+        JLabel bufferSizeLabel = new JLabel( "Buffer Size:" );
+        bufferSizeLabel.setBounds( 10, 85, 150, 25 );
+        bufferSizeLabel.setHorizontalAlignment( JLabel.RIGHT );
+        networkPanel.add( bufferSizeLabel );
+        _timeout = new NumberBox();
+        _timeout.setHorizontalAlignment( NumberBox.LEFT );
+        _timeout.minimum( 0 );
+        _timeout.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                generateBroadcastChangeEvent();
+            }
+        } );
+        networkPanel.add( _timeout );
+        JLabel timeoutLabel = new JLabel( "Timeout (ms):" );
+        timeoutLabel.setBounds( 10, 115, 150, 25 );
+        timeoutLabel.setHorizontalAlignment( JLabel.RIGHT );
+        networkPanel.add( timeoutLabel );
+        _plotWindow = new PlotWindow();
+        _plotWindow.backgroundColor( this.getBackground() );
+        networkPanel.add( _plotWindow );
+        _broadcastPlot = new Plot2DObject();
+        _broadcastPlot.title( "Packet Traffic (bytes/buffer size)", Plot2DObject.LEFT_JUSTIFY );
+        _broadcastPlot.titlePosition( 0.0, 4.0 );
+        _broadcastTrack = new Track2D();
+        _broadcastPlot.addTrack( _broadcastTrack );
+        _broadcastTrack.color( Color.GREEN );
+        _broadcastTrack.sizeLimit( 1000 );
+        _broadcastPlot.frame( 10, 23, 0.95, 90 );
+        _broadcastPlot.backgroundColor( Color.BLACK );
+        _plotWindow.add2DPlot( _broadcastPlot );
         
         IndexedPanel databasePanel = new IndexedPanel( "Database Configuration" );
-        databasePanel.openHeight( 200 );
+        databasePanel.openHeight( 215 );
         databasePanel.closedHeight( 20 );
         _scrollPane.addNode( databasePanel );
         _dbHost = new JTextField();
+        _dbHost.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                setDbURL();
+            }
+        } );
         databasePanel.add( _dbHost );
         JLabel dbHostLabel = new JLabel( "Host:" );
         dbHostLabel.setBounds( 10, 25, 150, 25 );
@@ -197,28 +306,72 @@ public class SystemSettings extends JFrame {
         databasePanel.add( dbHostLabel );
         _dbSID = new JTextField();
         databasePanel.add( _dbSID );
-        JLabel dbSIDLabel = new JLabel( "SID:" );
+        _dbSID.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                setDbURL();
+            }
+        } );
+        JLabel dbSIDLabel = new JLabel( "User:" );
         dbSIDLabel.setBounds( 10, 55, 150, 25 );
         dbSIDLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( dbSIDLabel );
-        _dbPWD = new JTextField();
+        _dbPWD = new JPasswordField();
+        _dbPWD.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                generateDatabaseChangeEvent();
+            }
+        } );
         databasePanel.add( _dbPWD );
         JLabel dbPWDLabel = new JLabel( "Password:" );
         dbPWDLabel.setBounds( 10, 85, 150, 25 );
         dbPWDLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( dbPWDLabel );
-        _oracleJdbcDriver = new JTextField();
-        databasePanel.add( _oracleJdbcDriver );
-        JLabel oracleDriverLabel = new JLabel( "Oracle Jdbc Driver:" );
-        oracleDriverLabel.setBounds( 10, 115, 150, 25 );
+        _dbName = new JTextField();
+        databasePanel.add( _dbName );
+        JLabel dbNameLabel = new JLabel( "DiFX Database:" );
+        dbNameLabel.setBounds( 10, 115, 150, 25 );
+        dbNameLabel.setHorizontalAlignment( JLabel.RIGHT );
+        databasePanel.add( dbNameLabel );
+        _jdbcDriver = new JTextField();
+        _jdbcDriver.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                generateDatabaseChangeEvent();
+            }
+        } );
+        databasePanel.add( _jdbcDriver );
+        JLabel oracleDriverLabel = new JLabel( "JDBC Driver:" );
+        oracleDriverLabel.setBounds( 10, 145, 150, 25 );
         oracleDriverLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( oracleDriverLabel );
-         _oracleJdbcPort = new JTextField();
-        databasePanel.add( _oracleJdbcPort );
-        JLabel oraclePortLabel = new JLabel( "Oracle Jdbc Port:" );
-        oraclePortLabel.setBounds( 10, 145, 150, 25 );
+         _jdbcPort = new JTextField();
+        _jdbcPort.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                setDbURL();
+            }
+        } );
+        databasePanel.add( _jdbcPort );
+        JLabel oraclePortLabel = new JLabel( "JDBC Port:" );
+        oraclePortLabel.setBounds( 10, 175, 150, 25 );
         oraclePortLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( oraclePortLabel );
+        _pingHostButton = new JButton( "Ping Host" );
+        _pingHostButton.setToolTipText( "ping the database host" );
+        _pingHostButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                pingDatabaseHost();
+            }
+        } );
+        databasePanel.add( _pingHostButton );
+        _testDatabaseButton = new JButton( "Test Database" );
+        _testDatabaseButton.setToolTipText( "Run a connection test using the current database settings." );
+        _testDatabaseButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                testDatabaseAction();
+            }
+        } );
+        databasePanel.add( _testDatabaseButton );
+        _databaseMessages = new MessageScrollPane();
+        databasePanel.add( _databaseMessages );
          
         _addressesPanel = new IndexedPanel( "Documentation Locations" );
         _addressesPanel.openHeight( 155 );
@@ -267,6 +420,8 @@ public class SystemSettings extends JFrame {
 
         _scrollPane.addNode( _addressesPanel );
         
+        _allObjectsBuilt = true;
+        
         //  This seems to be required to get the browser to draw the first time.
         //  Annoying and kludgey, but harmless.
         this.newSize();
@@ -284,15 +439,25 @@ public class SystemSettings extends JFrame {
         int h = this.getHeight();
         if ( _menuBar != null )
             _menuBar.setBounds( 0, 0, w, 25 );
-        if ( _scrollPane != null ) {
+        if ( _allObjectsBuilt ) {
             _scrollPane.setBounds( 0, 25, w, h - 25 );
             _settingsFileName.setBounds( 115, 25, w - 135, 25 );
+            //  Broadcast network settings
+            _ipAddress.setBounds( 165, 25, 300, 25 );
+            _port.setBounds( 165, 55, 300, 25 );
+            _bufferSize.setBounds( 165, 85, 300, 25 );
+            _timeout.setBounds( 165, 115, 300, 25 );
+            _plotWindow.setBounds( 470, 25, w - 495, 120 );
             //  Database Configuration
             _dbHost.setBounds( 165, 25, 300, 25 );
             _dbSID.setBounds( 165, 55, 300, 25 );
             _dbPWD.setBounds( 165, 85, 300, 25 );
-            _oracleJdbcDriver.setBounds( 165, 115, 300, 25 );
-            _oracleJdbcPort.setBounds( 165, 145, 300, 25 );
+            _dbName.setBounds( 165, 115, 300, 25 );
+            _jdbcDriver.setBounds( 165, 145, 300, 25 );
+            _jdbcPort.setBounds( 165, 175, 300, 25 );
+            _pingHostButton.setBounds( 480, 25, 125, 25 );
+            _testDatabaseButton.setBounds( 610, 25, 125, 25 );
+            _databaseMessages.setBounds( 480, 55, w - 495, 145 );
             //  Documentation Addresses
             _guiDocPath.setBounds( 115, 25, w - 240, 25 );
             _guiDocPathBrowseButton.setBounds( w - 120, 25, 100, 25 );
@@ -309,7 +474,9 @@ public class SystemSettings extends JFrame {
         _fileChooser.setDialogTitle( "Open System Settings File..." );
         _fileChooser.setFileSelectionMode( JFileChooser.FILES_AND_DIRECTORIES );
         _fileChooser.setApproveButtonText( "Open" );
-        int returnVal = _fileChooser.showOpenDialog( this );
+        int ret = _fileChooser.showOpenDialog( this );
+        if ( ret == JFileChooser.APPROVE_OPTION )
+            this.settingsFileName( _fileChooser.getSelectedFile().getAbsolutePath() );
     }
     
     /*
@@ -350,13 +517,9 @@ public class SystemSettings extends JFrame {
      */
     public void saveSettingsAs() {
         _fileChooser.setDialogTitle( "Save System Settings to File..." );
-        int returnVal = _fileChooser.showSaveDialog( this );
-    }
-    
-    /*
-     * Save all current settings to the given filename.
-     */
-    public void saveSettingsToFile( String filename ) {
+        int ret = _fileChooser.showSaveDialog( this );
+        if ( ret == JFileChooser.APPROVE_OPTION )
+            saveSettingsToFile( _fileChooser.getSelectedFile().getAbsolutePath() );
     }
     
     /*
@@ -368,14 +531,16 @@ public class SystemSettings extends JFrame {
         _resourcesFile = "/cluster/difx/DiFX_trunk_64/conf/resources.difx";
         _loggingEnabled = false;
         _statusValidDuration = 2000l;
-        _ipAddress = "224.2.2.1";
-        _port = 52525;
-        _bufferSize = 1500;
-        _dbHost.setText( "c3po.aoc.nrao.edu" ); //"quigon.aoc.nrao.edu"
-        _dbSID.setText( "vlbatest" );          //"vlba10"
-        _dbPWD.setText( "vlba" );              //"chandra1999"
-        _oracleJdbcDriver.setText( "oracle.jdbc.driver.OracleDriver" );
-        _oracleJdbcPort.setText( "1521" );
+        _ipAddress.setText( "224.2.2.1" );
+        _port.intValue( 52525 );
+        _bufferSize.intValue( 1500 );
+        _timeout.intValue( 100 );
+        _dbHost.setText( "c3po.aoc.nrao.edu" );
+        _dbSID.setText( "difx" );
+        _dbPWD.setText( "difx2010" );
+        _dbName.setText( "difxdb" );
+        _jdbcDriver.setText( "com.mysql.jdbc.Driver" );
+        _jdbcPort.setText( "3306" );
         this.setDbURL();
         _reportLoc = "/users/difx/Desktop";
         _guiDocPath.setText( "file://" + System.getProperty( "user.dir" ) + "/doc" );
@@ -413,35 +578,66 @@ public class SystemSettings extends JFrame {
     public void statusValidDuration( long newVal ) { _statusValidDuration = newVal; }
     public long statusValidDuration() { return _statusValidDuration; }
     
-    public void ipAddress( String newVal ) { _ipAddress = newVal; }
-    public String ipAddress() { return _ipAddress; }
+    public void ipAddress( String newVal ) { _ipAddress.setText( newVal ); }
+    public String ipAddress() { return _ipAddress.getText(); }
     
-    public void port( int newVal ) { _port = newVal; }
-    public int port() { return _port; }
+    public void port( int newVal ) { _port.intValue( newVal ); }
+    public int port() { return _port.intValue(); }
+    public void port( String newVal ) { port( Integer.parseInt( newVal ) ); }
     
-    public void bufferSize( int newVal ) { _bufferSize = newVal; }
-    public int bufferSize() { return _bufferSize; }
+    public void bufferSize( int newVal ) { _bufferSize.intValue( newVal ); }
+    public int bufferSize() { return _bufferSize.intValue(); }
+    public void bufferSize( String newVal ) { bufferSize( Integer.parseInt( newVal ) ); }
     
-    public void dbHost( String newVal ) { _dbHost.setText( newVal ); }
+    public void timeout( int newVal ) { _timeout.intValue( newVal ); }
+    public int timeout() { return _timeout.intValue(); }
+    public void timeout( String newVal ) { timeout( Integer.parseInt( newVal ) ); }
+    
+    public void dbHost( String newVal ) { 
+        _dbHost.setText( newVal );
+        setDbURL();
+    }
     public String dbHost() { return _dbHost.getText(); }
     
-    public void dbSID( String newVal ) { _dbSID.setText( newVal ); }
+    public void dbSID( String newVal ) { 
+        _dbSID.setText( newVal );
+        setDbURL();
+    }
     public String dbSID() { return _dbSID.getText(); }
     
-    public void dbPWD( String newVal ) { _dbPWD.setText( newVal ); }
-    public String dbPWD() { return _dbPWD.getText(); }
+    public void dbPWD( String newVal ) { 
+        _dbPWD.setText( newVal );
+        generateDatabaseChangeEvent();
+    }
+    public String dbPWD() { return new String( _dbPWD.getPassword() ); }
     
-    public void oracleJdbcDriver( String newVal ) { _oracleJdbcDriver.setText( newVal ); }
-    public String oracleJdbcDriver() { return _oracleJdbcDriver.getText(); }
+    public void dbName( String newVal ) { 
+        _dbName.setText( newVal );
+    }
+    public String dbName() { return _dbName.getText(); }
     
-    public void oracleJdbcPort( String newVal ) { _oracleJdbcPort.setText( newVal ); }
-    public String oracleJdbcPort() { return _oracleJdbcPort.getText(); }
+    public void jdbcDriver( String newVal ) { 
+        _jdbcDriver.setText( newVal );
+        generateDatabaseChangeEvent();
+    }
+    public String jdbcDriver() { return _jdbcDriver.getText(); }
+    
+    public void jdbcPort( String newVal ) { 
+        _jdbcPort.setText( newVal );
+        setDbURL();
+    }
+    public String jdbcPort() { return _jdbcPort.getText(); }
     
     public String dbURL() { return _dbURL; }
-    public void dbURL( String newVal ) { _dbURL = newVal; }
+    public void dbURL( String newVal ) { 
+        _dbURL = newVal;
+        generateDatabaseChangeEvent();
+    }
     protected void setDbURL() {
         //  Sets the dbURL using other items - this is not accessible to the outside.
-        _dbURL = "jdbc:oracle:thin:@" + _dbHost + ":" + _oracleJdbcPort + ":" + _dbSID;
+        //_dbURL = "jdbc:oracle:thin:@" + _dbHost.getText() + ":" + _oracleJdbcPort.getText() + 
+        _dbURL = "jdbc:mysql://" + _dbHost.getText() + ":" + _jdbcPort.getText() + "/mysql";
+        generateDatabaseChangeEvent();
     }
     
     /*
@@ -463,7 +659,37 @@ public class SystemSettings extends JFrame {
     }
     
     public void launchGUIHelp( String topicAddress ) {
-        BareBonesBrowserLaunch.openURL( _guiDocPath.getText() + "/" + topicAddress );
+        File file = new File( _guiDocPath.getText().substring( 7 ) + "/" + topicAddress );
+        if ( file.exists() )
+            BareBonesBrowserLaunch.openURL( _guiDocPath.getText() + "/" + topicAddress );
+        else {
+            //  The named file couldn't be found.  Since this file is formed by
+            //  the GUI, the name is probably not wrong, so the path probably is.
+            //  Generate a temporary file with instructions for setting the documentation
+            //  path.
+            try {
+                BufferedWriter out = new BufferedWriter( new FileWriter( "/tmp/tmpIndex.html" ) );
+                out.write( "<h2>Requested Documentation Not Found</h2>\n" );
+                out.write( "\n" );
+                out.write( "<p>The document you requested:\n" );
+                out.write( "<br>\n" );
+                out.write( "<pre>\n" );
+                out.write( _guiDocPath.getText() + "/" + topicAddress + "\n" );
+                out.write( "</pre>\n" );
+                out.write( "was not found.\n" );
+                out.write( "\n" );
+                out.write( "<p>The most likely reasons for this is\n" );
+                out.write( "that the GUI Documentation Path is not set correctly.\n" );
+                out.write( "Check the \"GUI Docs\" setting under the \"Documentation Locations\"\n" );
+                out.write( "subset in the Settings Window (to launch the Settings Window pick\n" );
+                out.write( "\"Settings/Show Settings\" from the menu bar of the main DiFX GUI Window).\n" );
+                out.write( "<p>Note that the path should start with \"<code>file:///</code>\" followed by a complete\n" );
+                out.write( "pathname, as in \"<code>file:///tmp/foo.html</code>\".\n" );
+                out.close();
+                BareBonesBrowserLaunch.openURL( "file:///tmp/tmpIndex.html" );
+            } catch ( IOException e ) {
+            }
+        }
     }
     
     public void launchDiFXUsersGroup() {
@@ -482,14 +708,42 @@ public class SystemSettings extends JFrame {
      * Add a new listener for database changes.
      */
     public void databaseChangeListener( ActionListener a ) {
+        if ( _databaseChangeListeners == null )
+            _databaseChangeListeners = new EventListenerList();
         _databaseChangeListeners.add( ActionListener.class, a );
     }
 
     /*
      * Inform all listeners of a change to database-related items.
      */
-    protected void broadcastDatabaseChangeEvent() {
+    protected void generateDatabaseChangeEvent() {
+        if ( _databaseChangeListeners == null )
+            return;
         Object[] listeners = _databaseChangeListeners.getListenerList();
+        // loop through each listener and pass on the event if needed
+        int numListeners = listeners.length;
+        for ( int i = 0; i < numListeners; i+=2 ) {
+            if ( listeners[i] == ActionListener.class )
+                ((ActionListener)listeners[i+1]).actionPerformed( null );
+        }
+    }
+    
+    /*
+     * Add a new listener for broadcast changes.
+     */
+    public void broadcastChangeListener( ActionListener a ) {
+        if ( _broadcastChangeListeners == null )
+            _broadcastChangeListeners = new EventListenerList();
+        _broadcastChangeListeners.add( ActionListener.class, a );
+    }
+
+    /*
+     * Inform all listeners of a change to broadcast-related items.
+     */
+    protected void generateBroadcastChangeEvent() {
+        if ( _broadcastChangeListeners == null )
+            return;
+        Object[] listeners = _broadcastChangeListeners.getListenerList();
         // loop through each listener and pass on the event if needed
         int numListeners = listeners.length;
         for ( int i = 0; i < numListeners; i+=2 ) {
@@ -525,9 +779,10 @@ public class SystemSettings extends JFrame {
             this.dbHost( doiConfig.getDbHost() );
             this.dbSID( doiConfig.getDbSID() );
             this.dbPWD( doiConfig.getDbPassword() );
-            this.oracleJdbcDriver( doiConfig.getDbJdbcDriver() );
-            this.oracleJdbcPort( doiConfig.getDbJdbcPort() );
+            this.jdbcDriver( doiConfig.getDbJdbcDriver() );
+            this.jdbcPort( doiConfig.getDbJdbcPort() );
             this.dbURL( doiConfig.getDbUrl() );
+            setDbURL();
             this.ipAddress( doiConfig.getIpAddress() );
             this.port( doiConfig.getPort() );
             this.bufferSize( doiConfig.getBufferSize() );
@@ -540,6 +795,40 @@ public class SystemSettings extends JFrame {
         return false;
     }
 
+    /*
+     * Save all current settings to the given filename.
+     */
+    public void saveSettingsToFile( String filename ) {
+        System.out.println( "write to " + filename );
+        ObjectFactory factory = new ObjectFactory();
+        DoiSystemConfig doiConfig = factory.createDoiSystemConfig();
+        doiConfig.setDifxHome( this.home() );
+        doiConfig.setResourcesFile( this.resourcesFile() );
+        doiConfig.setDbHost( this.dbHost() );
+        doiConfig.setDbSID( this.dbSID() );
+        doiConfig.setDbPassword( this.dbPWD() );
+        doiConfig.setDbJdbcDriver( this.jdbcDriver() );
+        doiConfig.setDbJdbcPort( this.jdbcPort() );
+        doiConfig.setDbUrl( this.dbURL() );
+        doiConfig.setIpAddress( this.ipAddress() );
+        doiConfig.setPort( this.port() );
+        doiConfig.setBufferSize( this.bufferSize() );
+        doiConfig.setLoggingEnabled( this.loggingEnabled() );
+        doiConfig.setStatusValidDuration( this.statusValidDuration() );
+        try {
+            javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance( doiConfig.getClass().getPackage().getName() );
+            javax.xml.bind.Marshaller marshaller = jaxbCtx.createMarshaller();
+            File theFile = new File( filename );
+            theFile.createNewFile();
+            marshaller.marshal( doiConfig, theFile );
+        } catch ( java.io.IOException e ) {
+                System.out.println( "SystemSettings: can't write file \"" + filename + "\" - some appropriate complaint here." );
+        } catch (javax.xml.bind.JAXBException ex) {
+            // XXXTODO Handle exception
+            java.util.logging.Logger.getLogger("global").log( java.util.logging.Level.SEVERE, null, ex );
+        }
+   }
+    
     public String getDefaultSettingsFileName() {
         //  See if a DIFXROOT environment variable has been defined.  If not,
         //  guess that the current working directory is the DIFXROOT.
@@ -550,7 +839,103 @@ public class SystemSettings extends JFrame {
         return difxRoot + "/conf/DOISystemConfig.xml";
     }
     
+    /*
+     * This function is called from the thread that receives broadcasts each time
+     * it cycles.  It gives us the size of a received packet, or a 0 if this thread
+     * timed out.
+     */
+    public void gotPacket( int newSize ) {
+        _broadcastPlot.limits( (double)(_broadcastTrackSize - _broadcastPlot.w()), (double)(_broadcastTrackSize), -.05, 1.0 );
+        _broadcastTrack.add( (double)(_broadcastTrackSize), (double)(newSize)/(double)bufferSize() );
+        _broadcastTrackSize += 1;
+        _plotWindow.updateUI();
+    }
+    
+    /*
+     * Make a test connection to the database amd 
+     */
+    public void testDatabaseAction() {
+        databaseSuccess( "" );
+        databaseWarning( "Connecting to database (" + this.dbURL() + ")..." );
+        DBConnection dbConnection = new DBConnection( this.dbURL(), this.jdbcDriver(), this.dbSID(), this.dbPWD() );
+        try {
+            dbConnection.connectToDB();
+
+            databaseSuccess( "Connection successful...reading DiFX jobs..." );
+            ResultSet jobInfo = dbConnection.selectData( "select * from " + _dbName.getText() + ".Job" );
+
+            Integer n = 0;
+            while ( jobInfo.next() )
+                ++n;
+            databaseSuccess( "Database contains " + n.toString() + " jobs." );
+            databaseSuccess( "" );
+
+        } catch ( java.sql.SQLException e ) {
+            databaseFailure( "SQLException: " + e.getMessage() );
+            databaseSuccess( "" );
+        } catch ( ClassNotFoundException e ) {
+            databaseFailure( "Connection Failure (ClassNotFoundException): " + e.getMessage() );
+            databaseSuccess( "" );
+        } catch ( Exception e ) {
+            databaseFailure( "Connection Failure (Exception): " + e.getMessage()  );
+            databaseSuccess( "" );
+        }
+    }
+    
+    /*
+     * Perform a "ping" test on the specified database host.
+     */
+    public void pingDatabaseHost() {
+        databaseSuccess( "" );
+        databaseWarning( "Starting ping test..." );
+        final PingTest tester = new PingTest( _dbHost.getText() );
+        tester.pings( 6 );
+        tester.addSuccessListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                databaseSuccess( tester.lastMessage() );
+            }
+        } );            
+        tester.addFailureListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                databaseFailure( tester.lastError() );
+            }
+        } );            
+        tester.start();
+    }
+    
+    protected void databaseWarning( String message ) {
+        MessageNode node = new MessageNode( Calendar.getInstance().getTimeInMillis(), MessageNode.WARNING, null, message );
+        node.showDate( false );
+        node.showTime( true );
+        node.showSource( false );
+        node.showWarnings( true );
+        _databaseMessages.addMessage( node );
+        _databaseMessages.scrollToEnd();
+    }
+    
+    protected void databaseSuccess( String message ) {
+        MessageNode node = new MessageNode( 0, MessageNode.INFO, null, message );
+        node.showDate( false );
+        node.showTime( false );
+        node.showSource( false );
+        node.showMessages( true );
+        _databaseMessages.addMessage( node );
+        _databaseMessages.scrollToEnd();
+    }
+    
+    protected void databaseFailure( String message ) {
+        MessageNode node = new MessageNode( 0, MessageNode.ERROR, null, message );
+        node.showDate( false );
+        node.showTime( false );
+        node.showSource( false );
+        node.showErrors( true );
+        _databaseMessages.addMessage( node );
+        _databaseMessages.scrollToEnd();
+    }
+    
     protected SystemSettings _this;
+    
+    protected boolean _allObjectsBuilt;
 
     protected JMenuBar _menuBar;
     protected JTextField _settingsFileName;
@@ -561,16 +946,26 @@ public class SystemSettings extends JFrame {
     protected String _resourcesFile;
     protected boolean _loggingEnabled;
     protected long _statusValidDuration;
-    protected String _ipAddress;
-    protected int _port;
-    protected int _bufferSize;
+    //  Broadcast network
+    protected JTextField _ipAddress;
+    protected NumberBox _port;
+    protected NumberBox _bufferSize;
+    protected NumberBox _timeout;
+    PlotWindow _plotWindow;
+    Plot2DObject _broadcastPlot;
+    Track2D _broadcastTrack;
+    int _broadcastTrackSize;
     //  Database configuration
     protected JTextField _dbHost;
     protected JTextField _dbSID;
-    protected JTextField _dbPWD;
-    protected JTextField _oracleJdbcDriver;
-    protected JTextField _oracleJdbcPort;
+    protected JPasswordField _dbPWD;
+    protected JTextField _dbName;
+    protected JTextField _jdbcDriver;
+    protected JTextField _jdbcPort;
     protected String _dbURL;
+    protected JButton _pingHostButton;
+    protected JButton _testDatabaseButton;
+    protected MessageScrollPane _databaseMessages;
     //  Default report location
     protected String _reportLoc;
     
@@ -587,6 +982,7 @@ public class SystemSettings extends JFrame {
     //  Different lists of event listeners.  Other classes can be informed of
     //  setting changes by adding themselves to these lists.
     EventListenerList _databaseChangeListeners;
+    EventListenerList _broadcastChangeListeners;
     
     //  All settings use the same file chooser.
     JFileChooser _fileChooser;

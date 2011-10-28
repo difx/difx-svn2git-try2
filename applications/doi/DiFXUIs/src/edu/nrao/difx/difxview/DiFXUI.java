@@ -76,6 +76,13 @@ public class DiFXUI extends JFrame implements WindowListener {
         _dataModel = new DiFXDataModel( _systemSettings );
         _dataModel.messageDisplayPanel( _messageCenter );
         
+        //  The data model needs to know when changes are made to database settings.
+        _systemSettings.databaseChangeListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _dataModel.updataDatabaseFromSystemSettings();
+            }
+        } );
+        
         //  The DiFX Controller runs threads (why, I'm not sure...)
         _difxController = new DiFXController( _systemSettings );
                 try {
@@ -234,13 +241,13 @@ public class DiFXUI extends JFrame implements WindowListener {
 
         _mainSplitPane = new javax.swing.JSplitPane();
         _topSplitPane = new javax.swing.JSplitPane();
-        _queueBrowser = new edu.nrao.difx.difxview.QueueBrowserPanel();
+        _messageCenter = new mil.navy.usno.widgetlib.MessageDisplayPanel();
+        _queueBrowser = new edu.nrao.difx.difxview.QueueBrowserPanel( _systemSettings, _messageCenter );
         _queueBrowser.addTearOffListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 queueBrowserTearOffEvent();
             }
         } );
-        _messageCenter = new mil.navy.usno.widgetlib.MessageDisplayPanel();
 
         setDefaultCloseOperation( javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE );
         setTitle( "USNO DiFX GUI" );

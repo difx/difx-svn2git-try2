@@ -15,9 +15,9 @@ import java.awt.event.ActionListener;
  *
  * @author jspitzak
  */
-public class ProjectNode extends BrowserNode {
+public class ExperimentNode extends BrowserNode {
     
-    public ProjectNode( String name ) {
+    public ExperimentNode( String name ) {
         super( name );
     }
     
@@ -25,9 +25,9 @@ public class ProjectNode extends BrowserNode {
     public void createAdditionalItems() {
         //  Create a popup menu appropriate to a "project".
         _popup = new JPopupMenu();
-        JMenuItem menuItem1 = new JMenuItem( "Add Job" );
+        JMenuItem menuItem1 = new JMenuItem( "Add Pass" );
         _popup.add( menuItem1 );
-        JMenuItem menuItem2 = new JMenuItem( "Delete Job" );
+        JMenuItem menuItem2 = new JMenuItem( "Delete Pass" );
         menuItem2.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 javaSucks();

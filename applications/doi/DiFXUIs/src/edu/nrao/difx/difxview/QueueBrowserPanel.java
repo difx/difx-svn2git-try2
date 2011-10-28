@@ -7,26 +7,40 @@ package edu.nrao.difx.difxview;
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.BrowserNode;
 import mil.navy.usno.widgetlib.TearOffPanel;
+import mil.navy.usno.widgetlib.MessageDisplayPanel;
+import mil.navy.usno.widgetlib.ActivityMonitorLight;
 
-import javax.swing.JPanel;
 import javax.swing.JLabel;
+import javax.swing.JButton;
 
 import java.awt.Font;
 import java.awt.Color;
+import java.awt.Insets;
+
+import javax.swing.Action;
+import javax.swing.AbstractAction;
+import javax.swing.Timer;
 
 import java.util.List;
 import java.util.Iterator;
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 import edu.nrao.difx.difxdatamodel.*;
 import edu.nrao.difx.difxcontroller.*;
 
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
-import edu.nrao.difx.xmllib.difxmessage.DifxStatus;
-import edu.nrao.difx.xmllib.difxmessage.DifxStatus.Weight;
+
+import edu.nrao.difx.difxdatabase.DBConnection;
+
+import java.sql.ResultSet;
 
 public class QueueBrowserPanel extends TearOffPanel {
 
-    public QueueBrowserPanel() {
+    public QueueBrowserPanel( SystemSettings systemSettings, MessageDisplayPanel messageDisplay ) {
+        _systemSettings = systemSettings;
+        _messageDisplay = messageDisplay;
         setLayout( null );
         _browserPane = new NodeBrowserScrollPane();
         this.add( _browserPane );
@@ -35,46 +49,78 @@ public class QueueBrowserPanel extends TearOffPanel {
         _mainLabel.setBounds( 5, 0, 150, 20 );
         _mainLabel.setFont( new Font( "Dialog", Font.BOLD, 12 ) );
         add( _mainLabel );
-        ProjectNode project1 = new ProjectNode( "Project 1" );
-        _browserPane.addNode( project1 );
-        ProjectNode project2 = new ProjectNode( "Project 2" );
-        _browserPane.addNode( project2 );
-        JobNode job1 = new JobNode( "Job 1" );
-        project1.addChild( job1 );
-        JobNode job2 = new JobNode( "Job 2" );
-        project1.addChild( job2 );
-        JobNode job3 = new JobNode( "Job 3" );
-        project2.addChild( job3 );
-        JobNode job4 = new JobNode( "Job 4" );
-        project2.addChild( job4 );
-        JobNode job5 = new JobNode( "Job 5" );
-        project2.addChild( job5 );
-        JobNode job6 = new JobNode( "Job 6" );
-        project2.addChild( job6 );
-        JobNode job7 = new JobNode( "Job 7" );
-        project2.addChild( job7 );
-        JobNode job8 = new JobNode( "Job 8" );
-        project2.addChild( job8 );
-        JobNode job9 = new JobNode( "Job 9" );
-        project2.addChild( job9 );
-        JobNode joba = new JobNode( "Job a" );
-        project2.addChild( joba );
-        JobNode jobb = new JobNode( "Job b" );
-        project2.addChild( jobb );
-        JobNode jobc = new JobNode( "Job c" );
-        project2.addChild( jobc );
-        JobNode jobd = new JobNode( "Job d" );
-        project2.addChild( jobd );
-        JobNode jobe = new JobNode( "Job e" );
-        project2.addChild( jobe );
+        _updateButton = new JButton( "Update" );
+        _updateButton.setToolTipText( "Update queue data from the DiFX database." );
+        _updateButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                updateQueueFromDatabase();
+            }
+        });
+        this.add( _updateButton );
+        _autoButton = new JButton( "" );
+        _autoButton.setToolTipText( "Auto update DiFX queue." );
+        _autoButton.setMargin( new Insets( 2, 4, 2, 4 ) );
+        this.add( _autoButton );
+        _autoActiveLight = new ActivityMonitorLight();
+        _autoActiveLight.setBounds( 4, 4, 16, 21 );
+        _autoActiveLight.onColor( Color.GREEN );
+        _autoButton.add( _autoActiveLight );
+        _autoButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                autoButtonAction();
+            }
+        });
+        
+
+//        ProjectNode project1 = new ProjectNode( "Project 1" );
+//        _browserPane.addNode( project1 );
+//        ProjectNode project2 = new ProjectNode( "Project 2" );
+//        _browserPane.addNode( project2 );
+//        ExperimentNode job1 = new ExperimentNode( "Job 1" );
+//        project1.addChild( job1 );
+//        ExperimentNode job2 = new ExperimentNode( "Job 2" );
+//        project1.addChild( job2 );
+//        ExperimentNode job3 = new ExperimentNode( "Job 3" );
+//        project2.addChild( job3 );
+//        ExperimentNode job4 = new ExperimentNode( "Job 4" );
+//        project2.addChild( job4 );
+//        ExperimentNode job5 = new ExperimentNode( "Job 5" );
+//        project2.addChild( job5 );
+//        ExperimentNode job6 = new ExperimentNode( "Job 6" );
+//        project2.addChild( job6 );
+//        ExperimentNode job7 = new ExperimentNode( "Job 7" );
+//        project2.addChild( job7 );
+//        ExperimentNode job8 = new ExperimentNode( "Job 8" );
+//        project2.addChild( job8 );
+//        ExperimentNode job9 = new ExperimentNode( "Job 9" );
+//        project2.addChild( job9 );
+//        ExperimentNode joba = new ExperimentNode( "Job a" );
+//        project2.addChild( joba );
+//        ExperimentNode jobb = new ExperimentNode( "Job b" );
+//        project2.addChild( jobb );
+//        ExperimentNode jobc = new ExperimentNode( "Job c" );
+//        project2.addChild( jobc );
+//        ExperimentNode jobd = new ExperimentNode( "Job d" );
+//        project2.addChild( jobd );
+//        ExperimentNode jobe = new ExperimentNode( "Job e" );
+//        project2.addChild( jobe );
 //        ProjectNode project3 = new ProjectNode( "Project 3" );
 //        _browserPane.addNode( project3 );
 //        ProjectNode project4 = new ProjectNode( "Big Project" );
 //        _browserPane.addNode( project4 );
 //        for ( int i = 0; i < 50; ++i ) {
-//            JobNode job = new JobNode( "Another Job " + i );
+//            ExperimentNode job = new ExperimentNode( "Another Job " + i );
 //            project4.addChild( job );
 //        }
+
+        //  Set up a repeating timeout that occurs every 10th of a second.
+        Action updateDatabaseAction = new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                databaseTimeoutEvent();
+            }
+        };
+        new Timer( 100, updateDatabaseAction ).start();
 
     }
     
@@ -86,28 +132,215 @@ public class QueueBrowserPanel extends TearOffPanel {
     public void setBounds(int x, int y, int width, int height) {
         _browserPane.setBounds( 0, 70, width, height - 70 );
         super.setBounds( x, y, width, height );
+        _updateButton.setBounds( width - 120, 40, 110, 25 );
+        _autoButton.setBounds( width - 145, 40, 25, 25 );
     }
 
     /*
      * Set the data model, which provides us with data from DiFX.
      */
     public void dataModel( DiFXDataModel newModel ) {
-        _mDataModel = newModel;
-        // create a listener that calls our local function
-//        _mListener = new MessageListener() {
-//            @Override
-//            public void update() {
-//                serviceDataUpdate();
-//            }
-//        };
-//        // hand DataModel a call back listener
-//        _mDataModel.attachListener( _mListener );
-        _mDataModel.addJobMessageListener( new AttributedMessageListener() {
+        _dataModel = newModel;
+        _dataModel.addJobMessageListener( new AttributedMessageListener() {
             @Override
             public void update( DifxMessage difxMsg ) {
                 serviceUpdate( difxMsg );
             }
         } );
+    }
+    
+    /*
+     * The user has hit the "auto" button.  This activates the "auto" light and
+     * causes auto updates to occur.  Or it turns them off.
+     */
+    public void autoButtonAction() {
+        if ( _autoUpdate ) {
+            _autoActiveLight.on( false );
+            _autoUpdate = false;
+            _autoActiveLight.updateUI();
+        }
+        else {
+            _autoActiveLight.onColor( Color.YELLOW );
+            _autoActiveLight.on( true );
+            _autoUpdate = true;
+            _autoActiveLight.updateUI();
+        }
+    }
+    
+    /*
+     * Timeout event for reading the database.
+     */
+    public void databaseTimeoutEvent() {
+        //  See if we are doing "auto" updates of the queue.  If not, we don't
+        //  really do anything here except count time.
+        if ( _autoUpdate ) {
+            //  Every tenth timeout (i.e. every second), and to begin, we do a read 
+            //  of all jobs in the database.  This will allow us to detect any new
+            //  jobs.
+            if ( _timeoutCounter == 0 )
+                updateQueueFromDatabase();
+            //  Otherwise we just check the status of each job that we know about.  If
+            //  a job has been removed we will detect that, too.
+            else
+                checkQueueStatusFromDatabase();
+            _autoActiveLight.on( true );
+        }
+        ++_timeoutCounter;
+        if ( _timeoutCounter == 10 )
+            _timeoutCounter = 0;
+    }
+
+    /*
+     * Update our list of experiments, passes, and nodes from the database.  This
+     * pulls everything off the database and uses it to change our current list.
+     */
+    void updateQueueFromDatabase() {
+        //  Create a new database connection using the current system settings.
+        DBConnection dbConnection = new DBConnection( _systemSettings.dbURL(), _systemSettings.jdbcDriver(),
+                _systemSettings.dbSID(), _systemSettings.dbPWD() );
+        try {
+            dbConnection.connectToDB();
+
+            //  Grab all of the job information from the database.
+            ResultSet jobInfo = dbConnection.selectData( "select * from " + _systemSettings.dbName() + ".Job" );
+
+            //  For each job, parse out everything we need to know about it.
+            while ( jobInfo.next() ) {
+
+                //  Jobs have names, and are also identified by the "pass" they are
+                //  in.  The pass is then contained in an "experiment".  All three
+                //  items are used to identify the job uniquely.
+                String passName = "unknown";
+                String experimentName = "unknown";
+                String passType = "unknown";
+                Integer passId = jobInfo.getInt( "passID" );
+                ResultSet passInfo = dbConnection.selectData( "select * from " + _systemSettings.dbName() + ".Pass where id="
+                        + passId.toString() );
+                Integer experimentId = -1;
+                if ( passInfo.next() ) {
+                    passName = passInfo.getString( "passName" );
+                    experimentId = passInfo.getInt( "experimentID" );
+                    ResultSet expInfo = dbConnection.selectData( "select code from " + _systemSettings.dbName() + ".Experiment where id="
+                            + experimentId.toString() );
+                    if ( expInfo.next() )
+                        experimentName = expInfo.getString( "code" );
+                    Integer passTypeId = passInfo.getInt( "passTypeID" );
+                    ResultSet passTypeInfo = dbConnection.selectData( "select type from " + _systemSettings.dbName() + ".PassType where id="
+                            + passTypeId.toString() );
+                    if ( passTypeInfo.next() )
+                        passType = passTypeInfo.getString( "type" );
+                }
+                Integer jobNumber = jobInfo.getInt( "jobNumber" );
+                //  Construct the job name using the pass name and job number.
+                String jobName = passName + "_" + jobNumber.toString();
+                
+                //  Try to match this job to the existing hierarchy of experiments,
+                //  passes, and job names.  If any of these things do not exist, we
+                //  will assume this is a new job and create them.  First, the
+                //  experiment....
+                ExperimentNode thisExperiment = null;
+                BrowserNode experimentList = _browserPane.browserTopNode();
+                if ( experimentList.children().size() > 0 ) {
+                    for ( Iterator<BrowserNode> iter = experimentList.childrenIterator(); iter.hasNext(); ) {
+                        ExperimentNode testExperiment = (ExperimentNode)(iter.next());
+                        if ( testExperiment.name().contentEquals( experimentName ) )
+                            thisExperiment = testExperiment;
+                     }
+                }
+                //  Create a new experiment if we didn't find the named one.
+                if ( thisExperiment == null ) {
+                    thisExperiment = new ExperimentNode( experimentName );
+                    _browserPane.addNode( thisExperiment );
+                }
+                
+                //  Now find the pass in the experiment...
+                PassNode thisPass = null;
+                if ( thisExperiment.children().size() > 0 ) {
+                    for ( Iterator<BrowserNode> iter = thisExperiment.childrenIterator(); iter.hasNext(); ) {
+                        PassNode testPass = (PassNode)(iter.next());
+                        if ( testPass.name().contentEquals( passName ) )
+                            thisPass = testPass;
+                     }
+                }
+                //  Create a new pass if we didn't find the named one.
+                if ( thisPass == null ) {
+                    thisPass = new PassNode( passName );
+                    thisExperiment.addChild( thisPass );
+                }
+                
+                //  Finally, find the job in the pass...
+                JobNode thisJob = null;
+                if ( thisPass.children().size() > 0 ) {
+                    for ( Iterator<BrowserNode> iter = thisPass.childrenIterator(); iter.hasNext(); ) {
+                        JobNode testJob = (JobNode)(iter.next());
+                        if ( testJob.name().contentEquals( jobName ) )
+                            thisJob = testJob;
+                     }
+                }
+                //  Create a new job if we didn't find the named one.
+                if ( thisJob == null ) {
+                    thisJob = new JobNode( jobName );
+                    thisJob.experiment( thisExperiment.name() );
+                    thisJob.pass( thisPass.name() );
+                    thisPass.addChild( thisJob );
+                }
+    
+                thisJob.priority( jobInfo.getInt("priority") );
+                thisJob.queueTime( jobInfo.getString( "queueTime" ) );
+                thisJob.correlationStart( jobInfo.getString( "correlationStart" ) );
+                thisJob.correlationEnd( jobInfo.getString( "correlationEnd" ) );
+                thisJob.jobStart( jobInfo.getDouble( "jobStart" ) );
+                thisJob.jobDuration( jobInfo.getDouble( "jobDuration" ) ); 
+                thisJob.inputFile( jobInfo.getString( "inputFile" ) );
+                thisJob.outputFile( jobInfo.getString( "outputFile" ) );
+                thisJob.outputSize( jobInfo.getInt( "outputSize" ) );
+                thisJob.difxVersion( jobInfo.getString( "difxVersion" ) );
+                thisJob.speedUpFactor( jobInfo.getDouble( "speedupFactor" ) );
+                thisJob.numAntennas( jobInfo.getInt( "numAntennas" ) );
+                thisJob.numForeignAntennas( jobInfo.getInt( "numForeign" ) );
+                thisJob.dutyCycle( jobInfo.getString( "dutyCycle" ) );
+                thisJob.status( "unknown" );
+                thisJob.active( false );
+                thisJob.statusId( jobInfo.getInt( "statusID" ) );
+                Integer statusIdInt = jobInfo.getInt( "statusID" );
+                ResultSet jobStatusInfo = dbConnection.selectData( "select status, active from " + _systemSettings.dbName() + ".JobStatus where id="
+                        + statusIdInt.toString() );
+                if ( jobStatusInfo.next() ) {
+                    thisJob.status( jobStatusInfo.getString( "status" ) );
+                    thisJob.active( jobStatusInfo.getBoolean( "active" ) );
+                }
+
+            }
+            
+            //  Turn the auto active light to green so we know database updates
+            //  are working.
+            _autoActiveLight.onColor( Color.GREEN );
+
+        } catch ( java.sql.SQLException e ) {
+            _messageDisplay.error( 0, "QueueBrowswer.updateQueueFromDatabase()",
+                    ( "SQLException: " + e.getMessage() ) );
+            _autoActiveLight.onColor( Color.RED );
+        } catch ( ClassNotFoundException e ) {
+            String message =
+                    "Failed to find database driver [" + e.getMessage() + "]";
+            _messageDisplay.error( 0, "QueueBrowswer.updateQueueFromDatabase()", message );
+            _autoActiveLight.onColor( Color.RED );
+        } catch ( Exception e ) {
+            String message =
+                    "Failed to connect to database [" + e.getMessage() + "]";
+            _messageDisplay.error( 0, "QueueBrowswer.updateQueueFromDatabase()", message );
+            _autoActiveLight.onColor( Color.RED );
+        }
+
+    }
+    
+    /*
+     * Check the status of all known jobs in the database and update any information
+     * that changes.  Most items related to a job do not change in the database, so
+     * we don't need check much.  This function will also figure out if a job has
+     * been de-queued, i.e. removed from the database.
+     */
+    protected void checkQueueStatusFromDatabase() {
     }
     
     /*
@@ -118,24 +351,21 @@ public class QueueBrowserPanel extends TearOffPanel {
     protected void serviceDataUpdate() {
         
         //  This would be unlikely...
-        if ( _mDataModel == null )
+        if ( _dataModel == null )
             return;
         
         //  Get all jobs the data model knows about.
-        List<Job> jobs = _mDataModel.getJobs();
+        List<Job> jobs = _dataModel.getJobs();
         
         //  Change the displayed properties for each job.
-        if ( jobs == null ) {
-            System.out.println( "no jobs" );
-        }
-        else {
+        if ( jobs != null ) {
             //  Run through each unit in the list of Mark5 modules and change their 
             //  displayed properties.
             for ( Iterator<Job> iter = jobs.iterator(); iter.hasNext(); ) {
                 Job thisJob = iter.next();
                 System.out.println( thisJob.getJobID() ); 
                 //  Find the node in our browser that represents this unit.
-                JobNode processor = null;
+                ExperimentNode processor = null;
 //                for ( Iterator<BrowserNode> iter2 = _clusterNodes.children().iterator(); iter2.hasNext(); ) {
 //                    BrowserNode thisModule = iter2.next();
 //                    if ( thisModule.name().equals( thisProcessor.getObjName() ) )
@@ -171,16 +401,22 @@ public class QueueBrowserPanel extends TearOffPanel {
         //  to go on, we use the job name to locate the job in our current list of
         //  jobs.
         JobNode thisJob = null;
-        //  Loop through each "project"
+        //  Loop through each "experiment" and "pass" to find this job.
         for ( Iterator<BrowserNode> projectIter = _browserPane.browserTopNode().children().iterator(); 
                 projectIter.hasNext() && thisJob == null; ) {
-            ProjectNode testProject = (ProjectNode)projectIter.next();
-            //  Within each project, look at all jobs...
-            for ( Iterator<BrowserNode> jobIter = testProject.children().iterator(); 
-                jobIter.hasNext() && thisJob == null; ) {
-                JobNode testJob = (JobNode)jobIter.next();
-                if ( testJob.name().equals( difxMsg.getHeader().getIdentifier() ) )
-                    thisJob = testJob;
+            ExperimentNode testExperiment = (ExperimentNode)projectIter.next();
+            PassNode thisPass = null;
+            if ( testExperiment.children().size() > 0 ) {
+                for ( Iterator<BrowserNode> iter = testExperiment.childrenIterator(); iter.hasNext(); ) {
+                    PassNode testPass = (PassNode)(iter.next());
+                    //  Within each project, look at all jobs...
+                    for ( Iterator<BrowserNode> jobIter = testPass.children().iterator(); 
+                        jobIter.hasNext() && thisJob == null; ) {
+                        JobNode testJob = (JobNode)jobIter.next();
+                        if ( testJob.name().equals( difxMsg.getHeader().getIdentifier() ) )
+                            thisJob = testJob;
+                    }
+                }
             }
         }
         
@@ -189,11 +425,14 @@ public class QueueBrowserPanel extends TearOffPanel {
 
         if ( thisJob == null ) {
             if ( _unaffiliated == null ) {
-                _unaffiliated = new ProjectNode( "Unaffiliated" );
+                _unaffiliated = new ExperimentNode( "Jobs Outside Queue" );
                 _browserPane.addNode( _unaffiliated );
+                _unknown = new PassNode( "" );
+                _unknown.setHeight( 0 );
+                _unaffiliated.addChild( _unknown );
             }
             thisJob = new JobNode( difxMsg.getHeader().getIdentifier() );
-            _unaffiliated.addChild( thisJob );
+            _unknown.addChild( thisJob );
         }
 
         //  Send the message to the job node.
@@ -201,11 +440,19 @@ public class QueueBrowserPanel extends TearOffPanel {
         
     }  
 
-    private NodeBrowserScrollPane _browserPane;
-    private JLabel _mainLabel;
-    DiFXDataModel  _mDataModel;
-    DiFXController _mController;
+    protected NodeBrowserScrollPane _browserPane;
+    protected JLabel _mainLabel;
+    protected JButton _updateButton;
+    DiFXDataModel  _dataModel;
+    DiFXController _controller;
     MessageListener _mListener;
-    protected ProjectNode _unaffiliated;
+    protected ExperimentNode _unaffiliated;
+    protected PassNode _unknown;
+    protected SystemSettings _systemSettings;
+    protected MessageDisplayPanel _messageDisplay;
+    protected int _timeoutCounter;
+    protected JButton _autoButton;
+    protected ActivityMonitorLight _autoActiveLight;
+    protected boolean _autoUpdate;
     
 }

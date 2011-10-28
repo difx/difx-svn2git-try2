@@ -72,9 +72,13 @@ public class DiFXDataModel {
      * Alter things based on changed system settings.
      */
     private void updateFromSystemSettings() {
-        _dbConnection = new edu.nrao.difx.difxdatabase.DBConnection( _systemSettings.dbURL(), _systemSettings.oracleJdbcDriver(),
-                _systemSettings.dbSID(), _systemSettings.dbPWD() );
+        updataDatabaseFromSystemSettings();
         readResourcesConfig( _systemSettings.resourcesFile() );
+    }
+    
+    public void updataDatabaseFromSystemSettings() {
+        _dbConnection = new edu.nrao.difx.difxdatabase.DBConnection( _systemSettings.dbURL(), _systemSettings.jdbcDriver(),
+                _systemSettings.dbSID(), _systemSettings.dbPWD() );
     }
 
     public void addHardwareMessageListener( AttributedMessageListener a ) {
@@ -1555,30 +1559,49 @@ public class DiFXDataModel {
 
         // get all data from DIFXQUEUE
         // ResultSet rs = mDBConnection.selectData("select * from DIFXQUEUE where INPUT_FILE like \'%.input\' and STATUS != \'COMPLETE\' order by PRIORITY, JOB_START ASC");
-        ResultSet rs = _dbConnection.selectData("select * from vDOIQueue ");
+        //ResultSet rs = _dbConnection.selectData("select * from vDOIQueue ");
+        ResultSet jobInfo = _dbConnection.selectData( "select * from difxdb.Job" );
+        ResultSet jobStatusInfo = _dbConnection.selectData( "select * from difxdb.JobStatus" );
+        ResultSet passTypeInfo = _dbConnection.selectData( "select * from difxdb.PassType" );
         // fetch each row from the result set
-        while (rs.next()) {
+        while (jobInfo.next()) {
             mRecCount++;
-            //String proposal = rs.getString("PROPOSAL");
-            String proposal = rs.getString("code");
+            //String proposal = jobInfo.getString("PROPOSAL");
+            //  This is now "Experiment"...
+            //String proposal = jobInfo.getString("code");
+            //Integer experimentId = new Integer( 
+            //ResultSet expInfo = _dbConnection.selectData( "select code from difxdb.Experiment where id=\'"
+            //        + Integer( jobInfo.getInt( "code)"\'" );
             String segment = "";
-            //if (rs.getString("SEGMENT") != null)
-            if (rs.getString("segment") != null) {
-                //segment = rs.getString("SEGMENT");
-                segment = rs.getString("segment");
-            }
+            //if (jobInfo.getString("SEGMENT") != null)
+            //if (jobInfo.getString("segment") != null) {
+                //segment = jobInfo.getString("SEGMENT");
+                //segment = jobInfo.getString("segment");
+            //}
 
-            String jobPass = rs.getString("passName");
-            int jobNumber = rs.getInt("jobNumber");
-            int priority = rs.getInt("priority");
-            long jobStart = rs.getLong("jobStart");
-            long jobStop = rs.getLong("jobStart");
-            //  long   jobStart  = (rs.getDate("jobStart")).getTime();
-            //  long   jobStop   = (rs.getDate("jobStart")).getTime();
-            float speedUp = rs.getFloat("speedupFactor");
-            String inputFile = rs.getString("inputFile");
-            String status = rs.getString("status");
-            int numAnt = rs.getInt("numAntennas");
+            Integer passId = jobInfo.getInt( "passID" );
+            ResultSet passInfo = _dbConnection.selectData( "select experimentID, passName from difxdb.Pass where id="
+                    + passId.toString() );
+            String jobPass = "unknown";
+            String proposal = "unknown";
+            if ( passInfo.next() ) {
+                jobPass = passInfo.getString( "passName" );
+                Integer experimentId = passInfo.getInt( "experimentID" );
+                ResultSet expInfo = _dbConnection.selectData( "select code from difxdb.Experiment where id="
+                        + experimentId.toString() );
+                if ( expInfo.next() )
+                    proposal = expInfo.getString( "code" );
+            }
+            int jobNumber = jobInfo.getInt("jobNumber");
+            int priority = jobInfo.getInt("priority");
+            long jobStart = jobInfo.getLong("jobStart");
+            long jobStop = jobInfo.getLong("jobStart");
+            //  long   jobStart  = (jobInfo.getDate("jobStart")).getTime();
+            //  long   jobStop   = (jobInfo.getDate("jobStart")).getTime();
+            float speedUp = jobInfo.getFloat("speedupFactor");
+            String inputFile = jobInfo.getString("inputFile");
+            String status = jobInfo.getString("statusID");
+            int numAnt = jobInfo.getInt("numAntennas");
 
             // Create DOI message and service the data model
             ObjectFactory factory = new ObjectFactory();
@@ -1666,7 +1689,7 @@ public class DiFXDataModel {
             body = null;
             jobProj = null;
 
-        } // --  while (rs.next())
+        } // --  while (jobInfo.next())
 
         // Close DB connection
         _dbConnection.close();

@@ -13,143 +13,149 @@ import java.util.Calendar;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
+
 /**
  *
  * @author mguerra
  */
-public class ReadMessageThread implements Runnable
-{
+public class ReadMessageThread implements Runnable {
 
-   private String  mThreadName;
-   private boolean mDone = false;
+    private String mThreadName;
+    private boolean mDone = false;
+    private boolean _settingsChange = true;
+    // -- always start the process message thread before this thread.
+    private ProcessMessageThread mMessageQueue;
+    SystemSettings _systemSettings;
 
-   // -- always start the process message thread before this thread.
-   private ProcessMessageThread mMessageQueue;
-   
-   SystemSettings _systemSettings;
+    // Constructor, give the thread a name and a link to the system settings.
+    public ReadMessageThread( String name, SystemSettings systemSettings ) {
+        mThreadName = name;
+        _systemSettings = systemSettings;
+        //  Set up a callback for changes to broadcast items in the system settings.
+        _systemSettings.broadcastChangeListener( new ActionListener() {
 
-   // Constructor, give the thread a name
-   public ReadMessageThread( String name, SystemSettings systemSettings )
-   {
-      mThreadName = name;
-      _systemSettings = systemSettings;
-   }
+            public void actionPerformed( ActionEvent e ) {
+                updateBroadcastSettings();
+            }
+        });
 
-   // Stop thread
-   public void shutDown()
-   {
-      mDone = true;
-   }
+    }
 
-   // Methods specific to the message queue
-   public void addQueue(ProcessMessageThread queue)
-   {
-      mMessageQueue = queue;
-   }
+    protected void updateBroadcastSettings() {
+        _settingsChange = true;
+    }
 
-   public ProcessMessageThread getQueue()
-   {
-      return mMessageQueue;
-   }
+    // Stop thread
+    public void shutDown() {
+        mDone = true;
+    }
 
-   private void printPacket(DatagramPacket packet)
-   {
-      System.out.println("******** Read message packet received data from: " + packet.getAddress().toString() +
-              ":" + packet.getPort() + " with length: " +
-              packet.getLength());
+    // Methods specific to the message queue
+    public void addQueue(ProcessMessageThread queue) {
+        mMessageQueue = queue;
+    }
 
-      System.out.write(packet.getData(), 0, packet.getLength());
-      System.out.println();
-   }
+    public ProcessMessageThread getQueue() {
+        return mMessageQueue;
+    }
 
-   // Implement the thread interface
-   @Override
-   public void run()
-   {
-      synchronized (this)
-      {
-         try
-         {
-            // start time stamp
-            String startDate = Calendar.getInstance().getTime().toString();
+    private void printPacket(DatagramPacket packet) {
+        System.out.println("******** Read message packet received data from: " + packet.getAddress().toString()
+                + ":" + packet.getPort() + " with length: "
+                + packet.getLength());
 
-            // create socket and join group
-            int    port    = _systemSettings.port();
-            String address = _systemSettings.ipAddress();
+        System.out.write(packet.getData(), 0, packet.getLength());
+        System.out.println();
+    }
 
-            // create multicast socket
-            MulticastSocket socket = new MulticastSocket(port);
-            socket.setSoTimeout(100);              // timeout 100ms
-            socket.setReceiveBufferSize(512000);   // max buffer size 512k Bytes
-            socket.joinGroup(InetAddress.getByName(address));
+    // Implement the thread interface
+    @Override
+    public void run() {
 
-            // loop forever, read and queue datagram packets
-            while (!mDone)
-            {
-               try
-               {
-                  // create buffer and datagram packet
-                  byte[] buffer = new byte[_systemSettings.bufferSize()];    //1050
-                  DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+        synchronized ( this ) {
 
-                  // Wait for datagram packet
-                  if (packet != null)
-                  {
-                     // do not process empty packets.
-                     try
-                     {
-                        // Insert raw packet into the queue
-                        socket.receive(packet);
-                        if ( !mMessageQueue.add(packet) )
-                        {
-                           System.out.printf("******** Read message thread packet FAILED to add into queue. \n");
+            try {
+                // start time stamp
+                String startDate = Calendar.getInstance().getTime().toString();
+
+                // create multicast socket
+                MulticastSocket socket = new MulticastSocket( _systemSettings.port() );
+                socket.setSoTimeout( _systemSettings.timeout() );              // timeout 100ms
+                socket.setReceiveBufferSize(512000);   // max buffer size 512k Bytes
+                socket.joinGroup( InetAddress.getByName( _systemSettings.ipAddress() ) );
+
+                // loop forever, read and queue datagram packets
+                while ( !mDone ) {
+                    
+                    try {
+
+                        //  Check for changes to the broadcast settings on each cycle.
+                        if ( _settingsChange ) {
+                            socket = new MulticastSocket( _systemSettings.port() );
+                            socket.setSoTimeout( _systemSettings.timeout() );              // timeout 100ms
+                            socket.setReceiveBufferSize( 512000 );   // max buffer size 512k Bytes
+                            socket.joinGroup( InetAddress.getByName( _systemSettings.ipAddress() ) );
+                            _settingsChange = false;
                         }
-                     }
-                     catch (SocketTimeoutException exception)
-                     {
-                        // socket did not receive message within 100ms, clean up
+
+                        // create buffer and datagram packet
+                        byte[] buffer = new byte[_systemSettings.bufferSize()];    //1050
+                        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+                        // Wait for datagram packet
+                        if (packet != null) {
+                            // do not process empty packets.
+                            try {
+                                // Insert raw packet into the queue
+                                socket.receive(packet);
+                                //  This allows the systems settings to show the packets as we receive them...very exciting.
+                                _systemSettings.gotPacket( packet.getLength() );
+                                if (!mMessageQueue.add(packet)) {
+                                    System.out.printf("******** Read message thread packet FAILED to add into queue. \n");
+                                }
+                            } catch (SocketTimeoutException exception) {
+                                _systemSettings.gotPacket( 0 );
+                                // socket did not receive message within 100ms, clean up
+                                buffer = null;
+                                packet = null;
+                                Thread.yield();
+                            }
+
+                        } else {
+                            System.out.printf("******** Read message empty null packet - continue. \n", mThreadName);
+                        }
+
+                        // No need to throttle packet read
+
+                        // Do not leave group and do not close socket
+
+                        // clean up
                         buffer = null;
                         packet = null;
-                        Thread.yield();
-                     }
 
-                  }
-                  else
-                  {
-                     System.out.printf("******** Read message empty null packet - continue. \n", mThreadName);
-                  }
+                        // catch an interrupt, stop thread
+                        if (Thread.currentThread().isInterrupted() == true) {
+                            System.out.printf("******** Read message thread %s interrupted. \n", mThreadName);
+                            mDone = true;
+                        }
+                    } catch (OutOfMemoryError exception) {
+                        System.out.printf("******** Read message %s caught OutOfMemoryError(%s  %s) - done. \n",
+                                mThreadName, startDate, Calendar.getInstance().getTime().toString());
+                        mDone = true;
+                        exception.printStackTrace();
+                    }
 
-                  // No need to throttle packet read
+                } // -- while (!mDone)
 
-                  // Do not leave group and do not close socket
+                System.out.printf("******** Read message thread %s done. \n", mThreadName);
+            } catch ( IOException ex ) {
+                Logger.getLogger(ReadMessageThread.class.getName()).log(Level.SEVERE, null, ex);
+            }
 
-                  // clean up
-                  buffer = null;
-                  packet = null;
+        }
 
-                  // catch an interrupt, stop thread
-                  if (Thread.currentThread().isInterrupted() == true)
-                  {
-                     System.out.printf("******** Read message thread %s interrupted. \n", mThreadName);
-                     mDone = true;
-                  }
-               }
-               catch (OutOfMemoryError exception)
-               {
-                  System.out.printf("******** Read message %s caught OutOfMemoryError(%s  %s) - done. \n",
-                          mThreadName, startDate, Calendar.getInstance().getTime().toString());
-                  mDone = true;
-                  exception.printStackTrace();
-               }
+    }
 
-            } // -- while (!mDone)
-
-            System.out.printf("******** Read message thread %s done. \n", mThreadName);
-         }
-         catch (IOException ex)
-         {
-            Logger.getLogger(ReadMessageThread.class.getName()).log(Level.SEVERE, null, ex);
-         }
-      }
-   }
 }

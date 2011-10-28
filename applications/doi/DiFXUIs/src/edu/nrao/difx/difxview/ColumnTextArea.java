@@ -58,13 +58,16 @@ public class ColumnTextArea extends JPanel implements MouseListener, MouseMotion
         Dimension d = this.getSize();
         int height = g.getFontMetrics().getHeight();
         int descent = g.getFontMetrics().getDescent();
-        int width = g.getFontMetrics().stringWidth( _text );
+        String drawText = _text;
+        if ( drawText == null )
+            drawText = "null";
+        int width = g.getFontMetrics().stringWidth( drawText );
         if ( _justify == LEFT )
-            g.drawString( _text, _margin, ( d.height - height ) / 2 + ( height - descent ) );
+            g.drawString( drawText, _margin, ( d.height - height ) / 2 + ( height - descent ) );
         else if ( _justify == RIGHT )
-            g.drawString( _text, d.width - _margin - width, ( d.height - height ) / 2 + ( height - descent ) );
+            g.drawString( drawText, d.width - _margin - width, ( d.height - height ) / 2 + ( height - descent ) );
         else
-            g.drawString( _text, _margin + ( d.width - width ) / 2, ( d.height - height ) / 2 + ( height - descent ) );
+            g.drawString( drawText, _margin + ( d.width - width ) / 2, ( d.height - height ) / 2 + ( height - descent ) );
         //  The "kill button" is a little X in a circle that can be used to
         //  trigger an event when pressed.  It shows up on the right hand side
         //  of the text field unless the text is right justified (in which case
