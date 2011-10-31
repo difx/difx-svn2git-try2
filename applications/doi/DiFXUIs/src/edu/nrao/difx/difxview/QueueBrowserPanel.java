@@ -273,7 +273,8 @@ public class QueueBrowserPanel extends TearOffPanel {
                 if ( thisPass.children().size() > 0 ) {
                     for ( Iterator<BrowserNode> iter = thisPass.childrenIterator(); iter.hasNext(); ) {
                         JobNode testJob = (JobNode)(iter.next());
-                        if ( testJob.name().contentEquals( jobName ) )
+                        if ( testJob.name().contentEquals( jobName ) && 
+                                testJob.inputFile().contentEquals( jobInfo.getString( "inputFile" ) ) )
                             thisJob = testJob;
                      }
                 }
