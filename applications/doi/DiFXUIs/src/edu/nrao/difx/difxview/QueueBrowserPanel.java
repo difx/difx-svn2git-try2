@@ -319,16 +319,22 @@ public class QueueBrowserPanel extends TearOffPanel {
         } catch ( java.sql.SQLException e ) {
             _messageDisplay.error( 0, "QueueBrowswer.updateQueueFromDatabase()",
                     ( "SQLException: " + e.getMessage() ) );
+            _messageDisplay.error( 0, "QueueBrowswer.updateQueueFromDatabase()",
+                    "Check Database Configuration parameters in the Settings Menu" );
             _autoActiveLight.onColor( Color.RED );
         } catch ( ClassNotFoundException e ) {
             String message =
                     "Failed to find database driver [" + e.getMessage() + "]";
             _messageDisplay.error( 0, "QueueBrowswer.updateQueueFromDatabase()", message );
+            _messageDisplay.error( 0, "QueueBrowswer.updateQueueFromDatabase()",
+                    "Check Database Configuration parameters in the Settings Menu" );
             _autoActiveLight.onColor( Color.RED );
         } catch ( Exception e ) {
             String message =
                     "Failed to connect to database [" + e.getMessage() + "]";
             _messageDisplay.error( 0, "QueueBrowswer.updateQueueFromDatabase()", message );
+            _messageDisplay.error( 0, "QueueBrowswer.updateQueueFromDatabase()",
+                    "Check Database Configuration parameters in the Settings Menu" );
             _autoActiveLight.onColor( Color.RED );
         }
 
