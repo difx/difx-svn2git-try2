@@ -503,8 +503,14 @@ public class JobNode extends BrowserNode {
     public void showStatus( boolean newVal ) { _status.setVisible( newVal ); }
     public void showActive( boolean newVal ) { _active.setVisible( newVal ); }
     public void showStatusId( boolean newVal ) { _statusId.setVisible( newVal ); }
-    public void showWeights( boolean newVal ) { _showWeights = newVal; }
-    public void showWeightsAsPlots( boolean newVal ) { _showWeightsAsPlots = newVal; }
+    public void showWeights( boolean newVal ) { 
+        _showWeights = newVal;
+        this.updateUI();
+    }
+    public void showWeightsAsPlots( boolean newVal ) { 
+        _showWeightsAsPlots = newVal;
+        this.updateUI();
+    }
     
     public void widthName( int newVal ) { _widthName = newVal; }
     public void widthProgressBar( int newVal ) { _widthProgressBar = newVal; }
