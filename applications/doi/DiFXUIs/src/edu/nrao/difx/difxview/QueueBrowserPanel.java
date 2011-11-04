@@ -120,6 +120,11 @@ public class QueueBrowserPanel extends TearOffPanel {
                 databaseTimeoutEvent();
             }
         };
+        
+        //  Create a header line of all jobs.
+        _header = new JobNodesHeader();
+        _browserPane.addNode( _header );
+        
         new Timer( 100, updateDatabaseAction ).start();
 
     }
@@ -240,8 +245,13 @@ public class QueueBrowserPanel extends TearOffPanel {
                 //  experiment....
                 ExperimentNode thisExperiment = null;
                 BrowserNode experimentList = _browserPane.browserTopNode();
-                if ( experimentList.children().size() > 0 ) {
-                    for ( Iterator<BrowserNode> iter = experimentList.childrenIterator(); iter.hasNext(); ) {
+                if ( experimentList.children().size() > 1 ) {
+                    //  The first item in the browser list is not actually an experiment -
+                    //  it is the header.  We skip it.
+                    Iterator<BrowserNode> iter = experimentList.childrenIterator();
+                    iter.next();
+                    //  Now look at the rest.
+                    for ( ; iter.hasNext(); ) {
                         ExperimentNode testExperiment = (ExperimentNode)(iter.next());
                         if ( testExperiment.name().contentEquals( experimentName ) )
                             thisExperiment = testExperiment;
@@ -265,6 +275,7 @@ public class QueueBrowserPanel extends TearOffPanel {
                 //  Create a new pass if we didn't find the named one.
                 if ( thisPass == null ) {
                     thisPass = new PassNode( passName );
+                    thisPass.type( passType );
                     thisExperiment.addChild( thisPass );
                 }
                 
@@ -284,6 +295,7 @@ public class QueueBrowserPanel extends TearOffPanel {
                     thisJob.experiment( thisExperiment.name() );
                     thisJob.pass( thisPass.name() );
                     thisPass.addChild( thisJob );
+                    _header.addJob( thisJob );
                 }
     
                 thisJob.priority( jobInfo.getInt("priority") );
@@ -396,54 +408,54 @@ public class QueueBrowserPanel extends TearOffPanel {
      */
     public void serviceUpdate( DifxMessage difxMsg ) {
         
-        //System.out.println( "\n\nNEW JOB MESSAGE!!!!!!" );
-        //System.out.println( difxMsg.getHeader().getIdentifier() );
-        if ( difxMsg.getHeader().getIdentifier().equals( "mk5daemon" ) ) {
-            if ( difxMsg.getBody().getDifxAlert() != null )
-                System.out.println( "this is an alert" );
-            System.out.println( difxMsg.getHeader().getFrom() );
-        }
+        //  See if this message looks like it is for a job.  Only proceed if it
+        //  does.
+        if ( JobNode.testJobMessage( difxMsg ) ) { 
         
-        //  The identifier provides us with the job name.  Lacking anything else
-        //  to go on, we use the job name to locate the job in our current list of
-        //  jobs.
-        JobNode thisJob = null;
-        //  Loop through each "experiment" and "pass" to find this job.
-        for ( Iterator<BrowserNode> projectIter = _browserPane.browserTopNode().children().iterator(); 
-                projectIter.hasNext() && thisJob == null; ) {
-            ExperimentNode testExperiment = (ExperimentNode)projectIter.next();
-            PassNode thisPass = null;
-            if ( testExperiment.children().size() > 0 ) {
-                for ( Iterator<BrowserNode> iter = testExperiment.childrenIterator(); iter.hasNext(); ) {
-                    PassNode testPass = (PassNode)(iter.next());
-                    //  Within each project, look at all jobs...
-                    for ( Iterator<BrowserNode> jobIter = testPass.children().iterator(); 
-                        jobIter.hasNext() && thisJob == null; ) {
-                        JobNode testJob = (JobNode)jobIter.next();
-                        if ( testJob.name().equals( difxMsg.getHeader().getIdentifier() ) )
-                            thisJob = testJob;
+            //  The identifier provides us with the job name.  Lacking anything else
+            //  to go on, we use the job name to locate the job in our current list of
+            //  jobs.
+            JobNode thisJob = null;
+            //  Loop through each "experiment" and "pass" to find this job.
+            Iterator<BrowserNode> projectIter = _browserPane.browserTopNode().children().iterator();
+            projectIter.next();
+            for ( ; projectIter.hasNext() && thisJob == null; ) {
+                ExperimentNode testExperiment = (ExperimentNode)projectIter.next();
+                PassNode thisPass = null;
+                if ( testExperiment.children().size() > 0 ) {
+                    for ( Iterator<BrowserNode> iter = testExperiment.childrenIterator(); iter.hasNext(); ) {
+                        PassNode testPass = (PassNode)(iter.next());
+                        //  Within each project, look at all jobs...
+                        for ( Iterator<BrowserNode> jobIter = testPass.children().iterator(); 
+                            jobIter.hasNext() && thisJob == null; ) {
+                            JobNode testJob = (JobNode)jobIter.next();
+                            if ( testJob.name().equals( difxMsg.getHeader().getIdentifier() ) )
+                                thisJob = testJob;
+                        }
                     }
                 }
             }
-        }
-        
-        //  If we didn't find this job, create an entry for it in the "unaffiliated"
-        //  project (which we might have to create if it doesn't exist!).
 
-        if ( thisJob == null ) {
-            if ( _unaffiliated == null ) {
-                _unaffiliated = new ExperimentNode( "Jobs Outside Queue" );
-                _browserPane.addNode( _unaffiliated );
-                _unknown = new PassNode( "" );
-                _unknown.setHeight( 0 );
-                _unaffiliated.addChild( _unknown );
+            //  If we didn't find this job, create an entry for it in the "unaffiliated"
+            //  project (which we might have to create if it doesn't exist!).
+
+            if ( thisJob == null ) {
+                if ( _unaffiliated == null ) {
+                    _unaffiliated = new ExperimentNode( "Jobs Outside Queue" );
+                    _browserPane.addNode( _unaffiliated );
+                    _unknown = new PassNode( "" );
+                    _unknown.setHeight( 0 );
+                    _unaffiliated.addChild( _unknown );
+                }
+                thisJob = new JobNode( difxMsg.getHeader().getIdentifier() );
+                _unknown.addChild( thisJob );
+                _header.addJob( thisJob );
             }
-            thisJob = new JobNode( difxMsg.getHeader().getIdentifier() );
-            _unknown.addChild( thisJob );
-        }
 
-        //  Send the message to the job node.
-        thisJob.consumeMessage( difxMsg );
+            //  Send the message to the job node.
+            thisJob.consumeMessage( difxMsg );
+        
+        }
         
     }  
 
@@ -461,5 +473,6 @@ public class QueueBrowserPanel extends TearOffPanel {
     protected JButton _autoButton;
     protected ActivityMonitorLight _autoActiveLight;
     protected boolean _autoUpdate;
+    protected JobNodesHeader _header;
     
 }
