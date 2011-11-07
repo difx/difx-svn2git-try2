@@ -8,7 +8,7 @@ import ConfigParser
 import tkMessageBox
 
 from difxdb.business.experimentaction import experimentExists, getActiveExperimentCodes
-from difxdb.business.moduleaction import moduleExists
+from difxdb.business.moduleaction import moduleExists, isCheckOutAllowed
 from difxdb.business.slotaction import getOccupiedSlots
 from difxdb.model.dbConnection import Schema, Connection
 from difxdb.model import model
@@ -85,28 +85,30 @@ class MainWindow(GenericWindow):
 
         self.rootWidget.config(menu=menubar)
         
-        vscrollbar = Scrollbar(self.rootWidget,command=self.scrollbarEvent)
+        # frames
+        self.frmMain = LabelFrame(self.rootWidget, text="")
+        self.frmDetail = LabelFrame(self.rootWidget, text="Detail")
+        self.frmEditExperiment = Frame(self.frmDetail)
+        #self.frmFilter = LabelFrame(self.rootWidget, text="")
         
-        self.lstMainSlot = Listbox(self.rootWidget,yscrollcommand=vscrollbar.set)
-        self.lstModule = Listbox(self.rootWidget, yscrollcommand=vscrollbar.set)        
-  
-        self.btnNewModule = Button (self.rootWidget, text="Check-in module", command=self.checkinModule)
         self.btnQuit = Button(self.rootWidget, text="Exit", command=self.rootWidget.destroy)
         
-        self.frmDetail = LabelFrame(self.rootWidget, text="Detail", width=100, height=100)
-        self.frmEditExperiment = Frame(self.frmDetail, width=100, height=100)
+        #widgets on frmMain  
+        lblSearch = Label(self.frmMain, text = "search ")
+        self.txtSearch = Entry(self.frmMain, text = "") 
+        vscrollbar = Scrollbar(self.frmMain,command=self.scrollbarEvent)
+        self.lstMainSlot = Listbox(self.frmMain,yscrollcommand=vscrollbar.set)
+        self.lstModule = Listbox(self.frmMain, yscrollcommand=vscrollbar.set)        
+        self.btnNewModule = Button (self.frmMain, text="Check-in module", command=self.checkinModule)
+                     
         
-        
-        self.txtSearch = Entry(self.rootWidget, text = "")               
-        
-        # widgets on the detail form
+        # widgets on frmDetail
         Label(self.frmDetail, text = "location: ").grid(row=0, column=0, sticky=W)
         Label(self.frmDetail, text = "vsn: ").grid(row=1, column=0, sticky=W)
         Label(self.frmDetail, text = "capacity: ").grid(row=2, column=0, sticky=W)
         Label(self.frmDetail, text = "datarate: ").grid(row=3, column=0, sticky=W)
         Label(self.frmDetail, text = "received: ").grid(row=4, column=0, sticky=W)
-        Label(self.frmDetail, text = "experiment(s): ").grid(row=5, column=0, sticky=W)
-        
+        Label(self.frmDetail, text = "experiment(s): ").grid(row=5, column=0, sticky=W)     
         self.txtLocationContent = Entry(self.frmDetail, text = "") 
         self.lblVSNContent = Entry(self.frmDetail, text = "")
         self.lblCapacityContent = Entry(self.frmDetail, text = "")
@@ -115,20 +117,20 @@ class MainWindow(GenericWindow):
         scrollCboExperiments = Scrollbar(self.frmDetail)
         self.cboExperiments =  Listbox(self.frmDetail, height=3, yscrollcommand=scrollCboExperiments.set, selectmode=MULTIPLE)
         scrollCboExperiments.config(command=self.cboExperiments.yview)
+        self.btnDeleteModule = Button(self.frmDetail, text="Check-out module", command=self.checkOutModule, state=DISABLED)
+        self.btnEditModule = Button(self.frmDetail, text="Update module", command=self.updateModule, state=DISABLED)
+        self.btnPrintLibraryLabel = Button (self.frmDetail, text="Print library label", command=self.printLibraryLabel,state=DISABLED)
+        self.btnPrintVSNLabel = Button (self.frmDetail, text="Print VSN label", command=self.printVSNLabel,state=DISABLED)
         
         # widgets on frmEditExperiment
-        
         scrollCboFreeExperiments = Scrollbar(self.frmEditExperiment)
         self.cboFreeExperiments = Listbox(self.frmEditExperiment, height=3, yscrollcommand=scrollCboFreeExperiments.set, selectmode=MULTIPLE)
         scrollCboFreeExperiments.config(command=self.cboFreeExperiments.yview)
         self.btnAddExperiments = Button(self.frmEditExperiment, text="<<", command=self.addExperimentEvent)
         self.btnRemoveExperiments = Button(self.frmEditExperiment, text=">>", command=self.removeExperimentEvent)
         
-        
-        self.btnDeleteModule = Button(self.frmDetail, text="Check-out module", command=self.checkOutModule, state=DISABLED)
-        self.btnEditModule = Button(self.frmDetail, text="Update module", command=self.updateModule, state=DISABLED)
-        self.btnPrintLibraryLabel = Button (self.frmDetail, text="Print library label", command=self.printLibraryLabel,state=DISABLED)
-        self.btnPrintVSNLabel = Button (self.frmDetail, text="Print VSN label", command=self.printVSNLabel,state=DISABLED)
+
+         
         
         # bind events to widgets
         self.txtLocationContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
@@ -148,18 +150,21 @@ class MainWindow(GenericWindow):
         self.cboExperiments.bind("<ButtonRelease-1>", self.selectExperimentEvent)
         
         # arrange objects on grid       
-        Label(self.parent, text = "search ").grid(row=0, column=0, sticky=E)
-        self.txtSearch.grid(row=0, column=1, sticky=E+W)
-        self.lstMainSlot.grid(row=1,column=0, sticky=N+S+E+W)
-        self.lstModule.grid(row=1,column=1, sticky=N+S+E+W)
-        vscrollbar.grid(row=1, column=2, sticky=N+S)
-        
-        self.btnNewModule.grid(row=4, columnspan=2)        
+        #self.frmFilter.grid(row=0,column=0,sticky=W+E)
+        self.frmMain.grid(row=1,column=0, sticky=E+W+N+S)   
+        self.frmDetail.grid(row=1, column=3, sticky=E+W+N+S )
+        self.frmEditExperiment.grid(row=5, column=3, sticky=N+W )
         self.btnQuit.grid(row=10,columnspan=5)
-        self.frmDetail.grid(row=1, column=3,sticky=N+W )
-        self.frmEditExperiment.grid(row=5, column=3,sticky=N+W )
-          
-
+        
+        # arrange objects on frmMain
+        lblSearch.grid(row=0, column=0, sticky=W+E)
+        self.txtSearch.grid(row=0, column=1, sticky=W+E)
+        self.lstMainSlot.grid(row=10,column=0, sticky=N+S+E+W)
+        self.lstModule.grid(row=10,column=1, sticky=N+S+E+W)
+        vscrollbar.grid(row=10, column=2, sticky=N+S)     
+        self.btnNewModule.grid(row=20, columnspan=2)        
+        
+        #arrange objects on frmDetail
         self.txtLocationContent.grid(row=0, column=1, sticky=W)
         self.lblVSNContent.grid(row=1, column=1, sticky=W)
         self.lblCapacityContent.grid(row=2, column=1, sticky=W)
@@ -167,19 +172,19 @@ class MainWindow(GenericWindow):
         self.lblReceivedContent.grid(row=4, column=1, sticky=W)
         self.cboExperiments.grid(row=5, column=1, sticky=W+N+S)
         scrollCboExperiments.grid(row=5,column=2, rowspan=2, sticky=W+N+S)
+        self.btnEditModule.grid(row=20, column=0, sticky=E+W)
+        self.btnDeleteModule.grid(row=20, column=1, sticky=E+W)
+        self.btnPrintLibraryLabel.grid(row=21,column=0, sticky=E+W)
+        self.btnPrintVSNLabel.grid(row=21,column=1, sticky=E+W)
         
         
-        # objects on frmEditExperiment
+        # arrange objects on frmEditExperiment
         self.cboFreeExperiments.grid(row=0, column=1, rowspan=2, sticky=W+N+S)
         scrollCboFreeExperiments.grid(row=0,column=2, rowspan=2, sticky=W+N+S)
         self.btnAddExperiments.grid(row=0, column=0, sticky=W)
         self.btnRemoveExperiments.grid(row=1, column=0, sticky=W)
         self.frmEditExperiment.grid_remove()
         
-        self.btnEditModule.grid(row=20, column=0, sticky=E+W)
-        self.btnDeleteModule.grid(row=20, column=1, sticky=E+W)
-        self.btnPrintLibraryLabel.grid(row=21,column=0, sticky=E+W)
-        self.btnPrintVSNLabel.grid(row=21,column=1, sticky=E+W)
 
     
     def printVSNLabel(self):
@@ -368,11 +373,16 @@ class MainWindow(GenericWindow):
         # delete module
         module = model.Module()
         module = session.query(model.Module).filter_by(id = slot.module.id).one()
-
+        
+        
         if (module != None):
+            if (isCheckOutAllowed(session,module.vsn) == False):
+                tkMessageBox.showerror("Error", "Module cannot be checked-out.\nIt contains experiments that have not been released yet.")
+                return
+            
             if (tkMessageBox.askokcancel("Confirm module check-out", "Do you really want to remove module " + slot.module.vsn + " from the library? ")):
 
-                session.delete(module) 
+                #session.delete(module) 
                 session.commit()
 
                 self.selectedSlotIndex = -1
@@ -382,6 +392,9 @@ class MainWindow(GenericWindow):
         return
     
     def selectExperimentEvent(self, Event):
+        
+        if (self.selectedSlotIndex == -1):
+            return
         
         self.frmEditExperiment.grid()
         
@@ -442,6 +455,7 @@ class MainWindow(GenericWindow):
             if (tkMessageBox.askyesno("Cancel unsaved changes", "There are unsaved changes in the module details\nAre you sure you want to abandon these?") == False):
                 self.lstMainSlot.selection_clear(self.lstMainSlot.curselection()[0])
                 self.lstMainSlot.selection_set(self.selectedSlotIndex)
+                self.frmEditExperiment.grid_remove()
                 return
             else:
                 self._saveModuleDetails()
