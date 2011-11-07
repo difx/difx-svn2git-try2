@@ -221,6 +221,35 @@ public class SystemSettings extends JFrame {
         } );
         settingsFilePanel.add( defaultsButton );
         
+        IndexedPanel difxControlPanel = new IndexedPanel( "DiFX Control Connection" );
+        difxControlPanel.openHeight( 150 );
+        difxControlPanel.closedHeight( 20 );
+        _scrollPane.addNode( difxControlPanel );
+        _difxControlAddress = new JTextField();
+        _difxControlAddress.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                //generateControlChangeEvent();
+            }
+        } );
+        difxControlPanel.add( _difxControlAddress );
+        JLabel ipAddressLabel = new JLabel( "Host:" );
+        ipAddressLabel.setBounds( 10, 25, 150, 25 );
+        ipAddressLabel.setHorizontalAlignment( JLabel.RIGHT );
+        difxControlPanel.add( ipAddressLabel );
+        _difxControlPort = new NumberBox();
+        _difxControlPort.setHorizontalAlignment( NumberBox.LEFT );
+        _difxControlPort.minimum( 0 );
+        _difxControlPort.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                //generateControlChangeEvent();
+            }
+        } );
+        difxControlPanel.add( _difxControlPort );
+        JLabel portLabel = new JLabel( "Port:" );
+        portLabel.setBounds( 10, 55, 150, 25 );
+        portLabel.setHorizontalAlignment( JLabel.RIGHT );
+        difxControlPanel.add( portLabel );
+        
         IndexedPanel networkPanel = new IndexedPanel( "Broadcast Network" );
         networkPanel.openHeight( 170 );
         networkPanel.closedHeight( 20 );
@@ -232,10 +261,10 @@ public class SystemSettings extends JFrame {
             }
         } );
         networkPanel.add( _ipAddress );
-        JLabel ipAddressLabel = new JLabel( "Group IP Address:" );
-        ipAddressLabel.setBounds( 10, 25, 150, 25 );
-        ipAddressLabel.setHorizontalAlignment( JLabel.RIGHT );
-        networkPanel.add( ipAddressLabel );
+        JLabel difxControlAddressLabel = new JLabel( "Group IP Address:" );
+        difxControlAddressLabel.setBounds( 10, 25, 150, 25 );
+        difxControlAddressLabel.setHorizontalAlignment( JLabel.RIGHT );
+        networkPanel.add( difxControlAddressLabel );
         _port = new NumberBox();
         _port.setHorizontalAlignment( NumberBox.LEFT );
         _port.minimum( 0 );
@@ -245,10 +274,10 @@ public class SystemSettings extends JFrame {
             }
         } );
         networkPanel.add( _port );
-        JLabel portLabel = new JLabel( "Port:" );
-        portLabel.setBounds( 10, 55, 150, 25 );
-        portLabel.setHorizontalAlignment( JLabel.RIGHT );
-        networkPanel.add( portLabel );
+        JLabel controlPortLabel = new JLabel( "Port:" );
+        controlPortLabel.setBounds( 10, 55, 150, 25 );
+        controlPortLabel.setHorizontalAlignment( JLabel.RIGHT );
+        networkPanel.add( controlPortLabel );
         _bufferSize = new NumberBox();
         _bufferSize.setHorizontalAlignment( NumberBox.LEFT );
         _bufferSize.minimum( 0 );
@@ -442,6 +471,9 @@ public class SystemSettings extends JFrame {
         if ( _allObjectsBuilt ) {
             _scrollPane.setBounds( 0, 25, w, h - 25 );
             _settingsFileName.setBounds( 115, 25, w - 135, 25 );
+            //  DiFX Controll Connection settings
+            _difxControlAddress.setBounds( 165, 25, 300, 25 );
+            _difxControlPort.setBounds( 165, 55, 300, 25 );
             //  Broadcast network settings
             _ipAddress.setBounds( 165, 25, 300, 25 );
             _port.setBounds( 165, 55, 300, 25 );
@@ -578,6 +610,13 @@ public class SystemSettings extends JFrame {
     public void statusValidDuration( long newVal ) { _statusValidDuration = newVal; }
     public long statusValidDuration() { return _statusValidDuration; }
     
+    public void difxControlAddress( String newVal ) { _difxControlAddress.setText( newVal ); }
+    public String difxControlAddress() { return _difxControlAddress.getText(); }
+    
+    public void difxControlPort( int newVal ) { _difxControlPort.intValue( newVal ); }
+    public int difxControlPort() { return _difxControlPort.intValue(); }
+    public void difxControlPort( String newVal ) { difxControlPort( Integer.parseInt( newVal ) ); }
+
     public void ipAddress( String newVal ) { _ipAddress.setText( newVal ); }
     public String ipAddress() { return _ipAddress.getText(); }
     
@@ -946,6 +985,9 @@ public class SystemSettings extends JFrame {
     protected String _resourcesFile;
     protected boolean _loggingEnabled;
     protected long _statusValidDuration;
+    //  DiFX Control Connection
+    protected JTextField _difxControlAddress;
+    protected NumberBox _difxControlPort;
     //  Broadcast network
     protected JTextField _ipAddress;
     protected NumberBox _port;

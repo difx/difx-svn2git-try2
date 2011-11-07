@@ -16,7 +16,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.Cursor;
 import java.awt.Component;
-import java.awt.Container;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -241,6 +240,7 @@ public class JobNodesHeader extends BrowserNode {
             }
         });
         _popup.add( _showStatusId );
+        _popupButton.setVisible( true );
 
         //  Create column headers
         _nameArea = new ColumnTextArea( "Job Name" );
@@ -471,6 +471,7 @@ public class JobNodesHeader extends BrowserNode {
         _xOff = 90;
         if ( _showNetworkActivity.getState() )
             _xOff += 14;
+        _popupButton.setBounds( _xOff - 20, 0, 18, _ySize - 2 );
         if ( _showName.getState() ) {
             setTextArea( _nameArea, _widthName );
             _positionName = _xOff;
@@ -1268,5 +1269,6 @@ public class JobNodesHeader extends BrowserNode {
     
     protected int _startWidth;
     protected int _startX;
+    
     
 }

@@ -15,6 +15,8 @@ import javax.swing.JButton;
 import javax.swing.JPopupMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JProgressBar;
+import javax.swing.JSeparator;
+import javax.swing.JTextField;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -46,6 +48,16 @@ public class JobNode extends BrowserNode {
     
     @Override
     public void createAdditionalItems() {
+        //  This field is used to edit the name of the experiment when "rename"
+        //  is picked from the popup menu.
+        _nameEditor = new JTextField( "" );
+        _nameEditor.setVisible( false );
+        _nameEditor.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                nameEditorAction();
+            }
+        });
+        this.add( _nameEditor );
 //        _startButton = new JButton( "Start" );
 //        this.add( _startButton );
 //        _editButton = new JButton( "Edit" );
@@ -164,39 +176,54 @@ public class JobNode extends BrowserNode {
         showActive( true );
         this.add( _active );
         _popup = new JPopupMenu();
-        JMenuItem menuItem;
-        menuItem = new JMenuItem( "Show Editor" );
-        menuItem.addActionListener(new ActionListener() {
+        JMenuItem menuItem2 = new JMenuItem( "Editor/Monitor" );
+        menuItem2.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                editAction( e );
+                updateEditorMonitor();
+                _editorMonitor.setVisible( true );
             }
         });
-        _popup.add( menuItem );
-        JMenuItem menuItem2 = new JMenuItem( "Show Monitor" );
         _popup.add( menuItem2 );
-        widthName( 150 );
-        widthState( 100 );
-        widthProgressBar( 200 );
-        widthWeights( 200 );
-        widthExperiment( 100 );
-        widthPass( 100 );
-        widthPriority( 100 );
-        widthQueueTime( 170 );
-        widthCorrelationStart( 100 );
-        widthCorrelationEnd( 100 );
-        widthJobStart( 80 );
-        widthJobDuration( 80 );
-        widthInputFile( 400 );
-        widthOutputFile( 100 );
-        widthOutputSize( 100 );
-        widthDifxVersion( 100 );
-        widthSpeedUpFactor( 100 );
-        widthNumAntennas( 50 );
-        widthNumForeignAntennas( 50 );
-        widthDutyCycle( 100 );
-        widthStatus( 100 );
-        widthActive( 100 );
-        widthStatusId( 100 );
+        JMenuItem menuItem2a = new JMenuItem( "Rename" );
+        menuItem2a.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                renameAction();
+            }
+        });
+        _popup.add( menuItem2a );
+        JMenuItem menuItem3 = new JMenuItem( "Copy" );
+        _popup.add( menuItem3 );
+        JMenuItem menuItem4 = new JMenuItem( "Remove" );
+        _popup.add( menuItem4 );
+        _popup.add( new JSeparator() );
+        JMenuItem menuItem5 = new JMenuItem( "Start" );
+        menuItem2.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                updateEditorMonitor();
+                _editorMonitor.startJob();
+            }
+        });
+        _popup.add( menuItem5 );
+        JMenuItem menuItem6 = new JMenuItem( "Pause" );
+        menuItem2.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                updateEditorMonitor();
+                _editorMonitor.pauseJob();
+            }
+        });
+        _popup.add( menuItem6 );
+        JMenuItem menuItem7 = new JMenuItem( "Stop" );
+        menuItem2.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                updateEditorMonitor();
+                _editorMonitor.stopJob();
+            }
+        });
+        _popup.add( menuItem7 );
+        JMenuItem menuItem8 = new JMenuItem( "Ready" );
+        _popup.add( menuItem8 );
+        JMenuItem menuItem9 = new JMenuItem( "Reset" );
+        _popup.add( menuItem9 );
     }
     
     @Override
@@ -206,6 +233,7 @@ public class JobNode extends BrowserNode {
         _networkActivity.setBounds( _xOff, 6, 10, 10 );
         _xOff += 14;
         _label.setBounds( _xOff, 0, _widthName, _ySize );
+        _nameEditor.setBounds( _xOff, 0, _widthName, _ySize );
         _xOff += _widthName;
         _state.setBounds( _xOff + 1, 1, _widthState - 2, 18 );
         _xOff += _widthState;
@@ -310,13 +338,44 @@ public class JobNode extends BrowserNode {
         super.paintComponent( g );
     }
     
-/*
-     * Show the editor window.  If one has not been created yet, create it first.
+    /*
+     * This function responds to a rename request from the popup menu.  It replaces
+     * the "label" text field with an editable field containing the name.
      */
-    public void editAction( ActionEvent e ) {
-        if ( _editor == null )
-            _editor = new JobEditor();
-        _editor.setVisible( true );
+    public void renameAction() {
+        _nameEditor.setText( _label.getText() );
+        _nameEditor.setVisible( true );
+        _label.setVisible( false );
+    }
+    
+    /*
+     * This is the callback for the editable name field triggered by a rename
+     * request.  It replaces the label containing the name with whatever is in
+     * the edited field.  The change must be sent to the database as well!
+     */
+    public void nameEditorAction() {
+        _label.setText( _nameEditor.getText() );
+        _label.setVisible( true );
+        _nameEditor.setVisible( false );
+        //  BLAT DATABASE
+        System.out.println( "change job name in database" );
+    }
+
+    /*
+     * Show the job editor/monitor window.  If one has not been created yet, create it first.
+     */
+    public void showEditorMonitor( ActionEvent e ) {
+        updateEditorMonitor();
+        _editorMonitor.setVisible( true );
+    }
+    
+    /*
+     * Internal function used to generate an editor/monitor for this job if one
+     * does not exists and update it with current settings, as far as we know them.
+     */
+    protected void updateEditorMonitor() {
+        if ( _editorMonitor == null )
+            _editorMonitor = new JobEditorMonitor();
     }
     
     /*
@@ -538,7 +597,7 @@ public class JobNode extends BrowserNode {
     
     protected JButton _startButton;
     protected JButton _editButton;
-    protected JobEditor _editor;
+    protected JobEditorMonitor _editorMonitor;
     protected int _xOff;
     protected int _widthName;
     protected JProgressBar _progress;
@@ -599,4 +658,5 @@ public class JobNode extends BrowserNode {
     protected boolean _colorColumn;
     protected Color _columnColor;
 
+    protected JTextField _nameEditor;
 }

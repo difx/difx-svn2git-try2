@@ -125,6 +125,9 @@ public class QueueBrowserPanel extends TearOffPanel {
         _header = new JobNodesHeader();
         _browserPane.addNode( _header );
         
+        //  Do updates from the database automatically by default
+        _autoUpdate = true;
+        
         new Timer( 100, updateDatabaseAction ).start();
 
     }
