@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Erstellungszeit: 28. Oktober 2011 um 14:10
+-- Erstellungszeit: 08. November 2011 um 14:36
 -- Server Version: 5.1.41
 -- PHP-Version: 5.3.1
 
@@ -29,10 +29,13 @@ DROP TABLE IF EXISTS `Experiment`;
 CREATE TABLE IF NOT EXISTS `Experiment` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(20) NOT NULL,
+  `statusID` bigint(20) unsigned NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `code` (`code`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=11 ;
+  UNIQUE KEY `code` (`code`),
+  KEY `statusID` (`statusID`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=16 ;
 
+-- --------------------------------------------------------
 
 --
 -- Tabellenstruktur für Tabelle `ExperimentAndModule`
@@ -40,12 +43,25 @@ CREATE TABLE IF NOT EXISTS `Experiment` (
 
 DROP TABLE IF EXISTS `ExperimentAndModule`;
 CREATE TABLE IF NOT EXISTS `ExperimentAndModule` (
-  `experimentID` bigint(20) NOT NULL,
-  `moduleID` bigint(20) NOT NULL,
+  `experimentID` bigint(20) unsigned NOT NULL,
+  `moduleID` bigint(20) unsigned NOT NULL,
   KEY `experimentID` (`experimentID`),
   KEY `moduleID` (`moduleID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `ExperimentStatus`
+--
+
+DROP TABLE IF EXISTS `ExperimentStatus`;
+CREATE TABLE IF NOT EXISTS `ExperimentStatus` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `statuscode` int(11) NOT NULL,
+  `experimentstatus` varchar(100) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=6 ;
 
 -- --------------------------------------------------------
 
@@ -74,12 +90,7 @@ CREATE TABLE IF NOT EXISTS `Job` (
   `dutyCycle` float DEFAULT NULL,
   `statusID` bigint(20) unsigned NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
-
---
--- Daten für Tabelle `Job`
---
-
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -93,19 +104,7 @@ CREATE TABLE IF NOT EXISTS `JobStatus` (
   `status` varchar(100) NOT NULL,
   `active` tinyint(1) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 AUTO_INCREMENT=7 ;
-
---
--- Daten für Tabelle `JobStatus`
---
-
-INSERT INTO `JobStatus` (`id`, `status`, `active`) VALUES
-(1, 'unknown', 0),
-(2, 'queued', 1),
-(3, 'running', 1),
-(4, 'complete', 0),
-(5, 'killed', 0),
-(6, 'failed', 0);
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=7 ;
 
 -- --------------------------------------------------------
 
@@ -120,13 +119,14 @@ CREATE TABLE IF NOT EXISTS `Module` (
   `vsn` varchar(8) NOT NULL,
   `capacity` int(11) NOT NULL,
   `datarate` int(11) NOT NULL,
+  `numScans` int(11) DEFAULT NULL,
   `received` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `shipped` timestamp NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`id`),
   UNIQUE KEY `vsn` (`vsn`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=45 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=46 ;
 
-
+-- --------------------------------------------------------
 
 --
 -- Tabellenstruktur für Tabelle `Pass`
@@ -139,12 +139,7 @@ CREATE TABLE IF NOT EXISTS `Pass` (
   `passName` varchar(30) NOT NULL,
   `passTypeID` bigint(20) unsigned NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
-
---
--- Daten für Tabelle `Pass`
---
-
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -157,16 +152,7 @@ CREATE TABLE IF NOT EXISTS `PassType` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `type` varchar(50) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 AUTO_INCREMENT=4 ;
-
---
--- Daten für Tabelle `PassType`
---
-
-INSERT INTO `PassType` (`id`, `type`) VALUES
-(1, 'production'),
-(2, 'clock'),
-(3, 'test');
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=4 ;
 
 -- --------------------------------------------------------
 
@@ -185,8 +171,6 @@ CREATE TABLE IF NOT EXISTS `Slot` (
   UNIQUE KEY `moduleID` (`moduleID`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=83 ;
 
-
-
 -- --------------------------------------------------------
 
 --
@@ -196,6 +180,22 @@ CREATE TABLE IF NOT EXISTS `Slot` (
 DROP TABLE IF EXISTS `vDOIQueue`;
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `difxdb`.`vDOIQueue` AS select `E`.`code` AS `code`,`P`.`passName` AS `passName`,`J`.`jobNumber` AS `jobNumber`,`J`.`priority` AS `priority`,`J`.`jobStart` AS `jobStart`,`J`.`jobDuration` AS `jobDuration`,`J`.`inputFile` AS `inputFile`,`J`.`speedupFactor` AS `speedupFactor`,`J`.`numAntennas` AS `numAntennas`,`S`.`status` AS `status` from ((((`difxdb`.`Job` `J` join `difxdb`.`Pass` `P` on((`J`.`passID` = `P`.`id`))) join `difxdb`.`Experiment` `E` on((`P`.`experimentID` = `E`.`id`))) join `difxdb`.`JobStatus` `S` on((`S`.`id` = `J`.`statusID`))) join `difxdb`.`PassType` on((`difxdb`.`PassType`.`id` = `P`.`passTypeID`)));
 
+--
+-- Constraints der exportierten Tabellen
+--
+
+--
+-- Constraints der Tabelle `Experiment`
+--
+ALTER TABLE `Experiment`
+  ADD CONSTRAINT `Experiment_ibfk_1` FOREIGN KEY (`statusID`) REFERENCES `ExperimentStatus` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+--
+-- Constraints der Tabelle `ExperimentAndModule`
+--
+ALTER TABLE `ExperimentAndModule`
+  ADD CONSTRAINT `ExperimentAndModule_ibfk_1` FOREIGN KEY (`experimentID`) REFERENCES `Experiment` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
+  ADD CONSTRAINT `ExperimentAndModule_ibfk_2` FOREIGN KEY (`moduleID`) REFERENCES `Module` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 --
 -- Constraints der Tabelle `Slot`
