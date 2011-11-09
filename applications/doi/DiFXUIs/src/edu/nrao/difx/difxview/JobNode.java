@@ -29,6 +29,8 @@ import java.awt.RenderingHints;
 import java.awt.Color;
 import java.awt.Component;
 
+import java.io.File;
+
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 import edu.nrao.difx.xmllib.difxmessage.DifxAlert;
 import edu.nrao.difx.xmllib.difxmessage.DifxStatus;
@@ -39,11 +41,12 @@ import edu.nrao.difx.xmllib.difxmessage.DifxStatus;
  */
 public class JobNode extends BrowserNode {
     
-    public JobNode( String name ) {
+    public JobNode( String name, SystemSettings settings ) {
         super( name );
         this.setHeight( 20 );
         //this.visiblePopupButton( false );
         _columnColor = Color.LIGHT_GRAY;
+        _settings = settings;
     }
     
     @Override
@@ -193,11 +196,14 @@ public class JobNode extends BrowserNode {
         _popup.add( menuItem2a );
         JMenuItem menuItem3 = new JMenuItem( "Copy" );
         _popup.add( menuItem3 );
-        JMenuItem menuItem4 = new JMenuItem( "Remove" );
+        JMenuItem menuItem4 = new JMenuItem( "Delete" );
         _popup.add( menuItem4 );
         _popup.add( new JSeparator() );
+        JMenuItem menuItem8 = new JMenuItem( "Queue" );
+        menuItem8.setToolTipText( "Put this job in the runnable queue." );
+        _popup.add( menuItem8 );
         JMenuItem menuItem5 = new JMenuItem( "Start" );
-        menuItem2.addActionListener(new ActionListener() {
+        menuItem5.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 updateEditorMonitor();
                 _editorMonitor.startJob();
@@ -205,7 +211,7 @@ public class JobNode extends BrowserNode {
         });
         _popup.add( menuItem5 );
         JMenuItem menuItem6 = new JMenuItem( "Pause" );
-        menuItem2.addActionListener(new ActionListener() {
+        menuItem6.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 updateEditorMonitor();
                 _editorMonitor.pauseJob();
@@ -213,15 +219,13 @@ public class JobNode extends BrowserNode {
         });
         _popup.add( menuItem6 );
         JMenuItem menuItem7 = new JMenuItem( "Stop" );
-        menuItem2.addActionListener(new ActionListener() {
+        menuItem7.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 updateEditorMonitor();
                 _editorMonitor.stopJob();
             }
         });
         _popup.add( menuItem7 );
-        JMenuItem menuItem8 = new JMenuItem( "Ready" );
-        _popup.add( menuItem8 );
         JMenuItem menuItem9 = new JMenuItem( "Reset" );
         _popup.add( menuItem9 );
     }
@@ -375,7 +379,7 @@ public class JobNode extends BrowserNode {
      */
     protected void updateEditorMonitor() {
         if ( _editorMonitor == null )
-            _editorMonitor = new JobEditorMonitor();
+            _editorMonitor = new JobEditorMonitor( this, _settings );
     }
     
     /*
@@ -490,7 +494,12 @@ public class JobNode extends BrowserNode {
     public double jobStart() { return new Double( _jobStart.getText() ).doubleValue(); }
     public void jobDuration( double newVal ) { _jobDuration.setText( String.format( "%10.3f", newVal ) ); }
     public double jobDuration() { return new Double( _jobDuration.getText() ).doubleValue(); }
-    public void inputFile( String newVal ) { _inputFile.setText( newVal ); }
+    public void inputFile( String newVal ) { 
+        _inputFile.setText( newVal );
+        //  Convert to a file to extract the directory path...
+        File tryFile = new File( newVal );
+        _directoryPath = tryFile.getParent();
+    }
     public String inputFile() { return _inputFile.getText(); }
     public void outputFile( String newVal ) { _outputFile.setText( newVal ); }
     public String outputFile() { return _outputFile.getText(); }
@@ -538,6 +547,7 @@ public class JobNode extends BrowserNode {
     public boolean active() { return _active.on(); }
     public void statusId( int newVal ) { _statusId.setText( String.format( "%10d", newVal ) ); }
     public int statusId() { return new Integer( _statusId.getText() ).intValue(); }
+    public String directoryPath() { return _directoryPath; }
     
     public void showNetworkActivity( boolean newVal ) { _networkActivity.setVisible( newVal ); }
     public void showName( boolean newVal ) { _label.setVisible( newVal ); }
@@ -659,4 +669,8 @@ public class JobNode extends BrowserNode {
     protected Color _columnColor;
 
     protected JTextField _nameEditor;
+    
+    protected String _directoryPath;
+    
+    protected SystemSettings _settings;
 }

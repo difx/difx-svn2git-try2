@@ -249,6 +249,29 @@ public class SystemSettings extends JFrame {
         portLabel.setBounds( 10, 55, 150, 25 );
         portLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( portLabel );
+        _difxControlUser = new JTextField();
+        _difxControlUser.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                //generateControlChangeEvent();
+            }
+        } );
+        difxControlPanel.add( _difxControlUser );
+        JLabel userAddressLabel = new JLabel( "Username:" );
+        userAddressLabel.setBounds( 10, 85, 150, 25 );
+        userAddressLabel.setHorizontalAlignment( JLabel.RIGHT );
+        difxControlPanel.add( userAddressLabel );
+        _difxControlPWD = new JPasswordField();
+        _difxControlPWD.setHorizontalAlignment( NumberBox.LEFT );
+        _difxControlPWD.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                //generateControlChangeEvent();
+            }
+        } );
+        difxControlPanel.add( _difxControlPWD );
+        JLabel pwdLabel = new JLabel( "Password:" );
+        pwdLabel.setBounds( 10, 115, 150, 25 );
+        pwdLabel.setHorizontalAlignment( JLabel.RIGHT );
+        difxControlPanel.add( pwdLabel );
         
         IndexedPanel networkPanel = new IndexedPanel( "Broadcast Network" );
         networkPanel.openHeight( 170 );
@@ -474,6 +497,8 @@ public class SystemSettings extends JFrame {
             //  DiFX Controll Connection settings
             _difxControlAddress.setBounds( 165, 25, 300, 25 );
             _difxControlPort.setBounds( 165, 55, 300, 25 );
+            _difxControlUser.setBounds( 165, 85, 300, 25 );
+            _difxControlPWD.setBounds( 165, 115, 300, 25 );
             //  Broadcast network settings
             _ipAddress.setBounds( 165, 25, 300, 25 );
             _port.setBounds( 165, 55, 300, 25 );
@@ -567,6 +592,10 @@ public class SystemSettings extends JFrame {
         _port.intValue( 52525 );
         _bufferSize.intValue( 1500 );
         _timeout.intValue( 100 );
+        _difxControlAddress.setText( "swc01.usno.navy.mil" );
+        _difxControlPort.intValue( 50200 );
+        _difxControlUser.setText( "difx" );
+        _difxControlPWD.setText( "difx2010" );
         _dbHost.setText( "c3po.aoc.nrao.edu" );
         _dbSID.setText( "difx" );
         _dbPWD.setText( "difx2010" );
@@ -617,6 +646,12 @@ public class SystemSettings extends JFrame {
     public int difxControlPort() { return _difxControlPort.intValue(); }
     public void difxControlPort( String newVal ) { difxControlPort( Integer.parseInt( newVal ) ); }
 
+    public void difxControlUser( String newVal ) { _difxControlUser.setText( newVal ); }
+    public String difxControlUser() { return _difxControlUser.getText(); }
+    
+    public void difxControlPassword( String newVal ) { _difxControlPWD.setText( newVal ); }
+    public String difxControlPassword() { return new String( _difxControlPWD.getPassword() ); }
+    
     public void ipAddress( String newVal ) { _ipAddress.setText( newVal ); }
     public String ipAddress() { return _ipAddress.getText(); }
     
@@ -988,6 +1023,8 @@ public class SystemSettings extends JFrame {
     //  DiFX Control Connection
     protected JTextField _difxControlAddress;
     protected NumberBox _difxControlPort;
+    protected JTextField _difxControlUser;
+    protected JPasswordField _difxControlPWD;
     //  Broadcast network
     protected JTextField _ipAddress;
     protected NumberBox _port;

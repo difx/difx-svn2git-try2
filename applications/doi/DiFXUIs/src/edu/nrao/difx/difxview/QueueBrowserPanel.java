@@ -17,6 +17,8 @@ import java.awt.Font;
 import java.awt.Color;
 import java.awt.Insets;
 
+import java.io.File;
+
 import javax.swing.Action;
 import javax.swing.AbstractAction;
 import javax.swing.Timer;
@@ -239,8 +241,16 @@ public class QueueBrowserPanel extends TearOffPanel {
                         passType = passTypeInfo.getString( "type" );
                 }
                 Integer jobNumber = jobInfo.getInt( "jobNumber" );
-                //  Construct the job name using the pass name and job number.
-                String jobName = passName + "_" + jobNumber.toString();
+                
+                //  Construct a job name.  We first try to do this using the input file
+                //  name.  Failing that, we do it using the pass name and job number.
+                String jobName = null;
+                File tryFile = new File( jobInfo.getString( "inputFile" ) );
+                if ( tryFile != null ) {
+                    jobName = tryFile.getName().substring( 0, tryFile.getName().lastIndexOf( "." ) );
+                }
+                if ( jobName == null )
+                    jobName = passName + "_" + jobNumber.toString();
                 
                 //  Try to match this job to the existing hierarchy of experiments,
                 //  passes, and job names.  If any of these things do not exist, we
@@ -294,7 +304,7 @@ public class QueueBrowserPanel extends TearOffPanel {
                 }
                 //  Create a new job if we didn't find the named one.
                 if ( thisJob == null ) {
-                    thisJob = new JobNode( jobName );
+                    thisJob = new JobNode( jobName, _systemSettings );
                     thisJob.experiment( thisExperiment.name() );
                     thisJob.pass( thisPass.name() );
                     thisPass.addChild( thisJob );
@@ -450,7 +460,7 @@ public class QueueBrowserPanel extends TearOffPanel {
                     _unknown.setHeight( 0 );
                     _unaffiliated.addChild( _unknown );
                 }
-                thisJob = new JobNode( difxMsg.getHeader().getIdentifier() );
+                thisJob = new JobNode( difxMsg.getHeader().getIdentifier(), _systemSettings );
                 _unknown.addChild( thisJob );
                 _header.addJob( thisJob );
             }
