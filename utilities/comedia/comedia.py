@@ -6,6 +6,7 @@ import re
 import os
 import ConfigParser
 import tkMessageBox
+import PIL
 
 from difxdb.business.experimentaction import experimentExists, getActiveExperimentCodes,getExperimentByCode
 from difxdb.business.moduleaction import moduleExists, isCheckOutAllowed, hasDir, getUnscannedModules, getModuleByVSN
@@ -13,10 +14,8 @@ from difxdb.business.slotaction import getOccupiedSlots
 from difxdb.model.dbConnection import Schema, Connection
 from difxdb.model import model
 from difxfile.difxdir import *
-#import difxfile
 
 from barcode.writer import ImageWriter, FONT
-from PIL import Image , ImageDraw, ImageFont
 from string import strip, upper
 from collections import deque
 
@@ -228,22 +227,22 @@ class MainWindow(GenericWindow):
         
         if (slot > 0):
             
-            im = Image.new("L", (self.labelSizeX,self.labelSizeY),255)
+            im = PIL.Image.new("L", (self.labelSizeX,self.labelSizeY),255)
 
             try:
-                font = ImageFont.truetype("resources/FreeSans.ttf", int(self.config.get("Label", "fontSize")))
+                font = PIL.ImageFont.truetype("resources/FreeSans.ttf", int(self.config.get("Label", "fontSize")))
             except:
-                font = ImageFont.load_default()
+                font = PIL.ImageFont.load_default()
             
-            os.system('rm -f /tmp/cormel_tmp.png')
-            draw = ImageDraw.Draw(im)
+            os.system('rm -f /tmp/comedia_tmp.png')
+            draw = PIL.ImageDraw.Draw(im)
             draw.text((10,10), self.config.get("Label","headerLine"), font=font, fill=1)
             draw.text((10,40),"%s" % slot.location, font=font, fill=1)
             draw.text((10,70),"%s / %s / %s" % (slot.module.vsn, slot.module.capacity, slot.module.datarate) , font=font, fill=1)
 
-            im.save("/tmp/cormel_tmp.png")
+            im.save("/tmp/comedia_tmp.png")
             
-            os.system( self.config.get("Label", "printCommand") + ' /tmp/cormel_tmp.png')
+            os.system( self.config.get("Label", "printCommand") + ' /tmp/comedia_tmp.png')
         
     def updateModule(self):
         
@@ -875,7 +874,7 @@ class DatabaseOptionsWindow(GenericWindow):
         self.config.set("Database", "password", self.txtPassword.get())
         
         
-        with open('cormel.ini', 'wb') as configfile:
+        with open('comedia.ini', 'wb') as configfile:
             config.write(configfile)
             
         self.dlg.destroy()
@@ -1106,7 +1105,7 @@ class LabelOptionsWindow(GenericWindow):
         self.config.set("Label", "fontSize", self.txtFontSize.get())
         self.config.set("Label", "printCommand", self.txtPrintCommand.get())
         
-        with open('cormel.ini', 'wb') as configfile:
+        with open('comedia.ini', 'wb') as configfile:
             config.write(configfile)
 
         self.dlg.destroy
