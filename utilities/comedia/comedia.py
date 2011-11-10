@@ -1108,7 +1108,7 @@ class LabelOptionsWindow(GenericWindow):
         with open('comedia.ini', 'wb') as configfile:
             config.write(configfile)
 
-        self.dlg.destroy
+        self.dlg.destroy()
         
 class AddExperimentWindow(GenericWindow):
      
