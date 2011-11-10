@@ -12,7 +12,7 @@ from difxdb.business.moduleaction import moduleExists, isCheckOutAllowed, hasDir
 from difxdb.business.slotaction import getOccupiedSlots
 from difxdb.model.dbConnection import Schema, Connection
 from difxdb.model import model
-from difxfile.difxdir import DifxDir
+from difxfile.difxdir import *
 #import difxfile
 
 from barcode.writer import ImageWriter, FONT
@@ -22,6 +22,7 @@ from collections import deque
 
 from sqlalchemy import *
 from Tkinter import *
+
 
 class GenericWindow(object):
     def __init__(self, parent=None,rootWidget=None):
@@ -411,12 +412,20 @@ class MainWindow(GenericWindow):
             
             if (tkMessageBox.askokcancel("Confirm module check-out", "Do you really want to remove module " + slot.module.vsn + " from the library? ")):
 
-                #session.delete(module) 
+                session.delete(module) 
                 session.commit()
 
                 self.selectedSlotIndex = -1
                 self.updateSlotListbox()
                 self.updateSlotDetails()
+                
+                # delete .dir file
+                 
+                dirFile = buildDirFilename(settings["dirPath"], module.vsn)
+                if os.path.isfile(dirFile):
+                    os.remove(dirFile)
+                else:
+                    print "file does not exists"
 
         return
     
@@ -898,31 +907,51 @@ class ScanModulesWindow(GenericWindow):
         rowCount = 1
         actionVar = deque()
         
-        frmModules = Frame(self.dlg)
+        canvas = Canvas(self.dlg, width=1024, height=800)
+        yBar = Scrollbar(self.dlg)
+        xBar = Scrollbar(self.dlg)
+        xBar.config(command=canvas.xview, orient=HORIZONTAL)
+        yBar.config(command=canvas.yview)                   
+        canvas.config(xscrollcommand=xBar.set, yscrollcommand=yBar.set)
+        
+        # make the canvas expandable
+        root.grid_rowconfigure(0, weight=1)
+        root.grid_columnconfigure(0, weight=1)
+ 
+        frmModules = Frame(canvas)
+        frmModules.rowconfigure(1, weight=1)
+        frmModules.columnconfigure(1, weight=1)
         
         Label(frmModules, text="module", relief="flat").grid(row=0,column=0, sticky=E+W)
-        Label(frmModules, text="assigned experiments", relief="flat").grid(row=0,column=1, sticky=E+W)
-        Label(frmModules, text="scanned experiments",relief="flat").grid(row=0,column=2, sticky=E+W)
+        Label(frmModules, text="assigned exp.", relief="flat").grid(row=0,column=1, sticky=E+W)
+        Label(frmModules, text="scanned exp.",relief="flat").grid(row=0,column=2, sticky=E+W)
         
         for module in self.checkList:
             
-            Label(frmModules, text=module.vsn, relief="sunken", padx=10).grid(row=rowCount,column=0, sticky=E+W)
-            Label(frmModules, text=list(module.assignedExps), relief="sunken", padx=10).grid(row=rowCount,column=1, sticky=E+W)
-            Label(frmModules, text=list(module.scannedExps),relief="sunken", padx=10).grid(row=rowCount,column=2, sticky=E+W)
+            Label(frmModules, text=module.vsn, relief="sunken", justify="left",padx=10).grid(row=rowCount,column=0, sticky=E+W)
+            Label(frmModules, text=list(module.assignedExps), relief="sunken", justify="left", padx=10).grid(row=rowCount,column=1, sticky=E+W)
+            Label(frmModules, text=list(module.scannedExps),relief="sunken", justify="left", padx=10).grid(row=rowCount,column=2, sticky=E+W)
             Radiobutton(frmModules, text="fix", variable=module.action, value=0, state=NORMAL).grid(row=rowCount, column=3)
             Radiobutton(frmModules, text="don't fix, remind me later", variable=module.action, value=1).grid(row=rowCount, column=4)
             Radiobutton(frmModules, text="don't fix, don't remind me again", variable=module.action, value=2).grid(row=rowCount, column=5)
             
             rowCount += 1
         
-        btnOK = Button(frmModules, text="OK", command=self.updateModuleEvent)
-        btnCancel = Button(frmModules, text="Cancel", command=self.dlg.destroy)
+        btnOK = Button(self.dlg, text="OK", command=self.updateModuleEvent)
+        btnCancel = Button(self.dlg, text="Cancel", command=self.dlg.destroy)
         
-        frmModules.grid(row=10, column=0, sticky=N+E+S+W)
-        btnOK.grid(row=rowCount+2, column=4, sticky=E+W)
-        btnCancel.grid(row=rowCount+2, column=5, sticky=E+W)
+        canvas.grid(row=0,column=0,sticky=N+S+E+W)
+        xBar.grid(row=1,column=0, sticky=E+W)
+        yBar.grid(row=0,column=1, sticky=N+S)
+        #frmModules.grid(row=10, column=0, sticky=N+E+S+W)
+        btnOK.grid(row=10, column=0, sticky=E)
+        btnCancel.grid(row=10, column=1, sticky=E+W)
         
-    
+        canvas.create_window(0, 0, anchor=NW, window=frmModules)
+        frmModules.update_idletasks()
+
+        canvas.config(scrollregion=canvas.bbox("all"))
+        
     def scanModules(self):
         
         self.checkList.clear()
@@ -938,7 +967,7 @@ class ScanModulesWindow(GenericWindow):
                 continue
             
             try:
-                difxdir = DifxDir(os.getenv("MARK5_DIR_PATH"), module.vsn)
+                difxdir = DifxDir(settings["dirPath"], module.vsn)
             except Exception as e:
                 tkMessageBox.showerror("Error", e)
                 continue
@@ -950,6 +979,7 @@ class ScanModulesWindow(GenericWindow):
                 assignedExps.append(exp.code)
          
             if (sorted(scannedExps) != sorted(assignedExps)):
+                print scannedExps
                 checkModule = self.CheckModuleItem()
                 checkModule.vsn = module.vsn
                 checkModule.assignedExps = assignedExps
@@ -960,6 +990,7 @@ class ScanModulesWindow(GenericWindow):
                 
             else:
                 module.numScans = difxdir.getScanCount()
+                module.stationCode = difxdir.getStationCode()
            
         session.commit()
             
@@ -1198,6 +1229,8 @@ if __name__ == "__main__":
     
     dbConn = None
     session = None
+    settings = {}
+    
     configName = 'comedia.ini'
     
     root = Tk()
@@ -1216,8 +1249,9 @@ if __name__ == "__main__":
         
     if (os.getenv("MARK5_DIR_PATH") == None):
         sys.exit("Error: environment variable MARK5_DIR_PATH must be defined.")
+    else:
+        settings["dirPath"] = os.getenv("MARK5_DIR_PATH")
         
-
     
     # try to open the database connection
     connection = Connection()
