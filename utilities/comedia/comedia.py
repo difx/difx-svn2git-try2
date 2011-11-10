@@ -7,6 +7,7 @@ import os
 import ConfigParser
 import tkMessageBox
 import PIL
+import barcode
 
 from difxdb.business.experimentaction import experimentExists, getActiveExperimentCodes,getExperimentByCode
 from difxdb.business.moduleaction import moduleExists, isCheckOutAllowed, hasDir, getUnscannedModules, getModuleByVSN
@@ -56,14 +57,7 @@ class MainWindow(GenericWindow):
         self.labelSizeX = 320
         self.labelSizeY = 130
         self.moduleFilter = ""
-        
-        #options = dict(font_size=26, dpi=200, text_distance=1, quiet_zone=0, module_height=10, module_width=0.1)     
-        #ean = get_barcode('code39', 'UAO-0100/4000/1024', writer=MyImageWriter())
-       # filename = ean.save('/home/oper/ean13', options )
-        
-        #os.system("lpr -PDYMO /home/oper/ean13.png")
-        
-
+                
     def show(self):
         
         self._setupWidgets()
@@ -83,12 +77,12 @@ class MainWindow(GenericWindow):
 
         menubar.add_cascade(label="Options", menu=optionmenu)
 
-        labelmenu = Menu(menubar, tearoff=0)
-        labelmenu.add_command(label="Print VSN label", command=donothing)
-        labelmenu.add_command(label="Print library label", command=donothing)
-        labelmenu.add_command(label="Print both labels", command=donothing)
+       # labelmenu = Menu(menubar, tearoff=0)
+       # labelmenu.add_command(label="Print VSN label", command=donothing)
+       # labelmenu.add_command(label="Print library label", command=donothing)
+       # labelmenu.add_command(label="Print both labels", command=donothing)
 
-        menubar.add_cascade(label="Label", menu=labelmenu)
+        #menubar.add_cascade(label="Label", menu=labelmenu)
 
         self.rootWidget.config(menu=menubar)
         
@@ -214,7 +208,20 @@ class MainWindow(GenericWindow):
     
     def printVSNLabel(self):
         
-        pass
+        slot = model.Slot()
+        slot = session.query(model.Slot).filter_by(location=self.lstMainSlot.get(self.selectedSlotIndex)).one()
+        
+        if (slot > 0):
+            
+            os.system('rm -f /tmp/comedia_vsn.png')
+            vsnString = "%s/%s/%s" % (slot.module.vsn, slot.module.capacity, slot.module.datarate)
+            
+            options = dict(font_size=26, dpi=200, text_distance=0, quiet_zone=0, module_height=10) 
+            
+            ean = barcode.get_barcode('code39', vsnString, writer=MyImageWriter())
+            ean.save('/tmp/comedia_vsn', options )
+            
+            #os.system( self.config.get("Label", "printCommand") + ' /tmp/comedia_vsn.png')
     
     def printLibraryLabel(self):
         
@@ -1181,19 +1188,16 @@ class MyImageWriter(ImageWriter):
         if self.text:
             height += (self.font_size + self.text_distance) / 3
 
+        print int(self._mm2px(width, dpi)), int(self._mm2px(height, dpi))
         return int(self._mm2px(width, dpi)), int(self._mm2px(height, dpi))
 
     def _paint_text(self, xpos, ypos):
-        # this should align your font to the left side of the bar code:
+        # align font to the left side of the bar code
         xpos = self.quiet_zone
         pos = (self._mm2px(xpos, self.dpi), self._mm2px(ypos, self.dpi))
-        font = ImageFont.truetype(FONT, self.font_size)
+        font = PIL.ImageFont.truetype(FONT, self.font_size)
         self._draw.text(pos, self.text, font=font, fill=self.foreground)
         
-def donothing():
-   filewin = Toplevel(root)
-   button = Button(filewin, text="Do nothing button")
-   button.pack()
     
 
 def getEmptySlots():   
