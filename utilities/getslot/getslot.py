@@ -3,11 +3,11 @@
 #===========================================================================
 # SVN properties (DO NOT CHANGE)
 #
-# $Id
-# $HeadURL
-# $LastChangedRevision
-# $Author
-# $LastChangedDate
+# $Id$
+# $HeadURL$
+# $LastChangedRevision$
+# $Author$
+# $LastChangedDate$
 #
 #============================================================================
 
@@ -20,9 +20,9 @@ from difxdb.model import model
 
 __author__="Helge Rottmann <rottmann@mpifr-bonn.mpg.de>"
 __prog__ = os.path.basename(__file__)
-__build__= "$Revision"
-__date__ ="$Date"
-__lastAuthor__="$Author"
+__build__= "$Revision$"
+__date__ ="$Date$"
+__lastAuthor__="$Author$"
 
 def printUsage():
     print "%s  revision: %s author: %s (last changed by: %s) \n" % (__prog__, __build__, __author__, __lastAuthor__)
