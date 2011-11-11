@@ -15,7 +15,7 @@ import os
 import sys
 from difxdb.difxdbconfig import DifxDbConfig
 from difxdb.model.dbConnection import Schema, Connection
-from difxdb.business.moduleaction import getModuleByVSN
+from difxdb.business.moduleaction import getModuleByVSN, moduleExists
 from difxdb.model import model
 
 __author__="Helge Rottmann <rottmann@mpifr-bonn.mpg.de>"
@@ -25,12 +25,12 @@ __date__ ="$Date$"
 __lastAuthor__="$Author$"
 
 def printUsage():
-    print "%s  revision: %s author: %s (last changed by: %s) \n" % (__prog__, __build__, __author__, __lastAuthor__)
+    print "%s   %s  %s (last changes by %s) \n" % (__prog__, __build__, __author__, __lastAuthor__)
     print "A program to get the location of a disk module\n"
     print "Usage: %s <VSN>\n\n"  % __prog__
     print "%s requires the DIFXROOT environment to be defined." % __prog__
     print "The program will read the database configuration from difxdb.ini located under $DIFXROOT/conf."
-    print "If the configuration is not found a sample one will be created."
+    print "If the configuration is not found a sample one will be created for you."
 
     
     sys.exit(1)
@@ -43,10 +43,10 @@ if __name__ == "__main__":
     
     vsn = sys.argv[1]
     try:
-        if (os.getenv("DIFX_ROOT") == None):
+        if (os.getenv("DIFXROOT") == None):
             sys.exit("Error: DIFXROOT environment must be defined.")
 
-        configPath = os.getenv("DIFX_ROOT") + "/conf/difxdb.ini"
+        configPath = os.getenv("DIFXROOT") + "/conf/difxdb.ini"
 
 
         config = DifxDbConfig(configPath, create=True)
@@ -64,9 +64,9 @@ if __name__ == "__main__":
         dbConn = Schema(connection)
         session = dbConn.session()
         
-        module = getModuleByVSN(session, vsn)
+        if (moduleExists(session,vsn)):
+            module = getModuleByVSN(session, vsn)
         
-        if (module != None):
             print module.slot.location
         else:
             print "Unknown"
