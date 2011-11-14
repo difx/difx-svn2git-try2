@@ -5,6 +5,7 @@ __date__ ="$Sep 12, 2011 9:35:56 AM$"
 
 import re
 import os
+import time
 import ConfigParser
 import tkMessageBox
 import PIL
@@ -983,6 +984,9 @@ class ScanModulesWindow(GenericWindow):
                 
             scannedExps = difxdir.getExperiments()
             
+            if (difxdir.getFileDate() < time.mktime(module.received.timetuple())):
+                tkMessageBox.showerror("Error", "File date of\n%s\nis earlier than the module check-in date.\nProbably this file should be deleted manually." % difxdir.getFilename())
+                continue
             
             # compare associated experiments
             for exp in module.experiments:
