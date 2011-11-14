@@ -1,3 +1,4 @@
+#!/usr/bin/python
 __author__="Helge Rottmann"
 __date__ ="$Sep 12, 2011 9:35:56 AM$"
 
@@ -46,7 +47,7 @@ class MainWindow(GenericWindow):
         self.databaseOptionsDlg= DatabaseOptionsWindow(self,rootWidget)
         self.scanModulesDlg = ScanModulesWindow(self, rootWidget)
         
-        #self.config = None
+        self.defaultBgColor = rootWidget["background"]
         self.isConnected = False
         
         self.selectedSlotIndex = -1 
@@ -121,13 +122,13 @@ class MainWindow(GenericWindow):
         Label(self.frmDetail, text = "datarate: ").grid(row=3, column=0, sticky=W)
         Label(self.frmDetail, text = "received: ").grid(row=4, column=0, sticky=W)
         Label(self.frmDetail, text = "experiment(s): ").grid(row=5, column=0, sticky=W)     
-        self.txtLocationContent = Entry(self.frmDetail, text = "") 
-        self.lblVSNContent = Entry(self.frmDetail, text = "")
-        self.lblCapacityContent = Entry(self.frmDetail, text = "")
-        self.lblDatarateContent = Entry(self.frmDetail, text = "")
-        self.lblReceivedContent = Entry(self.frmDetail, text = "")
+        self.txtLocationContent = Entry(self.frmDetail, text = "", state=DISABLED) 
+        self.lblVSNContent = Entry(self.frmDetail, text = "", state=DISABLED)
+        self.lblCapacityContent = Entry(self.frmDetail, text = "", state=DISABLED)
+        self.lblDatarateContent = Entry(self.frmDetail, text = "", state=DISABLED)
+        self.lblReceivedContent = Entry(self.frmDetail, text = "", state=DISABLED)
         scrollCboExperiments = Scrollbar(self.frmDetail)
-        self.cboExperiments =  Listbox(self.frmDetail, height=3, yscrollcommand=scrollCboExperiments.set, selectmode=MULTIPLE)
+        self.cboExperiments =  Listbox(self.frmDetail, height=3, yscrollcommand=scrollCboExperiments.set, selectmode=MULTIPLE, state=DISABLED)
         scrollCboExperiments.config(command=self.cboExperiments.yview)
         self.btnDeleteModule = Button(self.frmDetail, text="Check-out module", command=self.checkOutModule, state=DISABLED)
         self.btnEditModule = Button(self.frmDetail, text="Update module", command=self.updateModule, state=DISABLED)
@@ -336,12 +337,15 @@ class MainWindow(GenericWindow):
         pass
     
     def updateSlotDetails(self):
-    
+         
         
         self.btnPrintVSNLabel["state"] = DISABLED
         self.btnPrintLibraryLabel["state"] = DISABLED
         self.btnDeleteModule["state"] = DISABLED
         self.txtLocationContent["state"] = NORMAL
+        self.lblVSNContent["state"] = NORMAL
+        self.lblCapacityContent["state"] = NORMAL
+        self.lblDatarateContent["state"] = NORMAL
         self.lblReceivedContent["state"] = NORMAL
         self.cboExperiments["state"] = NORMAL
         
@@ -352,11 +356,10 @@ class MainWindow(GenericWindow):
         self.lblReceivedContent.delete(0,END)
         self.cboExperiments.delete(0, END)
         
-        
         if self.selectedSlotIndex == -1:
             self._saveModuleDetails()
             return
-     
+        
         if (self.isConnected == False):
             return
         
@@ -568,7 +571,7 @@ class MainWindow(GenericWindow):
         
         self.moduleEdit = 0
         
-        color = "lightgrey"
+        color = self.defaultBgColor
         editColor = "red"
         
         if (self.lastLocationContent != self.txtLocationContent.get()):
@@ -824,7 +827,7 @@ class DatabaseOptionsWindow(GenericWindow):
         Label(self.dlg, text="Username").grid(row=4, sticky=W)
         Label(self.dlg, text="Password").grid(row=5, sticky=W)
         
-        optionList = ("mysql", "postgresql", "sqlite")
+        optionList = ("mysql", "postgresql", "oracle")
         self.cboDBTypeVar = StringVar()
         self.cboDBTypeVar.set(self.config.get("Database", "type"))
         self.cboDBType = OptionMenu ( self.dlg, self.cboDBTypeVar, *optionList )
@@ -980,6 +983,7 @@ class ScanModulesWindow(GenericWindow):
                 
             scannedExps = difxdir.getExperiments()
             
+            
             # compare associated experiments
             for exp in module.experiments:
                 assignedExps.append(exp.code)
@@ -991,6 +995,7 @@ class ScanModulesWindow(GenericWindow):
                 checkModule.assignedExps = assignedExps
                 checkModule.scannedExps = scannedExps
                 checkModule.numScans = difxdir.getScanCount()
+                checkModule.stationCode = difxdir.getStationCode()
                 
                 self.checkList.append(checkModule)
                 
