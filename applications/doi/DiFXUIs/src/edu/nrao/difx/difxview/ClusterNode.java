@@ -10,6 +10,7 @@ import mil.navy.usno.widgetlib.ActivityMonitorLight;
 import javax.swing.JPopupMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JSeparator;
+import javax.swing.JCheckBoxMenuItem;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -129,6 +130,14 @@ public class ClusterNode extends BrowserNode {
         JMenuItem headerItem = new JMenuItem( "Cotrols for \"" + _label.getText() + "\"" );
         _popup.add( headerItem );
         _popup.add( new JSeparator() );
+        _ignoreItem = new JCheckBoxMenuItem( "Ignore This Node" );
+        _ignoreItem.setState( false );
+        _ignoreItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                changeIgnoreState();
+            }
+        });
+        _popup.add( _ignoreItem );
         JMenuItem monitorItem;
         monitorItem = new JMenuItem( "Show Monitor Plots" );
         monitorItem.addActionListener(new ActionListener() {
@@ -530,6 +539,20 @@ public class ClusterNode extends BrowserNode {
         _difxController = newController;
     }
     
+    public void showIgnored( boolean newVal ) {
+        _showIgnored = newVal;
+        changeIgnoreState();
+    }
+
+    void changeIgnoreState() {
+        this.showThis( _showIgnored || !_ignoreItem.getState() );
+    }
+    
+    public void ignore( boolean newVal ) {
+        _ignoreItem.setState( newVal );
+    }
+    public boolean ignore() { return _ignoreItem.getState(); }
+    
     ProcessorMonitorWindow _monitor;
     MessageWindow _alertWindow;
     ActivityMonitorLight _networkActivity;
@@ -570,6 +593,9 @@ public class ClusterNode extends BrowserNode {
     boolean _showNetRxRate;
     ColumnTextArea _netTxRate;
     boolean _showNetTxRate;
+    
+    protected JCheckBoxMenuItem _ignoreItem;
+    protected boolean _showIgnored;
     
     Color _columnColor;
     boolean _colorColumn;

@@ -162,7 +162,14 @@ public class ClusterNodesHeader extends BrowserNode {
         menuItem = new JMenuItem( _label.getText() + " Display Options:" );
         _popup.add( menuItem );
         _popup.add( new JSeparator() );
-        JMenuItem allItem = new JMenuItem( "Show All" );
+        _showIgnored = new JCheckBoxMenuItem( "Show \"Ignored\" Nodes" );
+        _showIgnored.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                updateDisplayedData();
+            }
+        });
+        _popup.add( _showIgnored );
+        JMenuItem allItem = new JMenuItem( "Show All Columns" );
         allItem.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 activateAll();
@@ -433,6 +440,7 @@ public class ClusterNodesHeader extends BrowserNode {
     }
     
     public void initializeDisplaySettings() {
+        _showIgnored.setState( false );
         _broadcastMonitor.setState( true );
         _showNumCPUs.setState( false );
         _showNumCores.setState( false );
@@ -741,6 +749,7 @@ public class ClusterNodesHeader extends BrowserNode {
         for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
             ClusterNode thisNode = (ClusterNode)(iter.next());
             //  Change the settings on these items to match our current specifications.
+            thisNode.showIgnored( _showIgnored.getState() );
             thisNode.showNetworkActivity( _broadcastMonitor.getState() );
             thisNode.showNumCPUs( _showNumCPUs.getState() );
             thisNode.showNumCores( _showNumCores.getState() );
@@ -779,6 +788,7 @@ public class ClusterNodesHeader extends BrowserNode {
         
     }
     
+    protected JCheckBoxMenuItem _showIgnored;
     protected JCheckBoxMenuItem _broadcastMonitor;
     protected JCheckBoxMenuItem _showNumCPUs;
     protected JCheckBoxMenuItem _showNumCores;

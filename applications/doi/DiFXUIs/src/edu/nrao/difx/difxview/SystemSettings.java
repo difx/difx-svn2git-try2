@@ -135,9 +135,8 @@ public class SystemSettings extends JFrame {
         this.setLayout( null );
         this.setSize( 800, 715 );
         this.setTitle( "DiFX GUI Settings" );
-        Dimension d = this.getSize();
         _menuBar = new JMenuBar();
-        _menuBar.setVisible( true );
+//        _menuBar.setVisible( true );
 //        JMenu fileMenu = new JMenu( " File " );
 //        JMenuItem openItem = new JMenuItem( "Open Settings File..." );
 //        JMenuItem closeItem = new JMenuItem( "Close" );
@@ -1007,6 +1006,13 @@ public class SystemSettings extends JFrame {
         _databaseMessages.scrollToEnd();
     }
     
+    public void hardwareMonitor( HardwareMonitorPanel newMonitor ) {
+        _hardwareMonitor = newMonitor;
+    }
+    public HardwareMonitorPanel hardwareMonitor() {
+        return _hardwareMonitor;
+    }
+    
     protected SystemSettings _this;
     
     protected boolean _allObjectsBuilt;
@@ -1068,5 +1074,9 @@ public class SystemSettings extends JFrame {
     
     NodeBrowserScrollPane _scrollPane;
     IndexedPanel _addressesPanel;
+    
+    //  These items are used by multiple classes - they are put here as a matter
+    //  of convenience as all locations have access to this class.
+    HardwareMonitorPanel _hardwareMonitor;
     
 }

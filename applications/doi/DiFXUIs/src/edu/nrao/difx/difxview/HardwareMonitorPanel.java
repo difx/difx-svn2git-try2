@@ -27,7 +27,9 @@ import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
  */
 public class HardwareMonitorPanel extends TearOffPanel {
 
-    public HardwareMonitorPanel() {
+    public HardwareMonitorPanel( SystemSettings settings ) {
+        _settings = settings;
+        _settings.hardwareMonitor( this );
         initComponents();
     }
 
@@ -260,6 +262,9 @@ public class HardwareMonitorPanel extends TearOffPanel {
         }
 
     }
+    
+    public BrowserNode clusterNodes() { return _clusterNodes; }
+    public BrowserNode mk5Modules() { return _mk5Modules; }
 
     
     private NodeBrowserScrollPane _browserPane;
@@ -269,5 +274,6 @@ public class HardwareMonitorPanel extends TearOffPanel {
     DiFXDataModel  _mDataModel;
     DiFXController _mController;
     MessageListener _mListener;
+    protected SystemSettings _settings;
     
 }

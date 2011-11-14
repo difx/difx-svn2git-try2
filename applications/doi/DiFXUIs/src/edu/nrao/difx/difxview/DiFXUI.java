@@ -254,7 +254,7 @@ public class DiFXUI extends JFrame implements WindowListener {
         setName("DiFXUI");
         setSize( new java.awt.Dimension(1400, 800) );
         
-        _hardwareMonitor = new HardwareMonitorPanel();
+        _hardwareMonitor = new HardwareMonitorPanel( _systemSettings );
         _hardwareMonitor.addTearOffListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 hardwareMonitorTearOffEvent();
