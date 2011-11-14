@@ -177,7 +177,7 @@ public class JobEditorMonitor extends JFrame {
         //String mark5String = getStringOfMark5Units();
 
         // -- set difx version to use
-        //jobStart.setDifxVersion(getDifxVersion());
+        jobStart.setDifxVersion( _settings.difxVersion() );
 
         // -- datastreams, enabled only
         DifxStart.Datastream dataStream = factory.createDifxStartDatastream();
