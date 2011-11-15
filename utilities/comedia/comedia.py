@@ -55,10 +55,12 @@ class MainWindow(GenericWindow):
         self.moduleEdit = 0
         self.filterReleaseList = IntVar()
         self.filterDirLess = IntVar()
+        self.filterExp = StringVar()
         
         self.labelSizeX = 320
         self.labelSizeY = 130
         self.moduleFilter = ""
+        self.slotFilter = ""
                 
     def show(self):
         
@@ -89,19 +91,21 @@ class MainWindow(GenericWindow):
         self.rootWidget.config(menu=menubar)
         
         # frames
-        self.frmMain = LabelFrame(self.rootWidget, text="")
+        self.frmMain = LabelFrame(self.rootWidget, text="Filter")
         self.frmDetail = LabelFrame(self.rootWidget, text="Detail")
         self.frmEditExperiment = Frame(self.frmDetail)
         frmStatus = LabelFrame(self.rootWidget, text="Status")
-        #self.frmFilter = LabelFrame(self.rootWidget, text="")
         
         self.btnQuit = Button(self.rootWidget, text="Exit", command=self.rootWidget.destroy)
         
-        #widgets on frmMain  
-        lblSearch = Label(self.frmMain, text = "search ")
+        #widgets on frmMain       
+        self.txtSearchSlot = Entry(self.frmMain, text = "")
         self.txtSearch = Entry(self.frmMain, text = "") 
+        btnClearSearch = Button (self.frmMain, bitmap="error")
         self.chkRelease = Checkbutton(self.frmMain, text = "releasable modules only", variable = self.filterReleaseList, command=self.updateSlotListbox)
         self.chkDirLess = Checkbutton(self.frmMain, text = "modules without .dir only", variable = self.filterDirLess, command=self.updateSlotListbox)
+        #self.cboSearchExperiment = OptionMenu(self.frmMain, self.filterExp, *optionList )
+        
         vscrollbar = Scrollbar(self.frmMain,command=self.scrollbarEvent)
         self.lstMainSlot = Listbox(self.frmMain,yscrollcommand=vscrollbar.set)
         self.lstModule = Listbox(self.frmMain, yscrollcommand=vscrollbar.set)  
@@ -113,7 +117,7 @@ class MainWindow(GenericWindow):
         Label(frmStatus, text="Number of unscanned modules: ").grid(row=1,column=0, sticky=W)
         self.lblNumDirLess = Label(frmStatus, text = "")
         self.lblNumUnscanned = Label(frmStatus, text = "")
-        self.btnRefresh = Button(frmStatus, text="Refresh", command=self.refreshStatusEvent)
+        self.btnRefresh = Button(frmStatus, text="Refresh status", command=self.refreshStatusEvent)
         self.btnModuleScan = Button(frmStatus, text="Scan", command=self.scanModuleEvent)
         
         # widgets on frmDetail
@@ -145,11 +149,13 @@ class MainWindow(GenericWindow):
          
         
         # bind events to widgets
+        btnClearSearch.bind("<ButtonRelease-1>", self.clearSearchEvent)
         self.txtLocationContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblVSNContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblCapacityContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblDatarateContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblReceivedContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
+        self.txtSearchSlot.bind("<KeyRelease>", self.searchSlotEvent)
         self.txtSearch.bind("<KeyRelease>", self.searchModuleEvent)
         self.lstMainSlot.bind("<MouseWheel>", self.mouseWheelEvent)
         self.lstModule.bind("<MouseWheel>", self.mouseWheelEvent)
@@ -162,7 +168,6 @@ class MainWindow(GenericWindow):
         self.cboExperiments.bind("<ButtonRelease-1>", self.selectExperimentEvent)
         
         # arrange objects on grid       
-        #self.frmFilter.grid(row=0,column=0,sticky=W+E)
         self.frmMain.grid(row=1,rowspan=2,column=0, sticky=E+W+N+S)   
         self.frmDetail.grid(row=1, column=3, sticky=E+W+N+S )
         frmStatus.grid(row=2,column=3,sticky=N+S+E+W)
@@ -170,13 +175,18 @@ class MainWindow(GenericWindow):
         self.btnQuit.grid(row=10,columnspan=5)
         
         # arrange objects on frmMain
-        lblSearch.grid(row=0, column=0, sticky=E)
-        self.txtSearch.grid(row=0, column=1, sticky=W+E)
-        self.chkRelease.grid(row=1, column=1, sticky=W)
-        self.chkDirLess.grid(row=2, column=1, sticky=W)
+        Label(self.frmMain, text="experiment").grid(row=6, column=1, sticky=W)
+       # self.cboSearchExperiment.grid(row=6, column=0, sticky=E+W)
+        Label(self.frmMain, text="slot").grid(row=8, column=0)
+        Label(self.frmMain, text="module").grid(row=8, column=1)
+        self.txtSearchSlot.grid(row=9, column=0, sticky=W+E+N+S)
+        self.txtSearch.grid(row=9, column=1, sticky=W+E+N+S)
+        btnClearSearch.grid(row=9,column=2, sticky=W+E+N+S)
+        self.chkRelease.grid(row=1, column=0, columnspan=3, sticky=W)
+        self.chkDirLess.grid(row=2, column=0, columnspan=3, sticky=W)
         self.lstMainSlot.grid(row=10, column=0, sticky=N+S+E+W)
         self.lstModule.grid(row=10, column=1, sticky=N+S+E+W)
-        vscrollbar.grid(row=10, column=2, sticky=N+S)  
+        vscrollbar.grid(row=10, column=2, sticky=N+S+W)  
         self.btnNewModule.grid(row=20, columnspan=2, sticky=E+W)        
         
         # arrage objects on frmStatus
@@ -302,6 +312,12 @@ class MainWindow(GenericWindow):
         self.lstModule.delete(0, END)
 
         for slot in slots: 
+            
+            # check for slot filter phrase
+            if (self.slotFilter != ""):
+                if (self.slotFilter not in slot.location):
+                    continue
+            
             # check for module filter phrase
             if (self.moduleFilter != ""):
                 if (self.moduleFilter not in slot.module.vsn):
@@ -439,6 +455,15 @@ class MainWindow(GenericWindow):
 
         return
     
+    def clearSearchEvent(self, Event):
+        
+        self.moduleFilter = ""
+        self.slotFilter = ""
+        
+        self.txtSearch.delete(0,END)
+        self.txtSearchSlot.delete(0,END)
+        self.updateSlotListbox()
+        
     def selectExperimentEvent(self, Event):
         
         if (self.selectedSlotIndex == -1):
@@ -523,7 +548,12 @@ class MainWindow(GenericWindow):
         
         
         self.lblNumDirLess["text"] = dirLessCount
-        self.lblNumUnscanned["text"] = unvalidatedCount
+        self.lblNumUnscanned["text"] = unvalidatedCount - dirLessCount
+        
+        if (unvalidatedCount - dirLessCount > 0):
+            self.btnModuleScan["state"] = NORMAL
+        else:
+            self.btnModuleScan["state"] = DISABLED
                 
         
         
@@ -561,12 +591,15 @@ class MainWindow(GenericWindow):
         # would end up scrolling the widget twice
         return "break"
 
+    def searchSlotEvent(self, Event):
+        self.slotFilter = upper(strip(self.txtSearchSlot.get()))
+        self.updateSlotListbox()
     
     def searchModuleEvent(self, Event):
          
         self.moduleFilter = upper(strip(self.txtSearch.get()))   
         self.updateSlotListbox()
-         
+        
         
     def editModuleDetailsEvent(self, Event):
         
@@ -619,9 +652,10 @@ class MainWindow(GenericWindow):
       
         if self.moduleEdit > 0:
             self.btnEditModule["state"] = NORMAL
+            self.btnEditModule["fg"] = editColor
         else:
             self.btnEditModule["state"] = DISABLED
-        
+            
         
     def checkinModule(self):
         
@@ -727,6 +761,10 @@ class CheckinWindow(GenericWindow):
 
             capacity = m.group(2)
             datarate = m.group(3)
+            
+            # drop CRC code at end of datarate (appears when VSN label is scanned)
+            if (len(datarate) > 4):
+                datarate = datarate[0:3]
 
             return(vsn, capacity, datarate)
         else:
@@ -778,7 +816,7 @@ class CheckinWindow(GenericWindow):
             newModule.vsn = vsn
             newModule.capacity = capacity
             newModule.datarate = datarate
-            newModule.slot.append(selectedSlot)
+            newModule.slot = selectedSlot
 
             session.add(newModule)
 
@@ -915,8 +953,7 @@ class ScanModulesWindow(GenericWindow):
     def _setupWidgets(self):
         
         rowCount = 1
-        actionVar = deque()
-        
+       
         canvas = Canvas(self.dlg, width=1024, height=800)
         yBar = Scrollbar(self.dlg)
         xBar = Scrollbar(self.dlg)
@@ -964,6 +1001,7 @@ class ScanModulesWindow(GenericWindow):
         
     def scanModules(self):
         
+        outdatedDir = []
         self.checkList.clear()
         modules = getUnscannedModules(session)
         
@@ -985,7 +1023,8 @@ class ScanModulesWindow(GenericWindow):
             scannedExps = difxdir.getExperiments()
             
             if (difxdir.getFileDate() < time.mktime(module.received.timetuple())):
-                tkMessageBox.showerror("Error", "File date of\n%s\nis earlier than the module check-in date.\nProbably this file should be deleted manually." % difxdir.getFilename())
+                outdatedDir.append(difxdir.getFilename())
+                
                 continue
             
             # compare associated experiments
@@ -1008,6 +1047,12 @@ class ScanModulesWindow(GenericWindow):
                 module.stationCode = difxdir.getStationCode()
            
         session.commit()
+        
+        if (len(outdatedDir) > 0):
+            errStr = ""
+            for file in outdatedDir:
+                errStr +=  os.path.basename(file) + "\n"
+            tkMessageBox.showerror("Error", "The following files have creation dates earlier than their module check-in date.\nProbably these files should be deleted manually.\n%s" % errStr)
             
         if (len(self.checkList) > 0):
             self.show()
