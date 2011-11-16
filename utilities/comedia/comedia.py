@@ -112,7 +112,7 @@ class MainWindow(GenericWindow):
         vscrollbar = Scrollbar(self.frmMain,command=self.scrollbarEvent)
         self.lstMainSlot = Listbox(self.frmMain,yscrollcommand=vscrollbar.set)
         self.lstModule = Listbox(self.frmMain, yscrollcommand=vscrollbar.set)  
-        self.btnNewModule = Button (self.frmMain, text="Check-in module", command=self.checkinModule)
+        self.btnNewModule = Button (self.frmMain, text="Check-in module", command=self.checkinModule, fg="green", activeforeground="green")
           
         
         # widgets on frmStatus
@@ -156,10 +156,10 @@ class MainWindow(GenericWindow):
         self.frmDetail.grid(row=1, column=3, sticky=E+W+N+S )
         frmStatus.grid(row=2,column=3,sticky=N+S+E+W)
         self.frmEditExperiment.grid(row=5, column=3, sticky=N+W )
-        self.btnQuit.grid(row=10,columnspan=5)
+        self.btnQuit.grid(row=10,columnspan=5, pady=5, padx=10, sticky=E)
         
         # arrange objects on frmMain
-        self.cboExpFilter.grid(row=6, column=0, sticky=E+W)
+        self.cboExpFilter.grid(row=6, column=0, padx=5, sticky=E+W)
         Label(self.frmMain, text="slot").grid(row=8, column=0)
         Label(self.frmMain, text="module").grid(row=8, column=1)
         self.txtSearchSlot.grid(row=9, column=0, sticky=W+E+N+S)
@@ -170,13 +170,13 @@ class MainWindow(GenericWindow):
         self.lstMainSlot.grid(row=10, column=0, sticky=N+S+E+W)
         self.lstModule.grid(row=10, column=1, sticky=N+S+E+W)
         vscrollbar.grid(row=10, column=2, sticky=N+S+W)  
-        self.btnNewModule.grid(row=20, columnspan=2, sticky=E+W)        
+        self.btnNewModule.grid(row=20, columnspan=2, sticky=E+W, pady=5, padx=5)        
         
         # arrage objects on frmStatus
         self.lblNumDirLess.grid(row=0, column=1, sticky=W)
         self.lblNumUnscanned.grid(row=1, column=1, sticky=W)
-        self.btnModuleScan.grid(row=1,  column=2)
-        self.btnRefresh.grid(row=2,  column=0, columnspan=3, sticky=E+W)
+        self.btnModuleScan.grid(row=1,  column=2, sticky=W, padx=5)
+        self.btnRefresh.grid(row=2,  column=0, columnspan=3, sticky=E+W, padx=5)
         
         #arrange objects on frmDetail
         self.txtLocationContent.grid(row=0, column=1, sticky=W)
@@ -369,7 +369,8 @@ class MainWindow(GenericWindow):
             self.lstMainSlot.insert(END, slot.location)
             self.lstModule.insert(END, slot.module.vsn)
             
-            self.updateSlotDetails()
+            
+        self.updateSlotDetails()
    
     
     def _saveModuleDetails(self):
@@ -409,7 +410,7 @@ class MainWindow(GenericWindow):
         self.frmEditExperiment.grid_remove()
         
         if self.selectedSlotIndex == -1:
-            self._saveModuleDetails()
+            self.clearSlotSelection()
             return
         
         if (self.isConnected == False):
@@ -450,7 +451,45 @@ class MainWindow(GenericWindow):
         self.txtLocationContent["state"] = DISABLED
         self.lblReceivedContent["state"] = DISABLED
         self.cboExperiments["state"] = NORMAL
-            
+     
+    def clearSlotSelection(self):
+        
+        self.selectedSlotIndex = -1
+        self.moduleEdit = 0
+        
+        # clear fields in the Details form
+        self.txtLocationContent.delete(0,END)
+        self.lblVSNContent.delete(0,END)
+        self.lblCapacityContent.delete(0,END)
+        self.lblDatarateContent.delete(0,END)
+        self.lblReceivedContent.delete(0,END)
+        self.cboExperiments.delete(0,END)
+        
+        # disable fields/buttons in the Details form
+        self.txtLocationContent["state"] = DISABLED
+        self.lblVSNContent["state"] = DISABLED
+        self.lblCapacityContent["state"] = DISABLED
+        self.lblDatarateContent["state"] = DISABLED
+        self.lblReceivedContent["state"] = DISABLED
+        self.cboExperiments["state"] = DISABLED
+        self.btnEditModule["state"] = DISABLED
+        self.btnPrintVSNLabel["state"] = DISABLED
+        self.btnPrintLibraryLabel["state"] = DISABLED
+        self.btnDeleteModule["state"] = DISABLED
+        
+        # reset colors
+        self.txtLocationContent["bg"] = self.defaultBgColor
+        self.lblVSNContent["bg"] = self.defaultBgColor
+        self.lblCapacityContent["bg"] = self.defaultBgColor
+        self.lblDatarateContent["bg"] = self.defaultBgColor
+        self.lblReceivedContent["bg"] = self.defaultBgColor
+        self.cboExperiments["bg"] = self.defaultBgColor
+        
+        self.frmEditExperiment.grid_remove()
+        
+        # save contents of the Detail form fields
+        self._saveModuleDetails
+        
     def checkOutModule(self):
     
         if (self.selectedSlotIndex == -1):
@@ -477,9 +516,13 @@ class MainWindow(GenericWindow):
                 session.delete(module) 
                 session.commit()
 
-                self.selectedSlotIndex = -1
+                self.clearSlotSelection()
+                
                 self.updateSlotListbox()
-                self.updateSlotDetails()
+                #self.updateSlotDetails()
+                
+                #self._saveModuleDetails
+                #self.editModuleDetailsEvent(None)
                 
                 # delete .dir file
                  
@@ -689,6 +732,7 @@ class MainWindow(GenericWindow):
         if self.moduleEdit > 0:
             self.btnEditModule["state"] = NORMAL
             self.btnEditModule["fg"] = editColor
+            self.btnEditModule["activeforeground"] = editColor
         else:
             self.btnEditModule["state"] = DISABLED
             
@@ -836,8 +880,6 @@ class CheckinWindow(GenericWindow):
             tkMessageBox.showerror("Error", "Illegal VSN label content. Must be VSN/capacity/datarate.")
             return
         
-        print vsn
-        
         if (moduleExists(session, vsn)):
             tkMessageBox.showerror("Error","Module\n%s\nalready checked-in" % vsn)
             return
@@ -869,8 +911,8 @@ class CheckinWindow(GenericWindow):
 
             session.commit()
 
-            if (self.chkPrinLibLabelVar.get() == 1):
-                self.parent.printLibraryLabel(slot = selectedSlot)
+            if (self.chkPrintLibLabelVar.get() == 1):
+                self.parent.printLibraryLabel(slotName = selectedSlot.location)
             self.parent.updateSlotListbox()
             
             self.dlg.destroy()
@@ -1073,7 +1115,7 @@ class ScanModulesWindow(GenericWindow):
                 assignedExps.append(exp.code)
          
             if (sorted(scannedExps) != sorted(assignedExps)):
-                print scannedExps
+              
                 checkModule = self.CheckModuleItem()
                 checkModule.vsn = module.vsn
                 checkModule.assignedExps = assignedExps
@@ -1284,7 +1326,6 @@ class MyImageWriter(ImageWriter):
         if self.text:
             height += (self.font_size + self.text_distance) / 3
 
-        print int(self._mm2px(width, dpi)), int(self._mm2px(height, dpi))
         return int(self._mm2px(width, dpi)), int(self._mm2px(height, dpi))
 
     def _paint_text(self, xpos, ypos):
