@@ -24,6 +24,7 @@ from collections import deque
 
 from sqlalchemy import *
 from Tkinter import *
+from Tkinter import _setit
 
 
 class GenericWindow(object):
@@ -55,8 +56,9 @@ class MainWindow(GenericWindow):
         self.moduleEdit = 0
         self.filterReleaseList = IntVar()
         self.filterDirLess = IntVar()
-        self.filterExp = StringVar()
+        self.filterExpVar = StringVar()
         
+        self.expFilterItems = []
         self.labelSizeX = 320
         self.labelSizeY = 130
         self.moduleFilter = ""
@@ -66,6 +68,7 @@ class MainWindow(GenericWindow):
         
         self._setupWidgets()
         self.updateSlotListbox()
+        self.updateExpFilter()
         self.refreshStatusEvent()
         
         
@@ -104,7 +107,7 @@ class MainWindow(GenericWindow):
         btnClearSearch = Button (self.frmMain, bitmap="error")
         self.chkRelease = Checkbutton(self.frmMain, text = "releasable modules only", variable = self.filterReleaseList, command=self.updateSlotListbox)
         self.chkDirLess = Checkbutton(self.frmMain, text = "modules without .dir only", variable = self.filterDirLess, command=self.updateSlotListbox)
-        #self.cboSearchExperiment = OptionMenu(self.frmMain, self.filterExp, *optionList )
+        self.cboExpFilter = OptionMenu(self.frmMain, self.filterExpVar, self.expFilterItems)
         
         vscrollbar = Scrollbar(self.frmMain,command=self.scrollbarEvent)
         self.lstMainSlot = Listbox(self.frmMain,yscrollcommand=vscrollbar.set)
@@ -148,25 +151,6 @@ class MainWindow(GenericWindow):
         self.btnRemoveExperiments = Button(self.frmEditExperiment, text=">>", command=self.removeExperimentEvent)
          
         
-        # bind events to widgets
-        btnClearSearch.bind("<ButtonRelease-1>", self.clearSearchEvent)
-        self.txtLocationContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
-        self.lblVSNContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
-        self.lblCapacityContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
-        self.lblDatarateContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
-        self.lblReceivedContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
-        self.txtSearchSlot.bind("<KeyRelease>", self.searchSlotEvent)
-        self.txtSearch.bind("<KeyRelease>", self.searchModuleEvent)
-        self.lstMainSlot.bind("<MouseWheel>", self.mouseWheelEvent)
-        self.lstModule.bind("<MouseWheel>", self.mouseWheelEvent)
-        self.lstMainSlot.bind("<Button-4>", self.mouseWheelEvent)
-        self.lstModule.bind("<Button-4>", self.mouseWheelEvent)
-        self.lstMainSlot.bind("<Button-5>", self.mouseWheelEvent)
-        self.lstModule.bind("<Button-5>", self.mouseWheelEvent)
-        self.lstMainSlot.bind("<ButtonRelease-1>", self.selectSlotEvent) 
-        self.lstModule.bind("<ButtonRelease-1>", self.selectModuleEvent)
-        self.cboExperiments.bind("<ButtonRelease-1>", self.selectExperimentEvent)
-        
         # arrange objects on grid       
         self.frmMain.grid(row=1,rowspan=2,column=0, sticky=E+W+N+S)   
         self.frmDetail.grid(row=1, column=3, sticky=E+W+N+S )
@@ -175,8 +159,7 @@ class MainWindow(GenericWindow):
         self.btnQuit.grid(row=10,columnspan=5)
         
         # arrange objects on frmMain
-        Label(self.frmMain, text="experiment").grid(row=6, column=1, sticky=W)
-       # self.cboSearchExperiment.grid(row=6, column=0, sticky=E+W)
+        self.cboExpFilter.grid(row=6, column=0, sticky=E+W)
         Label(self.frmMain, text="slot").grid(row=8, column=0)
         Label(self.frmMain, text="module").grid(row=8, column=1)
         self.txtSearchSlot.grid(row=9, column=0, sticky=W+E+N+S)
@@ -216,7 +199,24 @@ class MainWindow(GenericWindow):
         self.btnRemoveExperiments.grid(row=1, column=0, sticky=W)
         self.frmEditExperiment.grid_remove()
         
-
+        # bind events to widgets
+        btnClearSearch.bind("<ButtonRelease-1>", self.clearSearchEvent)
+        self.txtLocationContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
+        self.lblVSNContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
+        self.lblCapacityContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
+        self.lblDatarateContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
+        self.lblReceivedContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
+        self.txtSearchSlot.bind("<KeyRelease>", self.searchSlotEvent)
+        self.txtSearch.bind("<KeyRelease>", self.searchModuleEvent)
+        self.lstMainSlot.bind("<MouseWheel>", self.mouseWheelEvent)
+        self.lstModule.bind("<MouseWheel>", self.mouseWheelEvent)
+        self.lstMainSlot.bind("<Button-4>", self.mouseWheelEvent)
+        self.lstModule.bind("<Button-4>", self.mouseWheelEvent)
+        self.lstMainSlot.bind("<Button-5>", self.mouseWheelEvent)
+        self.lstModule.bind("<Button-5>", self.mouseWheelEvent)
+        self.lstMainSlot.bind("<ButtonRelease-1>", self.selectSlotEvent) 
+        self.lstModule.bind("<ButtonRelease-1>", self.selectModuleEvent)
+        self.cboExperiments.bind("<ButtonRelease-1>", self.selectExperimentEvent)
     
     def printVSNLabel(self):
         
@@ -289,8 +289,6 @@ class MainWindow(GenericWindow):
                 if (exp != None):
                     slot.module.experiments.append(exp)
             
-
-
             #session.update(slot)
             session.commit()
         
@@ -299,20 +297,47 @@ class MainWindow(GenericWindow):
         self._saveModuleDetails()
         self.editModuleDetailsEvent(None)
   
+    def callbackExpFilter(self, item):
+        
+        self.cboExpFilter.configure(text=item)
+        self.filterExpVar.set(item)
+        
+        self.updateSlotListbox()
+        
 
-    
+    def updateExpFilter(self):
+        
+        self.cboExpFilter["menu"].delete(0, END)
+        
+        self.cboExpFilter["menu"].add_command(label="all experiments", command=lambda item="all experiments": self.callbackExpFilter(item))
+        
+        self.callbackExpFilter("all experiments")
+        for code in getActiveExperimentCodes(session):
+            self.cboExpFilter['menu'].add_command(label=code, command=lambda item=code: self.callbackExpFilter(item))
+        
+           
+        
     def updateSlotListbox(self):
     
         if (self.isConnected == False):
             return
-             
+       
         slots = getOccupiedSlots(session)
 
         self.lstMainSlot.delete(0, END)
         self.lstModule.delete(0, END)
 
-        for slot in slots: 
+        for slot in slots:
             
+            # check for experiment filter
+            if (self.filterExpVar.get() != "all experiments"):
+                expList = []
+                for exp in slot.module.experiments:
+                    expList.append(exp.code)
+                
+                if (self.filterExpVar.get() not in  expList):
+                    continue
+                
             # check for slot filter phrase
             if (self.slotFilter != ""):
                 if (self.slotFilter not in slot.location):
@@ -730,7 +755,7 @@ class CheckinWindow(GenericWindow):
         #frame = LabelFrame(self.dlg)
         btnOK = Button(self.dlg, text="OK", command=self._persistSlot)
         btnCancel = Button(self.dlg, text="Cancel", command=self.dlg.destroy)
-        btnAddExp = Button(self.dlg, text="+", command=self._addExperiment)
+        btnAddExp = Button(self.dlg, text="Add exp.", command=self._addExperiment)
 
         # arrange elements on grid
         self.txtVSN.grid(row=0, column=1)
@@ -740,8 +765,8 @@ class CheckinWindow(GenericWindow):
 
         #frame.grid(row=10, column=0, columnspan=4, sticky=E+W)
         btnOK.grid(row=10, column=1, sticky=W,pady=7)
-        btnCancel.grid(row=10, column=4, sticky=E)
-        btnAddExp.grid(row=3, column=3, sticky=W)
+        btnCancel.grid(row=10, column=3, sticky=E+W)
+        btnAddExp.grid(row=3, column=3, sticky=E+W)
         yScroll.grid ( row=1, column=2, sticky=W+N+S )
         yScroll2.grid ( row=3, column=2, sticky=W+N+S )
         
@@ -1193,6 +1218,7 @@ class AddExperimentWindow(GenericWindow):
         
         self.parent.dlg.grab_set()
         self.parent.updateExperimentListbox()
+        self.parent.parent.updateExpFilter()
         self.parent.txtVSN.focus_set()
         self.dlg.destroy()
         
