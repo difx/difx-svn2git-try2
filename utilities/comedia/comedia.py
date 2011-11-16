@@ -235,13 +235,16 @@ class MainWindow(GenericWindow):
             
             #os.system( self.config.get("Label", "printCommand") + ' /tmp/comedia_vsn.png')
     
-    def printLibraryLabel(self):
+    def printLibraryLabel(self, slotName=None):
         
-        if (self.selectedSlotIndex == -1):
-            return
+        if (slotName == None):
+            if (self.selectedSlotIndex == -1):
+                return
+            else:
+                slotName = self.lstMainSlot.get(self.selectedSlotIndex)
         
         slot = model.Slot()
-        slot = session.query(model.Slot).filter_by(location=self.lstMainSlot.get(self.selectedSlotIndex)).one()
+        slot = session.query(model.Slot).filter_by(location=slotName).one()
         
         
         if (slot > 0):
@@ -319,6 +322,9 @@ class MainWindow(GenericWindow):
         
     def updateSlotListbox(self):
     
+        # deselect active slot
+        self.selectedSlotIndex = -1
+        
         if (self.isConnected == False):
             return
        
@@ -362,6 +368,8 @@ class MainWindow(GenericWindow):
                     
             self.lstMainSlot.insert(END, slot.location)
             self.lstModule.insert(END, slot.module.vsn)
+            
+            self.updateSlotDetails()
    
     
     def _saveModuleDetails(self):
@@ -398,6 +406,8 @@ class MainWindow(GenericWindow):
         self.lblReceivedContent.delete(0,END)
         self.cboExperiments.delete(0, END)
         
+        self.frmEditExperiment.grid_remove()
+        
         if self.selectedSlotIndex == -1:
             self._saveModuleDetails()
             return
@@ -429,6 +439,7 @@ class MainWindow(GenericWindow):
                 
             # update listbox containing unassigned experiments
             freeExps = getActiveExperimentCodes(session)
+            self.cboFreeExperiments.delete(0,END)
             for code in freeExps:
                 if code in assignedCodes:
                     continue
@@ -716,6 +727,9 @@ class CheckinWindow(GenericWindow):
         self.dlg.focus_set()
         self.dlg.grab_set()
         
+        self.chkPrintLibLabelVar = IntVar()
+        self.chkPrintLibLabelVar.set(1)
+        
         self._setupWidgets()
         self.updateExperimentListbox()
      
@@ -737,13 +751,13 @@ class CheckinWindow(GenericWindow):
 
         Label(self.dlg, text="VSN").grid(row=0)
         Label(self.dlg, text="Slot").grid(row=1)
-        Label(self.dlg, text="Experiment(s)").grid(row=3)
+        Label(self.dlg, text="Experiment(s)\n(optional)").grid(row=3)
 
         self.txtVSN = Entry(self.dlg)
 
         self.lstSlot = Listbox(self.dlg, yscrollcommand=yScroll.set, height=5, exportselection = False )
         self.lstExp = Listbox(self.dlg, yscrollcommand=yScroll2.set, height=5 , selectmode=MULTIPLE, exportselection = False)
-
+        chkPrintLibLabel = Checkbutton(self.dlg, text = "print library label", variable = self.chkPrintLibLabelVar)
         yScroll.config(command=self.lstSlot.yview)
         yScroll2.config(command=self.lstExp.yview)
 
@@ -761,7 +775,7 @@ class CheckinWindow(GenericWindow):
         self.txtVSN.grid(row=0, column=1)
         self.lstSlot.grid(row=1, column=1)
         self.lstExp.grid(row=3, column=1)
-        
+        chkPrintLibLabel.grid(row=4,column=1, sticky=W)
 
         #frame.grid(row=10, column=0, columnspan=4, sticky=E+W)
         btnOK.grid(row=10, column=1, sticky=W,pady=7)
@@ -855,6 +869,8 @@ class CheckinWindow(GenericWindow):
 
             session.commit()
 
+            if (self.chkPrinLibLabelVar.get() == 1):
+                self.parent.printLibraryLabel(slot = selectedSlot)
             self.parent.updateSlotListbox()
             
             self.dlg.destroy()
