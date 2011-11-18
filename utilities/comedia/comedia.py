@@ -11,7 +11,8 @@ import tkMessageBox
 import PIL
 import barcode
 
-from difxdb.business.experimentaction import experimentExists, getActiveExperimentCodes,getExperimentByCode
+#from difxdb.business.experimentaction import  experimentExists, getActiveExperimentCodes,getExperimentByCode
+from difxdb.business.experimentaction import * 
 from difxdb.business.moduleaction import moduleExists, isCheckOutAllowed, hasDir, getUnscannedModules, getModuleByVSN
 from difxdb.business.slotaction import getOccupiedSlots
 from difxdb.model.dbConnection import Schema, Connection
@@ -110,8 +111,8 @@ class MainWindow(GenericWindow):
         self.cboExpFilter = OptionMenu(self.frmMain, self.filterExpVar, self.expFilterItems)
         
         vscrollbar = Scrollbar(self.frmMain,command=self.scrollbarEvent)
-        self.lstMainSlot = Listbox(self.frmMain,yscrollcommand=vscrollbar.set)
-        self.lstModule = Listbox(self.frmMain, yscrollcommand=vscrollbar.set)  
+        self.lstMainSlot = Listbox(self.frmMain,yscrollcommand=vscrollbar.set, relief="ridge")
+        self.lstModule = Listbox(self.frmMain, yscrollcommand=vscrollbar.set, relief="ridge")  
         self.btnNewModule = Button (self.frmMain, text="Check-in module", command=self.checkinModule, fg="green", activeforeground="green")
           
         
@@ -1162,10 +1163,8 @@ class ScanModulesWindow(GenericWindow):
                     if (not experimentExists(session, expCode)):
                        
                         # add new experiment
-                        exp = model.Experiment()
-                        exp.code = expCode
-                        session.add(exp)
-                        session.commit()
+                        addExperiment(session, expCode)
+                        
                         
                     exp = getExperimentByCode(session, expCode)
                     module.experiments.append(exp)
@@ -1302,15 +1301,8 @@ class AddExperimentWindow(GenericWindow):
         if (code == ""):
             return
         
-        if (experimentExists(session, code)):
-            tkMessageBox.showerror("Error", "Experiment with code %s exists already." % code)
-            return
-        
-        experiment = model.Experiment()
-        experiment.code = code
-        
-        session.add(experiment)
-        session.commit()
+        addExperiment(session, code)
+       
         
         self.close()
         
