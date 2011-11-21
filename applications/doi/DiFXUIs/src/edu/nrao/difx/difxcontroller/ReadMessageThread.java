@@ -80,19 +80,15 @@ public class ReadMessageThread implements Runnable {
                 // start time stamp
                 String startDate = Calendar.getInstance().getTime().toString();
 
-                // create multicast socket
-                MulticastSocket socket = new MulticastSocket( _systemSettings.port() );
-                socket.setSoTimeout( _systemSettings.timeout() );              // timeout 100ms
-                socket.setReceiveBufferSize(512000);   // max buffer size 512k Bytes
-                socket.joinGroup( InetAddress.getByName( _systemSettings.ipAddress() ) );
-
-                // loop forever, read and queue datagram packets
+                MulticastSocket socket = null;
+                
+                // loop forever, reading datagram packets
                 while ( !mDone ) {
                     
                     try {
 
                         //  Check for changes to the broadcast settings on each cycle.
-                        if ( _settingsChange ) {
+                        if ( _settingsChange || socket == null ) {
                             socket = new MulticastSocket( _systemSettings.port() );
                             socket.setSoTimeout( _systemSettings.timeout() );              // timeout 100ms
                             socket.setReceiveBufferSize( 512000 );   // max buffer size 512k Bytes

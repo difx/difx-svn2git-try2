@@ -502,7 +502,7 @@ public class SystemSettings extends JFrame {
         if ( _menuBar != null )
             _menuBar.setBounds( 0, 0, w, 25 );
         if ( _allObjectsBuilt ) {
-            _scrollPane.setBounds( 0, 25, w, h - 25 );
+            _scrollPane.setBounds( 0, 25, w, h - 47 );
             _settingsFileName.setBounds( 115, 25, w - 135, 25 );
             //  DiFX Controll Connection settings
             _difxControlAddress.setBounds( 165, 25, 300, 25 );
@@ -931,13 +931,20 @@ public class SystemSettings extends JFrame {
     /*
      * This function is called from the thread that receives broadcasts each time
      * it cycles.  It gives us the size of a received packet, or a 0 if this thread
-     * timed out.
+     * timed out.  The information is added to a plot if this window is visible
+     * (otherwise it is kind of a waste of time).
      */
     public void gotPacket( int newSize ) {
-        _broadcastPlot.limits( (double)(_broadcastTrackSize - _broadcastPlot.w()), (double)(_broadcastTrackSize), -.05, 1.0 );
-        _broadcastTrack.add( (double)(_broadcastTrackSize), (double)(newSize)/(double)bufferSize() );
-        _broadcastTrackSize += 1;
-        _plotWindow.updateUI();
+        if ( this.isVisible() ) {
+            _broadcastPlot.limits( (double)(_broadcastTrackSize - _broadcastPlot.w()), (double)(_broadcastTrackSize), -.05, 1.0 );
+            _broadcastTrack.add( (double)(_broadcastTrackSize), (double)(newSize)/(double)bufferSize() );
+            _broadcastTrackSize += 1;
+            _plotWindow.updateUI();
+        }
+        else {
+            _broadcastTrack.clear();
+            _broadcastTrackSize = 0;
+        }
     }
     
     /*

@@ -38,7 +38,7 @@ public class SendMessage {
             // Marchall bytes, create packet and send
             byte[] buffer = outString.getBytes();            
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length,
-                                                       InetAddress.getByName( systemSettings.ipAddress() ),
+                                                       InetAddress.getByName( systemSettings.difxControlAddress() ),
                                                        systemSettings.difxControlPort() );
             //printPacket(packet);
             sock.setTimeToLive(5);

@@ -18,9 +18,68 @@
     </h3>
     <ul>
       <li>How to Run a Typical DiFX Job</li>
-      <li>Problem/Errors You May Encounter<br>
-      </li>
+      <li><a href="#ProblemsErrors_You_May_Encounter">Problem/Errors You
+          May Encounter</a></li>
     </ul>
+    <h3><a name="ProblemsErrors_You_May_Encounter"></a>Problems/Errors
+      You May Encounter</h3>
+    Among the many troubles that you may bump into trying to run a DiFX
+    job....<br>
+    <br>
+    <h4>Reapeated RSA Key Requests<br>
+    </h4>
+    The RSA key requests occur because <span style="font-style:
+      italic;">mk5daemon</span>, running as root on the head node, is
+    trying to "ssh" to the DiFX user you are using (probably
+    "difx").&nbsp; Then as "difx" (or whomever) it needs to "ssh" to
+    "difx" (or whomever) on all other nodes.&nbsp; It is vital that <span
+      style="font-style: italic;">mk5daemon</span> run as root, and also
+    vital that it run the "ssh" as the DiFX user.&nbsp; How to get
+    around this?<br>
+    <br>
+    First of all, the version of mk5daemon you are running on your
+    should be the "new" one.&nbsp; Currently experimental, and not
+    checked in.&nbsp; Yes, yes, this will be fixed.&nbsp; Note changes
+    around line 510 in <code>applications/mk5daemon/trunk/src/difx.cpp</code>.<br>
+    <br>
+    To allow "root" on the head node to "ssh" as the DiFX user
+    everywhere without key requests, do the following for <span
+      style="font-weight: bold;">every node</span> you are using
+    (including the head node!):<br>
+    <pre>	ssh-copy-id user@node<br></pre>
+    For instance, if your DiFX user is "difx", your head node is "king"
+    and your other processing nodes and mark 5's are "pawn1", "pawn2",
+    "mark5-1" and "mark5-2" you would need to do the following (as root
+    on "king"):<br>
+    <pre>	ssh-copy-id difx@king<br>	ssh-copy-id difx@pawn1<br>	ssh-copy-id difx@pawn2<br>	ssh-copy-id difx@mark5-1<br>	ssh-copy-id difx@mark5-2<br></pre>
+    These commands must be run as "root" on the head node.&nbsp; It is
+    important that you log in as root (i.e. not ssh!) because you want
+    to guarantee that it is the root key that is being copied.&nbsp; Log
+    completely out of the machine and log in as root!&nbsp; Trust us on
+    this!<br>
+    <br>
+    To test whether this has worked, you should be able to "ssh" to your
+    DiFX user on all nodes from root on the head node without entering a
+    password or key.&nbsp; If you can't do this, things are not set up
+    right and jobs will not run.<br>
+    <br>
+    These changes should survive reboots, as well as RSA key stuff ever
+    does.<br>
+    <h4>Run Completes Without Doing Anything</h4>
+    There are certainly many reasons this may happen, but one of the
+    most likely is the above problem - your RSA keys are not set up
+    correctly.&nbsp; You just can't see the key requests from where you
+    are running the menu.<br>
+    <pre style="font-weight: bold;">Malformed DifxStart message received<br></pre>
+    There are a number of reasons this error may appear, but the most
+    likely one is that your "head node" (specified in the "Head Node"
+    field) is not running <span style="font-style: italic;">mk5daemon</span>
+    with the "--headnode" option.&nbsp; <span style="font-style:
+      italic;">Mk5daemon</span> handles all of the communication with
+    the GUI from the DiFX node side - each node is running it.&nbsp; On
+    the node that serves as the "head node" it must be run as follows:<br>
+    <pre>	/usr/local/swc/difx/bin/mk5daemon --headnode</pre>
+    On all other nodes it must be run without the "--headnode" option.<br>
     <br>
   </body>
 </html>

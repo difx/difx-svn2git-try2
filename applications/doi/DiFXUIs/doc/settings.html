@@ -15,9 +15,67 @@
     Sub-topics include:<br>
     <ul>
       <li>Settings File</li>
+      <li><a href="#DiFX_Control_Connection">DiFX Control Connection</a><br>
+      </li>
       <li>Broadcast Network</li>
       <li><a href="#Database_Configuration">Database Configuration</a></li>
       <li>Documentation Locations</li>
+    </ul>
+    <h2><a name="DiFX_Control_Connection"></a>DiFX Control Connection</h2>
+    The DiFX Control Connection setting determine how commands are sent
+    to DiFX.&nbsp; Processing and data nodes should all be running <span
+      style="font-style: italic;">mk5daemon</span> to send and receive
+    XML messages (if the "Broadcast Monitor" light next to a node in the
+    Hardware Monitor window is blinking green occasionally, then <span
+      style="font-style: italic;">mk5daemon</span> is running on that
+    node).&nbsp; Control commands that start, stop, and otherwise
+    manipulate jobs are sent to the <span style="font-style: italic;">mk5daemon</span>
+    running on one particular node (usually this is the "head node", but
+    this is not a requirement).<br>
+    <h4>Host</h4>
+    This is the hostname of the node which is to receive DiFX control
+    commands (job start, stop, etc).&nbsp; This node must be running <span
+      style="font-style: italic;">mk5daemon</span>, obviously, for this
+    to work.&nbsp; In addition, the "root" user on this node must be
+    able to "ssh" to the DiFX user (see below) on each processing and
+    data source node without typing a password or RSA key.&nbsp; If you
+    are having trouble with RSA (we did), try the following.&nbsp; As
+    "root" on the DiFX host type this for <span style="font-weight:
+      bold;">every node</span> you are using (including the DiFX host
+    iteself!):<br>
+    <pre>	ssh-copy-id user@node<br></pre>
+    For instance, if your DiFX user is "difx", your DiFX host is "king"
+    and your other processing nodes and mark 5's are "pawn1", "pawn2",
+    "mark5-1" and "mark5-2" you would need to do the following (as root
+    on "king"):<br>
+    <pre>	ssh-copy-id difx@king<br>	ssh-copy-id difx@pawn1<br>	ssh-copy-id difx@pawn2<br>	ssh-copy-id difx@mark5-1<br>	ssh-copy-id difx@mark5-2<br></pre>
+    These commands must be run as "root" on the DiFX host node.&nbsp; It
+    is important that you log in as root (i.e. not ssh!) because you
+    want to guarantee that it is the root key that is being
+    copied.&nbsp; Log completely out of the machine and log in as
+    root!&nbsp; Trust us on this!<br>
+    <br>
+    To test whether this has worked, you should be able to "ssh" to your
+    DiFX user on all nodes from root on the DiFX host node without
+    entering a password or key.&nbsp; If you can't do this, things are
+    not set up right and jobs will not run.<br>
+    <br>
+    These changes should survive reboots, as well as RSA key stuff ever
+    does.<br>
+    <h4>Port</h4>
+    This is the broadcast port for control communications.&nbsp;
+    Normally it is the same as the Port setting under Broadcast Network
+    (default is currently 50200).<br>
+    <h4>User<br>
+    </h4>
+    This is the DiFX user - the owner of all DiFX-related data files and
+    directories.&nbsp; Normally this user is "difx" but this is not a
+    requirement.<br>
+    <h4>Password</h4>
+    The password for the DiFX user.<br>
+    <h4>DiFX Version</h4>
+    Not used for anything currently.<br>
+    <ul>
     </ul>
     <h2><a name="Database_Configuration"></a>Database Configuration</h2>
     Trouble?&nbsp; See <a href="#Testing_the_Database_Configuration"><span

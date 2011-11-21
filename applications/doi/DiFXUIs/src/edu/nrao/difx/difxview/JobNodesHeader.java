@@ -44,7 +44,7 @@ public class JobNodesHeader extends BrowserNode {
         //  Create a popup menu that allows us to turn things on and off
         _popup = new JPopupMenu();
         JMenuItem menuItem;
-        menuItem = new JMenuItem( _label.getText() + " Display Options:" );
+        menuItem = new JMenuItem( _label.getText() + " Column Options:" );
         _popup.add( menuItem );
         _popup.add( new JSeparator() );
         JMenuItem allItem = new JMenuItem( "Show All" );
@@ -89,24 +89,24 @@ public class JobNodesHeader extends BrowserNode {
             }
         });
         _popup.add( _showWeights );
-        JMenu weightMenu = new JMenu( "Show Weights As..." );
-        _popup.add( weightMenu );
-        _showWeightsAsNumbers = new JCheckBoxMenuItem( "Numbers" );
-        _showWeightsAsNumbers.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                setWeightsAsPlots( false );
-                updateDisplayedData();
-            }
-        });
-        weightMenu.add( _showWeightsAsNumbers );
-        _showWeightsAsPlots = new JCheckBoxMenuItem( "Plots" );
-        _showWeightsAsPlots.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                setWeightsAsPlots( true );
-                updateDisplayedData();
-            }
-        });
-        weightMenu.add( _showWeightsAsPlots );
+//        JMenu weightMenu = new JMenu( "Show Weights As..." );
+//        _popup.add( weightMenu );
+//        _showWeightsAsNumbers = new JCheckBoxMenuItem( "Numbers" );
+//        _showWeightsAsNumbers.addActionListener(new ActionListener() {
+//            public void actionPerformed( ActionEvent e ) {
+//                setWeightsAsPlots( false );
+//                updateDisplayedData();
+//            }
+//        });
+//        weightMenu.add( _showWeightsAsNumbers );
+//        _showWeightsAsPlots = new JCheckBoxMenuItem( "Plots" );
+//        _showWeightsAsPlots.addActionListener(new ActionListener() {
+//            public void actionPerformed( ActionEvent e ) {
+//                setWeightsAsPlots( true );
+//                updateDisplayedData();
+//            }
+//        });
+//        weightMenu.add( _showWeightsAsPlots );
         _showExperiment = new JCheckBoxMenuItem( "Experiment" );
         _showExperiment.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
@@ -429,10 +429,10 @@ public class JobNodesHeader extends BrowserNode {
         this.add( _weights );
     }
     
-    public void setWeightsAsPlots( boolean newVal ) {
-        _showWeightsAsPlots.setState( newVal );
-        _showWeightsAsNumbers.setState( !newVal );
-    }
+//    public void setWeightsAsPlots( boolean newVal ) {
+//        _showWeightsAsPlots.setState( newVal );
+//        _showWeightsAsNumbers.setState( !newVal );
+//    }
     
     /*
      * This function makes everything in the popup menu visible.
@@ -651,9 +651,9 @@ public class JobNodesHeader extends BrowserNode {
         _showStatus.setState( false );
         _showActive.setState( false );
         _showStatusId.setState( false );
-        _showWeights.setState( true );
-        _showWeightsAsPlots.setState( true );
-        _showWeightsAsNumbers.setState( false );
+        _showWeights.setState( false );
+//        _showWeightsAsPlots.setState( true );
+//        _showWeightsAsNumbers.setState( false );
     }
     
     /*
@@ -1087,7 +1087,7 @@ public class JobNodesHeader extends BrowserNode {
             thisJob.showActive( _showActive.getState() );
             thisJob.showStatusId( _showStatusId.getState() );
             thisJob.showWeights( _showWeights.getState() );
-            thisJob.showWeightsAsPlots( _showWeightsAsPlots.getState() );
+//            thisJob.showWeightsAsPlots( _showWeightsAsPlots.getState() );
             thisJob.updateUI();
         }
         //  Update the headers as well.
@@ -1257,8 +1257,8 @@ public class JobNodesHeader extends BrowserNode {
     protected JCheckBoxMenuItem _showWeights;
     protected int _positionWeights;
     protected boolean _adjustWeights;
-    JCheckBoxMenuItem _showWeightsAsNumbers;
-    JCheckBoxMenuItem _showWeightsAsPlots;
+//    JCheckBoxMenuItem _showWeightsAsNumbers;
+//    JCheckBoxMenuItem _showWeightsAsPlots;
     
     protected int _xOff;
     

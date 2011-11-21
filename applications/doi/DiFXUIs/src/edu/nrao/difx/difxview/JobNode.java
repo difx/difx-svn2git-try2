@@ -250,16 +250,16 @@ public class JobNode extends BrowserNode {
                 for ( int i = 0; i < _weights.length; ++i ) {
                     setTextArea( _antenna[i], boxSize );
                     _antenna[i].setVisible( true );
-                    if ( _showWeightsAsPlots ) {
-                        setTextArea( _weightPlotWindow[i], boxSize );
-                        _weightPlotWindow[i].setVisible( true );
-                        _weight[i].setVisible( false );
-                    }
-                    else {
+//                    if ( _showWeightsAsPlots ) {
+//                        setTextArea( _weightPlotWindow[i], boxSize );
+//                        _weightPlotWindow[i].setVisible( true );
+//                        _weight[i].setVisible( false );
+//                    }
+//                    else {
                         setTextArea( _weight[i], boxSize );
                         _weight[i].setVisible( true );
-                        _weightPlotWindow[i].setVisible( false );
-                    }
+//                        _weightPlotWindow[i].setVisible( false );
+//                    }
                 }
             }
             else
@@ -270,7 +270,7 @@ public class JobNode extends BrowserNode {
                 for ( int i = 0; i < _weights.length; ++i ) {
                     _antenna[i].setVisible( false );
                     _weight[i].setVisible( false );
-                    _weightPlotWindow[i].setVisible( false );
+//                    _weightPlotWindow[i].setVisible( false );
                 }
             }
         }
@@ -443,10 +443,10 @@ public class JobNode extends BrowserNode {
         _antennas = new String[ numAntennas ];
         _weight = new ColumnTextArea[ numAntennas ];
         _antenna = new ColumnTextArea[ numAntennas ];
-        _weightPlotWindow = new PlotWindow[ numAntennas ];
-        _weightPlot = new Plot2DObject[ numAntennas ];
-        _weightTrack = new Track2D[ numAntennas ];
-        _weightTrackSize = new int[ numAntennas ];
+//        _weightPlotWindow = new PlotWindow[ numAntennas ];
+//        _weightPlot = new Plot2DObject[ numAntennas ];
+//        _weightTrack = new Track2D[ numAntennas ];
+//        _weightTrackSize = new int[ numAntennas ];
         //  Give the antennas "default" names.
         for ( Integer i = 0; i < numAntennas; ++i ) {
             _antenna[i] = new ColumnTextArea( i.toString() + ": " );
@@ -455,26 +455,26 @@ public class JobNode extends BrowserNode {
             _weight[i] = new ColumnTextArea( "" );
             this.add( _weight[i] );
             _antennas[i] = i.toString();
-            //  This stuff is used to make a plot of the weight.
-            _weightPlotWindow[i] = new PlotWindow();
-            this.add( _weightPlotWindow[i] );
-            _weightPlot[i] = new Plot2DObject();
-            _weightPlotWindow[i].add2DPlot( _weightPlot[i] );
-            _weightTrack[i] = new Track2D();
-            _weightPlot[i].name( "Weight Plot " + i.toString() );
-            _weightPlot[i].drawBackground( true );
-            _weightPlot[i].drawFrame( true );
-            _weightPlot[i].frameColor( Color.GRAY );
-            _weightPlot[i].clip( true );
-            _weightPlot[i].addTopGrid( Plot2DObject.X_AXIS, 10.0, Color.BLACK );
-            _weightTrack[i] = new Track2D();
-            _weightTrack[i].fillCurve( true );
-            _weightPlot[i].addTrack( _weightTrack[i] );
-            _weightTrack[i].color( Color.GREEN );
-            _weightTrack[i].sizeLimit( 200 );
-            _weightPlot[i].frame( 0.0, 0.0, 1.0, 1.0 );
-            _weightPlot[i].backgroundColor( Color.BLACK );
-            _weightTrackSize[i] = 0;
+//            //  This stuff is used to make a plot of the weight.
+//            _weightPlotWindow[i] = new PlotWindow();
+//            this.add( _weightPlotWindow[i] );
+//            _weightPlot[i] = new Plot2DObject();
+//            _weightPlotWindow[i].add2DPlot( _weightPlot[i] );
+//            _weightTrack[i] = new Track2D();
+//            _weightPlot[i].name( "Weight Plot " + i.toString() );
+//            _weightPlot[i].drawBackground( true );
+//            _weightPlot[i].drawFrame( true );
+//            _weightPlot[i].frameColor( Color.GRAY );
+//            _weightPlot[i].clip( true );
+//            _weightPlot[i].addTopGrid( Plot2DObject.X_AXIS, 10.0, Color.BLACK );
+//            _weightTrack[i] = new Track2D();
+//            _weightTrack[i].fillCurve( true );
+//            _weightPlot[i].addTrack( _weightTrack[i] );
+//            _weightTrack[i].color( Color.GREEN );
+//            _weightTrack[i].sizeLimit( 200 );
+//            _weightPlot[i].frame( 0.0, 0.0, 1.0, 1.0 );
+//            _weightPlot[i].backgroundColor( Color.BLACK );
+//            _weightTrackSize[i] = 0;
         }
     }
     
@@ -520,10 +520,10 @@ public class JobNode extends BrowserNode {
             if ( _antennas[i].contentEquals( antenna ) ) {
                 _weights[i] = newVal;
                 _weight[i].setText( newString );
-                _weightPlot[i].limits( (double)(_weightTrackSize[i] - 20), (double)(_weightTrackSize[i]), 0.0, 1.05 );
-                _weightTrack[i].add( (double)(_weightTrackSize[i]), newVal );
-                _weightTrackSize[i] += 1;
-                _weightPlotWindow[i].updateUI();
+//                _weightPlot[i].limits( (double)(_weightTrackSize[i] - 20), (double)(_weightTrackSize[i]), 0.0, 1.05 );
+//                _weightTrack[i].add( (double)(_weightTrackSize[i]), newVal );
+//                _weightTrackSize[i] += 1;
+//                _weightPlotWindow[i].updateUI();
             }
         }
     }
@@ -576,10 +576,10 @@ public class JobNode extends BrowserNode {
         _showWeights = newVal;
         this.updateUI();
     }
-    public void showWeightsAsPlots( boolean newVal ) { 
-        _showWeightsAsPlots = newVal;
-        this.updateUI();
-    }
+//    public void showWeightsAsPlots( boolean newVal ) { 
+//        _showWeightsAsPlots = newVal;
+//        this.updateUI();
+//    }
     
     public void widthName( int newVal ) { _widthName = newVal; }
     public void widthProgressBar( int newVal ) { _widthProgressBar = newVal; }
@@ -660,9 +660,9 @@ public class JobNode extends BrowserNode {
     protected int _widthWeights;
     protected ColumnTextArea[] _weight;
     protected ColumnTextArea[] _antenna;
-    protected PlotWindow[] _weightPlotWindow;
-    protected Plot2DObject[] _weightPlot;
-    protected Track2D[] _weightTrack;
+//    protected PlotWindow[] _weightPlotWindow;
+//    protected Plot2DObject[] _weightPlot;
+//    protected Track2D[] _weightTrack;
     protected int[] _weightTrackSize;
     
     protected boolean _colorColumn;

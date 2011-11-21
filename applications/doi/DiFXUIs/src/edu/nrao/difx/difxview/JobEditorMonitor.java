@@ -99,18 +99,15 @@ public class JobEditorMonitor extends JFrame {
         _processorsLabel = new JLabel( "Processor Nodes:" );
         _processorsLabel.setHorizontalAlignment( JLabel.LEFT );
         runControlPanel.add( _processorsLabel );
+        _threadsLabel = new JLabel( "Threads:" );
+        _threadsLabel.setHorizontalAlignment( JLabel.RIGHT );
+        runControlPanel.add( _threadsLabel );
         _headNode = new JTextField();
+        _headNode.setText( _settings.difxControlAddress() );
         runControlPanel.add( _headNode );
         _headNodeLabel = new JLabel( "HeadNode:" );
         _headNodeLabel.setHorizontalAlignment( JLabel.LEFT );
         runControlPanel.add( _headNodeLabel );
-        _threads = new NumberBox();
-        _threads.intValue( 0 );
-        _threads.minimum( 0 );
-        runControlPanel.add( _threads );
-        _threadsLabel = new JLabel( "Threads:" );
-        _threadsLabel.setHorizontalAlignment( JLabel.RIGHT );
-        runControlPanel.add( _threadsLabel );
  
         _allObjectsBuilt = true;
         
@@ -145,10 +142,9 @@ public class JobEditorMonitor extends JFrame {
             _dataSourcesPane.setBounds( 10, 50, thirdSize, 150 );
             _processorsLabel.setBounds( 20 + thirdSize, 25, thirdSize, 25 );
             _processorsPane.setBounds( 20 + thirdSize, 50, thirdSize, 150 );
+            _threadsLabel.setBounds( 20 + thirdSize + 160, 25, 80, 25 );
             _headNodeLabel.setBounds( 30 + 2 * thirdSize, 25, thirdSize, 25 );
             _headNode.setBounds( 30 + 2 * thirdSize, 50, thirdSize, 25 );
-            _threadsLabel.setBounds( 30 + 2 * thirdSize, 80, thirdSize - 55, 25 );
-            _threads.setBounds( 30 + 3 * thirdSize - 50, 80, 50, 25 );
         }
     }
     
@@ -183,14 +179,14 @@ public class JobEditorMonitor extends JFrame {
         DifxStart.Datastream dataStream = factory.createDifxStartDatastream();
         //dataStream.setNodes(mark5String);
         //  Grab all of the "checked" data stream node names...
-        String nodeNames = "";
+        String dataNodeNames = "";
         for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
             ListNode thisNode = (ListNode)(iter.next());
             if ( thisNode.selected() )
-                nodeNames += thisNode.name() + " ";
+                dataNodeNames += thisNode.name() + " ";
         }
-        dataStream.setNodes( nodeNames );
+        dataStream.setNodes( dataNodeNames );
         jobStart.setDatastream(dataStream);
 
         // -- process and threads, enabled only
@@ -198,16 +194,16 @@ public class JobEditorMonitor extends JFrame {
         DifxStart.Process process2 = factory.createDifxStartProcess();
 //        process.setNodes("SWC001 SWC002 SWC003 SWC004 SWC005 SWC006 SWC007 SWC008 SWC009 SWC010 MARK5FX23");
 //        process.setThreads("7");
-        nodeNames = "";
+        String processNodeNames = "";
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
-            ListNode thisNode = (ListNode)(iter.next());
+            ProcessorNode thisNode = (ProcessorNode)(iter.next());
             if ( thisNode.selected() )
-                nodeNames += thisNode.name() + " ";
+                processNodeNames += thisNode.name() + " " + thisNode.threadsText() + " ";
         }
-        dataStream.setNodes( nodeNames );
-        process.setNodes( nodeNames );
-        process.setThreads( ( new Integer( _threads.intValue() ) ).toString() );
+        System.out.println( processNodeNames );
+        process.setNodes( processNodeNames );
+        process.setThreads( "0" );
         jobStart.getProcess().add(process);
         //process2.setNodes("SWC000");
         //process2.setThreads("5");
@@ -299,9 +295,10 @@ public class JobEditorMonitor extends JFrame {
             this.add( _selected );
         }
         
+        @Override
         public void positionItems() {
             _selected.setBounds( 7, 2, 18, 18 );
-            _label.setBounds( 30, 0, 250, _ySize );
+            _label.setBounds( 30, 0, 190, _ySize );
         }
         
         public boolean selected() { return _selected.isSelected(); }
@@ -321,6 +318,11 @@ public class JobEditorMonitor extends JFrame {
         
         public ProcessorNode( String name ) {
             super( name );
+        }
+        
+        @Override
+        public void createAdditionalItems() {
+            super.createAdditionalItems();
             _popup = new JPopupMenu();
             JMenuItem menuItem2 = new JMenuItem( "Make " + this.name() + " the head node" );
             menuItem2.addActionListener(new ActionListener() {
@@ -329,12 +331,26 @@ public class JobEditorMonitor extends JFrame {
                 }
             });
             _popup.add( menuItem2 );
+            _threads = new NumberBox();
+            _threads.intValue( 0 );
+            _threads.minimum( 0 );
+            this.add( _threads );
+        }
+        
+        @Override
+        public void positionItems() {
+            super.positionItems();
+            _threads.setBounds( 210, 1, 30, 18 );
         }
         
         public void cores( int newVal ) { _cores = newVal; }
         public int cores() { return _cores; }
+        public void threads( int newVal ) { _threads.intValue( newVal ); }
+        public Integer threads() { return _threads.intValue(); }
+        public String threadsText() { return _threads.getText(); }
         
         protected int _cores;
+        protected NumberBox _threads;
         
     }
     
@@ -366,11 +382,10 @@ public class JobEditorMonitor extends JFrame {
                 //  New node?  Then add it to the list.
                 if ( foundNode == null ) {
                     ProcessorNode newNode = new ProcessorNode( thisModule.name() );
+                    newNode.threads( ((ClusterNode)(thisModule)).numCores() );
                     newNode.foundIt = true;
                     newNode.selected( !_processorsEdited );
                     _processorsPane.addNode( newNode );
-                    if ( _headNode.getText() == null || _headNode.getText().contentEquals( "" ) )
-                        _headNode.setText( thisModule.name() );
                 }
             }
         }
@@ -451,6 +466,140 @@ public class JobEditorMonitor extends JFrame {
         super.setVisible( newVal );
     }
     
+    /*
+    public void readJobData() {
+        //System.out.printf("***************** Data Model read input and calc file. \n");
+
+        // -- read the job's data files: .input and .calc
+        try {
+            // -- read *.input
+
+            String jobFile = getProjectPath() + "/" + getObjName();
+            FileReader frInput = new FileReader(jobFile + ".input");
+            BufferedReader brInput = new BufferedReader(frInput);
+
+            String sInput;
+            while ((sInput = brInput.readLine()) != null) {
+                setInputFile(jobFile + ".input");
+                setCalcFile(jobFile + ".calc");
+                setOutputFile(jobFile + ".difx");
+
+                if (sInput.contains("DELAY FILENAME:")) {
+                    sInput = sInput.substring(sInput.indexOf(":") + 1);
+                    setDelayFile(sInput.trim());
+                } else if (sInput.contains("UVW FILENAME:")) {
+                    sInput = sInput.substring(sInput.indexOf(":") + 1);
+                    setUvwFile(sInput.trim());
+                } else if (sInput.contains("CORE CONF FILENAME:")) {
+                    sInput = sInput.substring(sInput.indexOf(":") + 1);
+                    setCoreConfigFile(sInput.trim());
+                } else if (sInput.contains("EXECUTE TIME (SEC):")) {
+                    sInput = sInput.substring(sInput.indexOf(":") + 1);
+                    setExecuteTimeSeconds(Integer.parseInt(sInput.trim()));
+                } else if (sInput.contains("START MJD:")) {
+                    sInput = sInput.substring(sInput.indexOf(":") + 1);
+                    setStartMJD(Integer.parseInt(sInput.trim()));
+                } else if (sInput.contains("START SECONDS:")) {
+                    sInput = sInput.substring(sInput.indexOf(":") + 1);
+                    if (sInput.contains(".")) {
+                        sInput = sInput.substring(0, sInput.indexOf("."));
+                    }
+                    setStartSeconds(Integer.parseInt(sInput.trim()));
+                } else if (sInput.contains("ACTIVE DATASTREAMS:")) {
+                    sInput = sInput.substring(sInput.indexOf(":") + 1);
+                    setActiveDatastreams(Integer.parseInt(sInput.trim()));
+                } else if (sInput.contains("ACTIVE BASELINES:")) {
+                    sInput = sInput.substring(sInput.indexOf(":") + 1);
+                    setActiveBaselines(Integer.parseInt(sInput.trim()));
+                } else if (sInput.contains("VIS BUFFER LENGTH:")
+                        || sInput.contains("OUTPUT FORMAT:")
+                        || sInput.contains("OUTPUT FILENAME:")) {
+                    sInput = sInput.substring(sInput.indexOf(":") + 1);
+                } else if (sInput.contains("NUM CHANNELS:")) {
+                    sInput = sInput.substring(sInput.indexOf(":") + 1);
+                    setNumChannels(Integer.parseInt(sInput.trim()));
+                } else if (sInput.contains("TELESCOPE ENTRIES:")) {
+                    sInput = sInput.substring(sInput.indexOf(":") + 1);
+                    setNumAntennas(Integer.parseInt(sInput.trim()));
+                } else if (sInput.contains("TELESCOPE NAME ")) {
+                    // Create antenna for the job
+                    Module newMod = new Module();
+                    newMod.setObjType("Module");
+
+                    String sInputObjID = sInput.substring(sInput.indexOf(":") - 2, sInput.indexOf(":"));
+                    String sInputObjName = sInput.substring(sInput.indexOf(":") + 1);
+
+                    // Note: the .input file is zero based
+                    newMod.setObjId(Integer.parseInt(sInputObjID.trim()));
+                    newMod.setObjName(sInputObjName.trim());
+
+                    addModule(newMod);
+                } else if (sInput.contains("FILE ")) {
+                    String sInputObjID = sInput.substring(sInput.indexOf("/") - 2, sInput.indexOf("/"));
+                    String sInputVSN = sInput.substring(sInput.indexOf(":") + 1);
+
+                    // -- Each job contains an module, and VSN
+                    // Find module via object ID
+                    Module curMod = getModule(Integer.parseInt(sInputObjID.trim()));
+
+                    // Update the antenna's VSN (module)
+                    curMod.setModuleVSN(sInputVSN.trim());
+
+                }
+            }
+
+            frInput.close();
+
+            // -- read *.calc
+
+            FileReader frCalc = new FileReader(jobFile + ".calc");
+            BufferedReader brCalc = new BufferedReader(frCalc);
+
+            String sCalc;
+            while ((sCalc = brCalc.readLine()) != null) {
+                if (sCalc.contains("JOB ID:")) {
+                    sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
+                    setJobID(sCalc.trim());
+                } else if (sCalc.contains("OBSCODE:")) {
+                    sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
+                    setObsCode(sCalc.trim());
+                } else if (sCalc.contains("JOB START TIME:")) {
+                    sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
+                    setJobStartTimeMJD(new BigDecimal(sCalc.trim()));
+                } else if (sCalc.contains("JOB STOP TIME:")) {
+                    sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
+                    setJobStopTimeMJD(new BigDecimal(sCalc.trim()));
+                } else if (sCalc.contains("NUM TELESCOPES:")) {
+                    sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
+                    setNumTelescopes(Integer.parseInt(sCalc.trim()));
+                } else if (sCalc.contains("DIFX VERSION:")) {
+                    sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
+                    setDifxVersion(sCalc.trim());
+                } else if (sCalc.contains("NAME:")) {
+                    sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
+                } else if (sCalc.contains("SHELF:")) {
+                    String sCalcObjID = sCalc.substring(sCalc.indexOf("SHELF") - 3, sCalc.indexOf("SHELF"));
+                    String sCalcShelf = sCalc.substring(sCalc.indexOf(":") + 1);
+
+                    // Find antenna via object ID
+                    Module curMod = getModule(Integer.parseInt(sCalcObjID.trim()));
+
+                    // update the antenna's shelf
+                    curMod.setShelf(sCalcShelf.trim());
+
+                    //newJob.setNumTelescopes(Integer.parseInt(trimmed));
+                }
+            }
+
+            frCalc.close();
+            //System.out.printf("***************** Data model read input and calc file complete. \n");
+        } catch (Exception e) {
+            System.out.println("Exception: " + e);
+        }
+    }
+     * 
+     */
+   
     protected EventListenerList _stateChangeListeners;
     protected JobNode _jobNode;
     protected SystemSettings _settings;
@@ -464,7 +613,6 @@ public class JobEditorMonitor extends JFrame {
     protected JLabel _dataSourcesLabel;
     protected NodeBrowserScrollPane _processorsPane;
     protected JLabel _processorsLabel;
-    protected NumberBox _threads;
     protected JLabel _threadsLabel;
     
     protected boolean _allObjectsBuilt;

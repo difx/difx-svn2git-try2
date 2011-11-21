@@ -984,7 +984,7 @@ public class DiFXDataModel {
                 }
 
                 // Update the rest of the fields with difx message
-                proc.setState("Online"); // assume processor is    
+                proc.setState("Online"); // assume processor is  
                 proc.setCpuLoad(difxMsg.getBody().getDifxLoad().getCpuLoad());
                 proc.setTotalMem(difxMsg.getBody().getDifxLoad().getTotalMemory());
                 proc.setUsedMem(difxMsg.getBody().getDifxLoad().getUsedMemory());

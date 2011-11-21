@@ -553,6 +553,9 @@ public class ClusterNode extends BrowserNode {
     }
     public boolean ignore() { return _ignoreItem.getState(); }
     
+    public int numCores() { return Integer.parseInt( _numCores.getText() ); }
+    public int numCPUs() { return Integer.parseInt( _numCPUs.getText() ); }
+    
     ProcessorMonitorWindow _monitor;
     MessageWindow _alertWindow;
     ActivityMonitorLight _networkActivity;
