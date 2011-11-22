@@ -144,6 +144,10 @@ public class JobEditorMonitor extends JFrame {
         _machinesLock = new JCheckBox( "Lock From Apply" );
         _machinesLock.setToolTipText( "Protect these settings from \"universal\" appications (apply all, apply selected, etc) by other jobs." );
         machinesListPanel.add( _machinesLock );
+        _forceOverwrite = new JCheckBox( "Force Overwrite" );
+        _forceOverwrite.setToolTipText( "Force the overwrite of the \".difx\" output file if one already exists." );
+        _forceOverwrite.setSelected( true );
+        machinesListPanel.add( _forceOverwrite );
         
         IndexedPanel runControlPanel = new IndexedPanel( "Run Controls" );
         runControlPanel.openHeight( 200 );
@@ -203,6 +207,7 @@ public class JobEditorMonitor extends JFrame {
             _headNodeLabel.setBounds( 30 + 2 * thirdSize, 25, thirdSize, 25 );
             _headNode.setBounds( 30 + 2 * thirdSize, 50, thirdSize, 25 );
             _applyButton.setBounds( 30 + 2 * thirdSize, 175, thirdSize/2 - 5, 25 );
+            _forceOverwrite.setBounds( 30 + 3 * thirdSize - thirdSize/2 - 5, 145, thirdSize/2 - 5, 25 );
             _machinesLock.setBounds( 30 + 3 * thirdSize - thirdSize/2 - 5, 175, thirdSize/2 - 5, 25 );
         }
     }
@@ -358,15 +363,26 @@ public class JobEditorMonitor extends JFrame {
                 iter.hasNext(); ) {
             ProcessorNode thisNode = (ProcessorNode)(iter.next());
             if ( thisNode.selected() )
-                processNodeNames += thisNode.name() + " " + thisNode.threadsText() + " ";
+                processNodeNames += thisNode.name() + " ";  // + thisNode.threadsText() + " ";
         }
-        System.out.println( processNodeNames );
         process.setNodes( processNodeNames );
-        process.setThreads( "0" );
-        jobStart.getProcess().add(process);
+        
+        String processThreads = "";
+        for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
+                iter.hasNext(); ) {
+            ProcessorNode thisNode = (ProcessorNode)(iter.next());
+            if ( thisNode.selected() )
+                processThreads += thisNode.threadsText() + " ";
+        }
+        
+        process.setThreads( processThreads );
+        jobStart.getProcess().add( process );
 
-        // force deletion of existing output file
-        jobStart.setForce(1);
+        // force deletion of existing output file if this box has been checked.
+        if ( _forceOverwrite.isSelected() )
+            jobStart.setForce( 1 );
+        else
+            jobStart.setForce( 0 ); 
 
         // -- Create the XML defined messages and process through the system
         Body body = factory.createBody();
@@ -750,6 +766,7 @@ public class JobEditorMonitor extends JFrame {
     protected JMenuItem _allJobsItem;
     protected JButton _applyButton;
     protected JCheckBox _machinesLock;
+    protected JCheckBox _forceOverwrite;
     
     protected JButton _startButton;
     protected JButton _stopButton;
