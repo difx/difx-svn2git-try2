@@ -18,15 +18,11 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JTextField;
+import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
 import javax.swing.JCheckBox;
 import javax.swing.JPopupMenu;
-
-//import java.io.IOException;
-//import java.io.BufferedReader;
-//import java.io.InputStreamReader;
-//import java.io.BufferedWriter;
-//import java.io.OutputStreamWriter;
+import javax.swing.JButton;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -55,7 +51,7 @@ public class JobEditorMonitor extends JFrame {
         _settings = settings;
         _settings.setLookAndFeel();
         this.setLayout( null );
-        this.setBounds( 500, 100, 800, 500 );
+        this.setBounds( 500, 100, 900, 500 );
         this.setTitle( "Control/Monitor for " + _jobNode.name() );
         _menuBar = new JMenuBar();
         _menuBar.setVisible( true );
@@ -85,29 +81,90 @@ public class JobEditorMonitor extends JFrame {
         } );
         this.add( _scrollPane );
 
-        IndexedPanel runControlPanel = new IndexedPanel( "Run Parameters" );
-        runControlPanel.openHeight( 215 );
-        runControlPanel.closedHeight( 20 );
-        _scrollPane.addNode( runControlPanel );
+        IndexedPanel machinesListPanel = new IndexedPanel( "Machines List" );
+        machinesListPanel.openHeight( 215 );
+        machinesListPanel.closedHeight( 20 );
+        _scrollPane.addNode( machinesListPanel );
         _dataSourcesPane = new NodeBrowserScrollPane();
-        runControlPanel.add( _dataSourcesPane );
+        machinesListPanel.add( _dataSourcesPane );
         _dataSourcesLabel = new JLabel( "Data Nodes:" );
         _dataSourcesLabel.setHorizontalAlignment( JLabel.LEFT );
-        runControlPanel.add( _dataSourcesLabel );
+        machinesListPanel.add( _dataSourcesLabel );
         _processorsPane = new NodeBrowserScrollPane();
-        runControlPanel.add( _processorsPane );
+        machinesListPanel.add( _processorsPane );
         _processorsLabel = new JLabel( "Processor Nodes:" );
         _processorsLabel.setHorizontalAlignment( JLabel.LEFT );
-        runControlPanel.add( _processorsLabel );
+        machinesListPanel.add( _processorsLabel );
         _threadsLabel = new JLabel( "Threads:" );
         _threadsLabel.setHorizontalAlignment( JLabel.RIGHT );
-        runControlPanel.add( _threadsLabel );
-        _headNode = new JTextField();
+        machinesListPanel.add( _threadsLabel );
+        _headNode = new JFormattedTextField();
+        _headNode.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _headNode.setText( _settings.difxControlAddress() );
-        runControlPanel.add( _headNode );
+        machinesListPanel.add( _headNode );
         _headNodeLabel = new JLabel( "HeadNode:" );
         _headNodeLabel.setHorizontalAlignment( JLabel.LEFT );
-        runControlPanel.add( _headNodeLabel );
+        machinesListPanel.add( _headNodeLabel );
+        _machinesApplyPopup = new JPopupMenu();
+        _thisJobItem = new JMenuItem( "This Job Only" );
+        _thisJobItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                applyThisJob();
+            }
+        } );
+        _machinesApplyPopup.add( _thisJobItem );
+        _passJobsItem = new JMenuItem( "All Jobs in Pass" );
+        _passJobsItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                applyPass();
+            }
+        } );
+        _machinesApplyPopup.add( _passJobsItem );
+        _selectedJobsItem = new JMenuItem( "All Selected Jobs" );
+        _selectedJobsItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                applySelected();
+            }
+        } );
+        _machinesApplyPopup.add( _selectedJobsItem );
+        _allJobsItem = new JMenuItem( "All Jobs" );
+        _allJobsItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                applyAll();
+            }
+        } );
+        _machinesApplyPopup.add( _allJobsItem );
+        _applyButton = new JButton( "Apply To... \u25bc" );
+        _applyButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                applyToAction();
+            }
+        } );
+        machinesListPanel.add( _applyButton );
+        _machinesLock = new JCheckBox( "Lock From Apply" );
+        _machinesLock.setToolTipText( "Protect these settings from \"universal\" appications (apply all, apply selected, etc) by other jobs." );
+        machinesListPanel.add( _machinesLock );
+        
+        IndexedPanel runControlPanel = new IndexedPanel( "Run Controls" );
+        runControlPanel.openHeight( 200 );
+        runControlPanel.closedHeight( 20 );
+        _scrollPane.addNode( runControlPanel );
+        _startButton = new JButton( "Start" );
+        _startButton.setBounds( 10, 30, 110, 25 );
+        _startButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                startJob();
+            }
+        } );
+        runControlPanel.add( _startButton );
+        _stopButton = new JButton( "Stop" );
+        _stopButton.setBounds( 130, 30, 110, 25 );
+        _stopButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                stopJob();
+            }
+        } );
+        runControlPanel.add( _stopButton );
  
         _allObjectsBuilt = true;
         
@@ -145,8 +202,115 @@ public class JobEditorMonitor extends JFrame {
             _threadsLabel.setBounds( 20 + thirdSize + 160, 25, 80, 25 );
             _headNodeLabel.setBounds( 30 + 2 * thirdSize, 25, thirdSize, 25 );
             _headNode.setBounds( 30 + 2 * thirdSize, 50, thirdSize, 25 );
+            _applyButton.setBounds( 30 + 2 * thirdSize, 175, thirdSize/2 - 5, 25 );
+            _machinesLock.setBounds( 30 + 3 * thirdSize - thirdSize/2 - 5, 175, thirdSize/2 - 5, 25 );
         }
     }
+    
+    public boolean machinesLock() { return _machinesLock.isSelected(); }
+    
+    public void applyToAction() {
+        _machinesApplyPopup.show( _applyButton, 25, 25 );
+    }
+    
+    public void applyThisJob() {
+        for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
+                iter.hasNext(); ) {
+            ListNode thisNode = (ListNode)(iter.next());
+            if ( thisNode.selected() )
+                System.out.println( thisNode.name() );
+        }
+        for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
+                iter.hasNext(); ) {
+            ProcessorNode thisNode = (ProcessorNode)(iter.next());
+            if ( thisNode.selected() )
+                System.out.println( thisNode.name() + " " + thisNode.threadsText() );
+        }
+    }
+    
+    public Iterator<BrowserNode> dataSourcesIterator() {
+        return _dataSourcesPane.browserTopNode().children().iterator();
+    }
+    
+    public Iterator<BrowserNode> processorsIterator() {
+        return _processorsPane.browserTopNode().children().iterator();
+    }
+    
+    /*
+     * Copy the settings of our machines to another set of machines in the
+     * "target".  It is assumed in doing this that both have the same list of
+     * machines, just different settings.  Hope this is safe!
+     */
+    protected void copyMachineSettings( JobEditorMonitor target ) {
+        //  Make sure the target has up to date hardware lists before we do anything.
+        target.loadHardwareLists();
+        if ( target.lockFromApply() )
+            return;
+        if ( target == this )
+            return;
+        Iterator<BrowserNode> targetIter = target.dataSourcesIterator();
+        for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
+                iter.hasNext() && targetIter.hasNext(); ) {
+            ListNode thisNode = (ListNode)(iter.next());
+            ListNode targetNode = (ListNode)(targetIter.next());
+            targetNode.selected( thisNode.selected() );               
+        }
+        targetIter = target.processorsIterator();
+        for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
+                iter.hasNext() && targetIter.hasNext(); ) {
+            ProcessorNode thisNode = (ProcessorNode)(iter.next());
+            ProcessorNode targetNode = (ProcessorNode)(targetIter.next());
+            targetNode.selected( thisNode.selected() );
+            targetNode.threads( thisNode.threads() );
+        }
+        target.headNode( headNode() );
+        
+    }
+    
+    public void applyPass() {
+        for ( Iterator<BrowserNode> iter = _jobNode.passNode().childrenIterator(); iter.hasNext(); ) {
+            JobNode thisJob = (JobNode)(iter.next());
+            copyMachineSettings( thisJob.editorMonitor() );
+        }
+    }
+    
+    public void applySelected() {
+        Iterator<BrowserNode> iter = _settings.queueBrowser().experimentsIterator();
+        iter.next();  //  skip the header!!!
+        for ( ; iter.hasNext(); ) {
+            ExperimentNode thisExperiment = (ExperimentNode)(iter.next());
+            for ( Iterator<BrowserNode> iter2 = thisExperiment.childrenIterator(); iter2.hasNext(); ) {
+                PassNode thisPass = (PassNode)(iter2.next());
+                for ( Iterator<BrowserNode> iter3 = _jobNode.passNode().childrenIterator(); iter3.hasNext(); ) {
+                    JobNode thisJob = (JobNode)(iter3.next());
+                    if ( thisJob.selected() )
+                        copyMachineSettings( thisJob.editorMonitor() );
+                }
+            }
+        }
+    }
+    
+    public void applyAll() {
+        Iterator<BrowserNode> iter = _settings.queueBrowser().experimentsIterator();
+        iter.next();  //  skip the header!!!
+        for ( ; iter.hasNext(); ) {
+            ExperimentNode thisExperiment = (ExperimentNode)(iter.next());
+            for ( Iterator<BrowserNode> iter2 = thisExperiment.childrenIterator(); iter2.hasNext(); ) {
+                PassNode thisPass = (PassNode)(iter2.next());
+                for ( Iterator<BrowserNode> iter3 = _jobNode.passNode().childrenIterator(); iter3.hasNext(); ) {
+                    JobNode thisJob = (JobNode)(iter3.next());
+                    copyMachineSettings( thisJob.editorMonitor() );
+                }
+            }
+        }
+    }
+    
+    public boolean lockFromApply() {
+        return _machinesLock.isSelected();
+    }
+    
+    public String headNode() { return _headNode.getText(); }
+    public void headNode( String newVal ) { _headNode.setText( newVal ); }
     
     public void startJob() {
         ObjectFactory factory = new ObjectFactory();
@@ -154,7 +318,7 @@ public class JobEditorMonitor extends JFrame {
         // Create header
         Header header = factory.createHeader();
         header.setFrom( "doi" );
-        header.setTo( "swc01.usno.navy.mil" );
+        header.setTo( _settings.difxControlAddress() );
         header.setMpiProcessId( "-1" );
         header.setIdentifier( _jobNode.name() );
         header.setType( "DifxStart" );
@@ -165,19 +329,15 @@ public class JobEditorMonitor extends JFrame {
 
         // -- manager, enabled only
         DifxStart.Manager manager = factory.createDifxStartManager();
-        //manager.setNode( "swc01.usno.navy.mil" );
         manager.setNode( _headNode.getText() );
         jobStart.setManager( manager );
-
-        // Get a string of Mark5 Units
-        //String mark5String = getStringOfMark5Units();
 
         // -- set difx version to use
         jobStart.setDifxVersion( _settings.difxVersion() );
 
         // -- datastreams, enabled only
         DifxStart.Datastream dataStream = factory.createDifxStartDatastream();
-        //dataStream.setNodes(mark5String);
+
         //  Grab all of the "checked" data stream node names...
         String dataNodeNames = "";
         for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
@@ -192,8 +352,7 @@ public class JobEditorMonitor extends JFrame {
         // -- process and threads, enabled only
         DifxStart.Process process = factory.createDifxStartProcess();
         DifxStart.Process process2 = factory.createDifxStartProcess();
-//        process.setNodes("SWC001 SWC002 SWC003 SWC004 SWC005 SWC006 SWC007 SWC008 SWC009 SWC010 MARK5FX23");
-//        process.setThreads("7");
+
         String processNodeNames = "";
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
@@ -205,9 +364,6 @@ public class JobEditorMonitor extends JFrame {
         process.setNodes( processNodeNames );
         process.setThreads( "0" );
         jobStart.getProcess().add(process);
-        //process2.setNodes("SWC000");
-        //process2.setThreads("5");
-        //jobStart.getProcess().add(process2);
 
         // force deletion of existing output file
         jobStart.setForce(1);
@@ -225,33 +381,6 @@ public class JobEditorMonitor extends JFrame {
         
         if ( xmlString != null )
             SendMessage.writeToSocket( xmlString, _settings );
-
-        // -- return null if the message is invalid, otherwise return the message
-//        if (mark5String.equals("") || mark5String.isEmpty())
-//        {
-//        return null; // did not create the proper list of mark units.
-//        }
-//        else
-//        {
-//        return difxMsg;
-//        }
-//        //  Start a job by running "startdifx" through ssh on the DiFX Host....
-//        try {
-//            //  Try the ssh...            
-//            Process _ssh = Runtime.getRuntime().exec( "ssh " + _settings.difxControlUser() + "@" + _settings.difxControlAddress() );
-//            BufferedReader _output = new BufferedReader( new InputStreamReader( _ssh.getInputStream() ) );
-//            BufferedReader _error = new BufferedReader( new InputStreamReader( _ssh.getErrorStream() ) );
-//            BufferedWriter _input = new BufferedWriter( new OutputStreamWriter( _ssh.getOutputStream() ) );
-//            while ( _error.ready() ) {
-//                String foo = _error.readLine();
-//                System.out.println( "ERROR! " + foo );
-//            }
-//            while ( _output.ready() ) {
-//                String foo = _output.readLine();
-//                System.out.println( foo );
-//            }
-//        } catch ( IOException e ) {
-//        }
     }
     
     public void pauseJob() {}
@@ -357,7 +486,7 @@ public class JobEditorMonitor extends JFrame {
     /*
      * Fill the processor and data source lists from the Hardware Monitor.
      */
-    protected void loadHardwareLists() {
+    public void loadHardwareLists() {
         //  We need to "relocate" everything in the existing processor list, so unset a
         //  "found" flag for each.
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
@@ -607,13 +736,23 @@ public class JobEditorMonitor extends JFrame {
     protected NodeBrowserScrollPane _scrollPane;
     
     protected JMenuBar _menuBar;
-    protected JTextField _headNode;
+    protected JFormattedTextField _headNode;
     protected JLabel _headNodeLabel;
     protected NodeBrowserScrollPane _dataSourcesPane;
     protected JLabel _dataSourcesLabel;
     protected NodeBrowserScrollPane _processorsPane;
     protected JLabel _processorsLabel;
     protected JLabel _threadsLabel;
+    protected JPopupMenu _machinesApplyPopup;
+    protected JMenuItem _thisJobItem;
+    protected JMenuItem _passJobsItem;
+    protected JMenuItem _selectedJobsItem;
+    protected JMenuItem _allJobsItem;
+    protected JButton _applyButton;
+    protected JCheckBox _machinesLock;
+    
+    protected JButton _startButton;
+    protected JButton _stopButton;
     
     protected boolean _allObjectsBuilt;
     

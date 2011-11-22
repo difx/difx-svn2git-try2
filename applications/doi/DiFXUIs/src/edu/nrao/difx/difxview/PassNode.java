@@ -10,6 +10,9 @@ import javax.swing.JMenuItem;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JTextField;
+import javax.swing.JSeparator;
+
+import java.util.Iterator;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -39,14 +42,21 @@ public class PassNode extends BrowserNode {
         this.add( _nameEditor );
         //  Create a popup menu appropriate to a "project".
         _popup = new JPopupMenu();
-        JMenuItem menuItem1 = new JMenuItem( "Add New Job" );
-        menuItem1.setToolTipText( "Add a new Job to this Pass." );
-        menuItem1.addActionListener(new ActionListener() {
+        JMenuItem selectJobsItem = new JMenuItem( "Select All Jobs" );
+        selectJobsItem.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                addNewJobAction();
+                selectAllJobsAction();
             }
         });
-        _popup.add( menuItem1 );
+        _popup.add( selectJobsItem );
+        JMenuItem unselectJobsItem = new JMenuItem( "Unselect All Jobs" );
+        unselectJobsItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                unselectAllJobsAction();
+            }
+        });
+        _popup.add( unselectJobsItem );
+        _popup.add( new JSeparator() );
         JMenuItem menuItem4 = new JMenuItem( "Rename" );
         menuItem4.setToolTipText( "Rename this Pass." );
         menuItem4.addActionListener(new ActionListener() {
@@ -105,8 +115,18 @@ public class PassNode extends BrowserNode {
         _nameEditor.setBounds( _level * _levelOffset, 0, _labelWidth, _ySize );
     }
     
-    public void addNewJobAction() {
-        System.out.println( "java sucks" );
+    public void selectAllJobsAction() {
+        for ( Iterator<BrowserNode> iter = childrenIterator(); iter.hasNext(); ) {
+            JobNode thisJob = (JobNode)(iter.next());
+            thisJob.selected( true );
+        }
+    }
+    
+    public void unselectAllJobsAction() {
+        for ( Iterator<BrowserNode> iter = childrenIterator(); iter.hasNext(); ) {
+            JobNode thisJob = (JobNode)(iter.next());
+            thisJob.selected( false );
+        }
     }
     
     /*
@@ -193,6 +213,14 @@ public class PassNode extends BrowserNode {
         System.out.println( "change type to test in database" );
     }
     
+    public ExperimentNode experimentNode() {
+        return _experimentNode;
+    }
+    public void experimentNode( ExperimentNode newNode ) {
+        _experimentNode = newNode;
+    }
+    
+    protected ExperimentNode _experimentNode;
     protected String _name;
     protected String _type;
     protected JCheckBoxMenuItem _productionItem;

@@ -28,12 +28,14 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Insets;
 
 import java.io.File;
 
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 import edu.nrao.difx.xmllib.difxmessage.DifxAlert;
 import edu.nrao.difx.xmllib.difxmessage.DifxStatus;
+import java.awt.Font;
 
 /**
  *
@@ -47,10 +49,23 @@ public class JobNode extends BrowserNode {
         //this.visiblePopupButton( false );
         _columnColor = Color.LIGHT_GRAY;
         _settings = settings;
+        updateEditorMonitor();
     }
     
     @Override
     public void createAdditionalItems() {
+        _selectedButton = new JButton( "\u2606" );
+        _selectedButton.setBorderPainted( false );
+        _selectedButton.setContentAreaFilled( false );
+        _selectedButton.setMargin( new Insets( 0, 0, 2, 0 ) );
+        _selectedButton.setForeground( Color.BLACK );
+        _selectedButton.setFont( new Font( "Dialog", Font.BOLD, 14 ) );
+        _selectedButton.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                selectedButtonAction();
+            }
+        });
+        this.add( _selectedButton );
         //  This field is used to edit the name of the experiment when "rename"
         //  is picked from the popup menu.
         _nameEditor = new JTextField( "" );
@@ -179,7 +194,7 @@ public class JobNode extends BrowserNode {
         showActive( true );
         this.add( _active );
         _popup = new JPopupMenu();
-        JMenuItem menuItem2 = new JMenuItem( "Editor/Monitor" );
+        JMenuItem menuItem2 = new JMenuItem( "Control/Monitor" );
         menuItem2.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 updateEditorMonitor();
@@ -187,6 +202,14 @@ public class JobNode extends BrowserNode {
             }
         });
         _popup.add( menuItem2 );
+        _popup.add( new JSeparator() );
+        _selectMenuItem = new JMenuItem( "Select Job" );
+        _selectMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                selectedButtonAction();
+            }
+        });
+        _popup.add( _selectMenuItem );
         JMenuItem menuItem2a = new JMenuItem( "Rename" );
         menuItem2a.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
@@ -232,6 +255,7 @@ public class JobNode extends BrowserNode {
     
     @Override
     public void positionItems() {
+        _selectedButton.setBounds( 0, 2, 20, 20 );
         _colorColumn = false;
         _xOff = _level * 30;
         _networkActivity.setBounds( _xOff, 6, 10, 10 );
@@ -363,6 +387,36 @@ public class JobNode extends BrowserNode {
         _nameEditor.setVisible( false );
         //  BLAT DATABASE
         System.out.println( "change job name in database" );
+    }
+    
+    /*
+     * Select or unselect this item.  This is the callback for the button.
+     */
+    public void selectedButtonAction() {
+        _selected = !_selected;
+        checkSelectionSetting();
+    }
+    
+    public void checkSelectionSetting() {
+        if ( _selected ) {
+            _selectedButton.setText( "\u2605" );
+            _selectedButton.setForeground( new Color( 200, 100, 0 ) );
+            _selectMenuItem.setText( "Unselect Job" );
+        }
+        else {
+            _selectedButton.setText( "\u2606" );
+            _selectedButton.setForeground( Color.BLACK );
+            _selectMenuItem.setText( "Select Job" );
+        }
+    }
+    
+    /*
+     * Set or get the selected value from the outside.
+     */
+    public boolean selected() { return _selected; }
+    public void selected( boolean newVal ) {
+        _selected = newVal;
+        checkSelectionSetting();
     }
 
     /*
@@ -605,6 +659,17 @@ public class JobNode extends BrowserNode {
     public void widthStatusId( int newVal ) { _widthStatusId = newVal; }
     public void widthWeights( int newVal ) { _widthWeights = newVal; }
     
+    public PassNode passNode() {
+        return _passNode;
+    }
+    public void passNode( PassNode newNode ) {
+        _passNode = newNode;
+    }
+    
+    public JobEditorMonitor editorMonitor() { return _editorMonitor; }
+    
+    protected PassNode _passNode;
+    
     protected JButton _startButton;
     protected JButton _editButton;
     protected JobEditorMonitor _editorMonitor;
@@ -664,6 +729,10 @@ public class JobNode extends BrowserNode {
 //    protected Plot2DObject[] _weightPlot;
 //    protected Track2D[] _weightTrack;
     protected int[] _weightTrackSize;
+    
+    protected JButton _selectedButton;
+    protected boolean _selected;
+    protected JMenuItem _selectMenuItem;
     
     protected boolean _colorColumn;
     protected Color _columnColor;

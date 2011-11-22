@@ -36,16 +36,21 @@ import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 
 import edu.nrao.difx.difxdatabase.DBConnection;
 
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyAdapter;
+
 import java.sql.ResultSet;
 
 public class QueueBrowserPanel extends TearOffPanel {
 
     public QueueBrowserPanel( SystemSettings systemSettings, MessageDisplayPanel messageDisplay ) {
         _systemSettings = systemSettings;
+        _systemSettings.queueBrowser( this );
         _messageDisplay = messageDisplay;
         setLayout( null );
         _browserPane = new NodeBrowserScrollPane();
         this.add( _browserPane );
+        addKeyListener( new KeyEventListener() );
         _browserPane.setBackground( Color.WHITE );
         _mainLabel = new JLabel( "Queue Browser" );
         _mainLabel.setBounds( 5, 0, 150, 20 );
@@ -157,6 +162,15 @@ public class QueueBrowserPanel extends TearOffPanel {
                 serviceUpdate( difxMsg );
             }
         } );
+    }
+    
+    protected class KeyEventListener extends KeyAdapter {    
+        public void keyPressed( KeyEvent e ) {
+            System.out.println( "push " + e.getKeyCode() );
+        }    
+        public void keyReleased( KeyEvent e ) {
+            System.out.println( "release " + e.getKeyCode() );
+        }
     }
     
     /*
@@ -289,6 +303,7 @@ public class QueueBrowserPanel extends TearOffPanel {
                 if ( thisPass == null ) {
                     thisPass = new PassNode( passName );
                     thisPass.type( passType );
+                    thisPass.experimentNode( thisExperiment );
                     thisExperiment.addChild( thisPass );
                 }
                 
@@ -307,6 +322,7 @@ public class QueueBrowserPanel extends TearOffPanel {
                     thisJob = new JobNode( jobName, _systemSettings );
                     thisJob.experiment( thisExperiment.name() );
                     thisJob.pass( thisPass.name() );
+                    thisJob.passNode( thisPass );
                     thisPass.addChild( thisJob );
                     _header.addJob( thisJob );
                 }
@@ -364,6 +380,10 @@ public class QueueBrowserPanel extends TearOffPanel {
             _autoActiveLight.onColor( Color.RED );
         }
 
+    }
+    
+    public Iterator<BrowserNode> experimentsIterator() {
+        return _browserPane.browserTopNode().children().iterator();
     }
     
     /*
@@ -457,11 +477,13 @@ public class QueueBrowserPanel extends TearOffPanel {
                     _unaffiliated = new ExperimentNode( "Jobs Outside Queue" );
                     _browserPane.addNode( _unaffiliated );
                     _unknown = new PassNode( "" );
+                    _unknown.experimentNode( _unaffiliated );
                     _unknown.setHeight( 0 );
                     _unaffiliated.addChild( _unknown );
                 }
                 thisJob = new JobNode( difxMsg.getHeader().getIdentifier(), _systemSettings );
                 _unknown.addChild( thisJob );
+                thisJob.passNode( _unknown );
                 _header.addJob( thisJob );
             }
 

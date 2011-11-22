@@ -8,6 +8,9 @@ import mil.navy.usno.widgetlib.BrowserNode;
 import javax.swing.JPopupMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JTextField;
+import javax.swing.JSeparator;
+
+import java.util.Iterator;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -36,14 +39,21 @@ public class ExperimentNode extends BrowserNode {
         this.add( _nameEditor );
         //  Create a popup menu appropriate to a "project".
         _popup = new JPopupMenu();
-        JMenuItem menuItem1 = new JMenuItem( "Add New Pass" );
-        menuItem1.setToolTipText( "Add a new Pass to this Experiment." );
-        menuItem1.addActionListener(new ActionListener() {
+        JMenuItem selectJobsItem = new JMenuItem( "Select All Jobs" );
+        selectJobsItem.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                addNewPassAction();
+                selectAllJobsAction();
             }
         });
-        _popup.add( menuItem1 );
+        _popup.add( selectJobsItem );
+        JMenuItem unselectJobsItem = new JMenuItem( "Unselect All Jobs" );
+        unselectJobsItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                unselectAllJobsAction();
+            }
+        });
+        _popup.add( unselectJobsItem );
+        _popup.add( new JSeparator() );
         JMenuItem menuItem4 = new JMenuItem( "Rename" );
         menuItem4.setToolTipText( "Rename this Experiment." );
         menuItem4.addActionListener(new ActionListener() {
@@ -70,6 +80,20 @@ public class ExperimentNode extends BrowserNode {
         _popup.add( menuItem2 );
     }
     
+    public void selectAllJobsAction() {
+        for ( Iterator<BrowserNode> iter = childrenIterator(); iter.hasNext(); ) {
+            PassNode thisPass = (PassNode)(iter.next());
+            thisPass.selectAllJobsAction();
+        }
+    }
+    
+    public void unselectAllJobsAction() {
+        for ( Iterator<BrowserNode> iter = childrenIterator(); iter.hasNext(); ) {
+            PassNode thisPass = (PassNode)(iter.next());
+            thisPass.unselectAllJobsAction();
+        }
+    }
+    
     /*
      * Adjust the position of items to correspond to the current level.  This
      * method should be overridden by any inheriting classes that add new items.
@@ -80,10 +104,6 @@ public class ExperimentNode extends BrowserNode {
     }
     
     public void removeAction() {
-        System.out.println( "java sucks" );
-    }
-
-    public void addNewPassAction() {
         System.out.println( "java sucks" );
     }
 

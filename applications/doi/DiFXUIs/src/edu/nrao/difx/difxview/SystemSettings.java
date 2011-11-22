@@ -1036,6 +1036,13 @@ public class SystemSettings extends JFrame {
         return _hardwareMonitor;
     }
     
+    public void queueBrowser( QueueBrowserPanel newBrowser ) {
+        _queueBrowser = newBrowser;
+    }
+    public QueueBrowserPanel queueBrowser() {
+        return _queueBrowser;
+    }
+    
     protected SystemSettings _this;
     
     protected boolean _allObjectsBuilt;
@@ -1102,5 +1109,6 @@ public class SystemSettings extends JFrame {
     //  These items are used by multiple classes - they are put here as a matter
     //  of convenience as all locations have access to this class.
     HardwareMonitorPanel _hardwareMonitor;
+    QueueBrowserPanel _queueBrowser;
     
 }
