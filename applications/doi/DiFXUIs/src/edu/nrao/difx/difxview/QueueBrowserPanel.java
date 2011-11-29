@@ -135,7 +135,7 @@ public class QueueBrowserPanel extends TearOffPanel {
         //  Do updates from the database automatically by default
         _autoUpdate = true;
         
-        new Timer( 100, updateDatabaseAction ).start();
+        new Timer( 1000, updateDatabaseAction ).start();
 
     }
     
@@ -210,7 +210,7 @@ public class QueueBrowserPanel extends TearOffPanel {
             _autoActiveLight.on( true );
         }
         ++_timeoutCounter;
-        if ( _timeoutCounter == 10 )
+        if ( _timeoutCounter == 10 )  //  every ten seconds with 1 sec timeout
             _timeoutCounter = 0;
     }
 

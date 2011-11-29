@@ -935,16 +935,21 @@ public class SystemSettings extends JFrame {
      * (otherwise it is kind of a waste of time).
      */
     public void gotPacket( int newSize ) {
-        if ( this.isVisible() ) {
+//        if ( this.isVisible() ) {
+//            _broadcastPlot.limits( (double)(_broadcastTrackSize - _broadcastPlot.w()), (double)(_broadcastTrackSize), -.05, 1.0 );
+//            _broadcastTrack.add( (double)(_broadcastTrackSize), (double)(newSize)/(double)bufferSize() );
+//            _broadcastTrackSize += 1;
+//            _plotWindow.updateUI();
+//        }
+//        else {
+//            _broadcastTrack.clear();
+//            _broadcastTrackSize = 0;
+//        }
+        if ( this.isVisible() )
             _broadcastPlot.limits( (double)(_broadcastTrackSize - _broadcastPlot.w()), (double)(_broadcastTrackSize), -.05, 1.0 );
-            _broadcastTrack.add( (double)(_broadcastTrackSize), (double)(newSize)/(double)bufferSize() );
-            _broadcastTrackSize += 1;
-            _plotWindow.updateUI();
-        }
-        else {
-            _broadcastTrack.clear();
-            _broadcastTrackSize = 0;
-        }
+        _broadcastTrack.add( (double)(_broadcastTrackSize), (double)(newSize)/(double)bufferSize() );
+        _broadcastTrackSize += 1;
+        _plotWindow.updateUI();
     }
     
     /*

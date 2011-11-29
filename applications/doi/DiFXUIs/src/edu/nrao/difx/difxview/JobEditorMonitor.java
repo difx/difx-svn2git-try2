@@ -9,6 +9,7 @@ import edu.nrao.difx.xmllib.difxmessage.ObjectFactory;
 import edu.nrao.difx.xmllib.difxmessage.Header;
 import edu.nrao.difx.xmllib.difxmessage.Body;
 import edu.nrao.difx.xmllib.difxmessage.DifxStart;
+import edu.nrao.difx.xmllib.difxmessage.DifxStop;
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 
 import edu.nrao.difx.difxcontroller.JAXBDiFXProcessor;
@@ -363,7 +364,7 @@ public class JobEditorMonitor extends JFrame {
                 iter.hasNext(); ) {
             ProcessorNode thisNode = (ProcessorNode)(iter.next());
             if ( thisNode.selected() )
-                processNodeNames += thisNode.name() + " ";  // + thisNode.threadsText() + " ";
+                processNodeNames += thisNode.name() + " "; // + thisNode.threadsText() + " ";
         }
         process.setNodes( processNodeNames );
         
@@ -374,6 +375,8 @@ public class JobEditorMonitor extends JFrame {
             if ( thisNode.selected() )
                 processThreads += thisNode.threadsText() + " ";
         }
+        
+        System.out.println( "process threads: " + processThreads );
         
         process.setThreads( processThreads );
         jobStart.getProcess().add( process );
@@ -401,7 +404,35 @@ public class JobEditorMonitor extends JFrame {
     
     public void pauseJob() {}
     
-    public void stopJob() {}
+    public void stopJob() {
+        ObjectFactory factory = new ObjectFactory();
+
+        // Create header
+        Header header = factory.createHeader();
+        header.setFrom( "doi" );
+        header.setTo( _settings.difxControlAddress() );
+        header.setMpiProcessId( "0" );
+        header.setIdentifier( _jobNode.name() );
+        header.setType( "DifxStop" );
+
+        // Create start job command
+        DifxStop jobStop = factory.createDifxStop();
+        jobStop.setInput( _jobNode.inputFile() ); //_jobNode.directoryPath() + "/" + _jobNode.name() + ".input");
+
+        // -- Create the XML defined messages and process through the system
+        Body body = factory.createBody();
+        body.setDifxStop( jobStop );
+
+        DifxMessage difxMsg = factory.createDifxMessage();
+        difxMsg.setHeader( header );
+        difxMsg.setBody( body );
+
+        JAXBDiFXProcessor xmlProc = new JAXBDiFXProcessor(difxMsg);
+        String xmlString = xmlProc.ConvertToXML();
+        
+        if ( xmlString != null )
+            SendMessage.writeToSocket( xmlString, _settings );
+    }
     
     /*
      * Add a listener to "state change" events.  These occur when this class starts,
