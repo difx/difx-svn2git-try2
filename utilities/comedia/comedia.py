@@ -11,10 +11,9 @@ import tkMessageBox
 import PIL
 import barcode
 
-#from difxdb.business.experimentaction import  experimentExists, getActiveExperimentCodes,getExperimentByCode
 from difxdb.business.experimentaction import * 
-from difxdb.business.moduleaction import moduleExists, isCheckOutAllowed, hasDir, getUnscannedModules, getModuleByVSN
-from difxdb.business.slotaction import getOccupiedSlots
+from difxdb.business.moduleaction import *
+from difxdb.business.slotaction import *
 from difxdb.model.dbConnection import Schema, Connection
 from difxdb.model import model
 from difxfile.difxdir import *
@@ -25,7 +24,7 @@ from collections import deque
 
 from sqlalchemy import *
 from Tkinter import *
-from Tkinter import _setit
+from tkinter.multilistbox import *
 
 
 class GenericWindow(object):
@@ -69,7 +68,6 @@ class MainWindow(GenericWindow):
         
         self._setupWidgets()
         self.updateSlotListbox()
-        self.updateExpFilter()
         self.refreshStatusEvent()
         
         
@@ -85,13 +83,6 @@ class MainWindow(GenericWindow):
 
         menubar.add_cascade(label="Options", menu=optionmenu)
 
-       # labelmenu = Menu(menubar, tearoff=0)
-       # labelmenu.add_command(label="Print VSN label", command=donothing)
-       # labelmenu.add_command(label="Print library label", command=donothing)
-       # labelmenu.add_command(label="Print both labels", command=donothing)
-
-        #menubar.add_cascade(label="Label", menu=labelmenu)
-
         self.rootWidget.config(menu=menubar)
         
         # frames
@@ -103,16 +94,17 @@ class MainWindow(GenericWindow):
         self.btnQuit = Button(self.rootWidget, text="Exit", command=self.rootWidget.destroy)
         
         #widgets on frmMain       
-        self.txtSearchSlot = Entry(self.frmMain, text = "")
-        self.txtSearch = Entry(self.frmMain, text = "") 
-        btnClearSearch = Button (self.frmMain, bitmap="error")
         self.chkRelease = Checkbutton(self.frmMain, text = "releasable modules only", variable = self.filterReleaseList, command=self.updateSlotListbox)
         self.chkDirLess = Checkbutton(self.frmMain, text = "modules without .dir only", variable = self.filterDirLess, command=self.updateSlotListbox)
-        self.cboExpFilter = OptionMenu(self.frmMain, self.filterExpVar, self.expFilterItems)
         
-        vscrollbar = Scrollbar(self.frmMain,command=self.scrollbarEvent)
-        self.lstMainSlot = Listbox(self.frmMain,yscrollcommand=vscrollbar.set, relief="ridge")
-        self.lstModule = Listbox(self.frmMain, yscrollcommand=vscrollbar.set, relief="ridge")  
+        col1 = ListboxColumn("slot",10, searchable=True)
+        col2 = ListboxColumn("module",10, sortable=True)
+        col3 = ListboxColumn("station",4, sortable=True)
+        col4 = ListboxColumn("experiments",30)
+        col5 = ListboxColumn("capacity",5) 
+        col6 = ListboxColumn("datarate",5)
+        self.grdSlot = MultiListbox(self.frmMain, col1, col2, col3, col4, col5, col6)
+        self.grdSlot.bindEvent("<ButtonRelease-1>", self.selectSlotEvent)
         self.btnNewModule = Button (self.frmMain, text="Check-in module", command=self.checkinModule, fg="green", activeforeground="green")
           
         
@@ -160,17 +152,9 @@ class MainWindow(GenericWindow):
         self.btnQuit.grid(row=10,columnspan=5, pady=5, padx=10, sticky=E)
         
         # arrange objects on frmMain
-        self.cboExpFilter.grid(row=6, column=0, padx=5, sticky=E+W)
-        Label(self.frmMain, text="slot").grid(row=8, column=0)
-        Label(self.frmMain, text="module").grid(row=8, column=1)
-        self.txtSearchSlot.grid(row=9, column=0, sticky=W+E+N+S)
-        self.txtSearch.grid(row=9, column=1, sticky=W+E+N+S)
-        btnClearSearch.grid(row=9,column=2, sticky=W+E+N+S)
         self.chkRelease.grid(row=1, column=0, columnspan=3, sticky=W)
         self.chkDirLess.grid(row=2, column=0, columnspan=3, sticky=W)
-        self.lstMainSlot.grid(row=10, column=0, sticky=N+S+E+W)
-        self.lstModule.grid(row=10, column=1, sticky=N+S+E+W)
-        vscrollbar.grid(row=10, column=2, sticky=N+S+W)  
+        self.grdSlot.grid(row=10, column=0, sticky=N+S+E+W)
         self.btnNewModule.grid(row=20, columnspan=2, sticky=E+W, pady=5, padx=5)        
         
         # arrage objects on frmStatus
@@ -201,28 +185,17 @@ class MainWindow(GenericWindow):
         self.frmEditExperiment.grid_remove()
         
         # bind events to widgets
-        btnClearSearch.bind("<ButtonRelease-1>", self.clearSearchEvent)
         self.txtLocationContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblVSNContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblCapacityContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblDatarateContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblReceivedContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
-        self.txtSearchSlot.bind("<KeyRelease>", self.searchSlotEvent)
-        self.txtSearch.bind("<KeyRelease>", self.searchModuleEvent)
-        self.lstMainSlot.bind("<MouseWheel>", self.mouseWheelEvent)
-        self.lstModule.bind("<MouseWheel>", self.mouseWheelEvent)
-        self.lstMainSlot.bind("<Button-4>", self.mouseWheelEvent)
-        self.lstModule.bind("<Button-4>", self.mouseWheelEvent)
-        self.lstMainSlot.bind("<Button-5>", self.mouseWheelEvent)
-        self.lstModule.bind("<Button-5>", self.mouseWheelEvent)
-        self.lstMainSlot.bind("<ButtonRelease-1>", self.selectSlotEvent) 
-        self.lstModule.bind("<ButtonRelease-1>", self.selectModuleEvent)
         self.cboExperiments.bind("<ButtonRelease-1>", self.selectExperimentEvent)
     
     def printVSNLabel(self):
         
         slot = model.Slot()
-        slot = session.query(model.Slot).filter_by(location=self.lstMainSlot.get(self.selectedSlotIndex)).one()
+        slot = session.query(model.Slot).filter_by(location=self.grdSlot.get(self.selectedSlotIndex)[0]).one()
         
         if (slot > 0):
             
@@ -234,7 +207,6 @@ class MainWindow(GenericWindow):
             ean = barcode.get_barcode('code39', vsnString, writer=MyImageWriter())
             ean.save('/tmp/comedia_vsn', options )
             
-            #os.system( self.config.get("Label", "printCommand") + ' /tmp/comedia_vsn.png')
     
     def printLibraryLabel(self, slotName=None):
         
@@ -242,7 +214,7 @@ class MainWindow(GenericWindow):
             if (self.selectedSlotIndex == -1):
                 return
             else:
-                slotName = self.lstMainSlot.get(self.selectedSlotIndex)
+                slotName = self.grdSlot.get(self.selectedSlotIndex)[0]
         
         slot = model.Slot()
         slot = session.query(model.Slot).filter_by(location=slotName).one()
@@ -276,8 +248,7 @@ class MainWindow(GenericWindow):
             return
             
         slot = model.Slot()
-        slot = session.query(model.Slot).filter_by(location=self.lstMainSlot.get(self.selectedSlotIndex)).one()
-        
+        slot = getSlotByLocation(session, self.grdSlot.get(self.selectedSlotIndex)[0])
         
         if (slot > 0):
          
@@ -300,24 +271,25 @@ class MainWindow(GenericWindow):
         self.moduleEdit = 0
         self._saveModuleDetails()
         self.editModuleDetailsEvent(None)
+        self.updateSlotListbox()
   
     def callbackExpFilter(self, item):
         
         self.cboExpFilter.configure(text=item)
         self.filterExpVar.set(item)
-        
+      
         self.updateSlotListbox()
         
 
-    def updateExpFilter(self):
+    #def updateExpFilter(self):
         
-        self.cboExpFilter["menu"].delete(0, END)
+    #    self.cboExpFilter["menu"].delete(0, END)
         
-        self.cboExpFilter["menu"].add_command(label="all experiments", command=lambda item="all experiments": self.callbackExpFilter(item))
+    #    self.cboExpFilter["menu"].add_command(label="all experiments", command=lambda item="all experiments": self.callbackExpFilter(item))
         
-        self.callbackExpFilter("all experiments")
-        for code in getActiveExperimentCodes(session):
-            self.cboExpFilter['menu'].add_command(label=code, command=lambda item=code: self.callbackExpFilter(item))
+    #    self.callbackExpFilter("all experiments")
+    #    for code in getActiveExperimentCodes(session):
+    #        self.cboExpFilter['menu'].add_command(label=code, command=lambda item=code: self.callbackExpFilter(item))
         
            
         
@@ -331,46 +303,36 @@ class MainWindow(GenericWindow):
        
         slots = getOccupiedSlots(session)
 
-        self.lstMainSlot.delete(0, END)
-        self.lstModule.delete(0, END)
-
+        self.grdSlot.delete(0, END)
+      
+        releaseList = []
+        
+        self.grdSlot.clearData()
+        
         for slot in slots:
             
-            # check for experiment filter
-            if (self.filterExpVar.get() != "all experiments"):
-                expList = []
-                for exp in slot.module.experiments:
+            expList = []
+            for exp in slot.module.experiments:
                     expList.append(exp.code)
-                
-                if (self.filterExpVar.get() not in  expList):
-                    continue
-                
-            # check for slot filter phrase
-            if (self.slotFilter != ""):
-                if (self.slotFilter not in slot.location):
-                    continue
-            
-            # check for module filter phrase
-            if (self.moduleFilter != ""):
-                if (self.moduleFilter not in slot.module.vsn):
-                    #self.lstMainSlot.insert(END, slot.location)
-                    #self.lstModule.insert(END, slot.module.vsn)
-                    continue
+                    
                     
             #check if "released" checkbox is activated
             if (self.filterReleaseList.get()):
                 if (not isCheckOutAllowed(session, slot.module.vsn)):
                     continue
+                else:
+                    releaseList.append(slot.module.vsn)
+                    
             
             # ckeck if "dirLess" checkbox is activated
             if (self.filterDirLess.get()):
                 if (hasDir(slot.module.vsn)):
                     continue
-                    
-            self.lstMainSlot.insert(END, slot.location)
-            self.lstModule.insert(END, slot.module.vsn)
+         
+            self.grdSlot.appendData((slot.location, slot.module.vsn, slot.module.stationCode, " ".join(expList), slot.module.capacity, slot.module.datarate))
             
-            
+       
+        self.grdSlot.update()
         self.updateSlotDetails()
    
     
@@ -421,8 +383,8 @@ class MainWindow(GenericWindow):
         self.btnPrintLibraryLabel["state"] = NORMAL
         self.btnDeleteModule["state"] = NORMAL
         
-        slot = model.Slot()    
-        slot = session.query(model.Slot).filter_by(location=self.lstMainSlot.get(self.selectedSlotIndex)).one()
+        slot = model.Slot()  
+        slot = getSlotByLocation(session, self.grdSlot.get(self.selectedSlotIndex)[0])
     
         
         if (slot != None):
@@ -492,12 +454,12 @@ class MainWindow(GenericWindow):
         self._saveModuleDetails
         
     def checkOutModule(self):
-    
+            
         if (self.selectedSlotIndex == -1):
             return
         
         slot = model.Slot()    
-        slot = session.query(model.Slot).filter_by(location=self.lstMainSlot.get(self.selectedSlotIndex)).one()
+        slot = getSlotByLocation(session, self.grdSlot.get(self.selectedSlotIndex)[0])
 
         if (slot == None):
             return
@@ -520,19 +482,15 @@ class MainWindow(GenericWindow):
                 self.clearSlotSelection()
                 
                 self.updateSlotListbox()
-                #self.updateSlotDetails()
+                self.refreshStatusEvent()
                 
-                #self._saveModuleDetails
-                #self.editModuleDetailsEvent(None)
-                
-                # delete .dir file
-                 
+                # delete .dir file            
                 dirFile = buildDirFilename(settings["dirPath"], module.vsn)
                 if os.path.isfile(dirFile):
                     os.remove(dirFile)
                 else:
                     print "file does not exists"
-
+     
         return
     
     def clearSearchEvent(self, Event):
@@ -540,8 +498,6 @@ class MainWindow(GenericWindow):
         self.moduleFilter = ""
         self.slotFilter = ""
         
-        self.txtSearch.delete(0,END)
-        self.txtSearchSlot.delete(0,END)
         self.updateSlotListbox()
         
     def selectExperimentEvent(self, Event):
@@ -579,34 +535,11 @@ class MainWindow(GenericWindow):
         
         self.editModuleDetailsEvent(None)
             
-    def selectModuleEvent(self,Event):
-        
-        # check for unsaved module edits
-        if (self.moduleEdit > 0):
-            if (tkMessageBox.askyesno("Cancel unsaved changes", "There are unsaved changes in the module details\nAre you sure you want to abandon these?") == False):
-                self.lstModule.selection_clear(self.lstModule.curselection()[0])
-                self.lstModule.selection_set(self.selectedSlotIndex)
-                self.lstMainSlot.selection_clear(self.lstMainSlot.curselection()[0])
-                self.lstMainSlot.selection_set(self.selectedSlotIndex)
-                return
-            else:
-                self._saveModuleDetails()
-                self.editModuleDetailsEvent(None)
-            
-        if (len(self.lstModule.curselection()) > 0):
-            self.selectedSlotIndex =  self.lstModule.curselection()[0]
-            self.lstMainSlot.selection_set(self.selectedSlotIndex)
-        else:
-            self.selectedSlotIndex =  -1
-            
-        self.updateSlotDetails()
       
     def scanModuleEvent(self):
        
         self.scanModulesDlg.scanModules()
         self.refreshStatusEvent()
-    
-    #print difxdir.getExperiments()
             
             
     def refreshStatusEvent(self):
@@ -642,37 +575,23 @@ class MainWindow(GenericWindow):
         # check for unsaved module edits
         if (self.moduleEdit > 0):
             if (tkMessageBox.askyesno("Cancel unsaved changes", "There are unsaved changes in the module details\nAre you sure you want to abandon these?") == False):
-                self.lstMainSlot.selection_clear(self.lstMainSlot.curselection()[0])
-                self.lstMainSlot.selection_set(self.selectedSlotIndex)
+                self.grdSlot.selection_clear(self.grdSlot.curselection())
+                self.grdSlot.selection_set(self.selectedSlotIndex)
                 self.frmEditExperiment.grid_remove()
                 return
             else:
                 self._saveModuleDetails()
                 self.editModuleDetailsEvent(None)
-                
-        if (len(self.lstMainSlot.curselection()) > 0):
-            self.selectedSlotIndex =  self.lstMainSlot.curselection()[0]
+     
+        if (len(self.grdSlot.curselection()) > 0):
+            self.selectedSlotIndex =  self.grdSlot.curselection()
         else:
             self.selectedSlotIndex =  -1
-            
+        
         self.updateSlotDetails()
-    
-    def scrollbarEvent(self, *args):
-        
-        self.lstMainSlot.yview(*args)
-        self.lstModule.yview(*args)
-        
-    def mouseWheelEvent(self, event):
-        
-        self.lstMainSlot.yview("scroll", event.delta,"units")
-        self.lstModule.yview("scroll",event.delta,"units")
-        
-        # this prevents default bindings from firing, which
-        # would end up scrolling the widget twice
-        return "break"
 
     def searchSlotEvent(self, Event):
-        self.slotFilter = upper(strip(self.txtSearchSlot.get()))
+        #self.slotFilter = upper(strip(self.txtSearchSlot.get()))
         self.updateSlotListbox()
     
     def searchModuleEvent(self, Event):
@@ -886,9 +805,8 @@ class CheckinWindow(GenericWindow):
             return
 
         # retrieve currently selected item from slot select box
-        selectedSlot = model.Slot()    
+        selectedSlot = model.Slot() 
         selectedSlot = session.query(model.Slot).filter_by(location=self.lstSlot.get(self.lstSlot.curselection()[0])).one()
-        
         
         # create new Module object
         if (selectedSlot != None):
@@ -1275,7 +1193,7 @@ class AddExperimentWindow(GenericWindow):
         
         self.parent.dlg.grab_set()
         self.parent.updateExperimentListbox()
-        self.parent.parent.updateExpFilter()
+       # self.parent.parent.updateExpFilter()
         self.parent.txtVSN.focus_set()
         self.dlg.destroy()
         
