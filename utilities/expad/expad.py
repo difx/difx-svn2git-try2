@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 __author__="Helge Rottmann"
-__date__ ="$14.11.2011 09:47:23$"
+__date__ ="$30.11.2011 09:47:23$"
 
 import os
 import sys
@@ -52,6 +52,8 @@ class MainWindow(GenericWindow):
         self.rootWidget.rowconfigure(0, weight=1) 
         self.rootWidget.columnconfigure(0, weight=1)     
         
+        btnQuit = Button(self.rootWidget, text="Exit", command=self.rootWidget.destroy).grid(row=10,column=10,sticky=E)
+        
         # frames
         frmExps = LabelFrame(self.rootWidget, text="Experiments")     
         frmDetail = LabelFrame(self.rootWidget, text="Detail", padx=5)
@@ -60,8 +62,9 @@ class MainWindow(GenericWindow):
         
         #frmExps
         col1 = ListboxColumn("experiment", 25)
-        col2 = ListboxColumn("number", 5)  
-        self.grdExps = MultiListbox(frmExps, col1, col2)
+        col2 = ListboxColumn("number", 5)
+        col3 = ListboxColumn("status", 15) 
+        self.grdExps = MultiListbox(frmExps, col1, col2, col3)
         self.grdExps.bindEvent("<ButtonRelease-1>", self.selectExpEvent)
         
         btnAddExp = Button(frmExps, text="Add experiment", command=self.addExperimentDlg.show)
@@ -73,6 +76,7 @@ class MainWindow(GenericWindow):
         self.txtCode = Entry(frmDetail, text = "")
         self.txtNumber = Entry(frmDetail, text = "")
         self.cboStatus = OptionMenu (frmDetail, self.cboStatusVar, *self.expStati , command=self.changeStatusEvent)
+        self.btnUpdate = Button(frmDetail, text="update experiment", command=self.updateExpEvent)
         self.btnDelete = Button(frmDetail, text="delete experiment", command=self.deleteExpEvent)
         
         #arrange widgets on root widget
@@ -87,6 +91,7 @@ class MainWindow(GenericWindow):
         self.txtCode.grid(row=0, column=1, sticky=E+W)
         self.txtNumber.grid(row=1, column=1, sticky=E+W)
         self.cboStatus.grid(row=10, column=1, sticky=E+W)
+        self.btnUpdate.grid(row=15, column=0, columnspan=2, sticky=E+W)
         self.btnDelete.grid(row=20, column=0, columnspan=2, sticky=E+W)
         
         # bind events
@@ -99,7 +104,7 @@ class MainWindow(GenericWindow):
         self.grdExps.clearData()
         
         for exp in exps: 
-            self.grdExps.appendData((exp.code, "%04d" % exp.number))
+            self.grdExps.appendData((exp.code, "%04d" % exp.number, exp.status.experimentstatus))
             
         self.grdExps.update()
         
@@ -113,6 +118,7 @@ class MainWindow(GenericWindow):
         self.txtNumber.delete(0,END)
         
         if self.selectedExpIndex == -1:
+            self.btnUpdate["state"] = DISABLED
             self.btnDelete["state"] = DISABLED
             self.cboStatus["state"] = DISABLED
             self.txtCode["state"] = DISABLED
@@ -120,6 +126,7 @@ class MainWindow(GenericWindow):
             
             return
         
+        self.btnUpdate["state"] = NORMAL
         self.btnDelete["state"] = NORMAL
         self.cboStatus["state"] = NORMAL
         
@@ -144,7 +151,25 @@ class MainWindow(GenericWindow):
             self.selectedExpIndex =  -1
         
         self.updateExpDetails()
-      
+    
+    def updateExpEvent(self):
+        
+        if self.selectedExpIndex == -1:
+            return
+        
+        selectedStatus = self.cboStatusVar
+        status = session.query(model.ExperimentStatus).filter_by(experimentstatus=selectedStatus.get()).one()
+             
+        selectedCode = self.grdExps.get(self.selectedExpIndex)[0]
+        exp = getExperimentByCode(session, selectedCode)
+        
+        exp.status = status
+        exp.number = self.txtNumber.get()
+        
+        session.commit()
+    
+        self.updateExpListbox()
+        
     def deleteExpEvent(self):
         
         if self.selectedExpIndex == -1:
@@ -166,13 +191,14 @@ class MainWindow(GenericWindow):
             return
         
         selectedStatus = self.cboStatusVar
-        print selectedStatus
         status = session.query(model.ExperimentStatus).filter_by(experimentstatus=selectedStatus.get()).one()
              
         selectedCode = self.grdExps.get(self.selectedExpIndex)[0]
         exp = getExperimentByCode(session, selectedCode)
         exp.status = status
         session.commit()
+        
+        self.updateExpListbox()
 
 class AddExperimentWindow(GenericWindow):
      
