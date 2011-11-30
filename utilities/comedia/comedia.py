@@ -194,10 +194,13 @@ class MainWindow(GenericWindow):
     
     def printVSNLabel(self):
         
-        slot = model.Slot()
-        slot = session.query(model.Slot).filter_by(location=self.grdSlot.get(self.selectedSlotIndex)[0]).one()
+        if (self.selectedSlotIndex < 0):
+            return
         
-        if (slot > 0):
+        slot = model.Slot()
+        slot = getSlotByLocation(session, self.grdSlot.get(self.selectedSlotIndex)[0])
+        
+        if (slot is not None):
             
             os.system('rm -f /tmp/comedia_vsn.png')
             vsnString = "%s/%s/%s" % (slot.module.vsn, slot.module.capacity, slot.module.datarate)
@@ -207,6 +210,8 @@ class MainWindow(GenericWindow):
             ean = barcode.get_barcode('code39', vsnString, writer=MyImageWriter())
             ean.save('/tmp/comedia_vsn', options )
             
+            os.system( self.config.get("Label", "printCommand") + ' /tmp/comedia_vsn.png')
+            os.system('rm -f /tmp/comedia_vsn.png')
     
     def printLibraryLabel(self, slotName=None):
         
@@ -238,7 +243,8 @@ class MainWindow(GenericWindow):
             im.save("/tmp/comedia_tmp.png")
             
             os.system( self.config.get("Label", "printCommand") + ' /tmp/comedia_tmp.png')
-        
+            os.system('rm -f /tmp/comedia_tmp.png')
+            
     def updateModule(self):
         
         if (self.selectedSlotIndex == -1):
