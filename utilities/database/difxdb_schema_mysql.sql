@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 3.2.4
+-- version 3.3.7deb6
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Erstellungszeit: 08. November 2011 um 14:36
--- Server Version: 5.1.41
--- PHP-Version: 5.3.1
+-- Erstellungszeit: 30. November 2011 um 10:30
+-- Server Version: 5.1.49
+-- PHP-Version: 5.3.3-7+squeeze3
 
 SET SQL_MODE="NO_AUTO_VALUE_ON_ZERO";
 
@@ -29,11 +29,13 @@ DROP TABLE IF EXISTS `Experiment`;
 CREATE TABLE IF NOT EXISTS `Experiment` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(20) NOT NULL,
+  `number` int(4) unsigned zerofill NOT NULL,
   `statusID` bigint(20) unsigned NOT NULL DEFAULT '1',
+  `dateCreated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `code` (`code`),
   KEY `statusID` (`statusID`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=16 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=98 ;
 
 -- --------------------------------------------------------
 
@@ -61,7 +63,7 @@ CREATE TABLE IF NOT EXISTS `ExperimentStatus` (
   `statuscode` int(11) NOT NULL,
   `experimentstatus` varchar(100) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=6 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=10 ;
 
 -- --------------------------------------------------------
 
@@ -120,11 +122,12 @@ CREATE TABLE IF NOT EXISTS `Module` (
   `capacity` int(11) NOT NULL,
   `datarate` int(11) NOT NULL,
   `numScans` int(11) DEFAULT NULL,
+  `stationCode` varchar(2) DEFAULT NULL,
   `received` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `shipped` timestamp NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`id`),
   UNIQUE KEY `vsn` (`vsn`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=46 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=302 ;
 
 -- --------------------------------------------------------
 
@@ -169,7 +172,7 @@ CREATE TABLE IF NOT EXISTS `Slot` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `location` (`location`),
   UNIQUE KEY `moduleID` (`moduleID`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=83 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=563 ;
 
 -- --------------------------------------------------------
 
@@ -178,7 +181,9 @@ CREATE TABLE IF NOT EXISTS `Slot` (
 --
 
 DROP TABLE IF EXISTS `vDOIQueue`;
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `difxdb`.`vDOIQueue` AS select `E`.`code` AS `code`,`P`.`passName` AS `passName`,`J`.`jobNumber` AS `jobNumber`,`J`.`priority` AS `priority`,`J`.`jobStart` AS `jobStart`,`J`.`jobDuration` AS `jobDuration`,`J`.`inputFile` AS `inputFile`,`J`.`speedupFactor` AS `speedupFactor`,`J`.`numAntennas` AS `numAntennas`,`S`.`status` AS `status` from ((((`difxdb`.`Job` `J` join `difxdb`.`Pass` `P` on((`J`.`passID` = `P`.`id`))) join `difxdb`.`Experiment` `E` on((`P`.`experimentID` = `E`.`id`))) join `difxdb`.`JobStatus` `S` on((`S`.`id` = `J`.`statusID`))) join `difxdb`.`PassType` on((`difxdb`.`PassType`.`id` = `P`.`passTypeID`)));
+--
+-- CREATE ALGORITHM=UNDEFINED DEFINER=`difxdb_admin`@`127.0.0.1` SQL SECURITY DEFINER VIEW `difxdb`.`vDOIQueue` AS select `E`.`code` AS `code`,`P`.`passName` AS `passName`,`J`.`jobNumber` AS `jobNumber`,`J`.`priority` AS `priority`,`J`.`jobStart` AS `jobStart`,`J`.`jobDuration` AS `jobDuration`,`J`.`inputFile` AS `inputFile`,`J`.`speedupFactor` AS `speedupFactor`,`J`.`numAntennas` AS `numAntennas`,`S`.`status` AS `status` from ((((`difxdb`.`Job` `J` join `difxdb`.`Pass` `P` on((`J`.`passID` = `P`.`id`))) join `difxdb`.`Experiment` `E` on((`P`.`experimentID` = `E`.`id`))) join `difxdb`.`JobStatus` `S` on((`S`.`id` = `J`.`statusID`))) join `difxdb`.`PassType` on((`difxdb`.`PassType`.`id` = `P`.`passTypeID`)));
+--
 
 --
 -- Constraints der exportierten Tabellen

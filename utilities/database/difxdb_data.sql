@@ -1,13 +1,12 @@
 -- phpMyAdmin SQL Dump
--- version 3.2.4
+-- version 3.3.7deb6
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Erstellungszeit: 08. November 2011 um 14:38
--- Server Version: 5.1.41
--- PHP-Version: 5.3.1
+-- Erstellungszeit: 30. November 2011 um 10:31
+-- Server Version: 5.1.49
+-- PHP-Version: 5.3.3-7+squeeze3
 
-SET SQL_MODE="NO_AUTO_VALUE_ON_ZERO";
 
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -19,8 +18,6 @@ SET SQL_MODE="NO_AUTO_VALUE_ON_ZERO";
 -- Datenbank: `difxdb`
 --
 
-
-
 --
 -- Daten für Tabelle `ExperimentStatus`
 --
@@ -30,12 +27,11 @@ INSERT INTO `ExperimentStatus` (`id`, `statuscode`, `experimentstatus`) VALUES
 (2, 20, 'waiting for correlation'),
 (3, 30, 'started correlation'),
 (4, 40, 'finished correlation'),
-(5, 100, 'released');
-
---
--- Daten für Tabelle `Job`
---
-
+(5, 100, 'released'),
+(6, 110, 'correlated elsewhere'),
+(7, 0, 'unknown'),
+(8, 200, 'aborted'),
+(9, 25, 'waiting for data');
 
 --
 -- Daten für Tabelle `JobStatus`
@@ -57,5 +53,3 @@ INSERT INTO `PassType` (`id`, `type`) VALUES
 (1, 'production'),
 (2, 'clock'),
 (3, 'test');
-
-
