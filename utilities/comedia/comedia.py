@@ -546,6 +546,7 @@ class MainWindow(GenericWindow):
        
         self.scanModulesDlg.scanModules()
         self.refreshStatusEvent()
+        self.updateSlotListbox()
             
             
     def refreshStatusEvent(self):
@@ -1293,11 +1294,15 @@ if __name__ == "__main__":
     
     mainDlg = MainWindow(None, rootWidget=root)
     
+    if (os.getenv("DIFXROOT") == None):
+        sys.exit("Error: environment variable DIFXROOT must be defined.")
+    settings["difxRoot"] = os.getenv("DIFXROOT")
+    
     # read the configuration file
     config = ConfigParser.RawConfigParser()
     
-    if os.path.isfile(configName):
-        config.read(configName)
+    if os.path.isfile(settings["difxRoot"] + "/conf/" + configName):
+        config.read(settings["difxRoot"] + "/conf/" + configName)
         
     else:
         createConfig()
