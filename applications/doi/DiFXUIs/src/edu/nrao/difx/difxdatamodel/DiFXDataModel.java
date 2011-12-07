@@ -483,6 +483,8 @@ public class DiFXDataModel {
         // Determine the type of message and send to the appropriate processor
         //BLAT
         Header header = difxMsg.getHeader();
+        //System.out.println( header.getFrom() );
+        //System.out.println( "         " + header.getType() );
 
         if (header.getType().equalsIgnoreCase("DifxStatusMessage")) {
             //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DifxStatusMessage");
@@ -1001,6 +1003,7 @@ public class DiFXDataModel {
                 existingProc = null;
                 proc = null;
             }
+            
             
             //  Dispatch a message to each of the listeners interested in the
             //  receipt of a hardware-related message.

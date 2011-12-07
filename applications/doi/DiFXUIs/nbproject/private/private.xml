@@ -26,7 +26,7 @@
         </file>
         <file>
             <url>src/edu/nrao/difx/difxview/QueueBrowserPanel.java</url>
-            <line>409</line>
+            <line>441</line>
         </file>
         <file>
             <url>src/edu/nrao/vlba/difxdatamodel/Mark5Unit.java</url>
@@ -64,11 +64,11 @@
         </file>
         <file>
             <url>src/edu/nrao/difx/difxdatamodel/DiFXDataModel.java</url>
-            <line>1077</line>
-            <line>1229</line>
-            <line>2105</line>
-            <line>2129</line>
-            <line>2143</line>
+            <line>1080</line>
+            <line>1232</line>
+            <line>2108</line>
+            <line>2132</line>
+            <line>2146</line>
         </file>
         <file>
             <url>src/edu/nrao/vlba/difxdatamodel/Queue.java</url>

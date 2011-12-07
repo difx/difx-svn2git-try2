@@ -39,7 +39,7 @@ public class HardwareMonitorPanel extends TearOffPanel {
      */
     @Override
     public void setBounds(int x, int y, int width, int height) {
-        _browserPane.setBounds( 0, 70, width, height - 70 );
+        _browserPane.setBounds( 0, 60, width, height - 60 );
         super.setBounds( x, y, width, height );
     }
 
@@ -51,7 +51,7 @@ public class HardwareMonitorPanel extends TearOffPanel {
         _browserPane.setBackground( Color.WHITE );
         _mainLabel = new JLabel( "Hardware Monitor" );
         _mainLabel.setBounds( 5, 0, 150, 20 );
-        _mainLabel.setFont( new Font( "Dialog", Font.BOLD, 12 ) );
+        _mainLabel.setFont( new Font( "Dialog", Font.BOLD, 14 ) );
         add( _mainLabel );
         _clusterNodes = new ClusterNodesHeader( "Processor Nodes" );
         _clusterNodes.backgroundColor( new Color( 255, 204, 153 ) );

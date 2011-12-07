@@ -619,7 +619,7 @@ public class SystemSettings extends JFrame {
         _guiDocPath.setText( "file://" + System.getProperty( "user.dir" ) + "/doc" );
         _difxUsersGroupURL.setText( "http://groups.google.com/group/difx-users/topics" );
         _difxWikiURL.setText( "http://cira.ivec.org/dokuwiki/doku.php/difx/start" );
-        _difxSVN.setText( "http://cira.ivec.org/dokuwiki/doku.php/difx/start" );
+        _difxSVN.setText( "https://svn.atnf.csiro.au/trac/difx" );
     }
     
     /*

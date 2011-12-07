@@ -11,6 +11,13 @@ import mil.navy.usno.plotlib.PlotWindow;
 import mil.navy.usno.plotlib.Plot2DObject;
 import mil.navy.usno.plotlib.Track2D;
 
+import edu.nrao.difx.xmllib.difxmessage.ObjectFactory;
+import edu.nrao.difx.xmllib.difxmessage.Header;
+import edu.nrao.difx.xmllib.difxmessage.Body;
+import edu.nrao.difx.xmllib.difxmessage.DifxInputFileRequest;
+import edu.nrao.difx.difxutilities.SendMessage;
+import edu.nrao.difx.difxcontroller.JAXBDiFXProcessor;
+
 import javax.swing.JButton;
 import javax.swing.JPopupMenu;
 import javax.swing.JMenuItem;
@@ -437,6 +444,41 @@ public class JobNode extends BrowserNode {
     }
     
     /*
+     * This function sends a request to mk5daemon for a copy of an .input file
+     * associated with this job.  Mk5daemon will hopefully respond some time soon
+     * with the actual data.  
+     */
+    protected void requestInputFile( String filename ) {
+        ObjectFactory factory = new ObjectFactory();
+
+        // Create header
+        Header header = factory.createHeader();
+        header.setFrom( "doi" );
+        header.setTo( _settings.difxControlAddress() );
+        header.setMpiProcessId( "0" );
+        header.setIdentifier( this.name() );
+        header.setType( "DifxFileInputRequest" );
+
+        // Create start job command
+        DifxInputFileRequest inputFileRequest = factory.createDifxInputFileRequest();
+        inputFileRequest.setInput( this.inputFile() );
+
+        // -- Create the XML defined messages and process through the system
+        Body body = factory.createBody();
+        body.setDifxInputFileRequest( inputFileRequest );
+
+        DifxMessage difxMsg = factory.createDifxMessage();
+        difxMsg.setHeader( header );
+        difxMsg.setBody( body );
+
+        JAXBDiFXProcessor xmlProc = new JAXBDiFXProcessor( difxMsg );
+        String xmlString = xmlProc.ConvertToXML();
+        
+        if ( xmlString != null )
+            SendMessage.writeToSocket( xmlString, _settings );
+    }
+    
+    /*
      *   Test if this message is intended for a job or not.
      */
     static boolean testJobMessage( DifxMessage difxMsg ) {
@@ -553,6 +595,8 @@ public class JobNode extends BrowserNode {
         //  Convert to a file to extract the directory path...
         File tryFile = new File( newVal );
         _directoryPath = tryFile.getParent();
+        //  Request the contents of this input file from mk5daemon.
+        requestInputFile( _inputFile.getText() );
     }
     public String inputFile() { return _inputFile.getText(); }
     public void outputFile( String newVal ) { _outputFile.setText( newVal ); }

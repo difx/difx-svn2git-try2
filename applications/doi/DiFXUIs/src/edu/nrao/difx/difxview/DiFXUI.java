@@ -595,8 +595,8 @@ public class DiFXUI extends JFrame implements WindowListener {
                 // Create manager UI using the first command line argument as a system settings
                 // file.
                 String settingsFile = null;
-                if ( args.length > 1 )
-                    settingsFile = args[1];
+                if ( args.length > 0 )
+                    settingsFile = args[0];
                 DiFXUI view = new DiFXUI( settingsFile );
                 view.setVisible(true);
                 view.setTitle( view.getTitle() + " " + VersionWindow.version() );

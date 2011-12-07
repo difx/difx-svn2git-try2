@@ -48,19 +48,19 @@ public class QueueBrowserPanel extends TearOffPanel {
         _systemSettings.queueBrowser( this );
         _messageDisplay = messageDisplay;
         setLayout( null );
-        _browserPane = new NodeBrowserScrollPane();
+        _browserPane = new NodeBrowserScrollPane( 20 );
         this.add( _browserPane );
         addKeyListener( new KeyEventListener() );
         _browserPane.setBackground( Color.WHITE );
         _mainLabel = new JLabel( "Queue Browser" );
         _mainLabel.setBounds( 5, 0, 150, 20 );
-        _mainLabel.setFont( new Font( "Dialog", Font.BOLD, 12 ) );
+        _mainLabel.setFont( new Font( "Dialog", Font.BOLD, 14 ) );
         add( _mainLabel );
         _updateButton = new JButton( "Update" );
         _updateButton.setToolTipText( "Update queue data from the DiFX database." );
         _updateButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateQueueFromDatabase();
+                updateNow( true );
             }
         });
         this.add( _updateButton );
@@ -134,6 +134,12 @@ public class QueueBrowserPanel extends TearOffPanel {
         
         //  Do updates from the database automatically by default
         _autoUpdate = true;
+        _updateLoop = new UpdateLoop();
+        _updateLoop.start();
+        
+//        for ( Integer i = 0; i < 30; ++i )
+//            createDummyJob( ("sample job " + i.toString() ) );
+
         
         new Timer( 1000, updateDatabaseAction ).start();
 
@@ -145,10 +151,10 @@ public class QueueBrowserPanel extends TearOffPanel {
      */
     @Override
     public void setBounds(int x, int y, int width, int height) {
-        _browserPane.setBounds( 0, 70, width, height - 70 );
+        _browserPane.setBounds( 0, 60, width, height - 60 );
         super.setBounds( x, y, width, height );
-        _updateButton.setBounds( width - 120, 40, 110, 25 );
-        _autoButton.setBounds( width - 145, 40, 25, 25 );
+        _updateButton.setBounds( width - 120, 30, 110, 25 );
+        _autoButton.setBounds( width - 145, 30, 25, 25 );
     }
 
     /*
@@ -202,7 +208,8 @@ public class QueueBrowserPanel extends TearOffPanel {
             //  of all jobs in the database.  This will allow us to detect any new
             //  jobs.
             if ( _timeoutCounter == 0 )
-                updateQueueFromDatabase();
+                updateNow( true );
+                //updateQueueFromDatabase();
             //  Otherwise we just check the status of each job that we know about.  If
             //  a job has been removed we will detect that, too.
             else
@@ -212,6 +219,31 @@ public class QueueBrowserPanel extends TearOffPanel {
         ++_timeoutCounter;
         if ( _timeoutCounter == 10 )  //  every ten seconds with 1 sec timeout
             _timeoutCounter = 0;
+    }
+    
+    protected synchronized void updateNow( boolean newVal ) { _updateNow = newVal; }
+    
+    /*
+     * Internal thread used to keep the database queries from tying up the graphics
+     * update.
+     */
+    class UpdateLoop extends Thread {
+        
+        public void run() {
+            
+            while ( true ) {
+                try {
+                    Thread.sleep( 100 );
+                    if ( _updateNow ) {
+                       updateQueueFromDatabase();
+                       updateNow( false );
+                    }
+                } catch( java.lang.InterruptedException e ) {
+                }
+            }
+            
+        }
+        
     }
 
     /*
@@ -493,6 +525,21 @@ public class QueueBrowserPanel extends TearOffPanel {
         }
         
     }  
+    
+    public void createDummyJob( String name ) {
+        if ( _unaffiliated == null ) {
+            _unaffiliated = new ExperimentNode( "Jobs Outside Queue" );
+            _browserPane.addNode( _unaffiliated );
+            _unknown = new PassNode( "" );
+            _unknown.experimentNode( _unaffiliated );
+            _unknown.setHeight( 0 );
+            _unaffiliated.addChild( _unknown );
+        }
+        JobNode thisJob = new JobNode( name, _systemSettings );
+        _unknown.addChild( thisJob );
+        thisJob.passNode( _unknown );
+        _header.addJob( thisJob );
+    }
 
     protected NodeBrowserScrollPane _browserPane;
     protected JLabel _mainLabel;
@@ -509,5 +556,7 @@ public class QueueBrowserPanel extends TearOffPanel {
     protected ActivityMonitorLight _autoActiveLight;
     protected boolean _autoUpdate;
     protected JobNodesHeader _header;
+    protected boolean _updateNow;
+    protected UpdateLoop _updateLoop;
     
 }

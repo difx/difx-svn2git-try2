@@ -21,6 +21,7 @@
     <xsd:element name="difxWeight" type="difxWeight"></xsd:element>
     <xsd:element name="difxStart" type="difxStart"></xsd:element>
     <xsd:element name="difxStop" type="difxStop"></xsd:element>
+    <xsd:element name="difxInputFileRequest" type="difxInputFileRequest"></xsd:element>
     <xsd:element name="difxCommand" type="difxCommand"></xsd:element>
     <xsd:element name="doiResourceConfig" type="doiResourceConfig"></xsd:element>
     <xsd:element name="doiProject" type="doiProject"></xsd:element>
@@ -57,6 +58,7 @@
                 <xsd:element ref="difxWeight"/>
                 <xsd:element ref="difxStart"/>
                 <xsd:element ref="difxStop"/>
+                <xsd:element ref="difxInputFileRequest"/>
                 <xsd:element ref="difxCommand"/>
                 <xsd:element ref="doiSystemConfig"/>
                 <xsd:element ref="doiResourceConfig"/>
@@ -194,6 +196,12 @@
     </xsd:complexType>
 
     <xsd:complexType name="difxStop">
+        <xsd:sequence>
+            <xsd:element name="input" type="xsd:string"></xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="difxInputFileRequest">
         <xsd:sequence>
             <xsd:element name="input" type="xsd:string"></xsd:element>
         </xsd:sequence>
