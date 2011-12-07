@@ -1,12 +1,19 @@
 #!/usr/bin/python
+#===========================================================================
+# SVN properties (DO NOT CHANGE)
+#
+# $Id$
+# $HeadURL$
+# $LastChangedRevision$
+# $Author$
+# $LastChangedDate$
+#
+#============================================================================
 __author__="Helge Rottmann"
-__date__ ="$Sep 12, 2011 9:35:56 AM$"
-
 
 import re
 import os
 import time
-import ConfigParser
 import tkMessageBox
 import PIL
 import barcode
@@ -16,6 +23,7 @@ from difxdb.business.moduleaction import *
 from difxdb.business.slotaction import *
 from difxdb.model.dbConnection import Schema, Connection
 from difxdb.model import model
+from difxdb.difxdbconfig import DifxDbConfig
 from difxfile.difxdir import *
 
 from barcode.writer import ImageWriter, FONT
@@ -210,7 +218,7 @@ class MainWindow(GenericWindow):
             ean = barcode.get_barcode('code39', vsnString, writer=MyImageWriter())
             ean.save('/tmp/comedia_vsn', options )
             
-            os.system( self.config.get("Label", "printCommand") + ' /tmp/comedia_vsn.png')
+            os.system( self.config.get("Comedia", "printCommand") + ' /tmp/comedia_vsn.png')
             os.system('rm -f /tmp/comedia_vsn.png')
     
     def printLibraryLabel(self, slotName=None):
@@ -230,19 +238,19 @@ class MainWindow(GenericWindow):
             im = PIL.Image.new("L", (self.labelSizeX,self.labelSizeY),255)
 
             try:
-                font = PIL.ImageFont.truetype("resources/FreeSans.ttf", int(self.config.get("Label", "fontSize")))
+                font = PIL.ImageFont.truetype("resources/FreeSans.ttf", int(self.config.get("Comedia", "fontSize")))
             except:
                 font = PIL.ImageFont.load_default()
             
             os.system('rm -f /tmp/comedia_tmp.png')
             draw = PIL.ImageDraw.Draw(im)
-            draw.text((10,10), self.config.get("Label","headerLine"), font=font, fill=1)
+            draw.text((10,10), self.config.get("Comedia","headerLine"), font=font, fill=1)
             draw.text((10,40),"%s" % slot.location, font=font, fill=1)
             draw.text((10,70),"%s / %s / %s" % (slot.module.vsn, slot.module.capacity, slot.module.datarate) , font=font, fill=1)
 
             im.save("/tmp/comedia_tmp.png")
             
-            os.system( self.config.get("Label", "printCommand") + ' /tmp/comedia_tmp.png')
+            os.system( self.config.get("Comedia", "printCommand") + ' /tmp/comedia_tmp.png')
             os.system('rm -f /tmp/comedia_tmp.png')
             
     def updateModule(self):
@@ -931,9 +939,7 @@ class DatabaseOptionsWindow(GenericWindow):
         self.config.set("Database", "user", self.txtUsername.get())
         self.config.set("Database", "password", self.txtPassword.get())
         
-        
-        with open('comedia.ini', 'wb') as configfile:
-            config.write(configfile)
+        self.config.writeConfig()
             
         self.dlg.destroy()
  
@@ -963,7 +969,9 @@ class ScanModulesWindow(GenericWindow):
         
         rowCount = 1
        
-        canvas = Canvas(self.dlg, width=1024, height=800)
+        canvas = Canvas(self.dlg, width=800)
+        canvas.rowconfigure(0, weight=1)
+        canvas.columnconfigure(0, weight=1)
         yBar = Scrollbar(self.dlg)
         xBar = Scrollbar(self.dlg)
         xBar.config(command=canvas.xview, orient=HORIZONTAL)
@@ -1163,18 +1171,18 @@ class LabelOptionsWindow(GenericWindow):
         self.txtFontSize.grid(row=1, column=1,sticky=E+W)
         self.txtPrintCommand.grid(row=2, column=1, sticky=E+W)
     
-        self.txtLabelHeader.insert(0, self.config.get("Label", "headerLine"))
-        self.txtFontSize.insert(0, self.config.get("Label", "fontSize"))
-        self.txtPrintCommand.insert(0, self.config.get("Label", "printCommand"))
+        self.txtLabelHeader.insert(0, self.config.get("Comedia", "headerLine"))
+        self.txtFontSize.insert(0, self.config.get("Comedia", "fontSize"))
+        self.txtPrintCommand.insert(0, self.config.get("Comedia", "printCommand"))
         
     
     def saveConfig(self):
-        self.config.set("Label", "headerLine", self.txtLabelHeader.get())
-        self.config.set("Label", "fontSize", self.txtFontSize.get())
-        self.config.set("Label", "printCommand", self.txtPrintCommand.get())
+        self.config.set("Comedia", "headerLine", self.txtLabelHeader.get())
+        self.config.set("Comedia", "fontSize", self.txtFontSize.get())
+        self.config.set("Comedia", "printCommand", self.txtPrintCommand.get())
         
-        with open('comedia.ini', 'wb') as configfile:
-            config.write(configfile)
+        
+        self.config.writeConfig()
 
         self.dlg.destroy()
         
@@ -1252,35 +1260,23 @@ class MyImageWriter(ImageWriter):
         font = PIL.ImageFont.truetype(FONT, self.font_size)
         self._draw.text(pos, self.text, font=font, fill=self.foreground)
         
-    
+ 
+class ComediaConfig(DifxDbConfig):
 
+    def makeDefaultConfig(self):
+        
+        super(ComediaConfig, self).makeDefaultConfig()
+        
+        self.config.add_section('Comedia')
+        self.config.set('Comedia', 'headerLine', 'Correlator Media Library')
+        self.config.set('Comedia', 'fontSize', '24')
+        self.config.set('Comedia', 'printCommand', 'lpr -P')   
+          
 def getEmptySlots():   
     
     result =  session.query(model.Slot).order_by(model.Slot.location).filter_by(isActive = 1).order_by(model.Slot.location).filter(model.Slot.moduleID == None)
     
     return(result)
-
-def createConfig():
-    
-    config.add_section('Label')
-    config.set('Label', 'headerLine', 'Correlator Media Library')
-    config.set('Label', 'fontSize', '24')
-    config.set('Label', 'printCommand', 'lpr -P')
- 
-    config.add_section('Database')
-    config.set('Database', 'server', 'enter database server')
-    config.set('Database', 'port', 'enter database server port')
-    config.set('Database', 'user', 'enter database user')
-    config.set('Database', 'password', 'enter database password')
-    config.set('Database', 'database', 'difxdb')
-    config.set('Database', 'type', 'mysql')
-    
-
-    # Writing our configuration file to 'example.cfg'
-    with open(configName, 'wb') as configfile:
-        config.write(configfile)
- 
-
 
 if __name__ == "__main__":
     
@@ -1288,7 +1284,7 @@ if __name__ == "__main__":
     session = None
     settings = {}
     
-    configName = 'comedia.ini'
+    configName = 'difxdb.ini'
     
     root = Tk()
     
@@ -1297,16 +1293,22 @@ if __name__ == "__main__":
     if (os.getenv("DIFXROOT") == None):
         sys.exit("Error: environment variable DIFXROOT must be defined.")
     settings["difxRoot"] = os.getenv("DIFXROOT")
+    settings["configFile"] = settings["difxRoot"] + "/conf/" + configName
     
-    # read the configuration file
-    config = ConfigParser.RawConfigParser()
     
-    if os.path.isfile(settings["difxRoot"] + "/conf/" + configName):
-        config.read(settings["difxRoot"] + "/conf/" + configName)
+    if not os.path.isfile(settings["configFile"]):
+        createConfig = True
+        print "Created initial configuration file ( %s ) for you.\n" % settings["configFile"]
+        print "Please edit this file and restart comedia\n"
         
     else:
-        createConfig()
-        print "Warning: no initial configuration file ( %s ) found." % configName
+        createConfig = False
+            
+    # read the configuration file
+    config = ComediaConfig(settings["configFile"], create=createConfig)
+    
+    if (createConfig):
+        sys.exit()
         
     if (os.getenv("MARK5_DIR_PATH") == None):
         sys.exit("Error: environment variable MARK5_DIR_PATH must be defined.")
@@ -1332,8 +1334,10 @@ if __name__ == "__main__":
         mainDlg.isConnected = True
         
     except Exception as e:
-        print "Error: ",  e, " Please check your database settings under Options->Database Options"
+        print "Error: ",  e, "\nPlease check your database settings in %s " % settings["configFile"] 
         mainDlg.isConnected = False
+        sys.exit()
+        
         
 
     mainDlg.config = config
