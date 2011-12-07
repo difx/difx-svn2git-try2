@@ -1,7 +1,15 @@
 #! /usr/bin/python
-
+#===========================================================================
+# SVN properties (DO NOT CHANGE)
+#
+# $Id$
+# $HeadURL$
+# $LastChangedRevision$
+# $Author$
+# $LastChangedDate$
+#
+#============================================================================
 __author__="Helge Rottmann"
-__date__ ="$30.11.2011 09:47:23$"
 
 import os
 import sys
