@@ -131,9 +131,9 @@ public class QueueBrowserPanel extends TearOffPanel {
         //  Create a header line of all jobs.
         _header = new JobNodesHeader();
         _browserPane.addNode( _header );
-        
-        //  Do updates from the database automatically by default
-        _autoUpdate = true;
+
+        //  This thread is used to update from the database (updates can hang if
+        //  the database can't be located).
         _updateLoop = new UpdateLoop();
         _updateLoop.start();
         
@@ -184,16 +184,11 @@ public class QueueBrowserPanel extends TearOffPanel {
      * causes auto updates to occur.  Or it turns them off.
      */
     public void autoButtonAction() {
-        if ( _autoUpdate ) {
-            _autoActiveLight.on( false );
-            _autoUpdate = false;
-            _autoActiveLight.updateUI();
+        if ( _systemSettings.dbAutoUpdate() ) {
+            _systemSettings.dbAutoUpdate( false );
         }
         else {
-            _autoActiveLight.onColor( Color.YELLOW );
-            _autoActiveLight.on( true );
-            _autoUpdate = true;
-            _autoActiveLight.updateUI();
+            _systemSettings.dbAutoUpdate( true );
         }
     }
     
@@ -201,23 +196,22 @@ public class QueueBrowserPanel extends TearOffPanel {
      * Timeout event for reading the database.
      */
     public void databaseTimeoutEvent() {
-        //  See if we are doing "auto" updates of the queue.  If not, we don't
-        //  really do anything here except count time.
-        if ( _autoUpdate ) {
-            //  Every tenth timeout (i.e. every second), and to begin, we do a read 
-            //  of all jobs in the database.  This will allow us to detect any new
-            //  jobs.
+        //  See if we are doing "auto" updates of the queue.
+        if ( _systemSettings.dbAutoUpdate() ) {
+            //  Auto updates will be performed at the interval specified unless they
+            //  have just been turned on (in which case an immediate update will be
+            //  performed).
             if ( _timeoutCounter == 0 )
                 updateNow( true );
-                //updateQueueFromDatabase();
             //  Otherwise we just check the status of each job that we know about.  If
             //  a job has been removed we will detect that, too.
             else
                 checkQueueStatusFromDatabase();
-            _autoActiveLight.on( true );
+            ++_timeoutCounter;
+            if ( _timeoutCounter == _systemSettings.dbAutoUpdateInterval() )
+                _timeoutCounter = 0;
         }
-        ++_timeoutCounter;
-        if ( _timeoutCounter == 10 )  //  every ten seconds with 1 sec timeout
+        else
             _timeoutCounter = 0;
     }
     
@@ -251,15 +245,21 @@ public class QueueBrowserPanel extends TearOffPanel {
      * pulls everything off the database and uses it to change our current list.
      */
     void updateQueueFromDatabase() {
+        
         //  Create a new database connection using the current system settings.
         DBConnection dbConnection = new DBConnection( _systemSettings.dbURL(), _systemSettings.jdbcDriver(),
                 _systemSettings.dbSID(), _systemSettings.dbPWD() );
+
         try {
             dbConnection.connectToDB();
 
             //  Grab all of the job information from the database.
             ResultSet jobInfo = dbConnection.selectData( "select * from " + _systemSettings.dbName() + ".Job" );
 
+            //  Getting this far indicates a successful update from the queue.  
+            //  Flash the indicator light!
+            _autoActiveLight.on( true );
+            
             //  For each job, parse out everything we need to know about it.
             while ( jobInfo.next() ) {
 
@@ -554,7 +554,6 @@ public class QueueBrowserPanel extends TearOffPanel {
     protected int _timeoutCounter;
     protected JButton _autoButton;
     protected ActivityMonitorLight _autoActiveLight;
-    protected boolean _autoUpdate;
     protected JobNodesHeader _header;
     protected boolean _updateNow;
     protected UpdateLoop _updateLoop;

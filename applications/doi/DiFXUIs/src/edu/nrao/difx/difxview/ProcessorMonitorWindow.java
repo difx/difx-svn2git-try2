@@ -63,6 +63,7 @@ public class ProcessorMonitorWindow extends JFrame {
         _transmitPlot.backgroundColor( Color.BLACK );
         _transmitPlot.title( "Transmit Rate (Mb/s)" );
         _transmitMax = 0.01;
+        _transmitPrecision = 3;
         _plotWindow.add2DPlot( _transmitPlot );
         _receivePlot = new Plot2DObject();
         _receivePlot.name( "Receive Plot" );
@@ -75,6 +76,7 @@ public class ProcessorMonitorWindow extends JFrame {
         _receivePlot.backgroundColor( Color.BLACK );
         _receivePlot.title( "Receive Rate (Mb/s)" );
         _receiveMax = 0.01;
+        _receivePrecision = 3;
         _plotWindow.add2DPlot( _receivePlot );
     }
     
@@ -118,26 +120,35 @@ public class ProcessorMonitorWindow extends JFrame {
     public void setUsedMem( long newVal ) {
     }
     public void setNetRxRate( double newVal ) {
-        if ( newVal > 0.9 * _receiveMax )
+        if ( newVal > 0.9 * _receiveMax ) {
+            if ( _receivePrecision > 0 )
+                --_receivePrecision;
             _receiveMax *= 10.0;
+        }
         _receivePlot.deleteTopGrids();
         _receivePlot.addTopGrid( Plot2DObject.X_AXIS, 10.0, Color.GRAY );
         _receivePlot.addTopGrid( Plot2DObject.Y_AXIS, _receiveMax / 10.0, Color.GRAY );
         _receivePlot.deleteLabels();
-        _receivePlot.addLabels( Plot2DObject.Y_AXIS, _receiveMax / 4.0 );
+        //  This precision crap (and the mirror of it for the transmit plot) is
+        //  due to an annoying habit of Java of maitaining itty-bitty rounding errors
+        //  in some numbers - which would be drawn in all their glory on the plot.
+        _receivePlot.addLabels( Plot2DObject.Y_AXIS, _receiveMax / 4.0, ( "%." + _receivePrecision + "f" ) );
         _receivePlot.limits( (double)(_receiveTrackSize - 100), (double)(_receiveTrackSize), 0.0, _receiveMax );
         _receiveTrack.add( (double)(_receiveTrackSize), (double)(newVal) );
         _receiveTrackSize += 1;
         _plotWindow.updateUI();
     }
     public void setNetTxRate( double newVal ) {
-        if ( newVal > 0.9 * _transmitMax )
+        if ( newVal > 0.9 * _transmitMax ) {
+            if ( _transmitPrecision > 0 )
+                --_transmitPrecision;
             _transmitMax *= 10.0;
+        }
         _transmitPlot.deleteTopGrids();
         _transmitPlot.addTopGrid( Plot2DObject.X_AXIS, 10.0, Color.GRAY );
         _transmitPlot.addTopGrid( Plot2DObject.Y_AXIS, _transmitMax / 10.0, Color.GRAY );
         _transmitPlot.deleteLabels();
-        _transmitPlot.addLabels( Plot2DObject.Y_AXIS, _transmitMax / 4.0 );
+        _transmitPlot.addLabels( Plot2DObject.Y_AXIS, _transmitMax / 4.0, ( "%." + _transmitPrecision + "f" ) );
         _transmitPlot.limits( (double)(_transmitTrackSize - 100), (double)(_transmitTrackSize), 0.0, _transmitMax );
         _transmitTrack.add( (double)(_transmitTrackSize), (double)(newVal) );
         _transmitTrackSize += 1;
@@ -154,9 +165,11 @@ public class ProcessorMonitorWindow extends JFrame {
     protected Track2D _transmitTrack;
     protected int _transmitTrackSize;
     protected double _transmitMax;
+    protected int _transmitPrecision;
     protected Plot2DObject _receivePlot;
     protected Track2D _receiveTrack;
     protected int _receiveTrackSize;
     protected double _receiveMax;
+    protected int _receivePrecision;
     protected PlotWindow _plotWindow;
 }

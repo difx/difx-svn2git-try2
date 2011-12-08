@@ -44,6 +44,7 @@ import javax.swing.UIManager;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPasswordField;
+import javax.swing.JCheckBox;
 
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.IndexedPanel;
@@ -352,7 +353,7 @@ public class SystemSettings extends JFrame {
         _plotWindow.add2DPlot( _broadcastPlot );
         
         IndexedPanel databasePanel = new IndexedPanel( "Database Configuration" );
-        databasePanel.openHeight( 215 );
+        databasePanel.openHeight( 245 );
         databasePanel.closedHeight( 20 );
         _scrollPane.addNode( databasePanel );
         _dbHost = new JTextField();
@@ -416,6 +417,24 @@ public class SystemSettings extends JFrame {
         oraclePortLabel.setBounds( 10, 175, 150, 25 );
         oraclePortLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( oraclePortLabel );
+        _dbAutoUpdate = new JCheckBox();
+        _dbAutoUpdate.setBounds( 165, 205, 25, 25 );
+        databasePanel.add( _dbAutoUpdate );
+        JLabel dbAutoUpdateLabel = new JLabel( "Periodic Update:" );
+        dbAutoUpdateLabel.setBounds( 10, 205, 150, 25 );
+        dbAutoUpdateLabel.setHorizontalAlignment( JLabel.RIGHT );
+        databasePanel.add( dbAutoUpdateLabel );
+        _dbAutoUpdateInterval = new NumberBox();
+        _dbAutoUpdateInterval.setBounds( 230, 205, 50, 25 );
+        _dbAutoUpdateInterval.minimum( 1.0 );
+        databasePanel.add( _dbAutoUpdateInterval );
+        JLabel dbAutoUpdateIntervalLabel1 = new JLabel( "every" );
+        dbAutoUpdateIntervalLabel1.setBounds( 130, 205, 95, 25 );
+        dbAutoUpdateIntervalLabel1.setHorizontalAlignment( JLabel.RIGHT );
+        databasePanel.add( dbAutoUpdateIntervalLabel1 );
+        JLabel dbAutoUpdateIntervalLabel2 = new JLabel( "seconds" );
+        dbAutoUpdateIntervalLabel2.setBounds( 285, 205, 65, 25 );
+        databasePanel.add( dbAutoUpdateIntervalLabel2 );
         _pingHostButton = new JButton( "Ping Host" );
         _pingHostButton.setToolTipText( "ping the database host" );
         _pingHostButton.addActionListener( new ActionListener() {
@@ -620,6 +639,8 @@ public class SystemSettings extends JFrame {
         _difxUsersGroupURL.setText( "http://groups.google.com/group/difx-users/topics" );
         _difxWikiURL.setText( "http://cira.ivec.org/dokuwiki/doku.php/difx/start" );
         _difxSVN.setText( "https://svn.atnf.csiro.au/trac/difx" );
+        _dbAutoUpdate.setSelected( false );
+        _dbAutoUpdateInterval.intValue( 10 );
     }
     
     /*
@@ -728,6 +749,9 @@ public class SystemSettings extends JFrame {
         _dbURL = "jdbc:mysql://" + _dbHost.getText() + ":" + _jdbcPort.getText() + "/mysql";
         generateDatabaseChangeEvent();
     }
+    public boolean dbAutoUpdate() { return _dbAutoUpdate.isSelected(); }
+    public void dbAutoUpdate( boolean newVal ) { _dbAutoUpdate.setSelected( newVal ); }
+    public int dbAutoUpdateInterval() { return _dbAutoUpdateInterval.intValue(); }
     
     /*
      * Set the look and feel for a new JFrame.  This needs to be called before any
@@ -1084,6 +1108,8 @@ public class SystemSettings extends JFrame {
     protected JTextField _jdbcDriver;
     protected JTextField _jdbcPort;
     protected String _dbURL;
+    protected JCheckBox _dbAutoUpdate;
+    protected NumberBox _dbAutoUpdateInterval;
     protected JButton _pingHostButton;
     protected JButton _testDatabaseButton;
     protected MessageScrollPane _databaseMessages;
