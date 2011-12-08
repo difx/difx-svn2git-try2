@@ -137,8 +137,8 @@ public class QueueBrowserPanel extends TearOffPanel {
         _updateLoop = new UpdateLoop();
         _updateLoop.start();
         
-//        for ( Integer i = 0; i < 30; ++i )
-//            createDummyJob( ("sample job " + i.toString() ) );
+        for ( Integer i = 0; i < 3; ++i )
+            createDummyJob( ("sample job " + i.toString() ) );
 
         
         new Timer( 1000, updateDatabaseAction ).start();
