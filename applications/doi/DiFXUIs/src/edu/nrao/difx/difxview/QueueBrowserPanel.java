@@ -208,7 +208,7 @@ public class QueueBrowserPanel extends TearOffPanel {
             else
                 checkQueueStatusFromDatabase();
             ++_timeoutCounter;
-            if ( _timeoutCounter == _systemSettings.dbAutoUpdateInterval() )
+            if ( _timeoutCounter >= _systemSettings.dbAutoUpdateInterval() )
                 _timeoutCounter = 0;
         }
         else
@@ -245,7 +245,7 @@ public class QueueBrowserPanel extends TearOffPanel {
      * pulls everything off the database and uses it to change our current list.
      */
     void updateQueueFromDatabase() {
-        
+
         //  Create a new database connection using the current system settings.
         DBConnection dbConnection = new DBConnection( _systemSettings.dbURL(), _systemSettings.jdbcDriver(),
                 _systemSettings.dbSID(), _systemSettings.dbPWD() );
