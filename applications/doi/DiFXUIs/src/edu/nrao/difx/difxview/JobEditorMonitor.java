@@ -8,7 +8,7 @@ import edu.nrao.difx.difxutilities.SendMessage;
 import edu.nrao.difx.xmllib.difxmessage.ObjectFactory;
 import edu.nrao.difx.xmllib.difxmessage.Header;
 import edu.nrao.difx.xmllib.difxmessage.Body;
-import edu.nrao.difx.xmllib.difxmessage.DifxStartUSNO;
+import edu.nrao.difx.xmllib.difxmessage.DifxStart;
 import edu.nrao.difx.xmllib.difxmessage.DifxStop;
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 
@@ -327,14 +327,15 @@ public class JobEditorMonitor extends JFrame {
         header.setTo( _settings.difxControlAddress() );
         header.setMpiProcessId( "-1" );
         header.setIdentifier( _jobNode.name() );
-        header.setType( "DifxStartUSNO" );
+        header.setType( "DifxStart" );
 
         // Create start job command
-        DifxStartUSNO jobStart = factory.createDifxStartUSNO();
+        DifxStart jobStart = factory.createDifxStart();
         jobStart.setInput( _jobNode.inputFile() ); //_jobNode.directoryPath() + "/" + _jobNode.name() + ".input");
+        jobStart.setFunction( "USNO" );
 
         // -- manager, enabled only
-        DifxStartUSNO.Manager manager = factory.createDifxStartUSNOManager();
+        DifxStart.Manager manager = factory.createDifxStartManager();
         manager.setNode( _headNode.getText() );
         jobStart.setManager( manager );
 
@@ -342,7 +343,7 @@ public class JobEditorMonitor extends JFrame {
         jobStart.setDifxVersion( _settings.difxVersion() );
 
         // -- datastreams, enabled only
-        DifxStartUSNO.Datastream dataStream = factory.createDifxStartUSNODatastream();
+        DifxStart.Datastream dataStream = factory.createDifxStartDatastream();
 
         //  Grab all of the "checked" data stream node names...
         String dataNodeNames = "";
@@ -356,8 +357,8 @@ public class JobEditorMonitor extends JFrame {
         jobStart.setDatastream(dataStream);
 
         // -- process and threads, enabled only
-        DifxStartUSNO.Process process = factory.createDifxStartUSNOProcess();
-        DifxStartUSNO.Process process2 = factory.createDifxStartUSNOProcess();
+        DifxStart.Process process = factory.createDifxStartProcess();
+        DifxStart.Process process2 = factory.createDifxStartProcess();
 
         String processNodeNames = "";
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
@@ -375,9 +376,7 @@ public class JobEditorMonitor extends JFrame {
             if ( thisNode.selected() )
                 processThreads += thisNode.threadsText() + " ";
         }
-        
-        System.out.println( "process threads: " + processThreads );
-        
+                
         process.setThreads( processThreads );
         jobStart.getProcess().add( process );
 
@@ -389,7 +388,7 @@ public class JobEditorMonitor extends JFrame {
 
         // -- Create the XML defined messages and process through the system
         Body body = factory.createBody();
-        body.setDifxStartUSNO(jobStart);
+        body.setDifxStart(jobStart);
 
         DifxMessage difxMsg = factory.createDifxMessage();
         difxMsg.setHeader(header);

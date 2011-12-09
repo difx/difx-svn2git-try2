@@ -20,7 +20,6 @@
     <xsd:element name="difxInfo" type="difxInfo"></xsd:element>
     <xsd:element name="difxWeight" type="difxWeight"></xsd:element>
     <xsd:element name="difxStart" type="difxStart"></xsd:element>
-    <xsd:element name="difxStartUSNO" type="difxStartUSNO"></xsd:element>
     <xsd:element name="difxStop" type="difxStop"></xsd:element>
     <xsd:element name="difxInputFileRequest" type="difxInputFileRequest"></xsd:element>
     <xsd:element name="difxCommand" type="difxCommand"></xsd:element>
@@ -58,7 +57,6 @@
                 <xsd:element ref="difxInfo"/>
                 <xsd:element ref="difxWeight"/>
                 <xsd:element ref="difxStart"/>
-                <xsd:element ref="difxStartUSNO"/>
                 <xsd:element ref="difxStop"/>
                 <xsd:element ref="difxInputFileRequest"/>
                 <xsd:element ref="difxCommand"/>
@@ -197,30 +195,7 @@
             </xsd:element>
             <xsd:element name="force" type="xsd:int" minOccurs="0" default="1"></xsd:element>
             <xsd:element name="difxVersion" type="xsd:string" minOccurs="0" maxOccurs="1" default="unknown"></xsd:element>
-        </xsd:sequence>
-    </xsd:complexType>
-
-    <xsd:complexType name="difxStartUSNO">
-        <xsd:sequence>
-            <xsd:element name="input" type="xsd:string"></xsd:element>
-            <xsd:element name="manager">
-                <xsd:complexType>
-                    <xsd:attribute name="node" type="xsd:string"/>
-                </xsd:complexType>
-            </xsd:element>
-            <xsd:element name="datastream">
-                <xsd:complexType>
-                    <xsd:attribute name="nodes" type="xsd:string"/>
-                </xsd:complexType>
-            </xsd:element>
-            <xsd:element name="process" maxOccurs="unbounded">
-                <xsd:complexType>
-                    <xsd:attribute name="nodes" type="xsd:string"/>
-                    <xsd:attribute name="threads" type="xsd:string"/>
-                </xsd:complexType>
-            </xsd:element>
-            <xsd:element name="force" type="xsd:int" minOccurs="0" default="1"></xsd:element>
-            <xsd:element name="difxVersion" type="xsd:string" minOccurs="0" maxOccurs="1" default="unknown"></xsd:element>
+            <xsd:element name="function" type="xsd:string"></xsd:element>
         </xsd:sequence>
     </xsd:complexType>
 
