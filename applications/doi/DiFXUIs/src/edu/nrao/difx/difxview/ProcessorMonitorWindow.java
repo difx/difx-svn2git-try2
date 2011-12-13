@@ -63,7 +63,7 @@ public class ProcessorMonitorWindow extends JFrame {
         _transmitPlot.backgroundColor( Color.BLACK );
         _transmitPlot.title( "Transmit Rate (Mb/s)" );
         _transmitMax = 0.01;
-        _transmitPrecision = 3;
+        _transmitPrecision = 4;
         _plotWindow.add2DPlot( _transmitPlot );
         _receivePlot = new Plot2DObject();
         _receivePlot.name( "Receive Plot" );
@@ -76,7 +76,7 @@ public class ProcessorMonitorWindow extends JFrame {
         _receivePlot.backgroundColor( Color.BLACK );
         _receivePlot.title( "Receive Rate (Mb/s)" );
         _receiveMax = 0.01;
-        _receivePrecision = 3;
+        _receivePrecision = 4;
         _plotWindow.add2DPlot( _receivePlot );
     }
     

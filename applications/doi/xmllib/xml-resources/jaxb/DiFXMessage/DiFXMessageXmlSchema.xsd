@@ -195,6 +195,7 @@
             </xsd:element>
             <xsd:element name="force" type="xsd:int" minOccurs="0" default="1"></xsd:element>
             <xsd:element name="difxVersion" type="xsd:string" minOccurs="0" maxOccurs="1" default="unknown"></xsd:element>
+            <xsd:element name="restartSeconds" type="xsd:double"></xsd:element>
             <xsd:element name="function" type="xsd:string"></xsd:element>
         </xsd:sequence>
     </xsd:complexType>

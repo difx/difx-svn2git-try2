@@ -163,13 +163,30 @@ public class JobEditorMonitor extends JFrame {
         } );
         runControlPanel.add( _startButton );
         _stopButton = new JButton( "Stop" );
-        _stopButton.setBounds( 130, 30, 110, 25 );
+        _stopButton.setBounds( 10, 60, 110, 25 );
         _stopButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 stopJob();
             }
         } );
         runControlPanel.add( _stopButton );
+        _restartAt = new JCheckBox( "Restart" );
+        _restartAt.setBounds( 130, 30, 75, 25 );
+        _restartAt.setSelected( false );
+        runControlPanel.add( _restartAt );
+        _restartSeconds = new NumberBox();
+        _restartSeconds.precision( 4 );
+        _restartSeconds.value( 0.0 );
+        _restartSeconds.setBounds( 230, 30, 100, 25 );
+        runControlPanel.add( _restartSeconds );
+        JLabel restartAtLabel = new JLabel( "at:" );
+        restartAtLabel.setBounds( 180, 30, 45, 25 );
+        restartAtLabel.setHorizontalAlignment( JLabel.RIGHT );
+        runControlPanel.add( restartAtLabel );
+        JLabel restartSecondsLabel = new JLabel( "seconds" );
+        restartSecondsLabel.setBounds( 335, 30, 90, 25 );
+        restartSecondsLabel.setHorizontalAlignment( JLabel.LEFT );
+        runControlPanel.add( restartSecondsLabel );
  
         _allObjectsBuilt = true;
         
@@ -332,6 +349,8 @@ public class JobEditorMonitor extends JFrame {
         // Create start job command
         DifxStart jobStart = factory.createDifxStart();
         jobStart.setInput( _jobNode.inputFile() ); //_jobNode.directoryPath() + "/" + _jobNode.name() + ".input");
+
+        // Use the "USNO" version of the start function in mk5daemon
         jobStart.setFunction( "USNO" );
 
         // -- manager, enabled only
@@ -341,6 +360,11 @@ public class JobEditorMonitor extends JFrame {
 
         // -- set difx version to use
         jobStart.setDifxVersion( _settings.difxVersion() );
+        
+        //  Set the "restart" time in seconds from the job start, if this has been
+        //  requested.
+        if ( _restartAt.isSelected() )
+            jobStart.setRestartSeconds( _restartSeconds.value() );
 
         // -- datastreams, enabled only
         DifxStart.Datastream dataStream = factory.createDifxStartDatastream();
@@ -800,6 +824,8 @@ public class JobEditorMonitor extends JFrame {
     
     protected JButton _startButton;
     protected JButton _stopButton;
+    protected NumberBox _restartSeconds;
+    protected JCheckBox _restartAt;
     
     protected boolean _allObjectsBuilt;
     
