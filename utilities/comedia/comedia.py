@@ -238,7 +238,7 @@ class MainWindow(GenericWindow):
             im = PIL.Image.new("L", (self.labelSizeX,self.labelSizeY),255)
 
             try:
-                font = PIL.ImageFont.truetype("resources/FreeSans.ttf", int(self.config.get("Comedia", "fontSize")))
+                font = PIL.ImageFont.truetype(self.config.get("Comedia","fontFile"), int(self.config.get("Comedia", "fontSize")))
             except:
                 font = PIL.ImageFont.load_default()
             
@@ -1155,11 +1155,13 @@ class LabelOptionsWindow(GenericWindow):
     def _setupWidgets(self):
               
         Label(self.dlg, text="Label header").grid(row=0, sticky=W)
-        Label(self.dlg, text="Label font size").grid(row=1, sticky=W)
-        Label(self.dlg, text="Label print command").grid(row=2, sticky=W)
+        Label(self.dlg, text="Label font ttf file").grid(row=1, sticky=W)
+        Label(self.dlg, text="Label font size").grid(row=2, sticky=W)
+        Label(self.dlg, text="Label print command").grid(row=3, sticky=W)
         
         
         self.txtLabelHeader = Entry(self.dlg)
+        self.txtFontFile = Entry(self.dlg)
         self.txtFontSize = Entry(self.dlg)
         self.txtPrintCommand = Entry(self.dlg)
        
@@ -1168,16 +1170,19 @@ class LabelOptionsWindow(GenericWindow):
         
        
         self.txtLabelHeader.grid(row=0, column=1,sticky=E+W)
-        self.txtFontSize.grid(row=1, column=1,sticky=E+W)
-        self.txtPrintCommand.grid(row=2, column=1, sticky=E+W)
+        self.txtFontFile.grid(row=1, column=1,sticky=E+W)
+        self.txtFontSize.grid(row=2, column=1,sticky=E+W)
+        self.txtPrintCommand.grid(row=3, column=1, sticky=E+W)
     
         self.txtLabelHeader.insert(0, self.config.get("Comedia", "headerLine"))
+        self.txtFontFile.insert(0, self.config.get("Comedia", "fontFile"))
         self.txtFontSize.insert(0, self.config.get("Comedia", "fontSize"))
         self.txtPrintCommand.insert(0, self.config.get("Comedia", "printCommand"))
         
     
     def saveConfig(self):
         self.config.set("Comedia", "headerLine", self.txtLabelHeader.get())
+        self.config.set("Comedia", "fontFile", self.txtFontFile.get())
         self.config.set("Comedia", "fontSize", self.txtFontSize.get())
         self.config.set("Comedia", "printCommand", self.txtPrintCommand.get())
         
@@ -1269,6 +1274,7 @@ class ComediaConfig(DifxDbConfig):
         
         self.config.add_section('Comedia')
         self.config.set('Comedia', 'headerLine', 'Correlator Media Library')
+        self.config.set('Comedia', 'fontFile', '/usr/share/fonts/truetype/arial.ttf')
         self.config.set('Comedia', 'fontSize', '24')
         self.config.set('Comedia', 'printCommand', 'lpr -P')   
           
