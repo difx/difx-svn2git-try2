@@ -34,7 +34,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.FileWriter;
 
-import javax.swing.JTextField;
+import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
 import javax.swing.JButton;
 import javax.swing.JMenu;
@@ -58,7 +58,7 @@ import mil.navy.usno.widgetlib.MessageNode;
 
 import javax.swing.JFrame;
 
-import edu.nrao.difx.difxdatabase.DBConnection;
+import edu.nrao.difx.difxdatabase.QueueDBConnection;
 
 import java.sql.ResultSet;
 
@@ -82,6 +82,11 @@ public class SystemSettings extends JFrame {
         //  which is why I tend to like it.  It gives us ugly and annoying file
         //  choosers though.
         _lookAndFeel = UIManager.getCrossPlatformLookAndFeelClassName();
+        
+        //  Some organizational structure here - some items are stored in class
+        //  structures that are based on where they apply.  We need to create these
+        //  structures here.
+        _queueBrowserSettings = new QueueBrowserSettings();
         
         //  Create all of the components of the user interface (long, messy function).
         createGUIComponents();
@@ -134,7 +139,7 @@ public class SystemSettings extends JFrame {
         //  values.
         _this = this;
         this.setLayout( null );
-        this.setSize( 800, 715 );
+        this.setSize( 800, 775 );
         this.setTitle( "DiFX GUI Settings" );
         _menuBar = new JMenuBar();
 //        _menuBar.setVisible( true );
@@ -178,7 +183,8 @@ public class SystemSettings extends JFrame {
         settingsFilePanel.openHeight( 100 );
         settingsFilePanel.closedHeight( 20 );
         _scrollPane.addNode( settingsFilePanel );
-        _settingsFileName = new JTextField();
+        _settingsFileName = new JFormattedTextField();
+        _settingsFileName.setFocusLostBehavior( JFormattedTextField.COMMIT );
         settingsFilePanel.add( _settingsFileName );
         JLabel settingsFileLabel = new JLabel( "Current:" );
         settingsFileLabel.setBounds( 10, 25, 100, 25 );
@@ -225,7 +231,8 @@ public class SystemSettings extends JFrame {
         difxControlPanel.openHeight( 180 );
         difxControlPanel.closedHeight( 20 );
         _scrollPane.addNode( difxControlPanel );
-        _difxControlAddress = new JTextField();
+        _difxControlAddress = new JFormattedTextField();
+        _difxControlAddress.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _difxControlAddress.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 //generateControlChangeEvent();
@@ -249,7 +256,8 @@ public class SystemSettings extends JFrame {
         portLabel.setBounds( 10, 55, 150, 25 );
         portLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( portLabel );
-        _difxControlUser = new JTextField();
+        _difxControlUser = new JFormattedTextField();
+        _difxControlUser.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _difxControlUser.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 //generateControlChangeEvent();
@@ -272,7 +280,8 @@ public class SystemSettings extends JFrame {
         pwdLabel.setBounds( 10, 115, 150, 25 );
         pwdLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( pwdLabel );
-        _difxVersion = new JTextField();
+        _difxVersion = new JFormattedTextField();
+        _difxVersion.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _difxVersion.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 //generateControlChangeEvent();
@@ -288,7 +297,8 @@ public class SystemSettings extends JFrame {
         networkPanel.openHeight( 170 );
         networkPanel.closedHeight( 20 );
         _scrollPane.addNode( networkPanel );
-        _ipAddress = new JTextField();
+        _ipAddress = new JFormattedTextField();
+        _ipAddress.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _ipAddress.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 generateBroadcastChangeEvent();
@@ -353,10 +363,26 @@ public class SystemSettings extends JFrame {
         _plotWindow.add2DPlot( _broadcastPlot );
         
         IndexedPanel databasePanel = new IndexedPanel( "Database Configuration" );
-        databasePanel.openHeight( 245 );
+        databasePanel.openHeight( 275 );
         databasePanel.closedHeight( 20 );
         _scrollPane.addNode( databasePanel );
-        _dbHost = new JTextField();
+        _dbUseDataBase = new JCheckBox();
+        _dbUseDataBase.setBounds( 165, 25, 25, 25 );
+        databasePanel.add( _dbUseDataBase );
+        JLabel dbUseDataBaseLabel = new JLabel( "Use Data Base:" );
+        dbUseDataBaseLabel.setBounds( 10, 25, 150, 25 );
+        dbUseDataBaseLabel.setHorizontalAlignment( JLabel.RIGHT );
+        databasePanel.add( dbUseDataBaseLabel );
+        _dbVersion = new JFormattedTextField();
+        _dbVersion.setFocusLostBehavior( JFormattedTextField.COMMIT );
+        _dbVersion.setBounds( 285, 25, 180, 25 );
+        databasePanel.add( _dbVersion );
+        JLabel dbVersionLabel = new JLabel( "Version:" );
+        dbVersionLabel.setBounds( 200, 25, 80, 25 );
+        dbVersionLabel.setHorizontalAlignment( JLabel.RIGHT );
+        databasePanel.add( dbVersionLabel );
+        _dbHost = new JFormattedTextField();
+        _dbHost.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _dbHost.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 setDbURL();
@@ -364,10 +390,11 @@ public class SystemSettings extends JFrame {
         } );
         databasePanel.add( _dbHost );
         JLabel dbHostLabel = new JLabel( "Host:" );
-        dbHostLabel.setBounds( 10, 25, 150, 25 );
+        dbHostLabel.setBounds( 10, 55, 150, 25 );
         dbHostLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( dbHostLabel );
-        _dbSID = new JTextField();
+        _dbSID = new JFormattedTextField();
+        _dbSID.setFocusLostBehavior( JFormattedTextField.COMMIT );
         databasePanel.add( _dbSID );
         _dbSID.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
@@ -375,7 +402,7 @@ public class SystemSettings extends JFrame {
             }
         } );
         JLabel dbSIDLabel = new JLabel( "User:" );
-        dbSIDLabel.setBounds( 10, 55, 150, 25 );
+        dbSIDLabel.setBounds( 10, 85, 150, 25 );
         dbSIDLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( dbSIDLabel );
         _dbPWD = new JPasswordField();
@@ -386,16 +413,18 @@ public class SystemSettings extends JFrame {
         } );
         databasePanel.add( _dbPWD );
         JLabel dbPWDLabel = new JLabel( "Password:" );
-        dbPWDLabel.setBounds( 10, 85, 150, 25 );
+        dbPWDLabel.setBounds( 10, 115, 150, 25 );
         dbPWDLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( dbPWDLabel );
-        _dbName = new JTextField();
+        _dbName = new JFormattedTextField();
+        _dbName.setFocusLostBehavior( JFormattedTextField.COMMIT );
         databasePanel.add( _dbName );
         JLabel dbNameLabel = new JLabel( "DiFX Database:" );
-        dbNameLabel.setBounds( 10, 115, 150, 25 );
+        dbNameLabel.setBounds( 10, 145, 150, 25 );
         dbNameLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( dbNameLabel );
-        _jdbcDriver = new JTextField();
+        _jdbcDriver = new JFormattedTextField();
+        _jdbcDriver.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _jdbcDriver.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 generateDatabaseChangeEvent();
@@ -403,10 +432,11 @@ public class SystemSettings extends JFrame {
         } );
         databasePanel.add( _jdbcDriver );
         JLabel oracleDriverLabel = new JLabel( "JDBC Driver:" );
-        oracleDriverLabel.setBounds( 10, 145, 150, 25 );
+        oracleDriverLabel.setBounds( 10, 175, 150, 25 );
         oracleDriverLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( oracleDriverLabel );
-         _jdbcPort = new JTextField();
+        _jdbcPort = new JFormattedTextField();
+        _jdbcPort.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _jdbcPort.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 setDbURL();
@@ -414,26 +444,26 @@ public class SystemSettings extends JFrame {
         } );
         databasePanel.add( _jdbcPort );
         JLabel oraclePortLabel = new JLabel( "JDBC Port:" );
-        oraclePortLabel.setBounds( 10, 175, 150, 25 );
+        oraclePortLabel.setBounds( 10, 205, 150, 25 );
         oraclePortLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( oraclePortLabel );
         _dbAutoUpdate = new JCheckBox();
-        _dbAutoUpdate.setBounds( 165, 205, 25, 25 );
+        _dbAutoUpdate.setBounds( 165, 235, 25, 25 );
         databasePanel.add( _dbAutoUpdate );
         JLabel dbAutoUpdateLabel = new JLabel( "Periodic Update:" );
-        dbAutoUpdateLabel.setBounds( 10, 205, 150, 25 );
+        dbAutoUpdateLabel.setBounds( 10, 235, 150, 25 );
         dbAutoUpdateLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( dbAutoUpdateLabel );
         _dbAutoUpdateInterval = new NumberBox();
-        _dbAutoUpdateInterval.setBounds( 230, 205, 50, 25 );
+        _dbAutoUpdateInterval.setBounds( 230, 235, 50, 25 );
         _dbAutoUpdateInterval.minimum( 1.0 );
         databasePanel.add( _dbAutoUpdateInterval );
         JLabel dbAutoUpdateIntervalLabel1 = new JLabel( "every" );
-        dbAutoUpdateIntervalLabel1.setBounds( 130, 205, 95, 25 );
+        dbAutoUpdateIntervalLabel1.setBounds( 130, 235, 95, 25 );
         dbAutoUpdateIntervalLabel1.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( dbAutoUpdateIntervalLabel1 );
         JLabel dbAutoUpdateIntervalLabel2 = new JLabel( "seconds" );
-        dbAutoUpdateIntervalLabel2.setBounds( 285, 205, 65, 25 );
+        dbAutoUpdateIntervalLabel2.setBounds( 285, 235, 65, 25 );
         databasePanel.add( dbAutoUpdateIntervalLabel2 );
         _pingHostButton = new JButton( "Ping Host" );
         _pingHostButton.setToolTipText( "ping the database host" );
@@ -462,7 +492,8 @@ public class SystemSettings extends JFrame {
         guiDocPathLabel.setBounds( 10, 25, 100, 25 );
         guiDocPathLabel.setHorizontalAlignment( JLabel.RIGHT );
         guiDocPathLabel.setToolTipText( "Directory (or web address) containing all GUI documentation." );
-        _guiDocPath = new JTextField();
+        _guiDocPath = new JFormattedTextField();
+        _guiDocPath.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _guiDocPath.setToolTipText( "Directory (or web address) containing all GUI documentation." );
         _addressesPanel.add( guiDocPathLabel );
         _addressesPanel.add( _guiDocPath );
@@ -478,7 +509,8 @@ public class SystemSettings extends JFrame {
         difxUsersGroupURLLabel.setBounds( 10, 55, 100, 25 );
         difxUsersGroupURLLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxUsersGroupURLLabel.setToolTipText( "URL of the DiFX Users Group." );
-        _difxUsersGroupURL = new JTextField();
+        _difxUsersGroupURL = new JFormattedTextField();
+        _difxUsersGroupURL.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _difxUsersGroupURL.setToolTipText( "URL of the DiFX Users Group." );
         _addressesPanel.add( difxUsersGroupURLLabel );
         _addressesPanel.add( _difxUsersGroupURL );
@@ -486,7 +518,8 @@ public class SystemSettings extends JFrame {
         difxWikiURLLabel.setBounds( 10, 85, 100, 25 );
         difxWikiURLLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxWikiURLLabel.setToolTipText( "URL of the DiFX Wiki." );
-        _difxWikiURL = new JTextField();
+        _difxWikiURL = new JFormattedTextField();
+        _difxWikiURL.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _difxWikiURL.setToolTipText( "URL of the DiFX Wiki." );
         _addressesPanel.add( difxWikiURLLabel );
         _addressesPanel.add( _difxWikiURL );
@@ -494,7 +527,8 @@ public class SystemSettings extends JFrame {
         difxSVNLabel.setBounds( 10, 115, 100, 25 );
         difxSVNLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxSVNLabel.setToolTipText( "URL of the DiFX Subversion repository." );
-        _difxSVN = new JTextField();
+        _difxSVN = new JFormattedTextField();
+        _difxSVN.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _difxSVN.setToolTipText( "URL of the DiFX Subversion repository." );
         _addressesPanel.add( difxSVNLabel );
         _addressesPanel.add( _difxSVN );
@@ -536,15 +570,15 @@ public class SystemSettings extends JFrame {
             _timeout.setBounds( 165, 115, 300, 25 );
             _plotWindow.setBounds( 470, 25, w - 495, 120 );
             //  Database Configuration
-            _dbHost.setBounds( 165, 25, 300, 25 );
-            _dbSID.setBounds( 165, 55, 300, 25 );
-            _dbPWD.setBounds( 165, 85, 300, 25 );
-            _dbName.setBounds( 165, 115, 300, 25 );
-            _jdbcDriver.setBounds( 165, 145, 300, 25 );
-            _jdbcPort.setBounds( 165, 175, 300, 25 );
-            _pingHostButton.setBounds( 480, 25, 125, 25 );
-            _testDatabaseButton.setBounds( 610, 25, 125, 25 );
-            _databaseMessages.setBounds( 480, 55, w - 495, 145 );
+            _dbHost.setBounds( 165, 55, 300, 25 );
+            _dbSID.setBounds( 165, 85, 300, 25 );
+            _dbPWD.setBounds( 165, 115, 300, 25 );
+            _dbName.setBounds( 165, 145, 300, 25 );
+            _jdbcDriver.setBounds( 165, 175, 300, 25 );
+            _jdbcPort.setBounds( 165, 205, 300, 25 );
+            _pingHostButton.setBounds( 480, 55, 125, 25 );
+            _testDatabaseButton.setBounds( 610, 55, 125, 25 );
+            _databaseMessages.setBounds( 480, 85, w - 505, 145 );
             //  Documentation Addresses
             _guiDocPath.setBounds( 115, 25, w - 240, 25 );
             _guiDocPathBrowseButton.setBounds( w - 120, 25, 100, 25 );
@@ -561,6 +595,7 @@ public class SystemSettings extends JFrame {
         _fileChooser.setDialogTitle( "Open System Settings File..." );
         _fileChooser.setFileSelectionMode( JFileChooser.FILES_AND_DIRECTORIES );
         _fileChooser.setApproveButtonText( "Open" );
+        _fileChooser.setCurrentDirectory( new File( this.settingsFileName() ) );
         int ret = _fileChooser.showOpenDialog( this );
         if ( ret == JFileChooser.APPROVE_OPTION )
             this.settingsFileName( _fileChooser.getSelectedFile().getAbsolutePath() );
@@ -627,6 +662,8 @@ public class SystemSettings extends JFrame {
         _difxControlUser.setText( "difx" );
         _difxControlPWD.setText( "difx2010" );
         _difxVersion.setText( "trunk" );
+        _dbUseDataBase.setSelected( true );
+        _dbVersion.setText( "unknown" );
         _dbHost.setText( "c3po.aoc.nrao.edu" );
         _dbSID.setText( "difx" );
         _dbPWD.setText( "difx2010" );
@@ -641,6 +678,10 @@ public class SystemSettings extends JFrame {
         _difxSVN.setText( "https://svn.atnf.csiro.au/trac/difx" );
         _dbAutoUpdate.setSelected( false );
         _dbAutoUpdateInterval.intValue( 10 );
+        _queueBrowserSettings.showCompleted = true;
+        _queueBrowserSettings.showIncomplete = true;
+        _queueBrowserSettings.showSelected = true;
+        _queueBrowserSettings.showUnselected = true;
     }
     
     /*
@@ -703,6 +744,8 @@ public class SystemSettings extends JFrame {
     public int timeout() { return _timeout.intValue(); }
     public void timeout( String newVal ) { timeout( Integer.parseInt( newVal ) ); }
     
+    public boolean useDataBase() { return _dbUseDataBase.isSelected(); }
+    public String dbVersion() { return _dbVersion.getText(); }
     public void dbHost( String newVal ) { 
         _dbHost.setText( newVal );
         setDbURL();
@@ -901,6 +944,35 @@ public class SystemSettings extends JFrame {
             this.bufferSize( doiConfig.getBufferSize() );
             this.loggingEnabled( doiConfig.isLoggingEnabled() );
             this.statusValidDuration( doiConfig.getStatusValidDuration() );
+            
+            this.jaxbPackage( doiConfig.getJaxbPackage() );
+            this.timeout( doiConfig.getTimeout() );
+            this.difxControlAddress( doiConfig.getDifxControlAddress() );
+            this.difxControlPort( doiConfig.getDifxControlPort() );
+            this.difxControlUser( doiConfig.getDifxControlUser() );
+            this.difxControlPassword( doiConfig.getDifxControlPWD() );
+            this.difxVersion( doiConfig.getDifxVersion() );
+            _dbUseDataBase.setSelected( doiConfig.isDbUseDataBase() );
+            _dbVersion.setText( doiConfig.getDbVersion() );
+            this.dbName( doiConfig.getDbName() );
+            _reportLoc = doiConfig.getReportLoc();
+            _guiDocPath.setText( doiConfig.getGuiDocPath() );
+            _difxUsersGroupURL.setText( doiConfig.getDifxUsersGroupURL() );
+            _difxWikiURL.setText( doiConfig.getDifxWikiURL() );
+            _difxSVN.setText( doiConfig.getDifxSVN() );
+            this.dbAutoUpdate( doiConfig.isDbAutoUpdate() );
+            _dbAutoUpdateInterval.intValue( doiConfig.getDbAutoUpdateInterval() );
+            doiConfig.setQueueShowCompleted( _queueBrowserSettings.showCompleted );
+            doiConfig.setQueueShowIncomplete( _queueBrowserSettings.showIncomplete );
+            doiConfig.setQueueShowSelected( _queueBrowserSettings.showSelected );
+            doiConfig.setQueueShowUnselected( _queueBrowserSettings.showUnselected );
+            _queueBrowserSettings.showCompleted = doiConfig.isQueueShowCompleted();
+            _queueBrowserSettings.showIncomplete = doiConfig.isQueueShowIncomplete();
+            _queueBrowserSettings.showSelected = doiConfig.isQueueShowSelected();
+            _queueBrowserSettings.showUnselected = doiConfig.isQueueShowUnselected();
+            generateBroadcastChangeEvent();
+            generateDatabaseChangeEvent();
+            
         } catch (javax.xml.bind.JAXBException ex) {
             // XXXTODO Handle exception
             java.util.logging.Logger.getLogger("global").log( java.util.logging.Level.SEVERE, null, ex );
@@ -928,6 +1000,29 @@ public class SystemSettings extends JFrame {
         doiConfig.setBufferSize( this.bufferSize() );
         doiConfig.setLoggingEnabled( this.loggingEnabled() );
         doiConfig.setStatusValidDuration( this.statusValidDuration() );
+        
+        doiConfig.setJaxbPackage( this.jaxbPackage() );
+        doiConfig.setTimeout( this.timeout() );
+        doiConfig.setDifxControlAddress( this.difxControlAddress() );
+        doiConfig.setDifxControlPort( this.difxControlPort() );
+        doiConfig.setDifxControlUser( this.difxControlUser() );
+        doiConfig.setDifxControlPWD( new String( this.difxControlPassword() ) );
+        doiConfig.setDifxVersion( this.difxVersion() );
+        doiConfig.setDbUseDataBase( this.useDataBase() );
+        doiConfig.setDbVersion( this.dbVersion() );
+        doiConfig.setDbName( this.dbName() );
+        doiConfig.setReportLoc( _reportLoc );
+        doiConfig.setGuiDocPath( _guiDocPath.getText() );
+        doiConfig.setDifxUsersGroupURL( _difxUsersGroupURL.getText() );
+        doiConfig.setDifxWikiURL( _difxWikiURL.getText() );
+        doiConfig.setDifxSVN( _difxSVN.getText() );
+        doiConfig.setDbAutoUpdate( this.dbAutoUpdate() );
+        doiConfig.setDbAutoUpdateInterval( _dbAutoUpdateInterval.intValue() );
+        doiConfig.setQueueShowCompleted( _queueBrowserSettings.showCompleted );
+        doiConfig.setQueueShowIncomplete( _queueBrowserSettings.showIncomplete );
+        doiConfig.setQueueShowSelected( _queueBrowserSettings.showSelected );
+        doiConfig.setQueueShowUnselected( _queueBrowserSettings.showUnselected );
+        
         try {
             javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance( doiConfig.getClass().getPackage().getName() );
             javax.xml.bind.Marshaller marshaller = jaxbCtx.createMarshaller();
@@ -982,12 +1077,10 @@ public class SystemSettings extends JFrame {
     public void testDatabaseAction() {
         databaseSuccess( "" );
         databaseWarning( "Connecting to database (" + this.dbURL() + ")..." );
-        DBConnection dbConnection = new DBConnection( this.dbURL(), this.jdbcDriver(), this.dbSID(), this.dbPWD() );
+        QueueDBConnection db = new QueueDBConnection( this );
         try {
-            dbConnection.connectToDB();
-
             databaseSuccess( "Connection successful...reading DiFX jobs..." );
-            ResultSet jobInfo = dbConnection.selectData( "select * from " + _dbName.getText() + ".Job" );
+            ResultSet jobInfo = db.jobList();
 
             Integer n = 0;
             while ( jobInfo.next() )
@@ -997,9 +1090,6 @@ public class SystemSettings extends JFrame {
 
         } catch ( java.sql.SQLException e ) {
             databaseFailure( "SQLException: " + e.getMessage() );
-            databaseSuccess( "" );
-        } catch ( ClassNotFoundException e ) {
-            databaseFailure( "Connection Failure (ClassNotFoundException): " + e.getMessage() );
             databaseSuccess( "" );
         } catch ( Exception e ) {
             databaseFailure( "Connection Failure (Exception): " + e.getMessage()  );
@@ -1071,13 +1161,14 @@ public class SystemSettings extends JFrame {
     public QueueBrowserPanel queueBrowser() {
         return _queueBrowser;
     }
+    public QueueBrowserSettings queueBrowserSettings() { return _queueBrowserSettings; }
     
     protected SystemSettings _this;
     
     protected boolean _allObjectsBuilt;
 
     protected JMenuBar _menuBar;
-    protected JTextField _settingsFileName;
+    protected JFormattedTextField _settingsFileName;
     protected boolean _settingsFileRead;
     
     protected String _jaxbPackage;
@@ -1086,13 +1177,13 @@ public class SystemSettings extends JFrame {
     protected boolean _loggingEnabled;
     protected long _statusValidDuration;
     //  DiFX Control Connection
-    protected JTextField _difxControlAddress;
+    protected JFormattedTextField _difxControlAddress;
     protected NumberBox _difxControlPort;
-    protected JTextField _difxControlUser;
+    protected JFormattedTextField _difxControlUser;
     protected JPasswordField _difxControlPWD;
-    protected JTextField _difxVersion;
+    protected JFormattedTextField _difxVersion;
     //  Broadcast network
-    protected JTextField _ipAddress;
+    protected JFormattedTextField _ipAddress;
     protected NumberBox _port;
     protected NumberBox _bufferSize;
     protected NumberBox _timeout;
@@ -1101,12 +1192,14 @@ public class SystemSettings extends JFrame {
     Track2D _broadcastTrack;
     int _broadcastTrackSize;
     //  Database configuration
-    protected JTextField _dbHost;
-    protected JTextField _dbSID;
+    protected JCheckBox _dbUseDataBase;
+    protected JFormattedTextField _dbVersion;
+    protected JFormattedTextField _dbHost;
+    protected JFormattedTextField _dbSID;
     protected JPasswordField _dbPWD;
-    protected JTextField _dbName;
-    protected JTextField _jdbcDriver;
-    protected JTextField _jdbcPort;
+    protected JFormattedTextField _dbName;
+    protected JFormattedTextField _jdbcDriver;
+    protected JFormattedTextField _jdbcPort;
     protected String _dbURL;
     protected JCheckBox _dbAutoUpdate;
     protected NumberBox _dbAutoUpdateInterval;
@@ -1117,14 +1210,23 @@ public class SystemSettings extends JFrame {
     protected String _reportLoc;
     
     //  These are locations for "help" - GUI and DiFX documentation.
-    protected JTextField _guiDocPath;
+    protected JFormattedTextField _guiDocPath;
     protected JButton _guiDocPathBrowseButton;
-    protected JTextField _difxUsersGroupURL;
-    protected JTextField _difxWikiURL;
-    protected JTextField _difxSVN;
+    protected JFormattedTextField _difxUsersGroupURL;
+    protected JFormattedTextField _difxWikiURL;
+    protected JFormattedTextField _difxSVN;
     
     //  The "look and feel" that applies to all GUI components.
     protected String _lookAndFeel;
+    
+    //  Settings in the queue browser.
+    public class QueueBrowserSettings {
+        boolean showSelected;
+        boolean showUnselected;
+        boolean showCompleted;
+        boolean showIncomplete;
+    }
+    protected QueueBrowserSettings _queueBrowserSettings;
     
     //  Different lists of event listeners.  Other classes can be informed of
     //  setting changes by adding themselves to these lists.

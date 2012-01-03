@@ -129,7 +129,7 @@ public class DBConnection
         mConnection = null;
         mStatement = null;
 
-//        try {
+        try {
             Class driverClass = Class.forName(mDbJdbc);
 
 //         mLogger.info("login timeout = " + DriverManager.getLoginTimeout());
@@ -139,23 +139,28 @@ public class DBConnection
             mConnection.setAutoCommit(true);
             mStatement = mConnection.prepareStatement(INSERT_STATEMENT);
 
-            //mLogger.info("Connected to database!!");
-//        } catch ( java.sql.SQLException e ) {
-//            mLogger.severe( e.getMessage() );
-//            throw e;
-//        } catch (ClassNotFoundException e) {
-//            String message =
-//                    "Failed to find database driver [" + e.getMessage() + "]";
-//            mLogger.severe(message);
-//            throw e;
-//        } catch (Exception e) {
-//            String message =
-//                    "Failed to connect to database [" + e.getMessage() + "]";
-//            mLogger.severe(message);
-//            throw e;
-//        }
+        } catch ( java.sql.SQLException e ) {
+            String message = "Exception during connection to database: " + e.getMessage();
+            mLogger.severe( message );
+            throw e;
+        } catch (ClassNotFoundException e) {
+            String message =
+                    "Failed to find database driver [" + e.getMessage() + "]";
+            mLogger.severe(message);
+            throw e;
+        } catch (Exception e) {
+            String message =
+                    "Failed to connect to database [" + e.getMessage() + "]";
+            mLogger.severe(message);
+            throw e;
+        }
 
     }
+    
+    /*
+     * Return whether a connection has been successfully made.
+     */
+    public boolean connected() { return ( mConnection != null ); }
 
     /**
      * Executes an sql query on the active database connection.
@@ -215,7 +220,7 @@ public class DBConnection
             return updateCount;
         } catch (Exception e) {
             String message =
-                    "Failed to update data into database [ " + e.getMessage() + "]";
+                    "Failed to update data in database [ " + e.getMessage() + "]";
             mLogger.severe(message);
             throw e;
         }

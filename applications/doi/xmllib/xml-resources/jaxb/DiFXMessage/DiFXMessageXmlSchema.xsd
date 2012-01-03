@@ -94,6 +94,29 @@
                 <xsd:element ref="bufferSize"/>
                 <xsd:element ref="loggingEnabled"/>
                 <xsd:element ref="statusValidDuration"/>
+                
+                <xsd:element ref="jaxbPackage"/>
+                <xsd:element ref="timeout"/>
+                <xsd:element ref="difxControlAddress"/>
+                <xsd:element ref="difxControlPort"/>
+                <xsd:element ref="difxControlUser"/>
+                <xsd:element ref="difxControlPWD"/>
+                <xsd:element ref="difxVersion"/>
+                <xsd:element ref="dbUseDataBase"/>
+                <xsd:element ref="dbVersion"/>
+                <xsd:element ref="dbName"/>
+                <xsd:element ref="reportLoc"/>
+                <xsd:element ref="guiDocPath"/>
+                <xsd:element ref="difxUsersGroupURL"/>
+                <xsd:element ref="difxWikiURL"/>
+                <xsd:element ref="difxSVN"/>
+                <xsd:element ref="dbAutoUpdate"/>
+                <xsd:element ref="dbAutoUpdateInterval"/>
+                <xsd:element ref="queueShowCompleted"/>
+                <xsd:element ref="queueShowIncomplete"/>
+                <xsd:element ref="queueShowSelected"/>
+                <xsd:element ref="queueShowUnselected"/>
+                
             </xsd:sequence>
         </xsd:complexType>
     </xsd:element>
@@ -112,7 +135,29 @@
     <xsd:element name="bufferSize" type="xsd:int"></xsd:element>
     <xsd:element name="loggingEnabled" type="xsd:boolean"></xsd:element>
     <xsd:element name="statusValidDuration" type="xsd:unsignedInt"></xsd:element>
-
+                
+    <xsd:element name="jaxbPackage" type="xsd:string"></xsd:element>
+    <xsd:element name="timeout" type="xsd:int"></xsd:element>
+    <xsd:element name="difxControlAddress" type="xsd:string"></xsd:element>
+    <xsd:element name="difxControlPort" type="xsd:int"></xsd:element>
+    <xsd:element name="difxControlUser" type="xsd:string"></xsd:element>
+    <xsd:element name="difxControlPWD" type="xsd:string"></xsd:element>
+    <xsd:element name="difxVersion" type="xsd:string"></xsd:element>
+    <xsd:element name="dbUseDataBase" type="xsd:boolean"></xsd:element>
+    <xsd:element name="dbVersion" type="xsd:string"></xsd:element>
+    <xsd:element name="dbName" type="xsd:string"></xsd:element>
+    <xsd:element name="reportLoc" type="xsd:string"></xsd:element>
+    <xsd:element name="guiDocPath" type="xsd:string"></xsd:element>
+    <xsd:element name="difxUsersGroupURL" type="xsd:string"></xsd:element>
+    <xsd:element name="difxWikiURL" type="xsd:string"></xsd:element>
+    <xsd:element name="difxSVN" type="xsd:string"></xsd:element>
+    <xsd:element name="dbAutoUpdate" type="xsd:boolean"></xsd:element>
+    <xsd:element name="dbAutoUpdateInterval" type="xsd:int"></xsd:element>
+    <xsd:element name="queueShowCompleted" type="xsd:boolean"></xsd:element>
+    <xsd:element name="queueShowIncomplete" type="xsd:boolean"></xsd:element>
+    <xsd:element name="queueShowSelected" type="xsd:boolean"></xsd:element>
+    <xsd:element name="queueShowUnselected" type="xsd:boolean"></xsd:element>
+                
     <xsd:complexType name="mark5Status">
         <xsd:sequence>
             <xsd:element name="bankAVSN" type="xsd:string"></xsd:element>

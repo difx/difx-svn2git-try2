@@ -44,11 +44,13 @@ import edu.nrao.difx.xmllib.difxmessage.DifxAlert;
 import edu.nrao.difx.xmllib.difxmessage.DifxStatus;
 import java.awt.Font;
 
+import edu.nrao.difx.difxdatabase.DBConnection;
+
 /**
  *
  * @author jspitzak
  */
-public class JobNode extends BrowserNode {
+public class JobNode extends QueueBrowserNode {
     
     public JobNode( String name, SystemSettings settings ) {
         super( name );
@@ -201,14 +203,14 @@ public class JobNode extends BrowserNode {
         showActive( true );
         this.add( _active );
         _popup = new JPopupMenu();
-        JMenuItem menuItem2 = new JMenuItem( "Control/Monitor" );
-        menuItem2.addActionListener(new ActionListener() {
+        _monitorMenuItem = new JMenuItem( "Control/Monitor for " + name() );
+        _monitorMenuItem.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 updateEditorMonitor();
                 _editorMonitor.setVisible( true );
             }
         });
-        _popup.add( menuItem2 );
+        _popup.add( _monitorMenuItem );
         _popup.add( new JSeparator() );
         _selectMenuItem = new JMenuItem( "Select Job" );
         _selectMenuItem.addActionListener(new ActionListener() {
@@ -226,8 +228,13 @@ public class JobNode extends BrowserNode {
         _popup.add( menuItem2a );
         JMenuItem menuItem3 = new JMenuItem( "Copy" );
         _popup.add( menuItem3 );
-        JMenuItem menuItem4 = new JMenuItem( "Delete" );
-        _popup.add( menuItem4 );
+        JMenuItem deleteItem = new JMenuItem( "Delete" );
+        deleteItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                deleteAction();
+            }
+        });
+        _popup.add( deleteItem );
         _popup.add( new JSeparator() );
         JMenuItem menuItem8 = new JMenuItem( "Queue" );
         menuItem8.setToolTipText( "Put this job in the runnable queue." );
@@ -298,7 +305,7 @@ public class JobNode extends BrowserNode {
         }
         else {
             if ( _weights != null ) {
-                for ( int i = 0; i < _weights.length; ++i ) {
+                for ( int i = 0; i < _antenna.length && i < _weight.length; ++i ) {
                     _antenna[i].setVisible( false );
                     _weight[i].setVisible( false );
 //                    _weightPlotWindow[i].setVisible( false );
@@ -392,8 +399,9 @@ public class JobNode extends BrowserNode {
         _label.setText( _nameEditor.getText() );
         _label.setVisible( true );
         _nameEditor.setVisible( false );
-        //  BLAT DATABASE
-        System.out.println( "change job name in database" );
+        _monitorMenuItem.setText( "Control/Monitor for " + name() );
+        _editorMonitor.setTitle( "Control/Monitor for " + name() );
+        updateDatabase( "name", name() );
     }
     
     /*
@@ -424,6 +432,48 @@ public class JobNode extends BrowserNode {
     public void selected( boolean newVal ) {
         _selected = newVal;
         checkSelectionSetting();
+    }
+    
+    /*
+     * Delete this job.  It must be removed from the database and then removed from
+     * its parent "pass".
+     */
+    public void deleteAction() {
+        removeFromDatabase();
+        ((BrowserNode)(this.getParent())).removeChild( this );
+    }
+    
+    /*
+     * Remove this job from the database.  This is probably done prior to deleting
+     * this job.
+     */
+    public void removeFromDatabase() {
+        //  Create a new database connection using the current system settings.
+        DBConnection dbConnection = new DBConnection( _settings.dbURL(), _settings.jdbcDriver(),
+                _settings.dbSID(), _settings.dbPWD() );
+        try {
+            dbConnection.connectToDB();
+            int deleteCount = dbConnection.updateData( "delete from " + _settings.dbName() + 
+                    ".Job where inputFile = \"" + this.inputFile() + "\"" );
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+        }
+    }
+    
+    /*
+     * This is a generic database update function for this object.  It will change
+     * a specific field to a specific value - both are strings.
+     */
+    public void updateDatabase( String param, String setting ) {
+        DBConnection dbConnection = new DBConnection( _settings.dbURL(), _settings.jdbcDriver(),
+            _settings.dbSID(), _settings.dbPWD() );
+        try {
+            dbConnection.connectToDB();
+            int deleteCount = dbConnection.updateData( "update " + _settings.dbName() + 
+                    ".Job set " + param + " = \"" + setting + "\" where inputFile = \"" + this.inputFile() + "\"" );
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+        }
     }
 
     /*
@@ -776,6 +826,7 @@ public class JobNode extends BrowserNode {
     
     protected JButton _selectedButton;
     protected boolean _selected;
+    protected JMenuItem _monitorMenuItem;
     protected JMenuItem _selectMenuItem;
     
     protected boolean _colorColumn;

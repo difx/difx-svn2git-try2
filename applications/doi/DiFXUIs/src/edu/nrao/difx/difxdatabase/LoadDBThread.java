@@ -31,6 +31,7 @@ public class LoadDBThread extends Thread
    public LoadDBThread(String str)
    {
       super(str);
+      System.out.println( "DELETE THIS CLASS >>>>>>>>>>>>>LoadDBThread...." + str );
    }
 
    public void setDataModel(DiFXDataModel dataModel)

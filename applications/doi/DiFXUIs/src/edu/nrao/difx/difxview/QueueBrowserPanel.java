@@ -9,13 +9,26 @@ import mil.navy.usno.widgetlib.BrowserNode;
 import mil.navy.usno.widgetlib.TearOffPanel;
 import mil.navy.usno.widgetlib.MessageDisplayPanel;
 import mil.navy.usno.widgetlib.ActivityMonitorLight;
+import mil.navy.usno.widgetlib.NumberBox;
+import mil.navy.usno.widgetlib.SaneTextField;
 
 import javax.swing.JLabel;
 import javax.swing.JButton;
+import javax.swing.JPopupMenu;
+import javax.swing.JMenuItem;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JMenu;
+import javax.swing.JSeparator;
+import javax.swing.JDialog;
+import javax.swing.JFormattedTextField;
+import javax.swing.JOptionPane;
 
 import java.awt.Font;
 import java.awt.Color;
 import java.awt.Insets;
+import java.awt.Frame;
+import java.awt.Component;
+import java.awt.Point;
 
 import java.io.File;
 
@@ -35,6 +48,7 @@ import edu.nrao.difx.difxcontroller.*;
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 
 import edu.nrao.difx.difxdatabase.DBConnection;
+import edu.nrao.difx.difxdatabase.QueueDBConnection;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyAdapter;
@@ -56,7 +70,132 @@ public class QueueBrowserPanel extends TearOffPanel {
         _mainLabel.setBounds( 5, 0, 150, 20 );
         _mainLabel.setFont( new Font( "Dialog", Font.BOLD, 14 ) );
         add( _mainLabel );
-        _updateButton = new JButton( "Update" );
+        //  The popup menu for the "New" button.
+        _newMenu = new JPopupMenu();
+        JMenuItem newExperimentItem = new JMenuItem( "Experiment" );
+        newExperimentItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                newExperiment();
+            }
+        });
+        _newMenu.add( newExperimentItem );
+        JMenuItem newPassItem = new JMenuItem( "Pass" );
+        newPassItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                newPass();
+            }
+        });
+        _newMenu.add( newPassItem );
+        JMenuItem newJobItem = new JMenuItem( "Job" );
+        newJobItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                newJob();
+            }
+        });
+        _newMenu.add( newJobItem );
+        _newButton = new JButton( "New..." );
+        _newButton.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _newMenu.show( _newButton, 0, 25 );
+            }
+        });
+        this.add( _newButton );
+        //  The menu for the "select" button.
+        _selectMenu = new JPopupMenu();
+        JMenuItem selectAllItem = new JMenuItem( "Select All" );
+        selectAllItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                selectAll();
+            }
+        });
+        _selectMenu.add( selectAllItem );
+        JMenuItem unselectAllItem = new JMenuItem( "Unselect All" );
+        unselectAllItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                unselectAll();
+            }
+        });
+        _selectMenu.add( unselectAllItem );
+        _selectMenu.add( new JSeparator() );
+        JMenuItem runSelectedItem = new JMenuItem( "Run Selected" );
+        runSelectedItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                runSelected();
+            }
+        });
+        _selectMenu.add( runSelectedItem );
+        runSelectedItem.setEnabled( false );
+        JMenuItem deleteSelectedItem = new JMenuItem( "Delete Selected" );
+        deleteSelectedItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                deleteSelected();
+            }
+        });
+        _selectMenu.add( deleteSelectedItem );
+        _selectButton = new JButton( "Select" );
+        _selectButton.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _selectMenu.show( _selectButton, 0, 25 );
+            }
+        });
+        this.add( _selectButton );
+        //  The menu for the "show" button.
+        _showMenu = new JPopupMenu();
+        _showSelectedItem = new JCheckBoxMenuItem( "Selected" );
+        _showSelectedItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                showItemChange();
+            }
+        });
+        _showSelectedItem.setSelected( _systemSettings.queueBrowserSettings().showSelected );
+        _showMenu.add( _showSelectedItem );
+        _showUnselectedItem = new JCheckBoxMenuItem( "Unselected" );
+        _showUnselectedItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                showItemChange();
+            }
+        });
+        _showUnselectedItem.setSelected( _systemSettings.queueBrowserSettings().showUnselected );
+        _showMenu.add( _showUnselectedItem );
+        _showCompletedItem = new JCheckBoxMenuItem( "Completed" );
+        _showCompletedItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                showItemChange();
+            }
+        });
+        _showCompletedItem.setSelected( _systemSettings.queueBrowserSettings().showCompleted );
+        _showMenu.add( _showCompletedItem );
+        _showIncompleteItem = new JCheckBoxMenuItem( "Incomplete" );
+        _showIncompleteItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                showItemChange();
+            }
+        });
+        _showIncompleteItem.setSelected( _systemSettings.queueBrowserSettings().showIncomplete );
+        _showMenu.add( _showIncompleteItem );
+        _showMenu.add( new JSeparator() );
+        JMenuItem expandAllItem = new JMenuItem( "Expand All" );
+        expandAllItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                expandAll();
+            }
+        });
+        _showMenu.add( expandAllItem );
+        JMenuItem collapseAllItem = new JMenuItem( "Collapse All" );
+        collapseAllItem.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                collapseAll();
+            }
+        });
+        _showMenu.add( collapseAllItem );
+        _showButton = new JButton( "Show..." );
+        _showButton.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _showMenu.show( _showButton, 0, 25 );
+            }
+        });
+        this.add( _showButton );
+        _updateButton = new JButton( "DB Update" );
         _updateButton.setToolTipText( "Update queue data from the DiFX database." );
         _updateButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
@@ -153,6 +292,9 @@ public class QueueBrowserPanel extends TearOffPanel {
     public void setBounds(int x, int y, int width, int height) {
         _browserPane.setBounds( 0, 60, width, height - 60 );
         super.setBounds( x, y, width, height );
+        _newButton.setBounds( 5, 30, 100, 25 );
+        _selectButton.setBounds( 110, 30, 100, 25 );
+        _showButton.setBounds( 215, 30, 100, 25 );
         _updateButton.setBounds( width - 120, 30, 110, 25 );
         _autoButton.setBounds( width - 145, 30, 25, 25 );
     }
@@ -178,7 +320,128 @@ public class QueueBrowserPanel extends TearOffPanel {
             System.out.println( "release " + e.getKeyCode() );
         }
     }
+
+    /*
+     * This class produces a simple pop-up window
+     */
+    protected class NewExperimentWindow extends JDialog {
+        
+        public NewExperimentWindow( Frame frame, int x, int y ) {
+            super( frame, "Create New Experiment", true );
+            this.setBounds( x, y, 320, 180 );
+            this.setResizable( false );
+            this.getContentPane().setLayout( null );
+            _name = new SaneTextField();
+            _name.setBounds( 100, 20, 210, 25 );
+            _name.textWidthLimit( 20 );
+            _name.setToolTipText( "Name assigned to the experiment (up to 20 characters)." );
+            this.getContentPane().add( _name );
+            JLabel nameLabel = new JLabel( "Name:" );
+            nameLabel.setBounds( 10, 20, 85, 25 );
+            nameLabel.setHorizontalAlignment( JLabel.RIGHT );
+            this.getContentPane().add( nameLabel );
+            _number = new NumberBox();
+            _number.setBounds( 100, 50, 80, 25 );
+            _number.limits( 0.0, 9999.0 );
+            _number.setToolTipText( "Number (up to four digits) used to associate experiments with the same name." );
+            this.getContentPane().add( _number );
+            JLabel numberLabel = new JLabel( "Number:" );
+            numberLabel.setBounds( 10, 50, 85, 25 );
+            numberLabel.setHorizontalAlignment( JLabel.RIGHT );
+            this.getContentPane().add( numberLabel );
+            JButton cancelButton = new JButton( "Cancel" );
+            cancelButton.setBounds( 100, 110, 100, 25 );
+            cancelButton.addActionListener( new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    ok( false );
+                }
+            });
+            this.getContentPane().add( cancelButton );
+            JButton okButton = new JButton( "Apply" );
+            okButton.setBounds( 210, 110, 100, 25 );
+            okButton.addActionListener( new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    ok( true );
+                }
+            });
+            this.getContentPane().add( okButton );
+        }        
+        public String name() { return _name.getText(); }
+        public void name( String newVal ) { _name.setText( newVal ); }
+        public Integer number() { return _number.intValue(); }
+        public void number( Integer newVal ) { _number.intValue( newVal ); }
+        protected void ok( boolean newVal ) {
+            _ok = newVal;
+            this.setVisible( false );
+        }
+        public boolean ok() { return _ok; }
+        public void visible() {
+            _ok = false;
+            this.setVisible( true );
+        }
+        protected SaneTextField _name;
+        protected SaneTextField _segment;
+        protected NumberBox _number;
+        protected boolean _ok;
+        protected Timer _timeoutTimer;
+
+    };
     
+    /*
+     * Add a new experiment to the browser and the database.
+     */
+    protected void newExperiment() {
+        //  Connect to the database.  If this fails, we don't even try to pursue
+        //  this activity.
+        QueueDBConnection db = new QueueDBConnection( _systemSettings );
+        if ( !db.connected() ) {
+            JOptionPane.showMessageDialog( this, "Unable to connect to the data base!", "", JOptionPane.ERROR_MESSAGE );
+            return;
+        }
+        
+        //  Scan the database for the highest experiment ID in existence.  Then
+        //  assume the data base software will assign an ID number for this experiment
+        //  that is 1 higher than this number.
+        ResultSet dbExperimentList = db.experimentList();
+        Integer newExperimentId = 1;
+        try {
+            //  Parse out the ID numbers.  We don't care about the names.
+            while ( dbExperimentList.next() ) {
+                int newId = dbExperimentList.getInt( "id" );
+                if ( newId >= newExperimentId )
+                    newExperimentId = newId + 1;
+            }
+        } catch ( Exception e ) {
+                java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+        }
+        //  Open a popup window where the user can specify details of the new experiment.
+        //  This window is modal.  All of the "Component" crap is used to give the popup
+        //  a "frame" in which to reside.
+        Component comp = this.getParent();
+        while ( comp.getParent() != null )
+            comp = comp.getParent();
+        Point pt = _newButton.getLocationOnScreen();
+        NewExperimentWindow win = new NewExperimentWindow( (Frame)comp, pt.x + 25, pt.y + 25 );
+        win.number( 0 );
+        win.name( "Experiment_" + newExperimentId.toString() );
+        win.visible();
+        //  If the user hit the "ok" button, add this new experiment to the database.
+        //  Otherwise, bail out.
+        if ( win.ok() ) {
+            db.newExperiment( win.name(), win.number() );
+        }
+    }
+        
+    protected void newPass() {};
+    protected void newJob() {};
+    protected void selectAll() {};
+    protected void unselectAll() {};
+    protected void runSelected() {};
+    protected void deleteSelected() {};
+    protected void showItemChange() {};
+    protected void expandAll() {};
+    protected void collapseAll() {};
+                
     /*
      * The user has hit the "auto" button.  This activates the "auto" light and
      * causes auto updates to occur.  Or it turns them off.
@@ -245,6 +508,273 @@ public class QueueBrowserPanel extends TearOffPanel {
      * pulls everything off the database and uses it to change our current list.
      */
     void updateQueueFromDatabase() {
+        
+        //  Get a new connection to the database.  Bail out if this doesn't work.
+        QueueDBConnection db = new QueueDBConnection( _systemSettings );
+        if ( !db.connected() )
+            return;
+        
+        //  Get lists of all experiments, passes, and jobs in the database.
+        ResultSet dbExperimentList = db.experimentList();
+        ResultSet dbPassList = db.passList();
+        ResultSet dbJobList = db.jobList();
+        ResultSet dbPassTypeList = db.passTypeList();
+        ResultSet dbJobStatusList = db.jobStatusList();
+        ResultSet dbSlotList = db.slotList();
+        ResultSet dbModule = db.moduleList();
+        ResultSet dbExperimentAndModule = db.experimentAndModuleList();
+        ResultSet dbExperimentStatus = db.experimentStatusList();
+        
+        //  Getting this far indicates a successful update from the queue.  
+        //  Flash the indicator light!
+        _autoActiveLight.on( true );
+
+        //  We need to track the addition and deletion of items in the data base.
+        //  To make this possible, we set a "found" flag to false in each item we
+        //  already know about - if we don't "find" any one item again, we'll
+        //  remove it.
+        BrowserNode experimentList = _browserPane.browserTopNode();
+        if ( experimentList.children().size() > 1 ) {
+            //  The first item in the browser list is not actually an experiment -
+            //  it is the header.  We skip it.
+            Iterator<BrowserNode> iter = experimentList.childrenIterator();
+            iter.next();
+            for ( ; iter.hasNext(); ) {
+                QueueBrowserNode thisExperiment = (QueueBrowserNode)(iter.next());
+                thisExperiment.found( false );
+                //  Within each experiment, flag passes....
+                for ( Iterator<BrowserNode> pIter = thisExperiment.childrenIterator(); pIter.hasNext(); ) {
+                    QueueBrowserNode thisPass = (QueueBrowserNode)(pIter.next());
+                    thisPass.found( false );
+                    //  Within each pass, flag each job...
+                    for ( Iterator<BrowserNode> jIter = thisPass.childrenIterator(); jIter.hasNext(); )
+                        ((QueueBrowserNode)(jIter.next())).found( false );
+                }
+            }
+        }
+        
+        //  Database operations generate exceptions here and there....
+        try {
+            //  Run through each experiment in the data base and see if we know about
+            //  it already in our list.  If we do, set the "found" flag.  If we don't,
+            //  add it to the list.
+            while ( dbExperimentList.next() ) {
+                String name = dbExperimentList.getString( "code" );
+                Integer id = dbExperimentList.getInt( "id" );
+                Integer number = dbExperimentList.getInt( "number" );
+                Integer status = dbExperimentList.getInt( "statusID" );
+                String dateCreated = dbExperimentList.getString( "dateCreated" );
+                System.out.println( name + "  " + id.toString() + " " + number.toString()
+                        + "  " + status.toString() + "  " + dateCreated );
+                //  Find an exact match in our experiment list.
+                ExperimentNode thisExperiment = null;
+                experimentList = _browserPane.browserTopNode();
+                if ( experimentList.children().size() > 1 ) {
+                    Iterator<BrowserNode> iter = experimentList.childrenIterator();
+                    iter.next();
+                    for ( ; iter.hasNext(); ) {
+                        ExperimentNode testExperiment = (ExperimentNode)(iter.next());
+                        //  We should be able to use the ID to match experiments, as it is
+                        //  supposed to be unique.
+                        if ( testExperiment.idMatch( id ) )
+                            thisExperiment = testExperiment;
+                    }
+                }
+                //  Create a new experiment if we didn't find the named one.
+                if ( thisExperiment == null ) {
+                    thisExperiment = new ExperimentNode( name, _systemSettings );
+                    thisExperiment.id( id );
+                    //thisExperiment.segment( segment );
+                    _browserPane.addNode( thisExperiment );
+                }
+                //  Flag the experiment as "found" so we don't eliminate it.
+                thisExperiment.found( true );
+            }
+            //  Next run through the list of passes, locating them in the experiments.
+            while ( dbPassList.next() ) {
+                String name = dbPassList.getString( "passName" );
+                Integer id = dbPassList.getInt( "id" );
+                Integer experimentId = dbPassList.getInt( "experimentID" );
+                Integer passTypeID = dbPassList.getInt( "passTypeID" );
+                String passType = null;
+                dbPassTypeList.beforeFirst();
+                while ( dbPassTypeList.next() )
+                    if ( passTypeID == dbPassTypeList.getInt( "id" ) )
+                        passType = dbPassTypeList.getString( "type" );
+                PassNode thisPass = null;
+                ExperimentNode thisExperiment = null;
+                experimentList = _browserPane.browserTopNode();
+                if ( experimentList.children().size() > 1 ) {
+                    Iterator<BrowserNode> iter = experimentList.childrenIterator();
+                    iter.next();
+                    for ( ; iter.hasNext(); ) {
+                        ExperimentNode testExperiment = (ExperimentNode)(iter.next());
+                        //  Match the experiment ID.
+                        if ( testExperiment.idMatch( experimentId ) ) {
+                            thisExperiment = testExperiment;
+                            //  Then find the pass in the experiment.
+                            for ( Iterator<BrowserNode> pIter = testExperiment.childrenIterator(); pIter.hasNext(); ) {
+                                PassNode testPass = (PassNode)(pIter.next());
+                                //  Match the pass ID.
+                                if ( id == testPass.id() )
+                                    thisPass = testPass;
+                            }
+                        }
+                    }
+                }
+                //  If this pass wasn't encountered in the list of experiments, see
+                //  if it is floating outside the experiment list or if it needs to
+                //  be added somewhere.
+                if ( thisPass == null ) {
+                    //  Was the experiment for this pass identified at least?
+                    if ( thisExperiment != null ) {
+                        //  Okay, it must be a new pass in the experiment - add it.
+                        thisPass = new PassNode( name, _systemSettings );
+                        thisPass.type( passType );
+                        thisPass.id( id );
+                        thisPass.experimentNode( thisExperiment );
+                        thisExperiment.addChild( thisPass );                        
+                    }
+                    else {
+                        //  TODO:  accomodate passes outside of the experiment structure
+                        //  Right.  This is a "floating" pass outside the experiment
+                        //  list.  See if it already exists in our list of such
+                        //  things.
+                        
+                        //  It wasn't found, so add it.
+                    }
+                }
+                thisPass.found( true );
+            }
+            //  Find each job from the data base in our lists.
+            while ( dbJobList.next() ) {
+                Integer id = dbJobList.getInt( "id" );
+                Integer passId = dbJobList.getInt( "passID" );
+                //  Locate this job within the proper pass.  Both are identified
+                //  by ID's, so screwed up ID's will likely kill us.
+                PassNode thisPass = null;
+                JobNode thisJob = null;
+                ExperimentNode thisExperiment = null;
+                experimentList = _browserPane.browserTopNode();
+                if ( experimentList.children().size() > 1 ) {
+                    Iterator<BrowserNode> iter = experimentList.childrenIterator();
+                    iter.next();
+                    boolean noJobMatch = true;
+                    for ( ; iter.hasNext() && noJobMatch; ) {
+                        ExperimentNode testExperiment = (ExperimentNode)(iter.next());
+                        for ( Iterator<BrowserNode> pIter = testExperiment.childrenIterator(); pIter.hasNext() && noJobMatch; ) {
+                            PassNode testPass = (PassNode)(pIter.next());
+                            if ( passId == testPass.id() ) {
+                                thisPass = testPass;
+                                thisExperiment = testExperiment;
+                                for ( Iterator<BrowserNode> jIter = thisPass.childrenIterator(); jIter.hasNext() && noJobMatch; ) {
+                                    JobNode testJob = (JobNode)(jIter.next());
+                                    if ( id.intValue() == testJob.id().intValue() ) {
+                                        noJobMatch = false;
+                                        thisJob = testJob;
+                                        thisJob.found( true );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                //  Add the job if we haven't found it.
+                if ( thisJob == null ) {
+                    //  Did we find the pass?
+                    if ( thisPass != null ) {
+                        //  Generate a job name, either from the input file if that
+                        //  works or from the pass name and job number.
+                        File tryFile = new File( dbJobList.getString( "inputFile" ) );
+                        Integer jobNumber = dbJobList.getInt( "jobNumber" );
+                        String jobName = null;
+                        if ( tryFile != null ) {
+                            jobName = tryFile.getName().substring( 0, tryFile.getName().lastIndexOf( "." ) );
+                        }
+                        if ( jobName == null )
+                            jobName = thisPass.name() + "_" + jobNumber.toString();
+                        thisJob = new JobNode( jobName, _systemSettings );
+                        thisJob.id( id );
+                        thisJob.experiment( thisExperiment.name() );
+                        thisJob.pass( thisPass.name() );
+                        thisJob.passNode( thisPass );
+                        thisPass.addChild( thisJob );
+                        _header.addJob( thisJob ); 
+                    }
+                    else {
+                        //  Floating job - figure out what to do with this, if anything.
+                    }
+                }
+                //  Fill in all information about the job if it was found.
+                if ( thisJob != null ) {
+                    thisJob.found( true );
+                    thisJob.inputFile( dbJobList.getString( "inputFile" ) );
+                    thisJob.priority( dbJobList.getInt("priority") );
+                    thisJob.queueTime( dbJobList.getString( "queueTime" ) );
+                    thisJob.correlationStart( dbJobList.getString( "correlationStart" ) );
+                    thisJob.correlationEnd( dbJobList.getString( "correlationEnd" ) );
+                    thisJob.jobStart( dbJobList.getDouble( "jobStart" ) );
+                    thisJob.jobDuration( dbJobList.getDouble( "jobDuration" ) ); 
+                    thisJob.inputFile( dbJobList.getString( "inputFile" ) );
+                    thisJob.outputFile( dbJobList.getString( "outputFile" ) );
+                    thisJob.outputSize( dbJobList.getInt( "outputSize" ) );
+                    thisJob.difxVersion( dbJobList.getString( "difxVersion" ) );
+                    thisJob.speedUpFactor( dbJobList.getDouble( "speedupFactor" ) );
+                    thisJob.numAntennas( dbJobList.getInt( "numAntennas" ) );
+                    thisJob.numForeignAntennas( dbJobList.getInt( "numForeign" ) );
+                    thisJob.dutyCycle( dbJobList.getString( "dutyCycle" ) );
+                    thisJob.status( "unknown" );
+                    thisJob.active( false );
+                    thisJob.statusId( dbJobList.getInt( "statusID" ) );
+                    Integer statusIdInt = dbJobList.getInt( "statusID" );
+                    dbJobStatusList.beforeFirst();
+                    if ( dbJobStatusList.next() ) {
+                        thisJob.status( dbJobStatusList.getString( "status" ) );
+                        thisJob.active( dbJobStatusList.getBoolean( "active" ) );
+                    }
+                }
+            }
+        } catch ( Exception e ) {
+            System.out.println( e );
+            e.printStackTrace();
+        }
+
+        //  Eliminate any items we have failed to find in the data base,
+        //  with the exception of those that "persist".
+        experimentList = _browserPane.browserTopNode();
+        if ( experimentList.children().size() > 1 ) {
+            Iterator<BrowserNode> iter = experimentList.childrenIterator();
+            iter.next();
+            for ( ; iter.hasNext(); ) {
+                ExperimentNode thisExperiment = (ExperimentNode)(iter.next());
+                if ( !thisExperiment.found() && !thisExperiment.persist() )
+                    _browserPane.browserTopNode().removeChild( thisExperiment );
+                else {
+                    //  Eliminate passes under each experiment...
+                    for ( Iterator<BrowserNode> pIter = thisExperiment.childrenIterator(); pIter.hasNext(); ) {
+                        PassNode thisPass = (PassNode)(pIter.next());
+                        if ( !thisPass.found() && !thisPass.persist() )
+                            thisExperiment.removeChild( thisPass );
+                        else {
+                            //  Eliminate jobs under each pass.
+                            for ( Iterator<BrowserNode> jIter = thisPass.childrenIterator(); jIter.hasNext(); ) {
+                                JobNode thisJob = (JobNode)(jIter.next());
+                                if ( !thisJob.found() && !thisJob.persist() )
+                                    thisPass.removeChild( thisJob );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+    }
+    
+    /*
+     * Update our list of experiments, passes, and nodes from the database.  This
+     * pulls everything off the database and uses it to change our current list.
+     */
+    void updateQueueFromDatabase1() {
 
         //  Create a new database connection using the current system settings.
         DBConnection dbConnection = new DBConnection( _systemSettings.dbURL(), _systemSettings.jdbcDriver(),
@@ -318,7 +848,8 @@ public class QueueBrowserPanel extends TearOffPanel {
                 }
                 //  Create a new experiment if we didn't find the named one.
                 if ( thisExperiment == null ) {
-                    thisExperiment = new ExperimentNode( experimentName );
+                    thisExperiment = new ExperimentNode( experimentName, _systemSettings );
+                    thisExperiment.id( experimentId );
                     _browserPane.addNode( thisExperiment );
                 }
                 
@@ -333,8 +864,9 @@ public class QueueBrowserPanel extends TearOffPanel {
                 }
                 //  Create a new pass if we didn't find the named one.
                 if ( thisPass == null ) {
-                    thisPass = new PassNode( passName );
+                    thisPass = new PassNode( passName, _systemSettings );
                     thisPass.type( passType );
+                    thisPass.id( passId );
                     thisPass.experimentNode( thisExperiment );
                     thisExperiment.addChild( thisPass );
                 }
@@ -356,7 +888,7 @@ public class QueueBrowserPanel extends TearOffPanel {
                     thisJob.pass( thisPass.name() );
                     thisJob.passNode( thisPass );
                     thisPass.addChild( thisJob );
-                    _header.addJob( thisJob );
+                    _header.addJob( thisJob ); 
                 }
     
                 thisJob.priority( jobInfo.getInt("priority") );
@@ -506,16 +1038,19 @@ public class QueueBrowserPanel extends TearOffPanel {
 
             if ( thisJob == null ) {
                 if ( _unaffiliated == null ) {
-                    _unaffiliated = new ExperimentNode( "Jobs Outside Queue" );
+                    _unaffiliated = new ExperimentNode( "Jobs Outside Queue", _systemSettings );
+                    _unaffiliated.persist( true );
                     _browserPane.addNode( _unaffiliated );
-                    _unknown = new PassNode( "" );
+                    _unknown = new PassNode( "", _systemSettings );
                     _unknown.experimentNode( _unaffiliated );
                     _unknown.setHeight( 0 );
+                    _unknown.persist( true );
                     _unaffiliated.addChild( _unknown );
                 }
                 thisJob = new JobNode( difxMsg.getHeader().getIdentifier(), _systemSettings );
                 _unknown.addChild( thisJob );
                 thisJob.passNode( _unknown );
+                thisJob.persist( true );
                 _header.addJob( thisJob );
             }
 
@@ -528,16 +1063,19 @@ public class QueueBrowserPanel extends TearOffPanel {
     
     public void createDummyJob( String name ) {
         if ( _unaffiliated == null ) {
-            _unaffiliated = new ExperimentNode( "Jobs Outside Queue" );
+            _unaffiliated = new ExperimentNode( "Jobs Outside Queue", _systemSettings );
+            _unaffiliated.persist( true );
             _browserPane.addNode( _unaffiliated );
-            _unknown = new PassNode( "" );
+            _unknown = new PassNode( "", _systemSettings );
             _unknown.experimentNode( _unaffiliated );
             _unknown.setHeight( 0 );
+            _unknown.persist( true );
             _unaffiliated.addChild( _unknown );
         }
         JobNode thisJob = new JobNode( name, _systemSettings );
         _unknown.addChild( thisJob );
         thisJob.passNode( _unknown );
+        thisJob.persist( true );
         _header.addJob( thisJob );
     }
 
@@ -557,5 +1095,15 @@ public class QueueBrowserPanel extends TearOffPanel {
     protected JobNodesHeader _header;
     protected boolean _updateNow;
     protected UpdateLoop _updateLoop;
+    protected JButton _newButton;
+    protected JPopupMenu _newMenu;
+    protected JButton _selectButton;
+    protected JPopupMenu _selectMenu;
+    protected JButton _showButton;
+    protected JPopupMenu _showMenu;
+    protected JCheckBoxMenuItem _showSelectedItem;
+    protected JCheckBoxMenuItem _showUnselectedItem;
+    protected JCheckBoxMenuItem _showCompletedItem;
+    protected JCheckBoxMenuItem _showIncompleteItem;
     
 }

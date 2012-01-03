@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
   <head>
     <meta content="text/html; charset=ISO-8859-1"
@@ -17,7 +17,7 @@
       <li>Settings File</li>
       <li><a href="#DiFX_Control_Connection">DiFX Control Connection</a><br>
       </li>
-      <li>Broadcast Network</li>
+      <li><a href="#Broadcast_Network">Broadcast Network</a></li>
       <li><a href="#Database_Configuration">Database Configuration</a></li>
       <li>Documentation Locations</li>
     </ul>
@@ -74,7 +74,62 @@
     <h4>Password</h4>
     The password for the DiFX user.<br>
     <h4>DiFX Version</h4>
-    Not used for anything currently.<br>
+    The DiFX Version is passed to <span style="font-style: italic;">mk5daemon</span>
+    when running a correlator job.&nbsp; It should match the version of
+    DiFX being run on the head node.<br>
+    <h2><a name="Broadcast_Network"></a>Broadcast Network</h2>
+    The broadcast network is used by DiFX processes to communicate with
+    each other.&nbsp; It is used by the user interface <span
+      style="font-style: italic;"></span>to communicate with <span
+      style="font-style: italic;">mk5daemon</span> and thus control the
+    software correlator.&nbsp; It is also used by <span
+      style="font-style: italic;">mk5daemon</span> instances running on
+    all processing and data source nodes to communicate their status and
+    the state of running jobs.&nbsp; The broadcast network is based on
+    UDP, and will only work within a local area network.<br>
+    <h4>Group IP Address</h4>
+    This address is used to identify the "group" of UDP broadcasts that
+    <span style="font-style: italic;">mk5daemon</span> is using.&nbsp;
+    It should match the DIFX_MESSAGE_GROUP environment variable setting
+    used when starting <span style="font-style: italic;">mk5daemon</span>
+    on all processing and data source nodes (run <span
+      style="font-style: italic;">mk5daemon</span> with the "-h" option
+    for details).&nbsp; At the moment the default value for this
+    environment variable, and thus the setting you should probably use
+    here, is "224.2.2.1".<br>
+    <h4>Port</h4>
+    The port is used for UDP broadcasts.&nbsp; This should match the
+    value of the DIFX_MESSAGE_PORT environment variable in place when <span
+      style="font-style: italic;">mk5daemon</span> was started.&nbsp; At
+    the moment the default value for the environment variable, and thus
+    this field, is 50200.<br>
+    <h4>Buffer Size</h4>
+    This is the maximum size of a broadcast message, in bytes.&nbsp;
+    Probably this shouldn't be fiddled with too much - making it too
+    small will cause UDP messages to be incompletely read.&nbsp; It is a
+    block of memory that must be allocated for each incoming message, so
+    it shouldn't be huge either.&nbsp; <br>
+    <h4>Timeout (ms)</h4>
+    The timeout is the number of milliseconds that the system will wait
+    for an incoming broadcast message.&nbsp; It can be set to 0, which
+    means "wait forever", although this might be unhealthy (killing the
+    thread that reads messages will become difficult).&nbsp; Otherwise
+    it does little more than govern the update rate of the Packet
+    Traffic Plot (see below).<br>
+    <h4>Packet Traffic Plot</h4>
+    The Packet Traffic Plot shows all received UDP messages as they are
+    read in real time.&nbsp; If you are receiving messages (i.e. all of
+    the above settings are set properly) this should have a heartbeat
+    appearance - there should be occasional spikes as messages come in
+    (the height of the spikes is the size of messages relative to the
+    Buffer Size).&nbsp; If, on the other hand, you get a "flat line",
+    your settings are wrong, or <span style="font-style: italic;">mk5daemon</span>
+    isn't running anywhere visible on the local area network.<br>
+    <br>
+    Below is a "healthy" Packet Traffic Plot showing a series of UDP
+    messages over time:<br>
+    <img style=" width: 302px; height: 124px;" alt=""
+      src="images/settings/good_packet_traffic_plot.gif"><br>
     <ul>
     </ul>
     <h2><a name="Database_Configuration"></a>Database Configuration</h2>
@@ -106,6 +161,7 @@
     the DiFX host.&nbsp; The mySQL database must be set up to recognize
     this user, <span style="font-style: italic;">including access to
       the database from the host where the DiFX GUI is running</span>.&nbsp;
+
 
 
 
@@ -145,7 +201,14 @@
     installation is 3306, so that is probably what you should be setting
     yours to.&nbsp; Consult the <code>/etc/services</code> file on the
     DiFX host to find out which port is being used.<br>
+    <h4>Periodic Update</h4>
+    This checkbox tells the Queue Browser to automatically check the
+    database for changes after a given time interval, which you can
+    set.&nbsp; Checking the database isn't computationally expensive nor
+    does it involve much network traffic, however the database probably
+    doesn't change much so an interval of a few seconds should be fine.<br>
     <h2><a name="Testing_the_Database_Configuration"></a>Trouble-shooting
+
 
 
 
@@ -223,6 +286,7 @@
       <br>
     </code>
     <div style="margin-left: 40px; font-weight: bold;"><code>SQLException:
+
         Communications link failure The last packet sent successfully to
         the server was 0 milliseconds ago. The driver has not received
         any packets from the server.</code></div>
@@ -231,6 +295,7 @@
     This error indicates that the connection to the remote mySQL
     database failed.&nbsp; Check that the DiFX host exits and in on the
     network (using the <a href="#Database_Ping_Test">Ping Test</a>).&nbsp;
+
 
 
 
