@@ -87,6 +87,7 @@ public class SystemSettings extends JFrame {
         //  structures that are based on where they apply.  We need to create these
         //  structures here.
         _queueBrowserSettings = new QueueBrowserSettings();
+        _windowConfiguration = new WindowConfiguration();
         
         //  Create all of the components of the user interface (long, messy function).
         createGUIComponents();
@@ -142,18 +143,6 @@ public class SystemSettings extends JFrame {
         this.setSize( 800, 775 );
         this.setTitle( "DiFX GUI Settings" );
         _menuBar = new JMenuBar();
-//        _menuBar.setVisible( true );
-//        JMenu fileMenu = new JMenu( " File " );
-//        JMenuItem openItem = new JMenuItem( "Open Settings File..." );
-//        JMenuItem closeItem = new JMenuItem( "Close" );
-//        closeItem.setToolTipText( "Close this window." );
-//        closeItem.addActionListener( new ActionListener() {
-//            public void actionPerformed( ActionEvent e ) {
-//                closeWindow();
-//            }
-//        } );
-//        fileMenu.add( closeItem );
-//        _menuBar.add( fileMenu );
         JMenu helpMenu = new JMenu( "  Help  " );
         _menuBar.add( helpMenu );
         JMenuItem settingsHelpItem = new JMenuItem( "Settings Help" );
@@ -682,6 +671,23 @@ public class SystemSettings extends JFrame {
         _queueBrowserSettings.showIncomplete = true;
         _queueBrowserSettings.showSelected = true;
         _queueBrowserSettings.showUnselected = true;
+        _windowConfiguration.mainX = 0;
+        _windowConfiguration.mainY = 0;
+        _windowConfiguration.mainW = 1400;
+        _windowConfiguration.mainH = 800;
+        _windowConfiguration.verticalPanels = false;
+        _windowConfiguration.mainDividerLocation = 650;
+        _windowConfiguration.topDividerLocation = 700;
+        _windowConfiguration.queueBrowserTearOff = false;
+        _windowConfiguration.queueBrowserX = 0;
+        _windowConfiguration.queueBrowserY = 0;
+        _windowConfiguration.queueBrowserW = 350;
+        _windowConfiguration.queueBrowserH = 600;
+        _windowConfiguration.hardwareMonitorTearOff = false;
+        _windowConfiguration.hardwareMonitorX = 0;
+        _windowConfiguration.hardwareMonitorY = 0;
+        _windowConfiguration.hardwareMonitorW = 350;
+        _windowConfiguration.hardwareMonitorH = 600;
     }
     
     /*
@@ -970,6 +976,37 @@ public class SystemSettings extends JFrame {
             _queueBrowserSettings.showIncomplete = doiConfig.isQueueShowIncomplete();
             _queueBrowserSettings.showSelected = doiConfig.isQueueShowSelected();
             _queueBrowserSettings.showUnselected = doiConfig.isQueueShowUnselected();
+            if ( doiConfig.getWindowConfigMainX() != 0 )
+                _windowConfiguration.mainX = doiConfig.getWindowConfigMainX();
+            if ( doiConfig.getWindowConfigMainY() != 0 )
+                _windowConfiguration.mainY = doiConfig.getWindowConfigMainY();
+            if ( doiConfig.getWindowConfigMainW() != 0 )
+                _windowConfiguration.mainW = doiConfig.getWindowConfigMainW();
+            if ( doiConfig.getWindowConfigMainH() != 0 )
+                _windowConfiguration.mainH = doiConfig.getWindowConfigMainH();
+            _windowConfiguration.verticalPanels = doiConfig.isWindowConfigVerticalPanels();
+            if ( doiConfig.getWindowConfigMainDividerLocation() != 0 )
+                _windowConfiguration.mainDividerLocation = doiConfig.getWindowConfigMainDividerLocation();
+            if ( doiConfig.getWindowConfigTopDividerLocation() != 0 )
+                _windowConfiguration.topDividerLocation = doiConfig.getWindowConfigTopDividerLocation();
+            _windowConfiguration.queueBrowserTearOff = doiConfig.isWindowConfigQueueBrowserTearOff();
+            if ( doiConfig.getWindowConfigQueueBrowserX() != 0 )
+                _windowConfiguration.queueBrowserX = doiConfig.getWindowConfigQueueBrowserX();
+            if ( doiConfig.getWindowConfigQueueBrowserY() != 0 )
+                _windowConfiguration.queueBrowserY = doiConfig.getWindowConfigQueueBrowserY();
+            if ( doiConfig.getWindowConfigQueueBrowserW() != 0 )
+                _windowConfiguration.queueBrowserW = doiConfig.getWindowConfigQueueBrowserW();
+            if ( doiConfig.getWindowConfigQueueBrowserH() != 0 )
+                _windowConfiguration.queueBrowserH = doiConfig.getWindowConfigQueueBrowserH();
+            _windowConfiguration.hardwareMonitorTearOff = doiConfig.isWindowConfigHardwareMonitorTearOff();
+            if ( doiConfig.getWindowConfigHardwareMonitorX() != 0 )
+                _windowConfiguration.hardwareMonitorX = doiConfig.getWindowConfigHardwareMonitorX();
+            if ( doiConfig.getWindowConfigHardwareMonitorY() != 0 )
+                _windowConfiguration.hardwareMonitorY = doiConfig.getWindowConfigHardwareMonitorY();
+            if ( doiConfig.getWindowConfigHardwareMonitorW() != 0 )
+                _windowConfiguration.hardwareMonitorW = doiConfig.getWindowConfigHardwareMonitorW();
+            if ( doiConfig.getWindowConfigHardwareMonitorH() != 0 )
+                _windowConfiguration.hardwareMonitorH = doiConfig.getWindowConfigHardwareMonitorH();
             generateBroadcastChangeEvent();
             generateDatabaseChangeEvent();
             
@@ -1022,6 +1059,24 @@ public class SystemSettings extends JFrame {
         doiConfig.setQueueShowIncomplete( _queueBrowserSettings.showIncomplete );
         doiConfig.setQueueShowSelected( _queueBrowserSettings.showSelected );
         doiConfig.setQueueShowUnselected( _queueBrowserSettings.showUnselected );
+        
+        doiConfig.setWindowConfigMainX( _windowConfiguration.mainX );
+        doiConfig.setWindowConfigMainY( _windowConfiguration.mainY );
+        doiConfig.setWindowConfigMainW( _windowConfiguration.mainW );
+        doiConfig.setWindowConfigMainH( _windowConfiguration.mainH );
+        doiConfig.setWindowConfigVerticalPanels( _windowConfiguration.verticalPanels );
+        doiConfig.setWindowConfigMainDividerLocation( _windowConfiguration.mainDividerLocation );
+        doiConfig.setWindowConfigTopDividerLocation( _windowConfiguration.topDividerLocation );
+        doiConfig.setWindowConfigQueueBrowserTearOff( _windowConfiguration.queueBrowserTearOff );
+        doiConfig.setWindowConfigQueueBrowserX( _windowConfiguration.queueBrowserX );
+        doiConfig.setWindowConfigQueueBrowserY( _windowConfiguration.queueBrowserY );
+        doiConfig.setWindowConfigQueueBrowserW( _windowConfiguration.queueBrowserW );
+        doiConfig.setWindowConfigQueueBrowserH( _windowConfiguration.queueBrowserH );
+        doiConfig.setWindowConfigHardwareMonitorTearOff( _windowConfiguration.hardwareMonitorTearOff );
+        doiConfig.setWindowConfigHardwareMonitorX( _windowConfiguration.hardwareMonitorX );
+        doiConfig.setWindowConfigHardwareMonitorY( _windowConfiguration.hardwareMonitorY );
+        doiConfig.setWindowConfigHardwareMonitorW( _windowConfiguration.hardwareMonitorW );
+        doiConfig.setWindowConfigHardwareMonitorH( _windowConfiguration.hardwareMonitorH );
         
         try {
             javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance( doiConfig.getClass().getPackage().getName() );
@@ -1162,6 +1217,7 @@ public class SystemSettings extends JFrame {
         return _queueBrowser;
     }
     public QueueBrowserSettings queueBrowserSettings() { return _queueBrowserSettings; }
+    public WindowConfiguration windowConfiguration() { return _windowConfiguration; }
     
     protected SystemSettings _this;
     
@@ -1227,6 +1283,28 @@ public class SystemSettings extends JFrame {
         boolean showIncomplete;
     }
     protected QueueBrowserSettings _queueBrowserSettings;
+    
+    //  Dimensions and other configurations related to windows
+    public class WindowConfiguration {
+        int mainX;
+        int mainY;
+        int mainW;
+        int mainH;
+        boolean verticalPanels;
+        int mainDividerLocation;
+        int topDividerLocation;
+        boolean queueBrowserTearOff;
+        int queueBrowserX;
+        int queueBrowserY;
+        int queueBrowserW;
+        int queueBrowserH;
+        boolean hardwareMonitorTearOff;
+        int hardwareMonitorX;
+        int hardwareMonitorY;
+        int hardwareMonitorW;
+        int hardwareMonitorH;
+    }
+    protected WindowConfiguration _windowConfiguration;
     
     //  Different lists of event listeners.  Other classes can be informed of
     //  setting changes by adding themselves to these lists.

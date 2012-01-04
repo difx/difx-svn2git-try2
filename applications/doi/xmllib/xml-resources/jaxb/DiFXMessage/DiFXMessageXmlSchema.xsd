@@ -117,6 +117,24 @@
                 <xsd:element ref="queueShowSelected"/>
                 <xsd:element ref="queueShowUnselected"/>
                 
+                <xsd:element ref="windowConfigMainX"/>
+                <xsd:element ref="windowConfigMainY"/>
+                <xsd:element ref="windowConfigMainW"/>
+                <xsd:element ref="windowConfigMainH"/>
+                <xsd:element ref="windowConfigVerticalPanels"/>
+                <xsd:element ref="windowConfigMainDividerLocation"/>
+                <xsd:element ref="windowConfigTopDividerLocation"/>
+                <xsd:element ref="windowConfigQueueBrowserTearOff"/>
+                <xsd:element ref="windowConfigQueueBrowserX"/>
+                <xsd:element ref="windowConfigQueueBrowserY"/>
+                <xsd:element ref="windowConfigQueueBrowserW"/>
+                <xsd:element ref="windowConfigQueueBrowserH"/>
+                <xsd:element ref="windowConfigHardwareMonitorTearOff"/>
+                <xsd:element ref="windowConfigHardwareMonitorX"/>
+                <xsd:element ref="windowConfigHardwareMonitorY"/>
+                <xsd:element ref="windowConfigHardwareMonitorW"/>
+                <xsd:element ref="windowConfigHardwareMonitorH"/>
+                
             </xsd:sequence>
         </xsd:complexType>
     </xsd:element>
@@ -157,6 +175,24 @@
     <xsd:element name="queueShowIncomplete" type="xsd:boolean"></xsd:element>
     <xsd:element name="queueShowSelected" type="xsd:boolean"></xsd:element>
     <xsd:element name="queueShowUnselected" type="xsd:boolean"></xsd:element>
+                
+    <xsd:element name="windowConfigMainX" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigMainY" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigMainW" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigMainH" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigVerticalPanels" type="xsd:boolean"></xsd:element>
+    <xsd:element name="windowConfigMainDividerLocation" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigTopDividerLocation" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigQueueBrowserTearOff" type="xsd:boolean"></xsd:element>
+    <xsd:element name="windowConfigQueueBrowserX" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigQueueBrowserY" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigQueueBrowserW" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigQueueBrowserH" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigHardwareMonitorTearOff" type="xsd:boolean"></xsd:element>
+    <xsd:element name="windowConfigHardwareMonitorX" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigHardwareMonitorY" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigHardwareMonitorW" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigHardwareMonitorH" type="xsd:int"></xsd:element>
                 
     <xsd:complexType name="mark5Status">
         <xsd:sequence>

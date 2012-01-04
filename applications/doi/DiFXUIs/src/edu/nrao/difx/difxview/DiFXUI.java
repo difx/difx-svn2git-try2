@@ -102,18 +102,24 @@ public class DiFXUI extends JFrame implements WindowListener {
         _dataModel.notifyListeners();
         _hardwareMonitor.controller( _difxController );
 
+        this.setLocation( _systemSettings.windowConfiguration().mainX, _systemSettings.windowConfiguration().mainY );
         /*
-         * By default, set the main frame to take over the screen and subwindow
-         * sizes to appropriate values.  The user should be able to change these
-         * and have the changes stick the next time they start the application.
+         * Set the locations of dividers between panels.  For some reason these
+         * settings seem to work better here.  The "resize weight" determines how
+         * resize events are allotted to component panel sizes.
          */
+        _topSplitPane.setDividerLocation( _systemSettings.windowConfiguration().topDividerLocation );
+        //  This is a bit messy - because the top pane has not been drawn yet, its
+        //  size is basically 0 by 0.  We have to guess what size it will be to set
+        //  the location of its divider as an absolute pixel value
+        //_topSplitPane.setDividerLocation( _systemSettings.windowConfiguration().topDividerLocation );
+        _mainSplitPane.setDividerLocation( _systemSettings.windowConfiguration().mainDividerLocation );
         _topSplitPane.setResizeWeight( 0.5 );
-        _mainSplitPane.setDividerLocation( 0.75 );
 
         /*  
          * Set ourselves up to intercept window operations (close, iconize, etc).
          */
-        addWindowListener(this);
+        addWindowListener( this );
         
         /*
          * This stuff is used to trap resize events.
@@ -131,6 +137,22 @@ public class DiFXUI extends JFrame implements WindowListener {
 			}
 		});
 //        java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, "WHAT IS THIS??");
+        
+        //  Implement the "tear off" state of panels.
+        if ( _systemSettings.windowConfiguration().hardwareMonitorTearOff ) {
+            _hardwareMonitor.tearOffState( _systemSettings.windowConfiguration().hardwareMonitorTearOff );
+            _hardwareMonitor.setSize( _systemSettings.windowConfiguration().hardwareMonitorW,
+                    _systemSettings.windowConfiguration().hardwareMonitorH );
+            _hardwareMonitor.tearOffEvent();
+        }
+        if ( _systemSettings.windowConfiguration().queueBrowserTearOff ) {
+            System.out.println( _systemSettings.windowConfiguration().queueBrowserX + "  " +
+                    _systemSettings.windowConfiguration().queueBrowserY );
+            _queueBrowser.tearOffState( _systemSettings.windowConfiguration().queueBrowserTearOff );
+            _queueBrowser.setSize( _systemSettings.windowConfiguration().queueBrowserW,
+                    _systemSettings.windowConfiguration().queueBrowserH );
+            _queueBrowser.tearOffEvent();
+        }
     }
     
     /*
@@ -252,7 +274,9 @@ public class DiFXUI extends JFrame implements WindowListener {
         setDefaultCloseOperation( javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE );
         setTitle( "USNO DiFX GUI" );
         setName("DiFXUI");
-        setSize( new java.awt.Dimension(1400, 800) );
+        //setSize( new java.awt.Dimension(1400, 800) );
+        setSize( new java.awt.Dimension( _systemSettings.windowConfiguration().mainW, 
+                _systemSettings.windowConfiguration().mainH ) );
         
         _hardwareMonitor = new HardwareMonitorPanel( _systemSettings );
         _hardwareMonitor.addTearOffListener( new ActionListener() {
@@ -262,14 +286,14 @@ public class DiFXUI extends JFrame implements WindowListener {
         } );
 
         _mainSplitPane.setBorder( javax.swing.BorderFactory.createEmptyBorder( 1, 1, 1, 1 ) );
-        _mainSplitPane.setDividerLocation(400);
         _mainSplitPane.setDividerSize(3);
         _mainSplitPane.setOrientation( JSplitPane.VERTICAL_SPLIT );
 
-        _topSplitPane.setDividerLocation(650);
         _topSplitPane.setDividerSize(3);
         _topSplitPane.setRightComponent( _hardwareMonitor );
         _topSplitPane.setLeftComponent( _queueBrowser );
+        if ( _systemSettings.windowConfiguration().verticalPanels )
+            _topSplitPane.setOrientation( JSplitPane.VERTICAL_SPLIT );
 
         _mainSplitPane.setLeftComponent( _topSplitPane );
         _mainSplitPane.setRightComponent( _messageCenter );
@@ -303,7 +327,10 @@ public class DiFXUI extends JFrame implements WindowListener {
                 arrangeHorizontal();
             }
         } );
-        _horizontalItem.setSelected( true );
+        if ( _systemSettings.windowConfiguration().verticalPanels )
+            _horizontalItem.setSelected( false );
+        else
+            _horizontalItem.setSelected( true );
         arrangeMenu.add( _horizontalItem );
         _verticalItem = new JCheckBoxMenuItem( "Vertical" );
         _verticalItem.addActionListener( new ActionListener() {
@@ -311,7 +338,10 @@ public class DiFXUI extends JFrame implements WindowListener {
                 arrangeVertical();
             }
         } );
-        _verticalItem.setSelected( false );
+        if ( _systemSettings.windowConfiguration().verticalPanels )
+            _verticalItem.setSelected( true );
+        else
+            _verticalItem.setSelected( false );
         arrangeMenu.add( _verticalItem );
         windowMenu.add( arrangeMenu );
         windowMenu.add( new JSeparator() );
@@ -394,8 +424,34 @@ public class DiFXUI extends JFrame implements WindowListener {
         this.newSize();
     }                  
 
+    /*
+     * On exit we over-write the "default" settings file.  This saves our current
+     * configuration so it will appear the next time we run.  Before doing so we
+     * need to make sure it is up to date on a bunch of settings.
+     */
     private void exitOperation() {
         _difxController.stopController();
+        _systemSettings.windowConfiguration().mainX = this.getLocation().x;
+        _systemSettings.windowConfiguration().mainY = this.getLocation().y;
+        _systemSettings.windowConfiguration().mainW = this.getSize().width;
+        _systemSettings.windowConfiguration().mainH = this.getSize().height;
+        _systemSettings.windowConfiguration().hardwareMonitorTearOff = _hardwareMonitor.tearOffState();
+        if ( _hardwareMonitorWindow != null ) {
+            _systemSettings.windowConfiguration().hardwareMonitorX = _hardwareMonitorWindow.getLocation().x;
+            _systemSettings.windowConfiguration().hardwareMonitorY = _hardwareMonitorWindow.getLocation().y;
+        }
+        _systemSettings.windowConfiguration().hardwareMonitorW = _hardwareMonitor.getSize().width;
+        _systemSettings.windowConfiguration().hardwareMonitorH = _hardwareMonitor.getSize().height;
+        _systemSettings.windowConfiguration().queueBrowserTearOff = _queueBrowser.tearOffState();
+        if ( _queueBrowserWindow != null ) {
+            _systemSettings.windowConfiguration().queueBrowserX = _queueBrowserWindow.getLocation().x;
+            _systemSettings.windowConfiguration().queueBrowserY = _queueBrowserWindow.getLocation().y;
+        }
+        _systemSettings.windowConfiguration().queueBrowserW = _queueBrowser.getSize().width;
+        _systemSettings.windowConfiguration().queueBrowserH = _queueBrowser.getSize().height;
+        _systemSettings.windowConfiguration().mainDividerLocation = _mainSplitPane.getDividerLocation();
+        _systemSettings.windowConfiguration().topDividerLocation = _topSplitPane.getDividerLocation();
+        _systemSettings.saveSettingsToFile( _systemSettings.getDefaultSettingsFileName() );
         System.exit(0);
     }
     
@@ -421,6 +477,7 @@ public class DiFXUI extends JFrame implements WindowListener {
                            ( (double)( _queueBrowser.getWidth() ) + (double)( _hardwareMonitor.getWidth() ) );
         _topSplitPane.setOrientation( JSplitPane.HORIZONTAL_SPLIT );
         _topSplitPane.setDividerLocation( wFraction );
+        _systemSettings.windowConfiguration().verticalPanels = false;
     }
     
     /*
@@ -438,6 +495,7 @@ public class DiFXUI extends JFrame implements WindowListener {
                            ( (double)( _queueBrowser.getWidth() ) + (double)( _hardwareMonitor.getWidth() ) );
         _topSplitPane.setOrientation( JSplitPane.VERTICAL_SPLIT );
         _topSplitPane.setDividerLocation( wFraction );
+        _systemSettings.windowConfiguration().verticalPanels = true;
     }
     
     /*
@@ -451,6 +509,8 @@ public class DiFXUI extends JFrame implements WindowListener {
                 _hardwareMonitorWindow.setDefaultCloseOperation( javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE );
             }
             _hardwareMonitorWindow.setSize( _hardwareMonitor.getWidth(), _hardwareMonitor.getHeight() );
+            _hardwareMonitorWindow.setLocation( _systemSettings.windowConfiguration().hardwareMonitorX,
+                    _systemSettings.windowConfiguration().hardwareMonitorY );
             _hardwareMonitorWindow.add( _hardwareMonitor );
             _hardwareMonitorWindow.setVisible( true );
             if ( _queueBrowser.tearOffState() ) {
@@ -479,6 +539,8 @@ public class DiFXUI extends JFrame implements WindowListener {
                 _queueBrowserWindow.setDefaultCloseOperation( javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE );
             }
             _queueBrowserWindow.setSize( _queueBrowser.getWidth(), _queueBrowser.getHeight() );
+            _queueBrowserWindow.setLocation( _systemSettings.windowConfiguration().queueBrowserX,
+                    _systemSettings.windowConfiguration().queueBrowserY );
             _queueBrowserWindow.add( _queueBrowser );
             _queueBrowserWindow.setVisible( true );
             if ( _hardwareMonitor.tearOffState() ) {
