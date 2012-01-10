@@ -34,6 +34,10 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.FileWriter;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Iterator;
+
 import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
 import javax.swing.JButton;
@@ -1219,6 +1223,61 @@ public class SystemSettings extends JFrame {
     public QueueBrowserSettings queueBrowserSettings() { return _queueBrowserSettings; }
     public WindowConfiguration windowConfiguration() { return _windowConfiguration; }
     
+    /*
+     * Return the current list of experiment status types, or try to create one
+     * from the database if it doesn't exist yet.
+     */
+    public Map<Integer, ExperimentStatusEntry> experimentStatusList() {
+        if ( _experimentStatusList == null )
+            _experimentStatusList = new HashMap<Integer, ExperimentStatusEntry>();
+        if ( _experimentStatusList.isEmpty() ) {            
+            QueueDBConnection db = new QueueDBConnection( this );
+            if ( db.connected() ) {
+                ResultSet dbExperimentStatusList = db.experimentStatusList();
+                try {
+                    while ( dbExperimentStatusList.next() ) {
+                        _experimentStatusList.put( dbExperimentStatusList.getInt( "id" ),
+                                new ExperimentStatusEntry( dbExperimentStatusList.getInt( "statuscode" ),
+                                        dbExperimentStatusList.getString( "experimentstatus" ) ) );
+                    }
+                } catch ( Exception e ) {
+                    java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+                }
+            }
+        }
+        return _experimentStatusList;
+    }
+    
+    /*
+     * Obtain the "id" of an experiment status from its string form.
+     */
+    public Integer experimentStatusID( String status ) {
+        if ( _experimentStatusList == null )
+            return 0;
+        Iterator iter = _experimentStatusList.entrySet().iterator();
+        for ( ; iter.hasNext(); ) {
+            Map.Entry m = (Map.Entry)iter.next();
+            if ( ((ExperimentStatusEntry)m.getValue()).status.contentEquals( status ) )
+                return ((Integer)m.getKey());
+        }
+        return 0;
+    }
+    
+    /*
+     * Obtain the string form of an experiment status from its ID.
+     */
+    public String experimentStatusString( Integer id ) {
+        if ( _experimentStatusList == null )
+            return null;
+        Iterator iter = _experimentStatusList.entrySet().iterator();
+        for ( ; iter.hasNext(); ) {
+            Map.Entry m = (Map.Entry)iter.next();
+            if ( (Integer)m.getKey() == id )
+                return ((ExperimentStatusEntry)m.getValue()).status;
+        }
+        return null;
+    }
+    
     protected SystemSettings _this;
     
     protected boolean _allObjectsBuilt;
@@ -1321,5 +1380,18 @@ public class SystemSettings extends JFrame {
     //  of convenience as all locations have access to this class.
     HardwareMonitorPanel _hardwareMonitor;
     QueueBrowserPanel _queueBrowser;
+    
+    //  These lists contain "status" values that can be applied to different things.
+    //  Nominally they come from the database, but in the absense of the database the
+    //  user can create their own.
+    public class ExperimentStatusEntry {
+        public ExperimentStatusEntry( Integer newCode, String newStatus ) {
+            code = newCode;
+            status = newStatus;
+        }
+        public Integer code;
+        public String status;
+    }
+    protected Map<Integer, ExperimentStatusEntry> _experimentStatusList;
     
 }

@@ -38,6 +38,9 @@ import javax.swing.Timer;
 
 import java.util.List;
 import java.util.Iterator;
+import java.util.Date;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -322,98 +325,54 @@ public class QueueBrowserPanel extends TearOffPanel {
     }
 
     /*
-     * This class produces a simple pop-up window
-     */
-    protected class NewExperimentWindow extends JDialog {
-        
-        public NewExperimentWindow( Frame frame, int x, int y ) {
-            super( frame, "Create New Experiment", true );
-            this.setBounds( x, y, 320, 180 );
-            this.setResizable( false );
-            this.getContentPane().setLayout( null );
-            _name = new SaneTextField();
-            _name.setBounds( 100, 20, 210, 25 );
-            _name.textWidthLimit( 20 );
-            _name.setToolTipText( "Name assigned to the experiment (up to 20 characters)." );
-            this.getContentPane().add( _name );
-            JLabel nameLabel = new JLabel( "Name:" );
-            nameLabel.setBounds( 10, 20, 85, 25 );
-            nameLabel.setHorizontalAlignment( JLabel.RIGHT );
-            this.getContentPane().add( nameLabel );
-            _number = new NumberBox();
-            _number.setBounds( 100, 50, 80, 25 );
-            _number.limits( 0.0, 9999.0 );
-            _number.setToolTipText( "Number (up to four digits) used to associate experiments with the same name." );
-            this.getContentPane().add( _number );
-            JLabel numberLabel = new JLabel( "Number:" );
-            numberLabel.setBounds( 10, 50, 85, 25 );
-            numberLabel.setHorizontalAlignment( JLabel.RIGHT );
-            this.getContentPane().add( numberLabel );
-            JButton cancelButton = new JButton( "Cancel" );
-            cancelButton.setBounds( 100, 110, 100, 25 );
-            cancelButton.addActionListener( new ActionListener() {
-                public void actionPerformed( ActionEvent e ) {
-                    ok( false );
-                }
-            });
-            this.getContentPane().add( cancelButton );
-            JButton okButton = new JButton( "Apply" );
-            okButton.setBounds( 210, 110, 100, 25 );
-            okButton.addActionListener( new ActionListener() {
-                public void actionPerformed( ActionEvent e ) {
-                    ok( true );
-                }
-            });
-            this.getContentPane().add( okButton );
-        }        
-        public String name() { return _name.getText(); }
-        public void name( String newVal ) { _name.setText( newVal ); }
-        public Integer number() { return _number.intValue(); }
-        public void number( Integer newVal ) { _number.intValue( newVal ); }
-        protected void ok( boolean newVal ) {
-            _ok = newVal;
-            this.setVisible( false );
-        }
-        public boolean ok() { return _ok; }
-        public void visible() {
-            _ok = false;
-            this.setVisible( true );
-        }
-        protected SaneTextField _name;
-        protected SaneTextField _segment;
-        protected NumberBox _number;
-        protected boolean _ok;
-        protected Timer _timeoutTimer;
-
-    };
-    
-    /*
      * Add a new experiment to the browser and the database.
      */
     protected void newExperiment() {
-        //  Connect to the database.  If this fails, we don't even try to pursue
-        //  this activity.
-        QueueDBConnection db = new QueueDBConnection( _systemSettings );
-        if ( !db.connected() ) {
-            JOptionPane.showMessageDialog( this, "Unable to connect to the data base!", "", JOptionPane.ERROR_MESSAGE );
-            return;
+        //  If the user is currently using the data base, try to connect to it.
+        //  Failure, or no attept to connect, will leave "db" as null, indicating
+        //  we should try creating an experiment without using the data base.
+        QueueDBConnection db = null;
+        if ( _systemSettings.useDataBase() ) {
+            db = new QueueDBConnection( _systemSettings );
+            if ( !db.connected() )
+                db = null;
+        }
+
+        //  Generate an ID number, which is also used to generate an initial name.
+        //  We do this using the database if possible, or by looking at other
+        //  experiments if not.
+        Integer newExperimentId = 1;
+        if ( db != null ) {
+            //  Scan the database for the highest experiment ID in existence.  Then
+            //  assume the data base software will assign an ID number for this experiment
+            //  that is 1 higher than this number.
+            ResultSet dbExperimentList = db.experimentList();
+            try {
+                //  Parse out the ID numbers.  We don't care about the names.
+                while ( dbExperimentList.next() ) {
+                    int newId = dbExperimentList.getInt( "id" );
+                    if ( newId >= newExperimentId )
+                        newExperimentId = newId + 1;
+                }
+            } catch ( Exception e ) {
+                    java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            }
+        }
+        else {
+            //  Look at all existing experiments that are NOT in the database and
+            //  get their ID numbers.  Find the largest and increment by 1.
+            BrowserNode experimentList = _browserPane.browserTopNode();
+            if ( experimentList.children().size() > 1 ) {
+                Iterator<BrowserNode> iter = experimentList.childrenIterator();
+                iter.next();
+                for ( ; iter.hasNext(); ) {
+                    ExperimentNode thisExperiment = (ExperimentNode)(iter.next());
+                    if ( thisExperiment.id() != null && thisExperiment.id() >= newExperimentId )
+                        newExperimentId = thisExperiment.id() + 1;
+                }
+            }
         }
         
-        //  Scan the database for the highest experiment ID in existence.  Then
-        //  assume the data base software will assign an ID number for this experiment
-        //  that is 1 higher than this number.
-        ResultSet dbExperimentList = db.experimentList();
-        Integer newExperimentId = 1;
-        try {
-            //  Parse out the ID numbers.  We don't care about the names.
-            while ( dbExperimentList.next() ) {
-                int newId = dbExperimentList.getInt( "id" );
-                if ( newId >= newExperimentId )
-                    newExperimentId = newId + 1;
-            }
-        } catch ( Exception e ) {
-                java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
-        }
         //  Open a popup window where the user can specify details of the new experiment.
         //  This window is modal.  All of the "Component" crap is used to give the popup
         //  a "frame" in which to reside.
@@ -421,14 +380,57 @@ public class QueueBrowserPanel extends TearOffPanel {
         while ( comp.getParent() != null )
             comp = comp.getParent();
         Point pt = _newButton.getLocationOnScreen();
-        NewExperimentWindow win = new NewExperimentWindow( (Frame)comp, pt.x + 25, pt.y + 25 );
+        ExperimentNode.ExperimentPropertiesWindow win =
+                new ExperimentNode.ExperimentPropertiesWindow( (Frame)comp, pt.x + 25, pt.y + 25, _systemSettings );
+        win.setTitle( "Create New Experiment" );
         win.number( 0 );
         win.name( "Experiment_" + newExperimentId.toString() );
+        win.id( newExperimentId );
+        if ( db != null )
+            win.inDataBase( true );
+        else
+            win.inDataBase( false );
+        String creationDate = (new SimpleDateFormat( "yyyy-mm-dd HH:mm:ss" )).format( new Date() );
+        win.created( creationDate );
+        win.status( "unknown" );
+        win.editMode( true );
         win.visible();
-        //  If the user hit the "ok" button, add this new experiment to the database.
-        //  Otherwise, bail out.
+        //  If the user hit the "ok" button, add this new experiment to our list of
+        //  experiments and to the database (if we are using it).  Otherwise, bail out.
         if ( win.ok() ) {
-            db.newExperiment( win.name(), win.number() );
+            if ( db != null ) {
+                db.newExperiment( win.name(), win.number(), _systemSettings.experimentStatusID( win.status() ) );
+                //  See which ID the data base assigned...it will be the largest one.  Also
+                //  save the creation date.
+                newExperimentId = 0;
+                ResultSet dbExperimentList = db.experimentList();
+                try {
+                    while ( dbExperimentList.next() ) {
+                        int newId = dbExperimentList.getInt( "id" );
+                        if ( newId > newExperimentId ) {
+                            newExperimentId = newId;
+                            creationDate = dbExperimentList.getString( "dateCreated" );
+                        }
+                    }
+                } catch ( Exception e ) {
+                        java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+                }
+            }
+            //  If the user has requested that an item be put in the database and
+            //  they are either not using it or it is not there, produce a warning.
+            else if ( win.inDataBase() ) {
+                JOptionPane.showMessageDialog( this, "Unable to add this item to the database\n"
+                        + "(you can add it later).",
+                        "Database Warning", JOptionPane.WARNING_MESSAGE );
+                win.inDataBase( false );
+            }
+            ExperimentNode thisExperiment = new ExperimentNode( win.name(), _systemSettings );
+            thisExperiment.id( newExperimentId );
+            thisExperiment.creationDate( creationDate );
+            thisExperiment.inDataBase( win.inDataBase() );
+            thisExperiment.number( win.number() );
+            thisExperiment.status( win.status() );
+            _browserPane.addNode( thisExperiment );
         }
     }
         
@@ -566,7 +568,7 @@ public class QueueBrowserPanel extends TearOffPanel {
                 String dateCreated = dbExperimentList.getString( "dateCreated" );
                 System.out.println( name + "  " + id.toString() + " " + number.toString()
                         + "  " + status.toString() + "  " + dateCreated );
-                //  Find an exact match in our experiment list.
+                //  Find a match in our experiment list.
                 ExperimentNode thisExperiment = null;
                 experimentList = _browserPane.browserTopNode();
                 if ( experimentList.children().size() > 1 ) {
@@ -576,7 +578,7 @@ public class QueueBrowserPanel extends TearOffPanel {
                         ExperimentNode testExperiment = (ExperimentNode)(iter.next());
                         //  We should be able to use the ID to match experiments, as it is
                         //  supposed to be unique.
-                        if ( testExperiment.idMatch( id ) )
+                        if ( testExperiment.inDataBase() && testExperiment.idMatch( id ) )
                             thisExperiment = testExperiment;
                     }
                 }
@@ -584,6 +586,8 @@ public class QueueBrowserPanel extends TearOffPanel {
                 if ( thisExperiment == null ) {
                     thisExperiment = new ExperimentNode( name, _systemSettings );
                     thisExperiment.id( id );
+                    thisExperiment.inDataBase( true );
+                    thisExperiment.creationDate( dateCreated );
                     //thisExperiment.segment( segment );
                     _browserPane.addNode( thisExperiment );
                 }
@@ -740,26 +744,26 @@ public class QueueBrowserPanel extends TearOffPanel {
         }
 
         //  Eliminate any items we have failed to find in the data base,
-        //  with the exception of those that "persist".
+        //  with the exception of those that aren't actually in the data base.
         experimentList = _browserPane.browserTopNode();
         if ( experimentList.children().size() > 1 ) {
             Iterator<BrowserNode> iter = experimentList.childrenIterator();
             iter.next();
             for ( ; iter.hasNext(); ) {
                 ExperimentNode thisExperiment = (ExperimentNode)(iter.next());
-                if ( !thisExperiment.found() && !thisExperiment.persist() )
+                if ( !thisExperiment.found() && thisExperiment.inDataBase() )
                     _browserPane.browserTopNode().removeChild( thisExperiment );
                 else {
                     //  Eliminate passes under each experiment...
                     for ( Iterator<BrowserNode> pIter = thisExperiment.childrenIterator(); pIter.hasNext(); ) {
                         PassNode thisPass = (PassNode)(pIter.next());
-                        if ( !thisPass.found() && !thisPass.persist() )
+                        if ( !thisPass.found() && thisPass.inDataBase() )
                             thisExperiment.removeChild( thisPass );
                         else {
                             //  Eliminate jobs under each pass.
                             for ( Iterator<BrowserNode> jIter = thisPass.childrenIterator(); jIter.hasNext(); ) {
                                 JobNode thisJob = (JobNode)(jIter.next());
-                                if ( !thisJob.found() && !thisJob.persist() )
+                                if ( !thisJob.found() && thisJob.inDataBase() )
                                     thisPass.removeChild( thisJob );
                             }
                         }
@@ -1039,18 +1043,15 @@ public class QueueBrowserPanel extends TearOffPanel {
             if ( thisJob == null ) {
                 if ( _unaffiliated == null ) {
                     _unaffiliated = new ExperimentNode( "Jobs Outside Queue", _systemSettings );
-                    _unaffiliated.persist( true );
                     _browserPane.addNode( _unaffiliated );
                     _unknown = new PassNode( "", _systemSettings );
                     _unknown.experimentNode( _unaffiliated );
                     _unknown.setHeight( 0 );
-                    _unknown.persist( true );
                     _unaffiliated.addChild( _unknown );
                 }
                 thisJob = new JobNode( difxMsg.getHeader().getIdentifier(), _systemSettings );
                 _unknown.addChild( thisJob );
                 thisJob.passNode( _unknown );
-                thisJob.persist( true );
                 _header.addJob( thisJob );
             }
 
@@ -1064,18 +1065,15 @@ public class QueueBrowserPanel extends TearOffPanel {
     public void createDummyJob( String name ) {
         if ( _unaffiliated == null ) {
             _unaffiliated = new ExperimentNode( "Jobs Outside Queue", _systemSettings );
-            _unaffiliated.persist( true );
             _browserPane.addNode( _unaffiliated );
             _unknown = new PassNode( "", _systemSettings );
             _unknown.experimentNode( _unaffiliated );
             _unknown.setHeight( 0 );
-            _unknown.persist( true );
             _unaffiliated.addChild( _unknown );
         }
         JobNode thisJob = new JobNode( name, _systemSettings );
         _unknown.addChild( thisJob );
         thisJob.passNode( _unknown );
-        thisJob.persist( true );
         _header.addJob( thisJob );
     }
 
