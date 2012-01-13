@@ -3,11 +3,11 @@
 #===========================================================================
 # SVN properties (DO NOT CHANGE)
 #
-# $Id: getmodules.py 4218 2012-01-13 08:46:28Z HelgeRottmann $
-# $HeadURL: https://svn.atnf.csiro.au/difx/utilities/branches/difxdb_mysql/getmodules/getmodules.py $
-# $LastChangedRevision: 4218 $
-# $Author: HelgeRottmann $
-# $LastChangedDate: 2012-01-13 09:46:28 +0100 (Fr, 13. Jan 2012) $
+# $Id$
+# $HeadURL$
+# $LastChangedRevision$
+# $Author$
+# $LastChangedDate$
 #
 #============================================================================
 
@@ -25,9 +25,9 @@ from optparse import OptionParser
 
 __author__="Helge Rottmann <rottmann@mpifr-bonn.mpg.de>"
 __prog__ = os.path.basename(__file__)
-__build__= "$Revision: 4218 $"
-__date__ ="$Date: 2012-01-13 09:46:28 +0100 (Fr, 13. Jan 2012) $"
-__lastAuthor__="$Author: HelgeRottmann $"
+__build__= "$Revision$"
+__date__ ="$Date$"
+__lastAuthor__="$Author$"
 
 def getUsage():
 
