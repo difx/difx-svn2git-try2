@@ -17,6 +17,7 @@ from difxdb.difxdbconfig import DifxDbConfig
 from difxdb.model.dbConnection import Schema, Connection
 from difxdb.business.experimentaction import *
 from difxdb.model import model
+from operator import  attrgetter
 
 __author__="Helge Rottmann <rottmann@mpifr-bonn.mpg.de>"
 __prog__ = os.path.basename(__file__)
@@ -72,7 +73,8 @@ if __name__ == "__main__":
 		sys.exit
 
 	if (experiment is not None):
-		for module in experiment.modules:
+                sortedModules = sorted(experiment.modules, key= attrgetter('stationCode'))
+		for module in sortedModules:
 			print module.vsn, module.slot.location, module.stationCode
         
     
