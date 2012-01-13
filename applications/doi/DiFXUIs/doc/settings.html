@@ -4,6 +4,7 @@
     <meta content="text/html; charset=ISO-8859-1"
       http-equiv="Content-Type">
     <title>Settings Window</title>
+    <link type="text/css" rel="stylesheet" href="style.css">
   </head>
   <body>
     <h1>DiFX GUI System Settings Window</h1>
@@ -145,6 +146,21 @@
     also be consulted directly by running a mySQL client program on the
     DiFX host).&nbsp; The following fields govern remote access to the
     database:<br>
+    <h4>Use Data Base</h4>
+    This checkbox determines whether the GUI is using the database at
+    all.&nbsp; If checked, changes to experiments, passes, and jobs in
+    the Queue Browser will be reflected in the database, and items in
+    the database will appear in the Queue Browser.&nbsp; If not,
+    experiments, passes, and jobs in the Queue Browser will be saved
+    "locally", and information about them may be lost if the GUI is shut
+    down.&nbsp; However the GUI will still be able to run DiFX.<br>
+    <h4>Version</h4>
+    <p>The version field is not currently in use, but may be used in the
+      future to coordinate the GUI with changes that may be made to the
+      database structure.&nbsp; At the moment it is set to blank or
+      "unknown" by default.&nbsp; Changing it will have no effect on
+      anything.<br>
+    </p>
     <h4>Host</h4>
     The database Host is the hostname of the DiFX host that contains the
     DiFX database.&nbsp; The named host should be accessible through
@@ -161,6 +177,10 @@
     the DiFX host.&nbsp; The mySQL database must be set up to recognize
     this user, <span style="font-style: italic;">including access to
       the database from the host where the DiFX GUI is running</span>.&nbsp;
+
+
+
+
 
 
 
@@ -208,6 +228,10 @@
     does it involve much network traffic, however the database probably
     doesn't change much so an interval of a few seconds should be fine.<br>
     <h2><a name="Testing_the_Database_Configuration"></a>Trouble-shooting
+
+
+
+
 
 
 
@@ -287,6 +311,10 @@
     </code>
     <div style="margin-left: 40px; font-weight: bold;"><code>SQLException:
 
+
+
+
+
         Communications link failure The last packet sent successfully to
         the server was 0 milliseconds ago. The driver has not received
         any packets from the server.</code></div>
@@ -299,7 +327,12 @@
 
 
 
-    Then remote log into that host and see if mySQL is run:<br>
+
+
+
+
+    Then remote log into that host and see if the mySQL server is
+    runing:<br>
     <ul style="margin-left: 40px;">
     </ul>
     <pre style="margin-left: 40px;">ps -ef | grep mysql
@@ -357,5 +390,6 @@
     instance, you've recently queued something), check the value in the
     "DiFX Database" field.&nbsp; It should match your the name of the
     database where queuing is going on (which is probably "difxdb").<br>
+    <br>
   </body>
 </html>

@@ -358,6 +358,7 @@ public class SystemSettings extends JFrame {
         IndexedPanel databasePanel = new IndexedPanel( "Database Configuration" );
         databasePanel.openHeight( 275 );
         databasePanel.closedHeight( 20 );
+        databasePanel.labelWidth( 300 );
         _scrollPane.addNode( databasePanel );
         _dbUseDataBase = new JCheckBox();
         _dbUseDataBase.setBounds( 165, 25, 25, 25 );
@@ -528,6 +529,34 @@ public class SystemSettings extends JFrame {
 
         _scrollPane.addNode( _addressesPanel );
         
+        IndexedPanel jobSettingsPanel = new IndexedPanel( "Job Settings" );
+        jobSettingsPanel.openHeight( 275 );
+        jobSettingsPanel.closedHeight( 20 );
+        jobSettingsPanel.labelWidth( 300 );
+        _scrollPane.addNode( jobSettingsPanel );
+        JLabel workingDirectoryLabel = new JLabel( "Working Directory:" );
+        workingDirectoryLabel.setBounds( 10, 25, 150, 25 );
+        workingDirectoryLabel.setHorizontalAlignment( JLabel.RIGHT );
+        workingDirectoryLabel.setToolTipText( "Root directory on the DiFX host for Experiment data." );
+        _workingDirectory = new JFormattedTextField();
+        _workingDirectory.setFocusLostBehavior( JFormattedTextField.COMMIT );
+        _workingDirectory.setToolTipText( "Root directory on the DiFX host for Experiment data." );
+        jobSettingsPanel.add( workingDirectoryLabel );
+        jobSettingsPanel.add( _workingDirectory );
+        _stagingArea = new JFormattedTextField();
+        _stagingArea.setFocusLostBehavior( JFormattedTextField.COMMIT );
+        _stagingArea.setToolTipText( "Staging area root directory on the DiFX host." );
+        jobSettingsPanel.add( _stagingArea );
+        JLabel useStagingAreaLabel = new JLabel( "Use Staging Area:" );
+        useStagingAreaLabel.setBounds( 10, 55, 120, 25 );
+        useStagingAreaLabel.setHorizontalAlignment( JLabel.RIGHT );
+        useStagingAreaLabel.setToolTipText( "Use the staging area to run jobs (or don't)." );
+        _useStagingArea = new JCheckBox( "" );
+        _useStagingArea.setBounds( 133, 55, 25, 25 );
+        _useStagingArea.setToolTipText( "Use the staging area to run jobs (or don't)." );
+        jobSettingsPanel.add( useStagingAreaLabel );
+        jobSettingsPanel.add( _useStagingArea );
+
         _allObjectsBuilt = true;
         
         //  This seems to be required to get the browser to draw the first time.
@@ -578,6 +607,9 @@ public class SystemSettings extends JFrame {
             _difxUsersGroupURL.setBounds( 115, 55, w - 135, 25 );
             _difxWikiURL.setBounds( 115, 85, w - 135, 25 );
             _difxSVN.setBounds( 115, 115, w - 135, 25 );
+            //  Job settings
+            _workingDirectory.setBounds( 165, 25, w - 185, 25 );
+            _stagingArea.setBounds( 165, 55, w - 185, 25 );
         }
     }
     
@@ -671,6 +703,9 @@ public class SystemSettings extends JFrame {
         _difxSVN.setText( "https://svn.atnf.csiro.au/trac/difx" );
         _dbAutoUpdate.setSelected( false );
         _dbAutoUpdateInterval.intValue( 10 );
+        _workingDirectory.setText( "/" );
+        _stagingArea.setText( "/queue" );
+        _useStagingArea.setSelected( false );
         _queueBrowserSettings.showCompleted = true;
         _queueBrowserSettings.showIncomplete = true;
         _queueBrowserSettings.showSelected = true;
@@ -806,6 +841,15 @@ public class SystemSettings extends JFrame {
     public void dbAutoUpdate( boolean newVal ) { _dbAutoUpdate.setSelected( newVal ); }
     public int dbAutoUpdateInterval() { return _dbAutoUpdateInterval.intValue(); }
     
+    public String workingDirectory() { return _workingDirectory.getText(); }
+    public void workingDirectory( String newVal ) { _workingDirectory.setText( newVal ); }
+    
+    public String stagingArea() { return _stagingArea.getText(); }
+    public void stagingArea( String newVal ) { _stagingArea.setText( newVal ); }
+    
+    public boolean useStagingArea() { return _useStagingArea.isSelected(); }
+    public void useStagingArea( boolean newVal ) { _useStagingArea.setSelected( newVal ); }
+    
     /*
      * Set the look and feel for a new JFrame.  This needs to be called before any
      * GUI components are created.
@@ -919,8 +963,14 @@ public class SystemSettings extends JFrame {
     }
     
     /*
-     * Parse a settings file (XML).  This function produces lots of log messages
-     * and returns true only if it succeeds.
+     * Parse a settings file (XML).  We are set up to deal with "old" settings
+     * files - those that may not have parameters we are looking for.  We try not
+     * to over-write our default settings when such situations arise, although
+     * different things happen depending on the variable type.  String settings
+     * that don't exist return "null", which is easy to trap.  Numeric settings
+     * return 0, which is easy to deal with unless 0 is a valid setting (there are some
+     * of these).  Booleans return false when they don't exist, which we just have
+     * to assume is the right setting.
      */
     public boolean getSettingsFromFile( String filename ) {
         //  Can't read a non-existent filename
@@ -940,42 +990,71 @@ public class SystemSettings extends JFrame {
             javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance(doiConfig.getClass().getPackage().getName());
             javax.xml.bind.Unmarshaller unmarshaller = jaxbCtx.createUnmarshaller();
             doiConfig = (DoiSystemConfig) unmarshaller.unmarshal( theFile );
-            this.home( doiConfig.getDifxHome() );
-            this.resourcesFile( doiConfig.getResourcesFile() );
-            this.dbHost( doiConfig.getDbHost() );
-            this.dbSID( doiConfig.getDbSID() );
-            this.dbPWD( doiConfig.getDbPassword() );
-            this.jdbcDriver( doiConfig.getDbJdbcDriver() );
-            this.jdbcPort( doiConfig.getDbJdbcPort() );
-            this.dbURL( doiConfig.getDbUrl() );
-            setDbURL();
-            this.ipAddress( doiConfig.getIpAddress() );
-            this.port( doiConfig.getPort() );
-            this.bufferSize( doiConfig.getBufferSize() );
+            if ( doiConfig.getDifxHome() != null )
+                this.home( doiConfig.getDifxHome() );
+            if ( doiConfig.getResourcesFile() != null )   // BLAT do we still use this thing?
+                this.resourcesFile( doiConfig.getResourcesFile() );
+            if ( doiConfig.getDbHost() != null )
+                this.dbHost( doiConfig.getDbHost() );
+            if ( doiConfig.getDbSID() != null )
+                this.dbSID( doiConfig.getDbSID() );
+            if ( doiConfig.getDbPassword() != null )
+                this.dbPWD( doiConfig.getDbPassword() );
+            if ( doiConfig.getDbJdbcDriver() != null )
+                this.jdbcDriver( doiConfig.getDbJdbcDriver() );
+            if ( doiConfig.getDbJdbcPort() != null )
+                this.jdbcPort( doiConfig.getDbJdbcPort() );
+            if ( doiConfig.getDbUrl() != null )
+                this.dbURL( doiConfig.getDbUrl() );
+            setDbURL();  //  BLAT not sure we need to do this anymore
+            if ( doiConfig.getIpAddress() != null )
+                this.ipAddress( doiConfig.getIpAddress() );
+            if ( doiConfig.getPort() != 0 )
+                this.port( doiConfig.getPort() );
+            if ( doiConfig.getBufferSize() != 0 )
+                this.bufferSize( doiConfig.getBufferSize() );
             this.loggingEnabled( doiConfig.isLoggingEnabled() );
-            this.statusValidDuration( doiConfig.getStatusValidDuration() );
+            if ( doiConfig.getStatusValidDuration() != 0 )
+                this.statusValidDuration( doiConfig.getStatusValidDuration() );
             
-            this.jaxbPackage( doiConfig.getJaxbPackage() );
-            this.timeout( doiConfig.getTimeout() );
-            this.difxControlAddress( doiConfig.getDifxControlAddress() );
-            this.difxControlPort( doiConfig.getDifxControlPort() );
-            this.difxControlUser( doiConfig.getDifxControlUser() );
-            this.difxControlPassword( doiConfig.getDifxControlPWD() );
-            this.difxVersion( doiConfig.getDifxVersion() );
+            if ( doiConfig.getJaxbPackage() != null )
+                this.jaxbPackage( doiConfig.getJaxbPackage() );
+            if ( doiConfig.getTimeout() != 0 )
+                this.timeout( doiConfig.getTimeout() );
+            if ( doiConfig.getDifxControlAddress() != null )
+                this.difxControlAddress( doiConfig.getDifxControlAddress() );
+            if ( doiConfig.getDifxControlPort() != 0 )
+                this.difxControlPort( doiConfig.getDifxControlPort() );
+            if ( doiConfig.getDifxControlUser() != null )
+                this.difxControlUser( doiConfig.getDifxControlUser() );
+            if ( doiConfig.getDifxControlPWD() != null )
+                this.difxControlPassword( doiConfig.getDifxControlPWD() );
+            if ( doiConfig.getDifxVersion() != null )
+                this.difxVersion( doiConfig.getDifxVersion() );
             _dbUseDataBase.setSelected( doiConfig.isDbUseDataBase() );
-            _dbVersion.setText( doiConfig.getDbVersion() );
-            this.dbName( doiConfig.getDbName() );
-            _reportLoc = doiConfig.getReportLoc();
-            _guiDocPath.setText( doiConfig.getGuiDocPath() );
-            _difxUsersGroupURL.setText( doiConfig.getDifxUsersGroupURL() );
-            _difxWikiURL.setText( doiConfig.getDifxWikiURL() );
-            _difxSVN.setText( doiConfig.getDifxSVN() );
+            if ( doiConfig.getDbVersion() != null )
+                _dbVersion.setText( doiConfig.getDbVersion() );
+            if ( doiConfig.getDbName() != null )
+                this.dbName( doiConfig.getDbName() );
+            if ( doiConfig.getReportLoc() != null )
+                _reportLoc = doiConfig.getReportLoc();
+            if ( doiConfig.getGuiDocPath() != null )
+                _guiDocPath.setText( doiConfig.getGuiDocPath() );
+            if ( doiConfig.getDifxUsersGroupURL() != null )
+                _difxUsersGroupURL.setText( doiConfig.getDifxUsersGroupURL() );
+            if ( doiConfig.getDifxWikiURL() != null )
+                _difxWikiURL.setText( doiConfig.getDifxWikiURL() );
+            if ( doiConfig.getDifxSVN() != null )
+                _difxSVN.setText( doiConfig.getDifxSVN() );
             this.dbAutoUpdate( doiConfig.isDbAutoUpdate() );
-            _dbAutoUpdateInterval.intValue( doiConfig.getDbAutoUpdateInterval() );
-            doiConfig.setQueueShowCompleted( _queueBrowserSettings.showCompleted );
-            doiConfig.setQueueShowIncomplete( _queueBrowserSettings.showIncomplete );
-            doiConfig.setQueueShowSelected( _queueBrowserSettings.showSelected );
-            doiConfig.setQueueShowUnselected( _queueBrowserSettings.showUnselected );
+            if ( doiConfig.getDbAutoUpdateInterval() != 0 )
+                _dbAutoUpdateInterval.intValue( doiConfig.getDbAutoUpdateInterval() );
+            if ( doiConfig.getWorkingDirectory() != null )
+                _workingDirectory.setText( doiConfig.getWorkingDirectory() );
+            if ( doiConfig.getStagingArea() != null )
+                _stagingArea.setText( doiConfig.getStagingArea() );
+            _useStagingArea.setSelected( doiConfig.isUseStagingArea() );
+
             _queueBrowserSettings.showCompleted = doiConfig.isQueueShowCompleted();
             _queueBrowserSettings.showIncomplete = doiConfig.isQueueShowIncomplete();
             _queueBrowserSettings.showSelected = doiConfig.isQueueShowSelected();
@@ -1063,6 +1142,10 @@ public class SystemSettings extends JFrame {
         doiConfig.setQueueShowIncomplete( _queueBrowserSettings.showIncomplete );
         doiConfig.setQueueShowSelected( _queueBrowserSettings.showSelected );
         doiConfig.setQueueShowUnselected( _queueBrowserSettings.showUnselected );
+        
+        doiConfig.setWorkingDirectory( _workingDirectory.getText() );
+        doiConfig.setStagingArea( _stagingArea.getText() );
+        doiConfig.setUseStagingArea( _useStagingArea.isSelected() );
         
         doiConfig.setWindowConfigMainX( _windowConfiguration.mainX );
         doiConfig.setWindowConfigMainY( _windowConfiguration.mainY );
@@ -1330,6 +1413,11 @@ public class SystemSettings extends JFrame {
     protected JFormattedTextField _difxUsersGroupURL;
     protected JFormattedTextField _difxWikiURL;
     protected JFormattedTextField _difxSVN;
+    
+    //  Items that govern the creation and running of jobs.
+    protected JFormattedTextField _workingDirectory;
+    protected JFormattedTextField _stagingArea;
+    protected JCheckBox _useStagingArea;
     
     //  The "look and feel" that applies to all GUI components.
     protected String _lookAndFeel;

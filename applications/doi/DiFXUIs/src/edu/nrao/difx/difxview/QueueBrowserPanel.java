@@ -9,18 +9,13 @@ import mil.navy.usno.widgetlib.BrowserNode;
 import mil.navy.usno.widgetlib.TearOffPanel;
 import mil.navy.usno.widgetlib.MessageDisplayPanel;
 import mil.navy.usno.widgetlib.ActivityMonitorLight;
-import mil.navy.usno.widgetlib.NumberBox;
-import mil.navy.usno.widgetlib.SaneTextField;
 
 import javax.swing.JLabel;
 import javax.swing.JButton;
 import javax.swing.JPopupMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JMenu;
 import javax.swing.JSeparator;
-import javax.swing.JDialog;
-import javax.swing.JFormattedTextField;
 import javax.swing.JOptionPane;
 
 import java.awt.Font;
@@ -39,7 +34,6 @@ import javax.swing.Timer;
 import java.util.List;
 import java.util.Iterator;
 import java.util.Date;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
 import java.awt.event.ActionEvent;
@@ -47,6 +41,8 @@ import java.awt.event.ActionListener;
 
 import edu.nrao.difx.difxdatamodel.*;
 import edu.nrao.difx.difxcontroller.*;
+
+import edu.nrao.difx.difxutilities.DiFXCommand_mkdir;
 
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 
@@ -85,7 +81,7 @@ public class QueueBrowserPanel extends TearOffPanel {
         JMenuItem newPassItem = new JMenuItem( "Pass" );
         newPassItem.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                newPass();
+                newPass( null );
             }
         });
         _newMenu.add( newPassItem );
@@ -393,6 +389,8 @@ public class QueueBrowserPanel extends TearOffPanel {
         String creationDate = (new SimpleDateFormat( "yyyy-mm-dd HH:mm:ss" )).format( new Date() );
         win.created( creationDate );
         win.status( "unknown" );
+        win.directory( _systemSettings.workingDirectory() + "/" + win.name() );
+        win.keepDirectory( false );
         win.editMode( true );
         win.visible();
         //  If the user hit the "ok" button, add this new experiment to our list of
@@ -430,11 +428,34 @@ public class QueueBrowserPanel extends TearOffPanel {
             thisExperiment.inDataBase( win.inDataBase() );
             thisExperiment.number( win.number() );
             thisExperiment.status( win.status() );
+            thisExperiment.directory( win.directory() );
+            //  Make the directory on the DiFX host...
+            DiFXCommand_mkdir mkdir = new DiFXCommand_mkdir( win.directory(), _systemSettings );
+            mkdir.send();
             _browserPane.addNode( thisExperiment );
         }
     }
         
-    protected void newPass() {};
+    /*
+     * Add a new pass to the given experiment.  The experiment may be null, in which
+     * case it is "undefined" - the user needs to fill it in.
+     */
+    protected void newPass( ExperimentNode experiment ) {
+        Component comp = this.getParent();
+        while ( comp.getParent() != null )
+            comp = comp.getParent();
+        Point pt = _newButton.getLocationOnScreen();
+        PassNode.PassPropertiesWindow win =
+            new PassNode.PassPropertiesWindow( (Frame)comp, pt.x + 25, pt.y + 25, _systemSettings );
+        win.setTitle( "Create New Experiment" );
+        win.number( 0 );
+        String creationDate = (new SimpleDateFormat( "yyyy-mm-dd HH:mm:ss" )).format( new Date() );
+        win.created( creationDate );
+        win.status( "unknown" );
+        win.editMode( true );
+        win.visible();
+    };
+    
     protected void newJob() {};
     protected void selectAll() {};
     protected void unselectAll() {};

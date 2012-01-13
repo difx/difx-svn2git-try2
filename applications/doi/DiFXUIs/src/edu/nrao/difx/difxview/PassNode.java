@@ -5,6 +5,9 @@
 package edu.nrao.difx.difxview;
 
 import mil.navy.usno.widgetlib.BrowserNode;
+import mil.navy.usno.widgetlib.SaneTextField;
+import mil.navy.usno.widgetlib.NumberBox;
+
 import javax.swing.JPopupMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JCheckBoxMenuItem;
@@ -12,8 +15,18 @@ import javax.swing.JMenu;
 import javax.swing.JTextField;
 import javax.swing.JSeparator;
 import javax.swing.JOptionPane;
+import javax.swing.JLabel;
+import javax.swing.JDialog;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JButton;
+
+import java.awt.Frame;
 
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Timer;
+import java.awt.Color;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -324,4 +337,211 @@ public class PassNode extends QueueBrowserNode {
     protected JTextField _nameEditor;
     protected SystemSettings _settings;
     
+    /*
+     * This class produces a modal pop-up window for adjusting the properties
+     * specific to a pass.  This window is modal.
+     */
+    static class PassPropertiesWindow extends JDialog {
+        
+        public PassPropertiesWindow( Frame frame, int x, int y, SystemSettings settings ) {
+            super( frame, "", true );
+            _settings = settings;
+            this.setBounds( x, y, 320, 280 );
+            this.setResizable( false );
+            this.getContentPane().setLayout( null );
+            _inDataBase = new JCheckBox( "" );
+            _inDataBase.setBounds( 100, 110, 25, 25 );
+            _inDataBase.addActionListener( new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    inDataBaseAction();
+                }
+            });
+            this.getContentPane().add( _inDataBase );
+            JLabel inDataBaseLabel = new JLabel( "In Data Base:" );
+            inDataBaseLabel.setBounds( 10, 110, 85, 25 );
+            inDataBaseLabel.setHorizontalAlignment( JLabel.RIGHT );
+            this.getContentPane().add( inDataBaseLabel );
+            JLabel idLabel = new JLabel( "Data Base ID:" );
+            idLabel.setBounds( 140, 110, 85, 25 );
+            idLabel.setHorizontalAlignment( JLabel.RIGHT );
+            this.getContentPane().add( idLabel );
+            _id = new JLabel( "" );
+            _id.setBounds( 230, 110, 70, 25 );
+            this.getContentPane().add( _id );
+            _name = new SaneTextField();
+            _name.setBounds( 100, 20, 210, 25 );
+            _name.textWidthLimit( 20 );
+            _name.setToolTipText( "Name assigned to the experiment (up to 20 characters)." );
+            this.getContentPane().add( _name );
+            _name.setVisible( false );
+            _nameAsLabel = new JLabel( "" );
+            _nameAsLabel.setBounds( 100, 20, 210, 25 );
+            _nameAsLabel.setToolTipText( "Name assigned to the experiment." );
+            this.getContentPane().add( _nameAsLabel );
+            JLabel nameLabel = new JLabel( "Name:" );
+            nameLabel.setBounds( 10, 20, 85, 25 );
+            nameLabel.setHorizontalAlignment( JLabel.RIGHT );
+            this.getContentPane().add( nameLabel );
+            _number = new NumberBox();
+            _number.setBounds( 100, 50, 80, 25 );
+            _number.limits( 0.0, 9999.0 );
+            _number.setToolTipText( "Number (up to four digits) used to associate experiments with the same name." );
+            this.getContentPane().add( _number );
+            _number.setVisible( false );
+            _numberAsLabel = new JLabel( "" );
+            _numberAsLabel.setBounds( 100, 50, 80, 25 );
+            _numberAsLabel.setToolTipText( "Number used to associate experiments with the same name." );
+            this.getContentPane().add( _numberAsLabel );
+            _numberAsLabel.setVisible( true );
+            JLabel numberLabel = new JLabel( "Number:" );
+            numberLabel.setBounds( 10, 50, 85, 25 );
+            numberLabel.setHorizontalAlignment( JLabel.RIGHT );
+            this.getContentPane().add( numberLabel );
+            _status = new JLabel( "unknown" );
+            _status.setBounds( 100, 80, 210, 25 );
+            _status.setToolTipText( "Current status of this experiment." );
+            this.getContentPane().add( _status );
+            _status.setVisible( true );
+            JLabel statusLabel = new JLabel( "Status:" );
+            statusLabel.setBounds( 10, 80, 85, 25 );
+            statusLabel.setHorizontalAlignment( JLabel.RIGHT );
+            this.getContentPane().add( statusLabel );
+            _statusList = new JComboBox();
+            _statusList.setBounds( 100, 80, 210, 25 );
+            _statusList.setToolTipText( "List of possible status settings for this experiment." );
+            _statusList.setBackground( Color.WHITE );
+            _statusList.addActionListener( new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    _status.setText( (String)_statusList.getSelectedItem() );
+                }
+            });
+            this.getContentPane().add( _statusList );
+            _statusList.setVisible( false );
+            _created = new JLabel( "" );
+            _created.setBounds( 100, 140, 210, 25 );
+            _created.setToolTipText( "Date this experiment was created (assigned by database if available)." );
+            this.getContentPane().add( _created );
+            JLabel createdLabel = new JLabel( "Created:" );
+            createdLabel.setBounds( 10, 140, 85, 25 );
+            createdLabel.setHorizontalAlignment( JLabel.RIGHT );
+            this.getContentPane().add( createdLabel );
+            _cancelButton = new JButton( "Dismiss" );
+            _cancelButton.setBounds( 100, 170, 100, 25 );
+            _cancelButton.addActionListener( new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    ok( false );
+                }
+            });
+            this.getContentPane().add( _cancelButton );
+            _okButton = new JButton( "Edit" );
+            _okButton.setBounds( 210, 170, 100, 25 );
+            _okButton.addActionListener( new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    ok( true );
+                }
+            });
+            this.getContentPane().add( _okButton );
+        }        
+        public String name() { return _name.getText(); }
+        public void name( String newVal ) { 
+            _name.setText( newVal );
+            _nameAsLabel.setText( newVal );
+        }
+        public Integer number() { return _number.intValue(); }
+        public void number( Integer newVal ) { 
+            _number.intValue( newVal );
+            _numberAsLabel.setText( newVal.toString() );
+        }
+        protected void ok( boolean newVal ) {
+            _ok = newVal;
+            if ( _editMode )
+                this.setVisible( false );
+            else {
+                if ( !_ok )
+                    this.setVisible( false );
+                else
+                    editMode( true );
+            }
+        }
+        public boolean ok() { return _ok; }
+        public void visible() {
+            _ok = false;
+            this.setVisible( true );
+        }
+        public boolean inDataBase() { return _inDataBase.isSelected(); }
+        public void inDataBase( boolean newVal ) { 
+            _inDataBase.setSelected( newVal );
+            _saveInDataBase = newVal;  //  Used to maintain a value in non-edit mode.
+        };
+        public void id( Integer newVal ) { 
+            if ( newVal == null )
+                _id.setText( "" );
+            else
+                _id.setText( newVal.toString() );
+        }
+        public boolean editMode() { return _editMode; }
+        public void editMode( boolean newVal ) { 
+            _editMode = newVal;
+            if ( _editMode ) {
+                _name.setVisible( true );
+                _nameAsLabel.setVisible( false );
+                _number.setVisible( true );
+                _numberAsLabel.setVisible( false );
+                _okButton.setText( "Apply" );
+                _cancelButton.setText( "Cancel" );
+                Iterator iter = _settings.experimentStatusList().entrySet().iterator();
+                String saveStatus = status();
+                for ( ; iter.hasNext(); )
+                    _statusList.addItem( ((SystemSettings.ExperimentStatusEntry)((Map.Entry)iter.next()).getValue()).status );
+                _statusList.setVisible( true );
+                _status.setVisible( false );
+                this.status( saveStatus );
+            }
+            else {
+                _name.setVisible( false );
+                _nameAsLabel.setVisible( true );
+                _number.setVisible( false );
+                _numberAsLabel.setVisible( true );
+                _okButton.setText( "Edit" );
+                _cancelButton.setText( "Dismiss" );
+                _statusList.setVisible( false );
+                _status.setVisible( true );
+            }
+        }
+        protected void inDataBaseAction() {
+            if ( !_editMode )
+                _inDataBase.setSelected( _saveInDataBase );
+            else
+                _saveInDataBase = _inDataBase.isSelected();
+        }
+        public void created( String newVal ) { _created.setText( newVal ); }
+        public void status( String newVal ) { 
+            _status.setText( newVal );
+            for ( int i = 0; i < _statusList.getItemCount(); ++i ) {
+                if ( ((String)_statusList.getItemAt( i )).contentEquals( newVal ) ) {
+                    _statusList.setSelectedIndex( i );
+                }
+            }
+        }
+        public String status() { return _status.getText(); }
+        
+        protected SaneTextField _name;
+        protected JLabel _nameAsLabel;
+        protected NumberBox _number;
+        protected JLabel _numberAsLabel;
+        protected boolean _ok;
+        protected Timer _timeoutTimer;
+        protected JCheckBox _inDataBase;
+        protected JLabel _id;
+        protected JLabel _created;
+        protected boolean _editMode;
+        protected boolean _saveInDataBase;
+        protected JButton _okButton;
+        protected JButton _cancelButton;
+        protected JLabel _status;
+        protected JComboBox _statusList;
+        protected SystemSettings _settings;
+
+    };
+
 }

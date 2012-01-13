@@ -21,7 +21,8 @@
     <xsd:element name="difxWeight" type="difxWeight"></xsd:element>
     <xsd:element name="difxStart" type="difxStart"></xsd:element>
     <xsd:element name="difxStop" type="difxStop"></xsd:element>
-    <xsd:element name="difxInputFileRequest" type="difxInputFileRequest"></xsd:element>
+    <xsd:element name="difxFileTransfer" type="difxFileTransfer"></xsd:element>
+    <xsd:element name="difxFileOperation" type="difxFileOperation"></xsd:element>
     <xsd:element name="difxCommand" type="difxCommand"></xsd:element>
     <xsd:element name="doiResourceConfig" type="doiResourceConfig"></xsd:element>
     <xsd:element name="doiProject" type="doiProject"></xsd:element>
@@ -58,7 +59,8 @@
                 <xsd:element ref="difxWeight"/>
                 <xsd:element ref="difxStart"/>
                 <xsd:element ref="difxStop"/>
-                <xsd:element ref="difxInputFileRequest"/>
+                <xsd:element ref="difxFileTransfer"/>
+                <xsd:element ref="difxFileOperation"/>
                 <xsd:element ref="difxCommand"/>
                 <xsd:element ref="doiSystemConfig"/>
                 <xsd:element ref="doiResourceConfig"/>
@@ -116,6 +118,10 @@
                 <xsd:element ref="queueShowIncomplete"/>
                 <xsd:element ref="queueShowSelected"/>
                 <xsd:element ref="queueShowUnselected"/>
+                
+                <xsd:element ref="workingDirectory"/>
+                <xsd:element ref="stagingArea"/>
+                <xsd:element ref="useStagingArea"/>
                 
                 <xsd:element ref="windowConfigMainX"/>
                 <xsd:element ref="windowConfigMainY"/>
@@ -176,6 +182,10 @@
     <xsd:element name="queueShowSelected" type="xsd:boolean"></xsd:element>
     <xsd:element name="queueShowUnselected" type="xsd:boolean"></xsd:element>
                 
+    <xsd:element name="workingDirectory" type="xsd:string"></xsd:element>
+    <xsd:element name="stagingArea" type="xsd:string"></xsd:element>
+    <xsd:element name="useStagingArea" type="xsd:boolean"></xsd:element>
+    
     <xsd:element name="windowConfigMainX" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigMainY" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigMainW" type="xsd:int"></xsd:element>
@@ -287,9 +297,22 @@
         </xsd:sequence>
     </xsd:complexType>
 
-    <xsd:complexType name="difxInputFileRequest">
+    <xsd:complexType name="difxFileTransfer">
         <xsd:sequence>
-            <xsd:element name="input" type="xsd:string"></xsd:element>
+            <xsd:element name="origin" type="xsd:string"></xsd:element>
+            <xsd:element name="destination" type="xsd:string"></xsd:element>
+            <xsd:element name="direction" type="xsd:string"></xsd:element>
+            <xsd:element name="address" type="xsd:string"></xsd:element>
+            <xsd:element name="port" type="xsd:int"></xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="difxFileOperation">
+        <xsd:sequence>
+            <xsd:element name="path" type="xsd:string"></xsd:element>
+            <xsd:element name="operation" type="xsd:string"></xsd:element>
+            <xsd:element name="dataNode" type="xsd:string"></xsd:element>
+            <xsd:element name="arg" type="xsd:string"></xsd:element>
         </xsd:sequence>
     </xsd:complexType>
 

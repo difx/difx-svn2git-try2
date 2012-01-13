@@ -99,6 +99,15 @@ public class ExperimentNode extends QueueBrowserNode {
             }
         });
         _popup.add( deleteExperimentItem );
+        _popup.add( new JSeparator() );
+        JMenuItem addPassItem = new JMenuItem( "Add New Pass" );
+        addPassItem.setToolTipText( "Add a new Pass to this Experiment." );
+        addPassItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                addPassAction();
+            }
+        });
+        _popup.add( addPassItem );
 
         _label.setText( _name );
     }
@@ -208,6 +217,17 @@ public class ExperimentNode extends QueueBrowserNode {
     }
     
     /*
+     * Add a new pass to this experiment.  This brings up the "pass" display in
+     * edit mode, pre-set to this experiment.  Being in edit mode, the user could
+     * change the experiment.  Not a problem.
+     */
+    public void addPassAction() {
+        //  The pass display is launched from the queue browser...which is this
+        //  experiment's parent, presumably.
+        ((QueueBrowserPanel)(this.getParent())).newPass( this );
+    }
+    
+    /*
      * Bring up a display/editor for the properties of this experiment.  This is
      * a modal display.  Any changes are applied after the window is closed.
      */
@@ -226,6 +246,7 @@ public class ExperimentNode extends QueueBrowserNode {
         win.inDataBase( this.inDataBase() );
         win.created( creationDate() );
         win.status( this.status() );
+        win.directory( this.directory() );
         win.visible();
         //  See if the user made any edition changes.  If so, apply them to the
         //  database (if requested) and locally.
@@ -252,6 +273,8 @@ public class ExperimentNode extends QueueBrowserNode {
                         } catch ( Exception e ) {
                                 java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
                         }
+                        this.id( newExperimentId );
+                        this.creationDate( creationDate );
                     }
                     else {
                         db.updateExperiment( this.id(), "code", win.name() );
@@ -270,6 +293,7 @@ public class ExperimentNode extends QueueBrowserNode {
             this.number( win.number() );
             this.status( win.status() );
             this.inDataBase( win.inDataBase() );
+            this.directory( win.directory() );
         }
     }
     
@@ -294,11 +318,15 @@ public class ExperimentNode extends QueueBrowserNode {
     public void number( Integer newVal ) { _number = newVal; }
     public Integer number() { return _number; }
     
+    public void directory( String newVal ) { _directory = newVal; }
+    public String directory() { return _directory; }
+    
     protected SystemSettings _settings;
     protected String _name;
     protected String _creationDate;
     protected String _status;
     protected Integer _number;
+    protected String _directory;
     
     /*
      * This class produces a modal pop-up window for adjusting the properties
@@ -309,7 +337,7 @@ public class ExperimentNode extends QueueBrowserNode {
         public ExperimentPropertiesWindow( Frame frame, int x, int y, SystemSettings settings ) {
             super( frame, "", true );
             _settings = settings;
-            this.setBounds( x, y, 320, 280 );
+            this.setBounds( x, y, 420, 280 );
             this.setResizable( false );
             this.getContentPane().setLayout( null );
             _inDataBase = new JCheckBox( "" );
@@ -320,11 +348,11 @@ public class ExperimentNode extends QueueBrowserNode {
                 }
             });
             this.getContentPane().add( _inDataBase );
-            JLabel inDataBaseLabel = new JLabel( "In Data Base:" );
+            JLabel inDataBaseLabel = new JLabel( "In Database:" );
             inDataBaseLabel.setBounds( 10, 110, 85, 25 );
             inDataBaseLabel.setHorizontalAlignment( JLabel.RIGHT );
             this.getContentPane().add( inDataBaseLabel );
-            JLabel idLabel = new JLabel( "Data Base ID:" );
+            JLabel idLabel = new JLabel( "Database ID:" );
             idLabel.setBounds( 140, 110, 85, 25 );
             idLabel.setHorizontalAlignment( JLabel.RIGHT );
             this.getContentPane().add( idLabel );
@@ -335,6 +363,11 @@ public class ExperimentNode extends QueueBrowserNode {
             _name.setBounds( 100, 20, 210, 25 );
             _name.textWidthLimit( 20 );
             _name.setToolTipText( "Name assigned to the experiment (up to 20 characters)." );
+            _name.addActionListener( new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    nameChangeAction();
+                }
+            });
             this.getContentPane().add( _name );
             _name.setVisible( false );
             _nameAsLabel = new JLabel( "" );
@@ -388,8 +421,26 @@ public class ExperimentNode extends QueueBrowserNode {
             createdLabel.setBounds( 10, 140, 85, 25 );
             createdLabel.setHorizontalAlignment( JLabel.RIGHT );
             this.getContentPane().add( createdLabel );
+            _directory = new SaneTextField();
+            _directory.setBounds( 100, 170, 310, 25 );
+            _directory.setToolTipText( "\"Working\" directory containing all files for this experiment." );
+            _directory.addActionListener( new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    directoryChangeAction();
+                }
+            });
+            this.getContentPane().add( _directory );
+            _directory.setVisible( false );
+            _directoryAsLabel = new JLabel( "" );
+            _directoryAsLabel.setBounds( 100, 170, 310, 25 );
+            _directoryAsLabel.setToolTipText( "\"Working\" directory containing all files for this experiment." );
+            this.getContentPane().add( _directoryAsLabel );
+            JLabel directoryLabel = new JLabel( "Directory:" );
+            directoryLabel.setBounds( 10, 170, 85, 25 );
+            directoryLabel.setHorizontalAlignment( JLabel.RIGHT );
+            this.getContentPane().add( directoryLabel );
             _cancelButton = new JButton( "Dismiss" );
-            _cancelButton.setBounds( 100, 170, 100, 25 );
+            _cancelButton.setBounds( 100, 200, 100, 25 );
             _cancelButton.addActionListener( new ActionListener() {
                 public void actionPerformed( ActionEvent e ) {
                     ok( false );
@@ -397,7 +448,7 @@ public class ExperimentNode extends QueueBrowserNode {
             });
             this.getContentPane().add( _cancelButton );
             _okButton = new JButton( "Edit" );
-            _okButton.setBounds( 210, 170, 100, 25 );
+            _okButton.setBounds( 210, 200, 100, 25 );
             _okButton.addActionListener( new ActionListener() {
                 public void actionPerformed( ActionEvent e ) {
                     ok( true );
@@ -450,6 +501,8 @@ public class ExperimentNode extends QueueBrowserNode {
                 _nameAsLabel.setVisible( false );
                 _number.setVisible( true );
                 _numberAsLabel.setVisible( false );
+                _directory.setVisible( true );
+                _directoryAsLabel.setVisible( false );
                 _okButton.setText( "Apply" );
                 _cancelButton.setText( "Cancel" );
                 Iterator iter = _settings.experimentStatusList().entrySet().iterator();
@@ -465,6 +518,8 @@ public class ExperimentNode extends QueueBrowserNode {
                 _nameAsLabel.setVisible( true );
                 _number.setVisible( false );
                 _numberAsLabel.setVisible( true );
+                _directory.setVisible( false );
+                _directoryAsLabel.setVisible( true );
                 _okButton.setText( "Edit" );
                 _cancelButton.setText( "Dismiss" );
                 _statusList.setVisible( false );
@@ -487,6 +542,29 @@ public class ExperimentNode extends QueueBrowserNode {
             }
         }
         public String status() { return _status.getText(); }
+        public void directory( String newVal ) { 
+            _directory.setText( newVal );
+            _directoryAsLabel.setText( newVal );
+            _keepDirectory = true;
+        }
+        public String directory() { return _directory.getText(); }
+        public void keepDirectory( boolean newVal ) { _keepDirectory = newVal; }
+        /*
+         * A change has occurred in the name, which *maybe* should be propogated
+         * to the directory, but only if the directory hasn't been previously
+         * set (which probably indicates the experiment is new, but you can control
+         * it using the "keepDirectory" function).
+         */
+        protected void nameChangeAction() {
+            System.out.println( "yo!" );
+            if ( !_keepDirectory ) {
+                directory( _settings.workingDirectory() + "/" + _name.getText() );
+                keepDirectory( false );
+            }
+        }
+        protected void directoryChangeAction() {
+            keepDirectory( true );
+        }
         
         protected SaneTextField _name;
         protected JLabel _nameAsLabel;
@@ -504,6 +582,9 @@ public class ExperimentNode extends QueueBrowserNode {
         protected JLabel _status;
         protected JComboBox _statusList;
         protected SystemSettings _settings;
+        protected JLabel _directoryAsLabel;
+        protected SaneTextField _directory;
+        protected boolean _keepDirectory;
 
     };
     

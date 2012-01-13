@@ -14,7 +14,7 @@ import mil.navy.usno.plotlib.Track2D;
 import edu.nrao.difx.xmllib.difxmessage.ObjectFactory;
 import edu.nrao.difx.xmllib.difxmessage.Header;
 import edu.nrao.difx.xmllib.difxmessage.Body;
-import edu.nrao.difx.xmllib.difxmessage.DifxInputFileRequest;
+import edu.nrao.difx.xmllib.difxmessage.DifxFileTransfer;
 import edu.nrao.difx.difxutilities.SendMessage;
 import edu.nrao.difx.difxcontroller.JAXBDiFXProcessor;
 
@@ -510,12 +510,12 @@ public class JobNode extends QueueBrowserNode {
         header.setType( "DifxFileInputRequest" );
 
         // Create start job command
-        DifxInputFileRequest inputFileRequest = factory.createDifxInputFileRequest();
-        inputFileRequest.setInput( this.inputFile() );
+        DifxFileTransfer inputFileRequest = factory.createDifxFileTransfer();
+        inputFileRequest.setOrigin( this.inputFile() );
 
         // -- Create the XML defined messages and process through the system
         Body body = factory.createBody();
-        body.setDifxInputFileRequest( inputFileRequest );
+        body.setDifxFileTransfer( inputFileRequest );
 
         DifxMessage difxMsg = factory.createDifxMessage();
         difxMsg.setHeader( header );
