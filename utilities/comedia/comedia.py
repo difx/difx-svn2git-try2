@@ -113,7 +113,7 @@ class MainWindow(GenericWindow):
         col6 = ListboxColumn("datarate",5)
         self.grdSlot = MultiListbox(self.frmMain, col1, col2, col3, col4, col5, col6)
         self.grdSlot.bindEvent("<ButtonRelease-1>", self.selectSlotEvent)
-        self.btnNewModule = Button (self.frmMain, text="Check-in module", command=self.checkinModule, fg="green", activeforeground="green")
+        self.btnNewModule = Button (self.frmMain, text="Check-in module", command=self.checkinModule)
           
         
         # widgets on frmStatus
@@ -768,7 +768,7 @@ class CheckinWindow(GenericWindow):
         
     def _splitVSNLabelScan(self):
         
-        m = re.match('([a-zA-Z]+[\+-]\d+)/(\d+)/(\d+)', strip(self.txtVSN.get()))
+        m = re.match('([a-zA-Z]+[\+-]\d+)/(\d+)/(.+)', strip(self.txtVSN.get()))
 
         if (m != None):
             vsn = upper(m.group(1))
@@ -779,11 +779,9 @@ class CheckinWindow(GenericWindow):
 
             capacity = m.group(2)
             datarate = m.group(3)
-            
             # drop CRC code at end of datarate (appears when VSN label is scanned)
-            if (len(datarate) > 4):
-                datarate = datarate[0:3]
-
+            datarate = datarate[:-1]
+            
             return(vsn, capacity, datarate)
         else:
             raise Exception("Illegal VSN label")
