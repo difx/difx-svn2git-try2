@@ -51,6 +51,7 @@ if __name__ == "__main__":
     parser = OptionParser(version=version, usage=usage)
     parser.add_option("-s", "--slot", dest="slot", default="", 
                   help="show only modules that are located in slots matching the given expression")
+    parser.add_option("-e", "--extended", action="store_true", help="print extended information")
    
     (options, args) = parser.parse_args()
     
@@ -99,9 +100,13 @@ if __name__ == "__main__":
             
             sortedModules = sorted(experiment.modules, key=attrgetter('slot.location'))
             
+            # skip experiment if it contains no modules
             if (len(sortedModules) == 0):
                 continue
-                
+            
+            # skip experiment if it is not released
+            if (not isExperimentReleased(session, experiment.code)):
+                continue
             
                         
             printHeader = 0
@@ -114,8 +119,8 @@ if __name__ == "__main__":
                     if (not module.slot.location.startswith(options.slot)):
                         continue
                 
-                if printHeader == 0:
-                    print "\n\n------"
+                if printHeader == 0 and options.extended == True:
+                    print "\n------"
                     print experiment.code
                     print "------"
                     printHeader = 1
@@ -127,16 +132,16 @@ if __name__ == "__main__":
                     tempCapacity += module.capacity
                     totalCapacity += module.capacity
                     moduleCount += 1
-                else:
+                elif options.extended == True:
                     print "%s (%s) contains unreleased experiments" % (module.vsn, module.slot.location)
             
-            if (tempCapacity > 0):
-                print "Summed capacity for %s: %d\n\n" % (experiment.code, tempCapacity)
+            if (tempCapacity > 0 and options.extended == True):
+                print "Summed capacity for %s: %d" % (experiment.code, tempCapacity)
      
         if (moduleCount == 0):
-            print "No releasable modules found matching the filter criteria.\n\n"
+            print "No releasable modules found matching the filter criteria.\n"
             sys.exit(0)
-        print "-------"
+        print "\n-------"
         print "Summary"
         print "-------"
         print "Number of modules: %d" % (moduleCount)
