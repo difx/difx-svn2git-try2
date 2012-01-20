@@ -106,7 +106,7 @@ class MainWindow(GenericWindow):
         self.chkDirLess = Checkbutton(self.frmMain, text = "modules without .dir only", variable = self.filterDirLess, command=self.updateSlotListbox)
         
         col1 = ListboxColumn("slot",10, searchable=True)
-        col2 = ListboxColumn("module",10, sortable=True)
+        col2 = ListboxColumn("vsn",10, sortable=True)
         col3 = ListboxColumn("station",4, sortable=True)
         col4 = ListboxColumn("experiments",30)
         col5 = ListboxColumn("capacity",5) 
@@ -125,14 +125,16 @@ class MainWindow(GenericWindow):
         self.btnModuleScan = Button(frmStatus, text="Scan", command=self.scanModuleEvent)
         
         # widgets on frmDetail
-        Label(self.frmDetail, text = "location: ").grid(row=0, column=0, sticky=W)
+        Label(self.frmDetail, text = "slot: ").grid(row=0, column=0, sticky=W)
         Label(self.frmDetail, text = "vsn: ").grid(row=1, column=0, sticky=W)
-        Label(self.frmDetail, text = "capacity: ").grid(row=2, column=0, sticky=W)
-        Label(self.frmDetail, text = "datarate: ").grid(row=3, column=0, sticky=W)
-        Label(self.frmDetail, text = "received: ").grid(row=4, column=0, sticky=W)
-        Label(self.frmDetail, text = "experiment(s): ").grid(row=5, column=0, sticky=W)     
+        Label(self.frmDetail, text = "station: ").grid(row=2, column=0, sticky=W)
+        Label(self.frmDetail, text = "capacity: ").grid(row=3, column=0, sticky=W)
+        Label(self.frmDetail, text = "datarate: ").grid(row=4, column=0, sticky=W)
+        Label(self.frmDetail, text = "received: ").grid(row=5, column=0, sticky=W)
+        Label(self.frmDetail, text = "experiment(s): ").grid(row=6, column=0, sticky=W)     
         self.txtLocationContent = Entry(self.frmDetail, text = "", state=DISABLED) 
         self.lblVSNContent = Entry(self.frmDetail, text = "", state=DISABLED)
+        self.lblStationContent = Entry(self.frmDetail, text = "", state=DISABLED)
         self.lblCapacityContent = Entry(self.frmDetail, text = "", state=DISABLED)
         self.lblDatarateContent = Entry(self.frmDetail, text = "", state=DISABLED)
         self.lblReceivedContent = Entry(self.frmDetail, text = "", state=DISABLED)
@@ -174,11 +176,12 @@ class MainWindow(GenericWindow):
         #arrange objects on frmDetail
         self.txtLocationContent.grid(row=0, column=1, sticky=W)
         self.lblVSNContent.grid(row=1, column=1, sticky=W)
-        self.lblCapacityContent.grid(row=2, column=1, sticky=W)
-        self.lblDatarateContent.grid(row=3, column=1, sticky=W)
-        self.lblReceivedContent.grid(row=4, column=1, sticky=W)
-        self.cboExperiments.grid(row=5, column=1, sticky=W+N+S)
-        scrollCboExperiments.grid(row=5,column=2, rowspan=2, sticky=W+N+S)
+        self.lblStationContent.grid(row=2, column=1, sticky=W)
+        self.lblCapacityContent.grid(row=3, column=1, sticky=W)
+        self.lblDatarateContent.grid(row=4, column=1, sticky=W)
+        self.lblReceivedContent.grid(row=5, column=1, sticky=W)
+        self.cboExperiments.grid(row=6, column=1, sticky=W+N+S)
+        scrollCboExperiments.grid(row=6,column=2, rowspan=2, sticky=W+N+S)
         self.btnEditModule.grid(row=20, column=0, sticky=E+W)
         self.btnDeleteModule.grid(row=20, column=1, sticky=E+W)
         self.btnPrintLibraryLabel.grid(row=21,column=0, sticky=E+W)
@@ -195,6 +198,7 @@ class MainWindow(GenericWindow):
         # bind events to widgets
         self.txtLocationContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblVSNContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
+        self.lblStationContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblCapacityContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblDatarateContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblReceivedContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
@@ -267,6 +271,7 @@ class MainWindow(GenericWindow):
         if (slot > 0):
          
             slot.module.vsn = self.lblVSNContent.get()
+            slot.module.stationCode = self.lblStationContent.get()
             slot.module.capacity = self.lblCapacityContent.get()
             slot.module.datarate = self.lblDatarateContent.get()
             
@@ -354,6 +359,7 @@ class MainWindow(GenericWindow):
         
         self.lastLocationContent = self.txtLocationContent.get()
         self.lastVSNContent = self.lblVSNContent.get()
+        self.lastStationContent = self.lblStationContent.get()
         self.lastCapacityContent = self.lblCapacityContent.get()
         self.lastDatarateContent = self.lblDatarateContent.get()
         self.lastReceivedContent = self.lblReceivedContent.get()
@@ -372,6 +378,7 @@ class MainWindow(GenericWindow):
         self.btnDeleteModule["state"] = DISABLED
         self.txtLocationContent["state"] = NORMAL
         self.lblVSNContent["state"] = NORMAL
+        self.lblStationContent["state"] = NORMAL
         self.lblCapacityContent["state"] = NORMAL
         self.lblDatarateContent["state"] = NORMAL
         self.lblReceivedContent["state"] = NORMAL
@@ -379,6 +386,7 @@ class MainWindow(GenericWindow):
         
         self.txtLocationContent.delete(0,END)
         self.lblVSNContent.delete(0,END)
+        self.lblStationContent.delete(0,END)
         self.lblCapacityContent.delete(0,END)
         self.lblDatarateContent.delete(0,END)
         self.lblReceivedContent.delete(0,END)
@@ -406,6 +414,7 @@ class MainWindow(GenericWindow):
             
             self.txtLocationContent.insert(0, slot.location)
             self.lblVSNContent.insert(0, slot.module.vsn)
+            self.lblStationContent.insert(0, slot.module.stationCode)
             self.lblCapacityContent.insert(0, slot.module.capacity)
             self.lblDatarateContent.insert(0, slot.module.datarate)
             self.lblReceivedContent.insert(0, slot.module.received)
@@ -437,6 +446,7 @@ class MainWindow(GenericWindow):
         # clear fields in the Details form
         self.txtLocationContent.delete(0,END)
         self.lblVSNContent.delete(0,END)
+        self.lblStationContent.delete(0,END)
         self.lblCapacityContent.delete(0,END)
         self.lblDatarateContent.delete(0,END)
         self.lblReceivedContent.delete(0,END)
@@ -445,6 +455,7 @@ class MainWindow(GenericWindow):
         # disable fields/buttons in the Details form
         self.txtLocationContent["state"] = DISABLED
         self.lblVSNContent["state"] = DISABLED
+        self.lblStationContent["state"] = DISABLED
         self.lblCapacityContent["state"] = DISABLED
         self.lblDatarateContent["state"] = DISABLED
         self.lblReceivedContent["state"] = DISABLED
@@ -635,6 +646,13 @@ class MainWindow(GenericWindow):
             
         else:
             self.lblVSNContent["background"] = color
+            
+        if (self.lastStationContent != self.lblStationContent.get()):
+            self.lblStationContent["background"] = editColor
+            self.moduleEdit += 1
+            
+        else:
+            self.lblStationContent["background"] = color
             
             
         if (self.lastCapacityContent != self.lblCapacityContent.get()):
