@@ -17,6 +17,7 @@ from difxdb.difxdbconfig import DifxDbConfig
 from difxdb.model.dbConnection import Schema, Connection
 from difxdb.business.experimentaction import *
 from difxdb.business.moduleaction import *
+from difxdb.business.slotaction import *
 
 from difxdb.model import model
 from operator import  attrgetter
@@ -40,6 +41,10 @@ def getUsage():
         usage += "The program reads the database configuration from difxdb.ini located under $DIFXROOT/conf.\n"
         usage += "If the configuration is not found a sample one will be created for you at this location.\n"
         return usage
+
+def printLine(module):
+
+    print "%4s %8s %4s %5s %5s" % (module.slot.location, module.vsn, module.stationCode, module.datarate, module.capacity)
     
 
 if __name__ == "__main__":
@@ -78,80 +83,85 @@ if __name__ == "__main__":
         dbConn = Schema(connection)
         session = dbConn.session()
         
-        experiments = []
+        expCodes = set()
         
-        if (len(args) == 0):
-            experiments = getExperiments(session)
-        else:
-            for code in args:
-                try:
-                    experiment = getExperimentByCode(session, code)
-                except:
-                    print "Unknown experiment %s" % code
-                    continue
+      
+        for code in args:
+            try:
+                experiment = getExperimentByCode(session, code)
+            except:
+                print "Unknown experiment %s" % code
+                continue
                     
-                experiments.append(experiment)
+            expCodes.add(experiment.code)
         
         totalCapacity = 0
         moduleCount = 0
         
-        # loop over all experiments
-        for experiment in experiments:
+        slots = getOccupiedSlots(session)
+        
+        modules = []
+        
+        for slot in slots:
             
-            sortedModules = sorted(experiment.modules, key=attrgetter('slot.location'))
-            
-            # skip experiment if it contains no modules
-            if (len(sortedModules) == 0):
+            # apply slot filter
+            if (options.slot != ""):
+                if (not slot.location.startswith(options.slot)):
+                    continue
+          
+            # check if module is releasable
+            if (not isCheckOutAllowed(session, slot.module.vsn)):
                 continue
             
-            # skip experiment if it is not released
-            if (not isExperimentReleased(session, experiment.code)):
-                continue
+            # apply experiment filter
+            if len(args) != 0:
+                match = False
+                for exp in slot.module.experiments:
+                    for code in args:
+                        if exp.code == code:
+                            match = True
+                            break
+                if (match == False):
+                    continue
+            else:
+                # remember the experiment codes of all modules matching the filters 
+                for exp in slot.module.experiments:
+                    expCodes.add(exp.code)
+    
+            modules.append(slot.module)
             
-                        
-            printHeader = 0
-            tempCapacity = 0
-            
-            # loop over all modules of this experiment
-            for module in  experiment.modules:
-                # check for slot filter
-                if (options.slot != ""):
-                    if (not module.slot.location.startswith(options.slot)):
-                        continue
+            if (not options.extended):
+                printLine(slot.module)
                 
-                if printHeader == 0 and options.extended == True:
-                    print "\n------"
-                    print experiment.code
-                    print "------"
-                    printHeader = 1
-                    
-                # check if this module is releasable
-                if (isCheckOutAllowed(session, module.vsn)):
-                    print "%4s %8s %4s %5s %5s" % (module.slot.location, module.vsn, module.stationCode, module.datarate, module.capacity)
+            totalCapacity += slot.module.capacity
+            moduleCount += 1 
+        
+        if (options.extended):
+            for code in expCodes:
 
-                    tempCapacity += module.capacity
-                    totalCapacity += module.capacity
-                    moduleCount += 1
-                elif options.extended == True:
-                    print "%s (%s) contains unreleased experiments" % (module.vsn, module.slot.location)
-            
-            if (tempCapacity > 0 and options.extended == True):
-                print "Summed capacity for %s: %d" % (experiment.code, tempCapacity)
-     
-        if (moduleCount == 0):
-            print "No releasable modules found matching the filter criteria.\n"
-            sys.exit(0)
+                print "\n------"
+                print code
+                print "------"
+                for module in modules:
+                    moduleExpCodes = []
+                    for experiment in module.experiments:
+                        moduleExpCodes.append(experiment.code)
+                    #print moduleExpCodes
+                    if code in moduleExpCodes:
+                        printLine(module)
+
+        
         print "\n-------"
         print "Summary"
         print "-------"
         print "Number of modules: %d" % (moduleCount)
         print "Total capacity: %d" % (totalCapacity)
-        sys.exit(1)
-	
+        
+        sys.exit(0)
     
     except Exception as e:
        
         sys.exit(e)
     
-   
+
     
