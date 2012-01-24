@@ -23,6 +23,7 @@ from difxdb.business.moduleaction import *
 from difxdb.business.slotaction import *
 from difxdb.model.dbConnection import Schema, Connection
 from difxdb.model import model
+from difxutil.dbutil import *
 from difxdb.difxdbconfig import DifxDbConfig
 from difxfile.difxdir import *
 
@@ -408,13 +409,12 @@ class MainWindow(GenericWindow):
         slot = model.Slot()  
         slot = getSlotByLocation(session, self.grdSlot.get(self.selectedSlotIndex)[0])
     
-        
         if (slot != None):
             assignedCodes = []
             
             self.txtLocationContent.insert(0, slot.location)
             self.lblVSNContent.insert(0, slot.module.vsn)
-            self.lblStationContent.insert(0, slot.module.stationCode)
+            self.lblStationContent.insert(0, none2String(slot.module.stationCode))
             self.lblCapacityContent.insert(0, slot.module.capacity)
             self.lblDatarateContent.insert(0, slot.module.datarate)
             self.lblReceivedContent.insert(0, slot.module.received)
@@ -786,8 +786,8 @@ class CheckinWindow(GenericWindow):
         
     def _splitVSNLabelScan(self):
         
-        m = re.match('([a-zA-Z]+[\+-]\d+)/(\d+)/(.+)', strip(self.txtVSN.get()))
-
+        m = re.match('([a-zA-Z]+[\+-]\d+)/(\d+)/(.+)', self.txtVSN.get().lstrip())
+     
         if (m != None):
             vsn = upper(m.group(1))
 
