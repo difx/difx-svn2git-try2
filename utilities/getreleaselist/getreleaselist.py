@@ -84,6 +84,7 @@ if __name__ == "__main__":
         session = dbConn.session()
         
         expCodes = set()
+        orphanModules = set()
         
       
         for code in args:
@@ -128,6 +129,10 @@ if __name__ == "__main__":
                 for exp in slot.module.experiments:
                     expCodes.add(exp.code)
     
+            # remember modules without experiments
+            if len(slot.module.experiments) == 0:
+                orphanModules.add(slot.module)
+                
             modules.append(slot.module)
             
             if (not options.extended):
@@ -149,6 +154,15 @@ if __name__ == "__main__":
                     #print moduleExpCodes
                     if code in moduleExpCodes:
                         printLine(module)
+            
+            if (len(orphanModules) > 0):
+                print "\n------"
+                print "No exp."
+                print "------"
+                
+                for module in orphanModules:
+                    printLine(module)
+            
 
         
         print "\n-------"
