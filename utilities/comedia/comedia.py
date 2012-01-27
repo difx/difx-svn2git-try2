@@ -65,6 +65,7 @@ class MainWindow(GenericWindow):
         self.moduleEdit = 0
         self.filterReleaseList = IntVar()
         self.filterDirLess = IntVar()
+        self.filterUnscanned = IntVar()
         self.filterExpVar = StringVar()
         
         self.expFilterItems = []
@@ -103,23 +104,26 @@ class MainWindow(GenericWindow):
         self.btnQuit = Button(self.rootWidget, text="Exit", command=self.rootWidget.destroy)
         
         #widgets on frmMain       
-        self.chkRelease = Checkbutton(self.frmMain, text = "releasable modules only", variable = self.filterReleaseList, command=self.updateSlotListbox)
-        self.chkDirLess = Checkbutton(self.frmMain, text = "modules without .dir only", variable = self.filterDirLess, command=self.updateSlotListbox)
+        self.chkRelease = Checkbutton(self.frmMain, text = "releasable modules", variable = self.filterReleaseList, command=self.updateSlotListbox)
+        self.chkDirLess = Checkbutton(self.frmMain, text = "modules w/o .dir", variable = self.filterDirLess, command=self.updateSlotListbox)
+        self.chkUnscanned = Checkbutton(self.frmMain, text = "unscanned .dir", variable = self.filterUnscanned, command=self.updateSlotListbox)
         
         col1 = ListboxColumn("slot",10, searchable=True)
         col2 = ListboxColumn("vsn",10, sortable=True)
         col3 = ListboxColumn("station",4, sortable=True)
         col4 = ListboxColumn("experiments",30)
-        col5 = ListboxColumn("capacity",5) 
-        col6 = ListboxColumn("datarate",5)
-        self.grdSlot = MultiListbox(self.frmMain, col1, col2, col3, col4, col5, col6)
+        col5 = ListboxColumn("scans",4)
+        col6 = ListboxColumn("capacity",5) 
+        col7 = ListboxColumn("datarate",5)
+        col8 = ListboxColumn("received",15)
+        self.grdSlot = MultiListbox(self.frmMain, col1, col2, col3, col4, col5, col6, col7, col8)
         self.grdSlot.bindEvent("<ButtonRelease-1>", self.selectSlotEvent)
         self.btnNewModule = Button (self.frmMain, text="Check-in module", command=self.checkinModule)
           
         
         # widgets on frmStatus
         Label(frmStatus, text="Number of modules without .dir files: ").grid(row=0,column=0, sticky=W)
-        Label(frmStatus, text="Number of unscanned modules: ").grid(row=1,column=0, sticky=W)
+        Label(frmStatus, text="Number of unscanned .dir files: ").grid(row=1,column=0, sticky=W)
         self.lblNumDirLess = Label(frmStatus, text = "")
         self.lblNumUnscanned = Label(frmStatus, text = "")
         self.btnRefresh = Button(frmStatus, text="Refresh status", command=self.refreshStatusEvent)
@@ -132,7 +136,8 @@ class MainWindow(GenericWindow):
         Label(self.frmDetail, text = "capacity: ").grid(row=3, column=0, sticky=W)
         Label(self.frmDetail, text = "datarate: ").grid(row=4, column=0, sticky=W)
         Label(self.frmDetail, text = "received: ").grid(row=5, column=0, sticky=W)
-        Label(self.frmDetail, text = "experiment(s): ").grid(row=6, column=0, sticky=W)     
+        Label(self.frmDetail, text = "experiment(s): ").grid(row=6, column=0, sticky=W) 
+        Label(self.frmDetail, text = "comments: ").grid(row=8, column=0, sticky=W) 
         self.txtLocationContent = Entry(self.frmDetail, text = "", state=DISABLED) 
         self.lblVSNContent = Entry(self.frmDetail, text = "", state=DISABLED)
         self.lblStationContent = Entry(self.frmDetail, text = "", state=DISABLED)
@@ -142,6 +147,7 @@ class MainWindow(GenericWindow):
         scrollCboExperiments = Scrollbar(self.frmDetail)
         self.cboExperiments =  Listbox(self.frmDetail, height=3, yscrollcommand=scrollCboExperiments.set, selectmode=MULTIPLE, state=DISABLED)
         scrollCboExperiments.config(command=self.cboExperiments.yview)
+        self.txtComment = Text(self.frmDetail, height=3, width=25)
         self.btnDeleteModule = Button(self.frmDetail, text="Check-out module", command=self.checkOutModule, state=DISABLED)
         self.btnEditModule = Button(self.frmDetail, text="Update module", command=self.updateModule, state=DISABLED)
         self.btnPrintLibraryLabel = Button (self.frmDetail, text="Print library label", command=self.printLibraryLabel,state=DISABLED)
@@ -159,12 +165,13 @@ class MainWindow(GenericWindow):
         self.frmMain.grid(row=1,rowspan=2,column=0, sticky=E+W+N+S)   
         self.frmDetail.grid(row=1, column=3, sticky=E+W+N+S )
         frmStatus.grid(row=2,column=3,sticky=N+S+E+W)
-        self.frmEditExperiment.grid(row=5, column=3, sticky=N+W )
+        self.frmEditExperiment.grid(row=6, column=3, sticky=N+W )
         self.btnQuit.grid(row=10,columnspan=5, pady=5, padx=10, sticky=E)
         
         # arrange objects on frmMain
         self.chkRelease.grid(row=1, column=0, columnspan=3, sticky=W)
         self.chkDirLess.grid(row=2, column=0, columnspan=3, sticky=W)
+        self.chkUnscanned.grid(row=3, column=0, columnspan=3, sticky=W)
         self.grdSlot.grid(row=10, column=0, sticky=N+S+E+W)
         self.btnNewModule.grid(row=20, columnspan=2, sticky=E+W, pady=5, padx=5)        
         
@@ -175,14 +182,15 @@ class MainWindow(GenericWindow):
         self.btnRefresh.grid(row=2,  column=0, columnspan=3, sticky=E+W, padx=5)
         
         #arrange objects on frmDetail
-        self.txtLocationContent.grid(row=0, column=1, sticky=W)
-        self.lblVSNContent.grid(row=1, column=1, sticky=W)
-        self.lblStationContent.grid(row=2, column=1, sticky=W)
-        self.lblCapacityContent.grid(row=3, column=1, sticky=W)
-        self.lblDatarateContent.grid(row=4, column=1, sticky=W)
-        self.lblReceivedContent.grid(row=5, column=1, sticky=W)
-        self.cboExperiments.grid(row=6, column=1, sticky=W+N+S)
+        self.txtLocationContent.grid(row=0, column=1, sticky=E+W)
+        self.lblVSNContent.grid(row=1, column=1, sticky=E+W)
+        self.lblStationContent.grid(row=2, column=1, sticky=E+W)
+        self.lblCapacityContent.grid(row=3, column=1, sticky=E+W)
+        self.lblDatarateContent.grid(row=4, column=1, sticky=E+W)
+        self.lblReceivedContent.grid(row=5, column=1, sticky=E+W)
+        self.cboExperiments.grid(row=6, column=1, sticky=E+W+N+S)
         scrollCboExperiments.grid(row=6,column=2, rowspan=2, sticky=W+N+S)
+        self.txtComment.grid(row=8, column=1, sticky=E+W)
         self.btnEditModule.grid(row=20, column=0, sticky=E+W)
         self.btnDeleteModule.grid(row=20, column=1, sticky=E+W)
         self.btnPrintLibraryLabel.grid(row=21,column=0, sticky=E+W)
@@ -204,6 +212,7 @@ class MainWindow(GenericWindow):
         self.lblDatarateContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.lblReceivedContent.bind("<KeyRelease>", self.editModuleDetailsEvent)
         self.cboExperiments.bind("<ButtonRelease-1>", self.selectExperimentEvent)
+        self.txtComment.bind("<KeyRelease>", self.editModuleDetailsEvent)
     
     def printVSNLabel(self):
         
@@ -275,6 +284,7 @@ class MainWindow(GenericWindow):
             slot.module.stationCode = self.lblStationContent.get()
             slot.module.capacity = self.lblCapacityContent.get()
             slot.module.datarate = self.lblDatarateContent.get()
+            slot.module.comment = self.txtComment.get(1.0,END)
             
             # remove all experiment assigments of this module
             slot.module.experiments = []
@@ -300,19 +310,7 @@ class MainWindow(GenericWindow):
       
         self.updateSlotListbox()
         
-
-    #def updateExpFilter(self):
-        
-    #    self.cboExpFilter["menu"].delete(0, END)
-        
-    #    self.cboExpFilter["menu"].add_command(label="all experiments", command=lambda item="all experiments": self.callbackExpFilter(item))
-        
-    #    self.callbackExpFilter("all experiments")
-    #    for code in getActiveExperimentCodes(session):
-    #        self.cboExpFilter['menu'].add_command(label=code, command=lambda item=code: self.callbackExpFilter(item))
-        
            
-        
     def updateSlotListbox(self):
     
         # deselect active slot
@@ -344,12 +342,17 @@ class MainWindow(GenericWindow):
                     releaseList.append(slot.module.vsn)
                     
             
-            # ckeck if "dirLess" checkbox is activated
+            # check if "dirLess" checkbox is activated
             if (self.filterDirLess.get()):
                 if (hasDir(slot.module.vsn)):
                     continue
+                    
+            # check if "uscanned" checkbox is activated
+            if (self.filterUnscanned.get()):
+                if (slot.module.numScans != None):
+                    continue
          
-            self.grdSlot.appendData((slot.location, slot.module.vsn, slot.module.stationCode, " ".join(expList), slot.module.capacity, slot.module.datarate))
+            self.grdSlot.appendData((slot.location, slot.module.vsn, slot.module.stationCode, " ".join(expList), slot.module.numScans, slot.module.capacity, slot.module.datarate, slot.module.received))
             
        
         self.grdSlot.update()
@@ -366,6 +369,7 @@ class MainWindow(GenericWindow):
         self.lastReceivedContent = self.lblReceivedContent.get()
         
         self.lastExperiments = self.cboExperiments.get(0,END)
+        self.lastComment = self.txtComment.get(1.0, END)
       
          
     def _updateExperimentListboxes(self):
@@ -384,6 +388,7 @@ class MainWindow(GenericWindow):
         self.lblDatarateContent["state"] = NORMAL
         self.lblReceivedContent["state"] = NORMAL
         self.cboExperiments["state"] = NORMAL
+        self.txtComment["state"] = NORMAL
         
         self.txtLocationContent.delete(0,END)
         self.lblVSNContent.delete(0,END)
@@ -392,6 +397,7 @@ class MainWindow(GenericWindow):
         self.lblDatarateContent.delete(0,END)
         self.lblReceivedContent.delete(0,END)
         self.cboExperiments.delete(0, END)
+        self.txtComment.delete(1.0, END)
         
         self.frmEditExperiment.grid_remove()
         
@@ -418,6 +424,7 @@ class MainWindow(GenericWindow):
             self.lblCapacityContent.insert(0, slot.module.capacity)
             self.lblDatarateContent.insert(0, slot.module.datarate)
             self.lblReceivedContent.insert(0, slot.module.received)
+            self.txtComment.insert(1.0, unicode(none2String(slot.module.comment)))
             
             # update experiment listbox
             for experiment in slot.module.experiments:
@@ -451,6 +458,7 @@ class MainWindow(GenericWindow):
         self.lblDatarateContent.delete(0,END)
         self.lblReceivedContent.delete(0,END)
         self.cboExperiments.delete(0,END)
+        self.txtComment.delete(1.0,END)
         
         # disable fields/buttons in the Details form
         self.txtLocationContent["state"] = DISABLED
@@ -459,6 +467,7 @@ class MainWindow(GenericWindow):
         self.lblCapacityContent["state"] = DISABLED
         self.lblDatarateContent["state"] = DISABLED
         self.lblReceivedContent["state"] = DISABLED
+        self.txtComment["state"] = DISABLED
         self.cboExperiments["state"] = DISABLED
         self.btnEditModule["state"] = DISABLED
         self.btnPrintVSNLabel["state"] = DISABLED
@@ -468,10 +477,12 @@ class MainWindow(GenericWindow):
         # reset colors
         self.txtLocationContent["bg"] = self.defaultBgColor
         self.lblVSNContent["bg"] = self.defaultBgColor
+        self.lblStationContent["bg"] = self.defaultBgColor
         self.lblCapacityContent["bg"] = self.defaultBgColor
         self.lblDatarateContent["bg"] = self.defaultBgColor
         self.lblReceivedContent["bg"] = self.defaultBgColor
         self.cboExperiments["bg"] = self.defaultBgColor
+        self.txtComment["bg"] = self.defaultBgColor
         
         self.frmEditExperiment.grid_remove()
         
@@ -491,30 +502,37 @@ class MainWindow(GenericWindow):
         
         # delete module
         module = model.Module()
-        module = session.query(model.Module).filter_by(id = slot.module.id).one()
+        
+        try:
+            module = session.query(model.Module).filter_by(id = slot.module.id).one()
+        except:
+            return
         
         
-        if (module != None):
-            if (isCheckOutAllowed(session,module.vsn) == False):
-                tkMessageBox.showerror("Error", "Module cannot be checked-out.\nIt contains experiments that have not been released yet.")
+        if (isCheckOutAllowed(session,module.vsn) == False):
+            tkMessageBox.showerror("Error", "Module cannot be checked-out.\nIt either contains experiments that have not been released yet or\n the module has not been scanned yet.")
+            return
+        elif (module.numScans == 0):
+            if (tkMessageBox.askyesno("Empty module", "This module seems to be empty\nDo you really want to check-out this module") == False):
                 return
             
-            if (tkMessageBox.askokcancel("Confirm module check-out", "Do you really want to remove module " + slot.module.vsn + " from the library? ")):
 
-                session.delete(module) 
-                session.commit()
+        if (tkMessageBox.askokcancel("Confirm module check-out", "Do you really want to remove module " + slot.module.vsn + " from the library? ")):
 
-                self.clearSlotSelection()
-                
-                self.updateSlotListbox()
-                self.refreshStatusEvent()
-                
-                # delete .dir file            
-                dirFile = buildDirFilename(settings["dirPath"], module.vsn)
-                if os.path.isfile(dirFile):
-                    os.remove(dirFile)
-                else:
-                    print "file does not exists"
+            session.delete(module) 
+            session.commit()
+
+            self.clearSlotSelection()
+
+            self.updateSlotListbox()
+            self.refreshStatusEvent()
+
+            # delete .dir file            
+            dirFile = buildDirFilename(settings["dirPath"], module.vsn)
+            if os.path.isfile(dirFile):
+                os.remove(dirFile)
+            else:
+                print "file %s does not exists" % dirFile
      
         return
     
@@ -681,6 +699,13 @@ class MainWindow(GenericWindow):
             self.moduleEdit +=1
         else:
             self.cboExperiments["background"] = color
+            
+        if (self.lastComment != self.txtComment.get(1.0,END)):
+            self.txtComment["background"] = editColor
+            self.moduleEdit += 1
+            
+        else:
+            self.txtComment["background"] = color
       
         if self.moduleEdit > 0:
             self.btnEditModule["state"] = NORMAL
@@ -967,12 +992,13 @@ class ScanModulesWindow(GenericWindow):
         super( ScanModulesWindow, self ).__init__(parent, rootWidget)
         
         self.checkList = deque()
+        self.manualList = deque()
         
     def show(self):
         
         # create modal dialog
         self.dlg = Toplevel(self.rootWidget, takefocus=True)
-        self.dlg.title("Scan Modules")
+        self.dlg.title("Scan Module Directories")
         self.dlg.transient(self.rootWidget)
         self.dlg.state("normal")
         self.dlg.grab_set()
@@ -1002,28 +1028,39 @@ class ScanModulesWindow(GenericWindow):
         frmModules.rowconfigure(1, weight=1)
         frmModules.columnconfigure(1, weight=1)
         
-        Label(frmModules, text="module", relief="flat").grid(row=0,column=0, sticky=E+W)
-        Label(frmModules, text="assigned exp.", relief="flat").grid(row=0,column=1, sticky=E+W)
-        Label(frmModules, text="scanned exp.",relief="flat").grid(row=0,column=2, sticky=E+W)
-        
-        for module in self.checkList:
+        if (len(self.checkList) > 0):
             
-            Label(frmModules, text=module.vsn, relief="sunken", justify="left",padx=10).grid(row=rowCount,column=0, sticky=E+W)
-            Label(frmModules, text=list(module.assignedExps), relief="sunken", justify="left", padx=10).grid(row=rowCount,column=1, sticky=E+W)
-            Label(frmModules, text=list(module.scannedExps),relief="sunken", justify="left", padx=10).grid(row=rowCount,column=2, sticky=E+W)
-            Radiobutton(frmModules, text="fix", variable=module.action, value=0, state=NORMAL).grid(row=rowCount, column=3)
-            Radiobutton(frmModules, text="don't fix, remind me later", variable=module.action, value=1).grid(row=rowCount, column=4)
-            Radiobutton(frmModules, text="don't fix, don't remind me again", variable=module.action, value=2).grid(row=rowCount, column=5)
-            
-            rowCount += 1
+            Label(frmModules, text="module", relief="flat").grid(row=0,column=0, sticky=E+W)
+            Label(frmModules, text="assigned exp.", relief="flat").grid(row=0,column=1, sticky=E+W)
+            Label(frmModules, text="scanned exp.",relief="flat").grid(row=0,column=2, sticky=E+W)
+
+            for module in self.checkList:
+
+                Label(frmModules, text=module.vsn, relief="sunken", justify="left",padx=10).grid(row=rowCount,column=0, sticky=E+W)
+                Label(frmModules, text=list(module.assignedExps), relief="sunken", justify="left", padx=10).grid(row=rowCount,column=1, sticky=E+W)
+                Label(frmModules, text=list(module.scannedExps),relief="sunken", justify="left", padx=10).grid(row=rowCount,column=2, sticky=E+W)
+                Radiobutton(frmModules, text="fix", variable=module.action, value=0, state=NORMAL).grid(row=rowCount, column=3)
+                Radiobutton(frmModules, text="don't fix, remind me later", variable=module.action, value=1).grid(row=rowCount, column=4)
+                Radiobutton(frmModules, text="don't fix, don't remind me again", variable=module.action, value=2).grid(row=rowCount, column=5)
+
+                rowCount += 1
         
+        if (len(self.manualList) > 0):
+            Label(frmModules, text="The following modules contain non-standard scan names that cannot be decoded to obtain the experiment code", relief="flat").grid(row=rowCount,column=0, columnspan=5, sticky=E)
+            Label(frmModules, text="module", relief="flat").grid(row=rowCount+1,column=0, sticky=E+W)
+            
+            rowCount += 2
+            
+            for module in self.manualList: 
+                Label(frmModules, text=module.vsn, relief="sunken", justify="left",padx=10).grid(row=rowCount,column=0, sticky=E+W)
+                Label(frmModules, text="Please assign the experiment(s) manually", relief="sunken", justify="left", padx=10).grid(row=rowCount,column=1, sticky=E+W)
+            
         btnOK = Button(self.dlg, text="OK", command=self.updateModuleEvent)
         btnCancel = Button(self.dlg, text="Cancel", command=self.dlg.destroy)
         
         canvas.grid(row=0,column=0,sticky=N+S+E+W)
         xBar.grid(row=1,column=0, sticky=E+W)
         yBar.grid(row=0,column=1, sticky=N+S)
-        #frmModules.grid(row=10, column=0, sticky=N+E+S+W)
         btnOK.grid(row=10, column=0, sticky=E)
         btnCancel.grid(row=10, column=1, sticky=E+W)
         
@@ -1036,6 +1073,8 @@ class ScanModulesWindow(GenericWindow):
         
         outdatedDir = []
         self.checkList.clear()
+        self.manualList.clear()
+        
         modules = getUnscannedModules(session)
         
         for module in modules:
@@ -1057,7 +1096,6 @@ class ScanModulesWindow(GenericWindow):
             
             if (difxdir.getFileDate() < time.mktime(module.received.timetuple())):
                 outdatedDir.append(difxdir.getFilename())
-                
                 continue
             
             # compare associated experiments
@@ -1075,7 +1113,14 @@ class ScanModulesWindow(GenericWindow):
                 
                 self.checkList.append(checkModule)
                 
+            elif (difxdir.getParseErrorCount() > 0):
+                warnModule = self.CheckModuleItem()
+                warnModule.vsn = module.vsn
+                self.manualList.append(warnModule)
+                
             else:
+                print "scanned ", module.vsn
+                # update module information
                 module.numScans = difxdir.getScanCount()
                 module.stationCode = difxdir.getStationCode()
            
@@ -1087,7 +1132,7 @@ class ScanModulesWindow(GenericWindow):
                 errStr +=  os.path.basename(file) + "\n"
             tkMessageBox.showerror("Error", "The following files have creation dates earlier than their module check-in date.\nProbably these files should be deleted manually.\n%s" % errStr)
             
-        if (len(self.checkList) > 0):
+        if (len(self.checkList) > 0) or (len(self.manualList) > 0):
             self.show()
             
     
@@ -1255,9 +1300,13 @@ class AddExperimentWindow(GenericWindow):
         if (code == ""):
             return
         
-        addExperiment(session, code)
-       
+        try:
+            # add experiment with state "scheduled"
+            addExperimentWithState(session, code, 10)
+        except Exception as e:
+            tkMessageBox.showerror("Error", e)
         
+     
         self.close()
         
 class MyImageWriter(ImageWriter):
