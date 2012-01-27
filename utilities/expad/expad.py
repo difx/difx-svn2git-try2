@@ -60,7 +60,7 @@ class MainWindow(GenericWindow):
         self.rootWidget.rowconfigure(0, weight=1) 
         self.rootWidget.columnconfigure(0, weight=1)     
         
-        btnQuit = Button(self.rootWidget, text="Exit", command=self.rootWidget.destroy).grid(row=10,column=10,sticky=E)
+        Button(self.rootWidget, text="Exit", command=self.rootWidget.destroy).grid(row=10,column=10,sticky=E)
         
         # frames
         frmExps = LabelFrame(self.rootWidget, text="Experiments")     
@@ -254,7 +254,11 @@ class AddExperimentWindow(GenericWindow):
         if (code == ""):
             return
         
-        addExperiment(session, code)
+        try:
+            # add experiment with state "scheduled"
+            addExperimentWithState(session, code, 10)
+        except Exception as e:
+            tkMessageBox.showerror("Error", e)
        
         
         self.close()        
