@@ -78,13 +78,6 @@ public class QueueBrowserPanel extends TearOffPanel {
             }
         });
         _newMenu.add( newExperimentItem );
-        JMenuItem newPassItem = new JMenuItem( "Pass" );
-        newPassItem.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                newPass( null );
-            }
-        });
-        _newMenu.add( newPassItem );
         JMenuItem newJobItem = new JMenuItem( "Job" );
         newJobItem.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
@@ -376,8 +369,8 @@ public class QueueBrowserPanel extends TearOffPanel {
         while ( comp.getParent() != null )
             comp = comp.getParent();
         Point pt = _newButton.getLocationOnScreen();
-        ExperimentNode.ExperimentPropertiesWindow win =
-                new ExperimentNode.ExperimentPropertiesWindow( (Frame)comp, pt.x + 25, pt.y + 25, _systemSettings );
+        ExperimentEditor win =
+                new ExperimentEditor( (Frame)comp, pt.x + 25, pt.y + 25, _systemSettings );
         win.setTitle( "Create New Experiment" );
         win.number( 0 );
         win.name( "Experiment_" + newExperimentId.toString() );
@@ -390,7 +383,11 @@ public class QueueBrowserPanel extends TearOffPanel {
         win.created( creationDate );
         win.status( "unknown" );
         win.directory( _systemSettings.workingDirectory() + "/" + win.name() );
+        win.vexFileName( win.name() + ".vex" );
         win.keepDirectory( false );
+        win.passName( "Production Pass" );
+        win.displayPassInfo( true );
+        win.createPass( true );
         win.editMode( true );
         win.visible();
         //  If the user hit the "ok" button, add this new experiment to our list of
@@ -429,33 +426,20 @@ public class QueueBrowserPanel extends TearOffPanel {
             thisExperiment.number( win.number() );
             thisExperiment.status( win.status() );
             thisExperiment.directory( win.directory() );
+            thisExperiment.vexFile( win.vexFileName() );
             //  Make the directory on the DiFX host...
             DiFXCommand_mkdir mkdir = new DiFXCommand_mkdir( win.directory(), _systemSettings );
             mkdir.send();
+            //  Write the .vex file there.
+            win.writeVexFile();
             _browserPane.addNode( thisExperiment );
+            //  If a pass was created along with the experiment, create that and add it
+            //  to the experiment.  The pass will have default properties.
+            if ( win.createPass() )
+                thisExperiment.addChild( new PassNode( win.passName(), _systemSettings ) );
         }
     }
         
-    /*
-     * Add a new pass to the given experiment.  The experiment may be null, in which
-     * case it is "undefined" - the user needs to fill it in.
-     */
-    protected void newPass( ExperimentNode experiment ) {
-        Component comp = this.getParent();
-        while ( comp.getParent() != null )
-            comp = comp.getParent();
-        Point pt = _newButton.getLocationOnScreen();
-        PassNode.PassPropertiesWindow win =
-            new PassNode.PassPropertiesWindow( (Frame)comp, pt.x + 25, pt.y + 25, _systemSettings );
-        win.setTitle( "Create New Experiment" );
-        win.number( 0 );
-        String creationDate = (new SimpleDateFormat( "yyyy-mm-dd HH:mm:ss" )).format( new Date() );
-        win.created( creationDate );
-        win.status( "unknown" );
-        win.editMode( true );
-        win.visible();
-    };
-    
     protected void newJob() {};
     protected void selectAll() {};
     protected void unselectAll() {};

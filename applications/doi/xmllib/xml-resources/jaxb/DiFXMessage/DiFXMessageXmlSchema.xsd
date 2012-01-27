@@ -101,6 +101,7 @@
                 <xsd:element ref="timeout"/>
                 <xsd:element ref="difxControlAddress"/>
                 <xsd:element ref="difxControlPort"/>
+                <xsd:element ref="difxTransferPort"/>
                 <xsd:element ref="difxControlUser"/>
                 <xsd:element ref="difxControlPWD"/>
                 <xsd:element ref="difxVersion"/>
@@ -140,6 +141,13 @@
                 <xsd:element ref="windowConfigHardwareMonitorY"/>
                 <xsd:element ref="windowConfigHardwareMonitorW"/>
                 <xsd:element ref="windowConfigHardwareMonitorH"/>
+                <xsd:element ref="windowConfigExperimentEditorW"/>
+                <xsd:element ref="windowConfigExperimentEditorH"/>
+
+                <xsd:element ref="defaultNamesVexFileSource"/>
+                <xsd:element ref="defaultNamesViaHttpLocation"/>
+                <xsd:element ref="defaultNamesViaFtpLocation"/>
+                <xsd:element ref="defaultNamesLocalFileLocation"/>
                 
             </xsd:sequence>
         </xsd:complexType>
@@ -164,6 +172,7 @@
     <xsd:element name="timeout" type="xsd:int"></xsd:element>
     <xsd:element name="difxControlAddress" type="xsd:string"></xsd:element>
     <xsd:element name="difxControlPort" type="xsd:int"></xsd:element>
+    <xsd:element name="difxTransferPort" type="xsd:int"></xsd:element>
     <xsd:element name="difxControlUser" type="xsd:string"></xsd:element>
     <xsd:element name="difxControlPWD" type="xsd:string"></xsd:element>
     <xsd:element name="difxVersion" type="xsd:string"></xsd:element>
@@ -203,7 +212,14 @@
     <xsd:element name="windowConfigHardwareMonitorY" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigHardwareMonitorW" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigHardwareMonitorH" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigExperimentEditorW" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigExperimentEditorH" type="xsd:int"></xsd:element>
                 
+    <xsd:element name="defaultNamesVexFileSource" type="xsd:string"></xsd:element>
+    <xsd:element name="defaultNamesViaHttpLocation" type="xsd:string"></xsd:element>
+    <xsd:element name="defaultNamesViaFtpLocation" type="xsd:string"></xsd:element>
+    <xsd:element name="defaultNamesLocalFileLocation" type="xsd:string"></xsd:element>
+
     <xsd:complexType name="mark5Status">
         <xsd:sequence>
             <xsd:element name="bankAVSN" type="xsd:string"></xsd:element>
@@ -302,6 +318,7 @@
             <xsd:element name="origin" type="xsd:string"></xsd:element>
             <xsd:element name="destination" type="xsd:string"></xsd:element>
             <xsd:element name="direction" type="xsd:string"></xsd:element>
+            <xsd:element name="dataNode" type="xsd:string"></xsd:element>
             <xsd:element name="address" type="xsd:string"></xsd:element>
             <xsd:element name="port" type="xsd:int"></xsd:element>
         </xsd:sequence>

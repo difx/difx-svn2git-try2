@@ -41,9 +41,13 @@
     able to "ssh" to the DiFX user (see below) on each processing and
     data source node without typing a password or RSA key.&nbsp; If you
     are having trouble with RSA (we did), try the following.&nbsp; As
-    "root" on the DiFX host type this for <span style="font-weight:
-      bold;">every node</span> you are using (including the DiFX host
-    iteself!):<br>
+    "root" on the DiFX host, make sure you have an RSA key (in the file
+    <span style="font-family: monospace;">.ssh/id_rsa.pub</span> in
+    root's home directory).&nbsp; If you don't, create one with the
+    following command (answer any questions by hitting "return"):<br>
+    <pre>	ssh-keygen -t rsa</pre>
+    Then type this for <span style="font-weight: bold;">every node</span>
+    you are using (including the DiFX host iteself!):<br>
     <pre>	ssh-copy-id user@node<br></pre>
     For instance, if your DiFX user is "difx", your DiFX host is "king"
     and your other processing nodes and mark 5's are "pawn1", "pawn2",
@@ -189,6 +193,7 @@
 
 
 
+
     See <a href="#Database_Remote_Access">Problems with Database Remote
       Access</a> in the trouble-shooting section for details.<br>
     <h4>Password</h4>
@@ -228,6 +233,7 @@
     does it involve much network traffic, however the database probably
     doesn't change much so an interval of a few seconds should be fine.<br>
     <h2><a name="Testing_the_Database_Configuration"></a>Trouble-shooting
+
 
 
 
@@ -315,6 +321,7 @@
 
 
 
+
         Communications link failure The last packet sent successfully to
         the server was 0 milliseconds ago. The driver has not received
         any packets from the server.</code></div>
@@ -323,6 +330,7 @@
     This error indicates that the connection to the remote mySQL
     database failed.&nbsp; Check that the DiFX host exits and in on the
     network (using the <a href="#Database_Ping_Test">Ping Test</a>).&nbsp;
+
 
 
 

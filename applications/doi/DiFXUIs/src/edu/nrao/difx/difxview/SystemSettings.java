@@ -92,6 +92,7 @@ public class SystemSettings extends JFrame {
         //  structures here.
         _queueBrowserSettings = new QueueBrowserSettings();
         _windowConfiguration = new WindowConfiguration();
+        _defaultNames = new DefaultNames();
         
         //  Create all of the components of the user interface (long, messy function).
         createGUIComponents();
@@ -245,10 +246,18 @@ public class SystemSettings extends JFrame {
             }
         } );
         difxControlPanel.add( _difxControlPort );
-        JLabel portLabel = new JLabel( "Port:" );
+        JLabel portLabel = new JLabel( "Control Port:" );
         portLabel.setBounds( 10, 55, 150, 25 );
         portLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( portLabel );
+        _difxTransferPort = new NumberBox();
+        _difxTransferPort.setHorizontalAlignment( NumberBox.LEFT );
+        _difxTransferPort.minimum( 0 );
+        difxControlPanel.add( _difxTransferPort );
+        JLabel transferPortLabel = new JLabel( "Transfer Port:" );
+        transferPortLabel.setBounds( 210, 55, 150, 25 );
+        transferPortLabel.setHorizontalAlignment( JLabel.RIGHT );
+        difxControlPanel.add( transferPortLabel );
         _difxControlUser = new JFormattedTextField();
         _difxControlUser.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _difxControlUser.addActionListener( new ActionListener() {
@@ -581,7 +590,8 @@ public class SystemSettings extends JFrame {
             _settingsFileName.setBounds( 115, 25, w - 135, 25 );
             //  DiFX Controll Connection settings
             _difxControlAddress.setBounds( 165, 25, 300, 25 );
-            _difxControlPort.setBounds( 165, 55, 300, 25 );
+            _difxControlPort.setBounds( 165, 55, 100, 25 );
+            _difxTransferPort.setBounds( 365, 55, 100, 25 );
             _difxControlUser.setBounds( 165, 85, 300, 25 );
             _difxControlPWD.setBounds( 165, 115, 300, 25 );
             _difxVersion.setBounds( 165, 145, 300, 25 );
@@ -684,6 +694,7 @@ public class SystemSettings extends JFrame {
         _timeout.intValue( 100 );
         _difxControlAddress.setText( "swc01.usno.navy.mil" );
         _difxControlPort.intValue( 50200 );
+        _difxTransferPort.intValue( 50300 );
         _difxControlUser.setText( "difx" );
         _difxControlPWD.setText( "difx2010" );
         _difxVersion.setText( "trunk" );
@@ -727,6 +738,12 @@ public class SystemSettings extends JFrame {
         _windowConfiguration.hardwareMonitorY = 0;
         _windowConfiguration.hardwareMonitorW = 350;
         _windowConfiguration.hardwareMonitorH = 600;
+        _windowConfiguration.experimentEditorW = 500;
+        _windowConfiguration.experimentEditorH = 430;
+        _defaultNames.vexFileSource = "";
+        _defaultNames.viaHttpLocation = "";
+        _defaultNames.viaFtpLocation = "";
+        _defaultNames.localFileLocation = "";
     }
     
     /*
@@ -764,6 +781,21 @@ public class SystemSettings extends JFrame {
     public void difxControlPort( int newVal ) { _difxControlPort.intValue( newVal ); }
     public int difxControlPort() { return _difxControlPort.intValue(); }
     public void difxControlPort( String newVal ) { difxControlPort( Integer.parseInt( newVal ) ); }
+
+    /*
+     * Set the TCP "transfer" port.  The actual port used will increment up to 100 more than
+     * this setting, at which point it will cycle back and use the original.  The
+     * idea is that we want to be able to have multiple TCP sessions open at once.
+     */
+    public void difxTransferPort( int newVal ) { _difxTransferPort.intValue( newVal ); }
+    public int difxTransferPort() { return _difxTransferPort.intValue(); }
+    public void difxTransferPort( String newVal ) { difxTransferPort( Integer.parseInt( newVal ) ); }
+    public int newDifxTransferPort() {
+        ++_newDifxTransferPort;
+        if ( _newDifxTransferPort > 100 )
+            _newDifxTransferPort = 0;
+        return _newDifxTransferPort + _difxTransferPort.intValue();
+    }
 
     public void difxControlUser( String newVal ) { _difxControlUser.setText( newVal ); }
     public String difxControlUser() { return _difxControlUser.getText(); }
@@ -850,6 +882,7 @@ public class SystemSettings extends JFrame {
     public boolean useStagingArea() { return _useStagingArea.isSelected(); }
     public void useStagingArea( boolean newVal ) { _useStagingArea.setSelected( newVal ); }
     
+    public String guiDocPath() { return _guiDocPath.getText().substring( 7 ); }
     /*
      * Set the look and feel for a new JFrame.  This needs to be called before any
      * GUI components are created.
@@ -1025,6 +1058,8 @@ public class SystemSettings extends JFrame {
                 this.difxControlAddress( doiConfig.getDifxControlAddress() );
             if ( doiConfig.getDifxControlPort() != 0 )
                 this.difxControlPort( doiConfig.getDifxControlPort() );
+            if ( doiConfig.getDifxTransferPort() != 0 )
+                this.difxTransferPort( doiConfig.getDifxTransferPort() );
             if ( doiConfig.getDifxControlUser() != null )
                 this.difxControlUser( doiConfig.getDifxControlUser() );
             if ( doiConfig.getDifxControlPWD() != null )
@@ -1090,6 +1125,18 @@ public class SystemSettings extends JFrame {
                 _windowConfiguration.hardwareMonitorW = doiConfig.getWindowConfigHardwareMonitorW();
             if ( doiConfig.getWindowConfigHardwareMonitorH() != 0 )
                 _windowConfiguration.hardwareMonitorH = doiConfig.getWindowConfigHardwareMonitorH();
+            if ( doiConfig.getWindowConfigExperimentEditorW() != 0 )
+                _windowConfiguration.experimentEditorW = doiConfig.getWindowConfigExperimentEditorW();
+            if ( doiConfig.getWindowConfigExperimentEditorH() != 0 )
+                _windowConfiguration.experimentEditorH = doiConfig.getWindowConfigExperimentEditorH();
+            if ( doiConfig.getDefaultNamesVexFileSource() != null )
+                _defaultNames.vexFileSource = doiConfig.getDefaultNamesVexFileSource();
+            if ( doiConfig.getDefaultNamesViaHttpLocation() != null )
+                _defaultNames.viaHttpLocation = doiConfig.getDefaultNamesViaHttpLocation();
+            if ( doiConfig.getDefaultNamesViaFtpLocation() != null )
+                _defaultNames.viaFtpLocation = doiConfig.getDefaultNamesViaFtpLocation();
+            if ( doiConfig.getDefaultNamesLocalFileLocation() != null )
+                _defaultNames.localFileLocation = doiConfig.getDefaultNamesLocalFileLocation();
             generateBroadcastChangeEvent();
             generateDatabaseChangeEvent();
             
@@ -1125,6 +1172,7 @@ public class SystemSettings extends JFrame {
         doiConfig.setTimeout( this.timeout() );
         doiConfig.setDifxControlAddress( this.difxControlAddress() );
         doiConfig.setDifxControlPort( this.difxControlPort() );
+        doiConfig.setDifxTransferPort( this.difxTransferPort() );
         doiConfig.setDifxControlUser( this.difxControlUser() );
         doiConfig.setDifxControlPWD( new String( this.difxControlPassword() ) );
         doiConfig.setDifxVersion( this.difxVersion() );
@@ -1164,6 +1212,13 @@ public class SystemSettings extends JFrame {
         doiConfig.setWindowConfigHardwareMonitorY( _windowConfiguration.hardwareMonitorY );
         doiConfig.setWindowConfigHardwareMonitorW( _windowConfiguration.hardwareMonitorW );
         doiConfig.setWindowConfigHardwareMonitorH( _windowConfiguration.hardwareMonitorH );
+        doiConfig.setWindowConfigExperimentEditorW( _windowConfiguration.experimentEditorW );
+        doiConfig.setWindowConfigExperimentEditorH( _windowConfiguration.experimentEditorH );
+        
+        doiConfig.setDefaultNamesVexFileSource( _defaultNames.vexFileSource );
+        doiConfig.setDefaultNamesViaHttpLocation( _defaultNames.viaHttpLocation );
+        doiConfig.setDefaultNamesViaFtpLocation( _defaultNames.viaFtpLocation );
+        doiConfig.setDefaultNamesLocalFileLocation( _defaultNames.localFileLocation );
         
         try {
             javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance( doiConfig.getClass().getPackage().getName() );
@@ -1305,6 +1360,7 @@ public class SystemSettings extends JFrame {
     }
     public QueueBrowserSettings queueBrowserSettings() { return _queueBrowserSettings; }
     public WindowConfiguration windowConfiguration() { return _windowConfiguration; }
+    public DefaultNames defaultNames() { return _defaultNames; }
     
     /*
      * Return the current list of experiment status types, or try to create one
@@ -1377,6 +1433,8 @@ public class SystemSettings extends JFrame {
     //  DiFX Control Connection
     protected JFormattedTextField _difxControlAddress;
     protected NumberBox _difxControlPort;
+    protected NumberBox _difxTransferPort;
+    protected int _newDifxTransferPort;
     protected JFormattedTextField _difxControlUser;
     protected JPasswordField _difxControlPWD;
     protected JFormattedTextField _difxVersion;
@@ -1450,8 +1508,19 @@ public class SystemSettings extends JFrame {
         int hardwareMonitorY;
         int hardwareMonitorW;
         int hardwareMonitorH;
+        int experimentEditorW;
+        int experimentEditorH;
     }
     protected WindowConfiguration _windowConfiguration;
+    
+    //  Defaults for a bunch of things that the user would likely change.
+    public class DefaultNames {
+        String vexFileSource;
+        String viaHttpLocation;
+        String viaFtpLocation;
+        String localFileLocation;
+    }
+    protected DefaultNames _defaultNames;
     
     //  Different lists of event listeners.  Other classes can be informed of
     //  setting changes by adding themselves to these lists.
