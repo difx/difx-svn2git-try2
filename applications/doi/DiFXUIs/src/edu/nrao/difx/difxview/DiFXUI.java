@@ -30,6 +30,10 @@ import javax.swing.JSeparator;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
 
+import javax.swing.plaf.FontUIResource;
+
+import java.awt.Font;
+
 /**
  *
  * @author  jspitzak (USNO)
@@ -49,9 +53,27 @@ public class DiFXUI extends JFrame implements WindowListener {
 //    static DiFXController _difxController;
     // Keep a copy of the current running job
     //JobManagerUI mCurrentJM;
+    
+    /*
+     * This is a static method for setting the default font for all components
+     * that I swiped from the web.
+     * 
+     * setUIFont( new javax.swing.plaf.FontUIResource( "Serif", Font.ITALIC, 12 ) );
+     */
+    public static void setUIFont( FontUIResource f ) {
+        java.util.Enumeration keys = UIManager.getDefaults().keys();
+        while ( keys.hasMoreElements() ) {
+            Object key = keys.nextElement();
+            Object value = UIManager.get( key );
+            if ( value instanceof javax.swing.plaf.FontUIResource )
+            UIManager.put( key, f );
+        }
+    }
 
     public DiFXUI( String settingsFile ) {
         
+        //setUIFont( new javax.swing.plaf.FontUIResource( "Serif", Font.ITALIC, 12 ) );
+
         //  Produce system settings using the settings file that came from command
         //  line arguments (which might be null, indicating we should use default
         //  values).

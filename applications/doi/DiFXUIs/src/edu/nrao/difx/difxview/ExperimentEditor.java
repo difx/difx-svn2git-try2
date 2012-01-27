@@ -204,7 +204,7 @@ public class ExperimentEditor extends JDialog {
         namePanel.add( vexFileLabel );
         
         //  This panel is used to find a new vex file.
-        IndexedPanel findVexPanel = new IndexedPanel( "Get a .vex File" );
+        IndexedPanel findVexPanel = new IndexedPanel( "Get .vex File Content" );
         findVexPanel.openHeight( 210 );
         findVexPanel.closedHeight( 20 );
         findVexPanel.open( false );
