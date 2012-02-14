@@ -7,32 +7,168 @@
     <link type="text/css" rel="stylesheet" href="style.css">
   </head>
   <body>
-    <h1>.vex File Editor<br>
+    <h1>Experiment Editor<br>
     </h1>
-    The Vex File Editor allows you to locate, create, view and edit <span
-      style="font-family: monospace;">.vex</span> files.&nbsp; At least
-    in theory - not much has been done yet.&nbsp; Moreover, this
-    documentation is crap.<br>
-    <h3>Generating a New <span style="font-family: monospace;">.vex</span>
-      File</h3>
-    <p>There are a number of ways you can generate a <span
-        style="font-family: monospace;">.vex</span> file, either as a
-      final product or a template for hand-editing.&nbsp; These include:<br>
+    The Experiment Editor allows you to create a new DiFX experiment (or
+    "session"), optionally containing a pass and/or a list of
+    jobs.&nbsp; It also allows an existing experiment to be edited and
+    new passes and job sets to be created.&nbsp; All directory
+    structures and files associated with the experiment are created on
+    the DiFX host, as well as in the DiFX database (if it is being
+    used), and the experiment, pass(es), and job(s) are listed on the
+    Queue Browser on the GUI from where DiFX can be run.<br>
+    <br>
+    The Experiment Editor is launched either to create a new experiment
+    (by picking "New-&gt;Experiment" from the Queue Browser) in which
+    case its title is "Create New Experiment", or to edit an existing
+    experiment (by right-clicking on the experiment name in the Queue
+    Browser and choosing "Edit Properties") in which case its title is
+    "Edit Experiment Properties".&nbsp; While the controls are
+    identical, applying changes to an existing experiment has slightly
+    different effects than those applied to a new experiment, as
+    described below.<br>
+    <h3>Some General Information</h3>
+    <p>The experiment name, ID, directory, and some other items are used
+      to uniquely identify an experiment and to access it in the
+      database.&nbsp; Some of these items are not changed after the
+      experiment is created, others can be but generally aren't, and
+      some are meant to be changed.&nbsp; They are contained in the top
+      section of Experiment Editor.<br>
+    </p>
+    <p><span style="font-weight: bold;">Name</span><br>
+      This is the name of the experiment which appears in the Queue
+      Browser.&nbsp; When an experiment is initially created, a default
+      name will be generated - a combination of the word "Experiment"
+      and the ID number.&nbsp; It can be changed to reflect something
+      that better describes the experiment to the user.&nbsp; Due to
+      restrictions imposed by the database, a 20 character limit is
+      placed on the name length.&nbsp; Changes to the name are
+      propagated to the "Directory" and ".vex File" parameters, unless
+      those items have been previously changed (you have to hit return
+      to make changes do this).<br>
+    </p>
+    <p><span style="font-weight: bold;">Number</span><br>
+      The number is contained in the database, and I'm not sure what it
+      is.&nbsp; I'll get back to you on this one.<br>
+    </p>
+    <p><span style="font-weight: bold;">Status</span><br>
+      The status describes the current state of the experiment<span
+        style="font-style: italic;"></span>.&nbsp; No doubt this will be
+      used by the GUI in the future, but for the moment it is simply
+      something the user can set for their own tracking purposes.&nbsp;
+      If the database is being used the options permitted by the
+      database are given for status.&nbsp; If no database is being used
+      the status currently doesn't work and can't be changed, but
+      ultimately a way of allowing the user to specify their own status
+      strings will be implemented.<br>
+    </p>
+    <p><span style="font-weight: bold;">In Database</span><br>
+      This check box will determine whether the experiment is put in the
+      database (or already is there if already created).&nbsp; If the
+      database is not being used, this item should remain
+      unchecked.&nbsp; An experiment that was not, for whatever reason,
+      originally created with this item checked can later be put in the
+      database by checking it when in edit mode.<br>
+    </p>
+    <p><span style="font-weight: bold;">Database ID</span><br>
+      This is the ID used by the database to track this
+      experiment.&nbsp; When an experiment is initially created, a
+      "guess" for this number is generated (usually it is a pretty good
+      guess).&nbsp; Later if the experiment is edited the number will
+      accurately reflect the ID used by the database.&nbsp; If the
+      database is not being used, it is simply a (hopefully unique)
+      generated number.&nbsp; This number cannot be changed by the user.<br>
+    </p>
+    <p><span style="font-weight: bold;">Created</span><br>
+      This is the creation time and date for the experiment.&nbsp; When
+      initially created, this is the local time of the GUI host.&nbsp;
+      Once the experiment is put in the database, this time will change
+      (hopefully not much) to reflect the creation time on the database
+      host.&nbsp; This is not a user-settable item.<br>
+    </p>
+    <p><span style="font-weight: bold;">Directory</span><br>
+      This is the "working directory" on the DiFX host under which all
+      files and sub-directories associated with an experiment
+      reside.&nbsp; It should be an absolute (not relative) pathname -
+      starting with a "/".&nbsp; When an experiment is created, this
+      directory is created (if necessary).&nbsp; If this parameter is
+      later changed, it will cause the directory to be moved on the DiFX
+      host.&nbsp; For either of these operations to occur, the DiFX user
+      must have permission to do them on the DiFX host.<br>
+    </p>
+    <p><span style="font-weight: bold;">.vex File</span><br>
+      This is the name of the <span style="font-family: monospace;">.vex</span>
+      file that will be stored (if creating a new experiment) or is
+      already stored (if editing an experiment) under the working
+      directory.&nbsp; A session of the Experiment Editor may work with
+      only one <span style="font-family: monospace;">.vex</span> file
+      at a time, however any number of <span style="font-family:
+        monospace;">.vex</span> files may be associated with an
+      experiment.&nbsp; The data stored in the <span
+        style="font-family: monospace;">.vex</span> file is obtained
+      using the "Get .vex File Content" as described in the next
+      section.<br>
+    </p>
+    <p>If you already have a <span style="font-family: monospace;">.vex</span>
+      file associated with an experiment and wish to create a new one,
+      enter a new name in this field and obtain new content using "Get
+      .vex File Content".&nbsp; If you have several <span
+        style="font-family: monospace;">.vex</span> files associated
+      with an experiment and wish to use a previous one, the <span
+        style="font-weight: bold;">Previous Files</span> button can be
+      used to load it.<br>
+    </p>
+    <h3>Getting <span style="font-family: monospace;">.vex</span> File
+      Content</h3>
+    <p>An experiment is associated with at least one <span
+        style="font-family: monospace;">.vex</span> file - in most cases
+      only one (although more can be added).&nbsp; The <span
+        style="font-family: monospace;">.vex</span> file, which is
+      provided with a set of observations, contains a complete
+      description of the observing session, including times,
+      frequencies, antennas uses, sources observed, and scans collected
+      (as well as other things).&nbsp; The GUI uses the <span
+        style="font-family: monospace;">.vex</span> file to provide the
+      user with the options that may be applied to tailor DiFX
+      processing of the observations.<br>
+    </p>
+    <p>If you are creating a new experiment, you need a <span
+        style="font-family: monospace;">.vex</span> file before you can
+      go anywhere.&nbsp; Under "Get .vex File Content", the Experiment
+      Editor provides you with a number of ways of obtaining .vex file
+      data, including:<br>
     </p>
     <ol>
-      <li>Getting the file associated with the observations for your
-        experiment, either directly or by using <span
-          style="font-style: italic;">sked</span>.&nbsp; This is
-        probably the most common way of doing this, as it is the
-        easiest.</li>
-      <li>Copying the file from another experiment.</li>
-      <li>Grabbing one from a location on the DiFX Host. <br>
+      <li>Grabbing a file from a location on the DiFX Host.</li>
+      <li>Obtaining a file via HTTP.</li>
+      <li>Obtaining a file via FTP.<br>
       </li>
-      <li>Filling in all of the information by hand using the
-        editor.&nbsp; This is probably the most error-prone, not to
-        mention painful method.</li>
+      <li>Using a file on the GUI Host.<br>
+      </li>
+      <li>Copying a file used in another experiment.</li>
     </ol>
-    <br>
+    <h3>Creating a New Pass (or not!)</h3>
+    <p><span style="font-weight: bold;">Combine Scans in One Job</span><br>
+      The GUI can create jobs out of the specified scans in one of two
+      ways, either as a series of individual scans with one job per
+      scan, or a single job containing all scans.&nbsp; Those who know <span
+        style="font-style: italic;">vex2difx</span> well will recognize
+      this as a slight change from what it does.&nbsp; <span
+        style="font-style: italic;">Vex2difx</span> can be set to create
+      single-scan jobs, but otherwise it arranges scans in one or more
+      jobs based on the "maxGap" parameter - breaking into new jobs only
+      when the gap between two correlations exceeds this value.&nbsp; In
+      fact, the GUI essentially cheats by setting the "maxGap" parameter
+      to something huge so scans are never broken into more than one
+      job.<br>
+    </p>
+    <h3>What is the GUI Doing?</h3>
+    <h5><span style="font-weight: bold;">Multiple .vex Files in an
+        Experiment</span></h5>
+    <p><br>
+    </p>
+    <h5>Creating Passes Using Existing Data<br>
+    </h5>
     <p></p>
   </body>
 </html>

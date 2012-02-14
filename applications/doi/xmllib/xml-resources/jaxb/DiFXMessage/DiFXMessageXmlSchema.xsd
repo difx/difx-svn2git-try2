@@ -23,6 +23,7 @@
     <xsd:element name="difxStop" type="difxStop"></xsd:element>
     <xsd:element name="difxFileTransfer" type="difxFileTransfer"></xsd:element>
     <xsd:element name="difxFileOperation" type="difxFileOperation"></xsd:element>
+    <xsd:element name="difxVex2difxRun" type="difxVex2difxRun"></xsd:element>
     <xsd:element name="difxCommand" type="difxCommand"></xsd:element>
     <xsd:element name="doiResourceConfig" type="doiResourceConfig"></xsd:element>
     <xsd:element name="doiProject" type="doiProject"></xsd:element>
@@ -61,6 +62,7 @@
                 <xsd:element ref="difxStop"/>
                 <xsd:element ref="difxFileTransfer"/>
                 <xsd:element ref="difxFileOperation"/>
+                <xsd:element ref="difxVex2difxRun"/>
                 <xsd:element ref="difxCommand"/>
                 <xsd:element ref="doiSystemConfig"/>
                 <xsd:element ref="doiResourceConfig"/>
@@ -105,6 +107,7 @@
                 <xsd:element ref="difxControlUser"/>
                 <xsd:element ref="difxControlPWD"/>
                 <xsd:element ref="difxVersion"/>
+                <xsd:element ref="difxPath"/>
                 <xsd:element ref="dbUseDataBase"/>
                 <xsd:element ref="dbVersion"/>
                 <xsd:element ref="dbName"/>
@@ -143,12 +146,17 @@
                 <xsd:element ref="windowConfigHardwareMonitorH"/>
                 <xsd:element ref="windowConfigExperimentEditorW"/>
                 <xsd:element ref="windowConfigExperimentEditorH"/>
+                <xsd:element ref="windowConfigSettingsWindowW"/>
+                <xsd:element ref="windowConfigSettingsWindowH"/>
 
                 <xsd:element ref="defaultNamesVexFileSource"/>
                 <xsd:element ref="defaultNamesViaHttpLocation"/>
                 <xsd:element ref="defaultNamesViaFtpLocation"/>
                 <xsd:element ref="defaultNamesLocalFileLocation"/>
+                <xsd:element ref="defaultSingleInputFile"/>
                 
+                <xsd:element ref="suppressUnknownMessageWarnings"/>
+
             </xsd:sequence>
         </xsd:complexType>
     </xsd:element>
@@ -176,6 +184,7 @@
     <xsd:element name="difxControlUser" type="xsd:string"></xsd:element>
     <xsd:element name="difxControlPWD" type="xsd:string"></xsd:element>
     <xsd:element name="difxVersion" type="xsd:string"></xsd:element>
+    <xsd:element name="difxPath" type="xsd:string"></xsd:element>
     <xsd:element name="dbUseDataBase" type="xsd:boolean"></xsd:element>
     <xsd:element name="dbVersion" type="xsd:string"></xsd:element>
     <xsd:element name="dbName" type="xsd:string"></xsd:element>
@@ -214,11 +223,16 @@
     <xsd:element name="windowConfigHardwareMonitorH" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigExperimentEditorW" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigExperimentEditorH" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigSettingsWindowW" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigSettingsWindowH" type="xsd:int"></xsd:element>
                 
     <xsd:element name="defaultNamesVexFileSource" type="xsd:string"></xsd:element>
     <xsd:element name="defaultNamesViaHttpLocation" type="xsd:string"></xsd:element>
     <xsd:element name="defaultNamesViaFtpLocation" type="xsd:string"></xsd:element>
     <xsd:element name="defaultNamesLocalFileLocation" type="xsd:string"></xsd:element>
+    <xsd:element name="defaultSingleInputFile" type="xsd:boolean"></xsd:element>
+
+    <xsd:element name="suppressUnknownMessageWarnings" type="xsd:boolean"></xsd:element>
 
     <xsd:complexType name="mark5Status">
         <xsd:sequence>
@@ -330,6 +344,16 @@
             <xsd:element name="operation" type="xsd:string"></xsd:element>
             <xsd:element name="dataNode" type="xsd:string"></xsd:element>
             <xsd:element name="arg" type="xsd:string"></xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="difxVex2difxRun">
+        <xsd:sequence>
+            <xsd:element name="user" type="xsd:string"></xsd:element>
+            <xsd:element name="node" type="xsd:string"></xsd:element>
+            <xsd:element name="difxPath" type="xsd:string"></xsd:element>
+            <xsd:element name="passPath" type="xsd:string"></xsd:element>
+            <xsd:element name="file" type="xsd:string"></xsd:element>
         </xsd:sequence>
     </xsd:complexType>
 

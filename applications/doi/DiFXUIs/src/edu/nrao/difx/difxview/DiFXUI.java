@@ -30,6 +30,8 @@ import javax.swing.JSeparator;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
 
+import java.awt.Point;
+
 import javax.swing.plaf.FontUIResource;
 
 import java.awt.Font;
@@ -72,7 +74,7 @@ public class DiFXUI extends JFrame implements WindowListener {
 
     public DiFXUI( String settingsFile ) {
         
-        //setUIFont( new javax.swing.plaf.FontUIResource( "Serif", Font.ITALIC, 12 ) );
+        setUIFont( new javax.swing.plaf.FontUIResource( "Sans", Font.BOLD, 12 ) );
 
         //  Produce system settings using the settings file that came from command
         //  line arguments (which might be null, indicating we should use default
@@ -332,15 +334,16 @@ public class DiFXUI extends JFrame implements WindowListener {
         } );
         fileMenu.add( quitItem );
         _menuBar.add( fileMenu );
-        JMenu settingsMenu = new JMenu( "Settings" );
+        _settingsMenu = new JMenu( "Settings" );
         JMenuItem showSettingsItem = new JMenuItem( "Show Settings" );
         showSettingsItem.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                showSettingsAction();
+                Point np = _settingsMenu.getLocationOnScreen();
+                showSettingsAction( np.x, np.y );
             }
         } );
-        settingsMenu.add( showSettingsItem );
-        _menuBar.add( settingsMenu );
+        _settingsMenu.add( showSettingsItem );
+        _menuBar.add( _settingsMenu );
         JMenu windowMenu = new JMenu( "Window" );
         JMenu arrangeMenu = new JMenu( "Monitor Arrangement" );
         _horizontalItem = new JCheckBoxMenuItem( "Horizontal" );
@@ -480,7 +483,11 @@ public class DiFXUI extends JFrame implements WindowListener {
     /*
      * Bring up a window containing settings for the GUI.
      */
-    private void showSettingsAction() {
+    private void showSettingsAction( int x, int y ) {
+        //  Put the settings window just below the menu button only if it hasn't
+        //  be repositioned by the user.
+        if ( _systemSettings.getX() == 0 )
+            _systemSettings.setBounds( x, y + 25, _systemSettings.getWidth(), _systemSettings.getHeight() );
         _systemSettings.setVisible( true );
     }
     
@@ -738,6 +745,7 @@ public class DiFXUI extends JFrame implements WindowListener {
     protected JFrame _queueBrowserWindow;
     protected double _dividerLocation;
     protected VersionWindow _aboutWindow;
+    protected JMenu _settingsMenu;
     
     protected SystemSettings _systemSettings;
 

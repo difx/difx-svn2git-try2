@@ -57,7 +57,7 @@ public class ExperimentNode extends QueueBrowserNode {
         });
         _popup.add( unselectJobsItem );
         _popup.add( new JSeparator() );
-        JMenuItem menuItem4 = new JMenuItem( "Properties" );
+        JMenuItem menuItem4 = new JMenuItem( "Edit Properties" );
         menuItem4.setToolTipText( "Show/Edit the properties of this Experiment." );
         menuItem4.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
@@ -262,7 +262,8 @@ public class ExperimentNode extends QueueBrowserNode {
                 if ( db.connected() ) {
                     //  If the item didn't already exist in the database, create it.
                     if ( !this.inDataBase() ) {
-                        db.newExperiment( win.name(), win.number(), _settings.experimentStatusID( win.status() ) );
+                        db.newExperiment( win.name(), win.number(), _settings.experimentStatusID( win.status() ),
+                                win.directory(), win.vexFileName() );
                         //  See which ID the data base assigned...it will be the largest one.  Also
                         //  save the creation date.
                         int newExperimentId = 0;

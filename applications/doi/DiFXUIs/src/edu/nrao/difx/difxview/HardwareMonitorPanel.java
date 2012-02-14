@@ -161,7 +161,7 @@ public class HardwareMonitorPanel extends TearOffPanel {
                 }
                 //  If there was no node representing this unit, create one.
                 if ( mk5Module == null ) {
-                    mk5Module = new Mark5Node( thisMark5.getObjName() );
+                    mk5Module = new Mark5Node( thisMark5.getObjName(), _settings );
                     mk5Module.difxController( _mController );
                     _mk5Modules.addChild( mk5Module );
                 }
@@ -245,7 +245,7 @@ public class HardwareMonitorPanel extends TearOffPanel {
                     }
                     //  If there was no node representing this unit, create one.
                     if ( mk5Module == null ) {
-                        mk5Module = new Mark5Node( thisMark5.getObjName() );
+                        mk5Module = new Mark5Node( thisMark5.getObjName(), _settings );
                         mk5Module.difxController( _mController );
                         _mk5Modules.addChild( mk5Module );
                     }

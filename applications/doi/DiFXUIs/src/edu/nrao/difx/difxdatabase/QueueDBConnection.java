@@ -149,18 +149,44 @@ public class QueueDBConnection {
     
     /*
      * Create a new experiment.  The data base will automatically assign a unique
-     * ID number, but we give it name, number (used to be called "segment"), and
-     * initial status.  Return whether this operation was successful or not.
+     * ID number, but we give it name, number (used to be called "segment"), 
+     * initial status, directory, and vex filename.  Return whether this operation 
+     * was successful or not.
      */
-    public boolean newExperiment( String name, Integer number, Integer statusId ) {
+    public boolean newExperiment( String name, Integer number, Integer statusId, String directory, String vexFileName ) {
         if ( !this.connected() )
             return false;
         try {
         int updateCount = _db.updateData( "insert into " + _settings.dbName() + 
-                        ".Experiment (code, number, statusID) values("
+                        ".Experiment (code, number, statusID, directory, vexfile) values("
                 + " \"" + name + "\","
                 + " \"" + number.toString() + "\","
-                + " \"" + statusId.toString() + "\" )" );
+                + " \"" + statusId.toString() + "\","
+                + " \"" + directory + "\","
+                + " \"" + vexFileName + "\" )" );
+        if ( updateCount > 0 )
+            return true;
+        else
+            return false;
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            return false;
+        }
+    }
+    
+    /*
+     * Create a new pass.  The pass is given a name, type, and experiment ID, and
+     * (hopefully soon) a directory and vex file name.
+     */
+    public boolean newPass( String name, Integer typeId, Integer experimentId ) {
+        if ( !this.connected() )
+            return false;
+        try {
+        int updateCount = _db.updateData( "insert into " + _settings.dbName() + 
+                        ".Pass (experimentID, passName, passTypeID) values("
+                + " \"" + experimentId.toString() + "\","
+                + " \"" + name + "\","
+                + " \"" + typeId.toString() + "\" )" );
         if ( updateCount > 0 )
             return true;
         else

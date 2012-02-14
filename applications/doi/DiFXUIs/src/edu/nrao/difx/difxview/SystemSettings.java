@@ -26,7 +26,6 @@ import javax.swing.event.EventListenerList;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentEvent;
-import java.awt.Dimension;
 import java.awt.Color;
 import java.util.Calendar;
 
@@ -37,6 +36,7 @@ import java.io.FileWriter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Iterator;
+import java.util.ArrayList;
 
 import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
@@ -59,6 +59,7 @@ import mil.navy.usno.plotlib.Track2D;
 import mil.navy.usno.widgetlib.PingTest;
 import mil.navy.usno.widgetlib.MessageScrollPane;
 import mil.navy.usno.widgetlib.MessageNode;
+import mil.navy.usno.widgetlib.SaneTextField;
 
 import javax.swing.JFrame;
 
@@ -222,7 +223,7 @@ public class SystemSettings extends JFrame {
         settingsFilePanel.add( defaultsButton );
         
         IndexedPanel difxControlPanel = new IndexedPanel( "DiFX Control Connection" );
-        difxControlPanel.openHeight( 180 );
+        difxControlPanel.openHeight( 210 );
         difxControlPanel.closedHeight( 20 );
         _scrollPane.addNode( difxControlPanel );
         _difxControlAddress = new JFormattedTextField();
@@ -294,9 +295,16 @@ public class SystemSettings extends JFrame {
         versionAddressLabel.setBounds( 10, 145, 150, 25 );
         versionAddressLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( versionAddressLabel );
+        _difxPath = new SaneTextField();
+        _difxPath.setToolTipText( "Path to DiFX directory tree on the DiFX host (\"bin\" and \"setup\" should be below this)." );
+        difxControlPanel.add( _difxPath );
+        JLabel difxPathLabel = new JLabel( "DiFX Path:" );
+        difxPathLabel.setBounds( 10, 175, 150, 25 );
+        difxPathLabel.setHorizontalAlignment( JLabel.RIGHT );
+        difxControlPanel.add( difxPathLabel );
         
         IndexedPanel networkPanel = new IndexedPanel( "Broadcast Network" );
-        networkPanel.openHeight( 170 );
+        networkPanel.openHeight( 180 );
         networkPanel.closedHeight( 20 );
         _scrollPane.addNode( networkPanel );
         _ipAddress = new JFormattedTextField();
@@ -363,6 +371,9 @@ public class SystemSettings extends JFrame {
         _broadcastPlot.frame( 10, 23, 0.95, 90 );
         _broadcastPlot.backgroundColor( Color.BLACK );
         _plotWindow.add2DPlot( _broadcastPlot );
+        _suppressWarningsCheck = new JCheckBox( "Suppress \"Unknown Message\" Warnings" );
+        _suppressWarningsCheck.setBounds( 165, 145, 450, 25 );
+        networkPanel.add( _suppressWarningsCheck );
         
         IndexedPanel databasePanel = new IndexedPanel( "Database Configuration" );
         databasePanel.openHeight( 275 );
@@ -595,6 +606,7 @@ public class SystemSettings extends JFrame {
             _difxControlUser.setBounds( 165, 85, 300, 25 );
             _difxControlPWD.setBounds( 165, 115, 300, 25 );
             _difxVersion.setBounds( 165, 145, 300, 25 );
+            _difxPath.setBounds( 165, 175, w - 195, 25 );
             //  Broadcast network settings
             _ipAddress.setBounds( 165, 25, 300, 25 );
             _port.setBounds( 165, 55, 300, 25 );
@@ -698,6 +710,7 @@ public class SystemSettings extends JFrame {
         _difxControlUser.setText( "difx" );
         _difxControlPWD.setText( "difx2010" );
         _difxVersion.setText( "trunk" );
+        _difxPath.setText( "/usr/local/swc/difx" );
         _dbUseDataBase.setSelected( true );
         _dbVersion.setText( "unknown" );
         _dbHost.setText( "c3po.aoc.nrao.edu" );
@@ -740,10 +753,15 @@ public class SystemSettings extends JFrame {
         _windowConfiguration.hardwareMonitorH = 600;
         _windowConfiguration.experimentEditorW = 500;
         _windowConfiguration.experimentEditorH = 430;
+        _windowConfiguration.settingsWindowW = 800;
+        _windowConfiguration.settingsWindowH = 775;
+        this.setSize( _windowConfiguration.settingsWindowW, _windowConfiguration.settingsWindowH );
         _defaultNames.vexFileSource = "";
         _defaultNames.viaHttpLocation = "";
         _defaultNames.viaFtpLocation = "";
         _defaultNames.localFileLocation = "";
+        _defaultNames.createPassOnExperimentCreation = true;
+        _defaultNames.singleInputFile = false;
     }
     
     /*
@@ -805,6 +823,9 @@ public class SystemSettings extends JFrame {
     
     public void difxVersion( String newVal ) { _difxVersion.setText( newVal ); }
     public String difxVersion() { return _difxVersion.getText(); }
+    
+    public void difxPath( String newVal ) { _difxPath.setText( newVal ); }
+    public String difxPath() { return _difxPath.getText(); }
     
     public void ipAddress( String newVal ) { _ipAddress.setText( newVal ); }
     public String ipAddress() { return _ipAddress.getText(); }
@@ -1046,6 +1067,7 @@ public class SystemSettings extends JFrame {
                 this.port( doiConfig.getPort() );
             if ( doiConfig.getBufferSize() != 0 )
                 this.bufferSize( doiConfig.getBufferSize() );
+            _suppressWarningsCheck.setSelected( doiConfig.isSuppressUnknownMessageWarnings() );
             this.loggingEnabled( doiConfig.isLoggingEnabled() );
             if ( doiConfig.getStatusValidDuration() != 0 )
                 this.statusValidDuration( doiConfig.getStatusValidDuration() );
@@ -1066,6 +1088,8 @@ public class SystemSettings extends JFrame {
                 this.difxControlPassword( doiConfig.getDifxControlPWD() );
             if ( doiConfig.getDifxVersion() != null )
                 this.difxVersion( doiConfig.getDifxVersion() );
+            if ( doiConfig.getDifxPath() != null )
+                this.difxPath( doiConfig.getDifxPath() );
             _dbUseDataBase.setSelected( doiConfig.isDbUseDataBase() );
             if ( doiConfig.getDbVersion() != null )
                 _dbVersion.setText( doiConfig.getDbVersion() );
@@ -1129,6 +1153,11 @@ public class SystemSettings extends JFrame {
                 _windowConfiguration.experimentEditorW = doiConfig.getWindowConfigExperimentEditorW();
             if ( doiConfig.getWindowConfigExperimentEditorH() != 0 )
                 _windowConfiguration.experimentEditorH = doiConfig.getWindowConfigExperimentEditorH();
+            if ( doiConfig.getWindowConfigSettingsWindowW() != 0 )
+                _windowConfiguration.settingsWindowW = doiConfig.getWindowConfigSettingsWindowW();
+            if ( doiConfig.getWindowConfigSettingsWindowH() != 0 )
+                _windowConfiguration.settingsWindowH = doiConfig.getWindowConfigSettingsWindowH();
+            this.setSize( _windowConfiguration.settingsWindowW, _windowConfiguration.settingsWindowH );
             if ( doiConfig.getDefaultNamesVexFileSource() != null )
                 _defaultNames.vexFileSource = doiConfig.getDefaultNamesVexFileSource();
             if ( doiConfig.getDefaultNamesViaHttpLocation() != null )
@@ -1137,6 +1166,7 @@ public class SystemSettings extends JFrame {
                 _defaultNames.viaFtpLocation = doiConfig.getDefaultNamesViaFtpLocation();
             if ( doiConfig.getDefaultNamesLocalFileLocation() != null )
                 _defaultNames.localFileLocation = doiConfig.getDefaultNamesLocalFileLocation();
+            _defaultNames.singleInputFile = doiConfig.isDefaultSingleInputFile();
             generateBroadcastChangeEvent();
             generateDatabaseChangeEvent();
             
@@ -1165,6 +1195,7 @@ public class SystemSettings extends JFrame {
         doiConfig.setIpAddress( this.ipAddress() );
         doiConfig.setPort( this.port() );
         doiConfig.setBufferSize( this.bufferSize() );
+        doiConfig.setSuppressUnknownMessageWarnings( _suppressWarningsCheck.isSelected() );
         doiConfig.setLoggingEnabled( this.loggingEnabled() );
         doiConfig.setStatusValidDuration( this.statusValidDuration() );
         
@@ -1176,6 +1207,7 @@ public class SystemSettings extends JFrame {
         doiConfig.setDifxControlUser( this.difxControlUser() );
         doiConfig.setDifxControlPWD( new String( this.difxControlPassword() ) );
         doiConfig.setDifxVersion( this.difxVersion() );
+        doiConfig.setDifxPath( this.difxPath() );
         doiConfig.setDbUseDataBase( this.useDataBase() );
         doiConfig.setDbVersion( this.dbVersion() );
         doiConfig.setDbName( this.dbName() );
@@ -1214,11 +1246,14 @@ public class SystemSettings extends JFrame {
         doiConfig.setWindowConfigHardwareMonitorH( _windowConfiguration.hardwareMonitorH );
         doiConfig.setWindowConfigExperimentEditorW( _windowConfiguration.experimentEditorW );
         doiConfig.setWindowConfigExperimentEditorH( _windowConfiguration.experimentEditorH );
+        doiConfig.setWindowConfigSettingsWindowW( this.getWidth() );
+        doiConfig.setWindowConfigSettingsWindowH( this.getHeight() );
         
         doiConfig.setDefaultNamesVexFileSource( _defaultNames.vexFileSource );
         doiConfig.setDefaultNamesViaHttpLocation( _defaultNames.viaHttpLocation );
         doiConfig.setDefaultNamesViaFtpLocation( _defaultNames.viaFtpLocation );
         doiConfig.setDefaultNamesLocalFileLocation( _defaultNames.localFileLocation );
+        doiConfig.setDefaultSingleInputFile( _defaultNames.singleInputFile );
         
         try {
             javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance( doiConfig.getClass().getPackage().getName() );
@@ -1417,6 +1452,108 @@ public class SystemSettings extends JFrame {
         return null;
     }
     
+    /*
+     * Return the current list of pass types, or try to create one
+     * from the database if it doesn't exist yet.
+     */
+    public Map<Integer, String> passTypeList() {
+        if ( _passTypeList == null )
+            _passTypeList = new HashMap<Integer, String>();
+        if ( _passTypeList.isEmpty() ) {            
+            QueueDBConnection db = new QueueDBConnection( this );
+            if ( db.connected() ) {
+                ResultSet dbPassTypeList = db.passTypeList();
+                try {
+                    while ( dbPassTypeList.next() ) {
+                        _passTypeList.put( dbPassTypeList.getInt( "id" ),
+                                dbPassTypeList.getString( "Type" ) );
+                    }
+                } catch ( Exception e ) {
+                    java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+                }
+            }
+        }
+        return _passTypeList;
+    }
+    
+    /*
+     * Obtain the "id" of a pass type from its string form.
+     */
+    public Integer passTypeID( String status ) {
+        if ( _passTypeList == null )
+            return 0;
+        Iterator iter = _passTypeList.entrySet().iterator();
+        for ( ; iter.hasNext(); ) {
+            Map.Entry m = (Map.Entry)iter.next();
+            if ( ((String)m.getValue()).contentEquals( status ) )
+                return ((Integer)m.getKey());
+        }
+        return 0;
+    }
+    
+    /*
+     * Obtain the string form of an pass type from its ID.
+     */
+    public String passTypeString( Integer id ) {
+        if ( _passTypeList == null )
+            return null;
+        Iterator iter = _passTypeList.entrySet().iterator();
+        for ( ; iter.hasNext(); ) {
+            Map.Entry m = (Map.Entry)iter.next();
+            if ( (Integer)m.getKey() == id )
+                return ((String)m.getValue());
+        }
+        return null;
+    }
+    
+    public boolean suppressWarnings() { return _suppressWarningsCheck.isSelected(); }
+    
+    /*
+     * Add a new data source.  The "name" is ostensibly what it is called - the VSN
+     * for a module, full path for a file, etc.  The type tells us what kind it is -
+     * module, file, eVLBI, etc.  The "source" describes where we got the above
+     * information - from the database, because the module was detected in a data
+     * node, or whatever.
+     */
+    public void addDataSource( String name, String type, String source ) {
+        DataSource src = new DataSource();
+        src.name = name;
+        src.type = type;
+        src.source = source;
+        if ( _dataSourceList == null )
+            _dataSourceList = new ArrayList<DataSource>();
+        _dataSourceList.add( src );
+    }
+    
+    /*
+     * Return a list of all data sources of the given type.
+     */
+    public ArrayList<DataSource> listDataSources( String type ) {
+        ArrayList<DataSource> list = new ArrayList<DataSource>();
+        if ( _dataSourceList != null ) {
+            for ( Iterator<DataSource> iter = _dataSourceList.iterator(); iter.hasNext(); ) {
+                DataSource src = iter.next();
+                if ( src.type.contentEquals( type ) )
+                    list.add( src );
+            }
+        }
+        return list;
+    }
+    
+    /*
+     * Determine whether the given data source name and type exist in the list.
+     */
+    public boolean dataSourceInList( String name, String type ) {
+        if ( _dataSourceList != null ) {
+            for ( Iterator<DataSource> iter = _dataSourceList.iterator(); iter.hasNext(); ) {
+                DataSource src = iter.next();
+                if ( src.name.contentEquals( name ) && src.type.contentEquals( type ) )
+                    return true;
+            }
+        }
+        return false;
+    }
+    
     protected SystemSettings _this;
     
     protected boolean _allObjectsBuilt;
@@ -1438,6 +1575,7 @@ public class SystemSettings extends JFrame {
     protected JFormattedTextField _difxControlUser;
     protected JPasswordField _difxControlPWD;
     protected JFormattedTextField _difxVersion;
+    protected SaneTextField _difxPath;
     //  Broadcast network
     protected JFormattedTextField _ipAddress;
     protected NumberBox _port;
@@ -1447,6 +1585,7 @@ public class SystemSettings extends JFrame {
     Plot2DObject _broadcastPlot;
     Track2D _broadcastTrack;
     int _broadcastTrackSize;
+    protected JCheckBox _suppressWarningsCheck;
     //  Database configuration
     protected JCheckBox _dbUseDataBase;
     protected JFormattedTextField _dbVersion;
@@ -1510,6 +1649,8 @@ public class SystemSettings extends JFrame {
         int hardwareMonitorH;
         int experimentEditorW;
         int experimentEditorH;
+        int settingsWindowW;
+        int settingsWindowH;
     }
     protected WindowConfiguration _windowConfiguration;
     
@@ -1519,6 +1660,8 @@ public class SystemSettings extends JFrame {
         String viaHttpLocation;
         String viaFtpLocation;
         String localFileLocation;
+        boolean createPassOnExperimentCreation;
+        boolean singleInputFile;
     }
     protected DefaultNames _defaultNames;
     
@@ -1550,5 +1693,25 @@ public class SystemSettings extends JFrame {
         public String status;
     }
     protected Map<Integer, ExperimentStatusEntry> _experimentStatusList;
+    
+    //  These lists contain "type" values that can be applied to passes.
+    //  Nominally they come from the database, but in the absense of the database the
+    //  user can create their own.
+    protected Map<Integer, String> _passTypeList;
+    
+    //  This class is used to contain information about a "data source", including
+    //  its name, type, and where we got information about it (the "source" of the source).
+    //  Since these are going to be used in a bunch of different ways, everything
+    //  is a string.
+    public class DataSource {
+        String name;
+        String type;
+        String source;
+    }
+    
+    //  Our list of the above class types.
+    protected ArrayList<DataSource> _dataSourceList;
+    
+    
     
 }

@@ -511,8 +511,10 @@ public class DiFXDataModel {
             processDOIMessage(difxMsg);
 
         } else {
-            java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.WARNING, "unknown DiFX message: \""
-                    + header.getType() + "\"");
+            if ( !_systemSettings.suppressWarnings() ) {
+                java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.WARNING, "unknown DiFX message: \""
+                        + header.getType() + "\"");
+            }
         }
 
         // clean up

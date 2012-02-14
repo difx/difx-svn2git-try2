@@ -21,8 +21,9 @@ import java.awt.Color;
  */
 public class Mark5Node extends ClusterNode {
     
-    public Mark5Node( String name ) {
+    public Mark5Node( String name, SystemSettings settings ) {
         super( name );
+        _settings = settings;
     }
     
     @Override
@@ -215,7 +216,17 @@ public class Mark5Node extends ClusterNode {
         super.setData( newData );
         _stateChanged.on( newData.isStateChanged() );
         _bankAVSN.setText( newData.getBankAVSN() );
+        //  Add this module to our list of modules (if its not there already).
+        if ( !_settings.dataSourceInList( newData.getBankAVSN(), "VSN" ) ) {
+            if ( newData.getBankAVSN().length() > 0 && !newData.getBankAVSN().equalsIgnoreCase( "NONE" ) )
+                _settings.addDataSource( newData.getBankAVSN(), "VSN", "hardware" );
+        }
         _bankBVSN.setText( newData.getBankBVSN() );
+        //  Add this module to our list of modules (if its not there already).
+        if ( !_settings.dataSourceInList( newData.getBankBVSN(), "VSN" ) ) {
+            if ( newData.getBankBVSN().length() > 0 && !newData.getBankBVSN().equalsIgnoreCase( "NONE" ) )
+                _settings.addDataSource( newData.getBankBVSN(), "VSN", "hardware" );
+        }
         _statusWord.setText( newData.getStatusWord() );
         _activeBank.setText( newData.getActiveBank() );
         _scanNumber.setText( String.format( "%10d", newData.getScanNumber() ) );
@@ -272,5 +283,7 @@ public class Mark5Node extends ClusterNode {
     protected int _widthPlayRate;
     protected int _widthDataMJD;
     protected int _widthCurrentJob;
+    
+    protected SystemSettings _settings;
 
 }
