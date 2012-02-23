@@ -8,9 +8,15 @@ import mil.navy.usno.widgetlib.SaneTextField;
 import mil.navy.usno.widgetlib.NumberBox;
 import mil.navy.usno.widgetlib.SimpleTextEditor;
 import mil.navy.usno.widgetlib.AePlayWave;
+import mil.navy.usno.widgetlib.BrowserNode;
 
 import edu.nrao.difx.difxutilities.DiFXCommand_getFile;
 import edu.nrao.difx.difxutilities.DiFXCommand_sendFile;
+import edu.nrao.difx.difxutilities.DiFXCommand_mkdir;
+import edu.nrao.difx.difxutilities.DiFXCommand_vex2difx;
+import edu.nrao.difx.difxutilities.DiFXCommand_ls;
+
+import edu.nrao.difx.difxdatabase.QueueDBConnection;
 
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -24,11 +30,13 @@ import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
+import javax.swing.JFrame;
 
-import java.awt.Frame;
+//import java.awt.Frame;
 import java.awt.Color;
 import java.awt.Point;
 import java.awt.Component;
+import java.awt.Cursor;
 
 import java.util.Map;
 import java.util.Iterator;
@@ -55,15 +63,21 @@ import mil.navy.usno.widgetlib.ButtonGrid;
 
 import javax.swing.event.EventListenerList;
 
+import java.sql.ResultSet;
+
 /**
  *
  * @author jspitzak
  */
-public class ExperimentEditor extends JDialog {
+public class ExperimentEditor extends JFrame { //JDialog {
         
-    public ExperimentEditor( Frame frame, int x, int y, SystemSettings settings ) {
-        super( frame, "", true );
+    public ExperimentEditor( int x, int y, SystemSettings settings ) { //Frame frame, int x, int y, SystemSettings settings ) {
+        //super( frame, "", true );
         _settings = settings;
+        //  new!
+        _settings.setLookAndFeel();
+        this.setLayout( null );
+        //
         this.setBounds( x, y, _settings.windowConfiguration().experimentEditorW,
                 _settings.windowConfiguration().experimentEditorH );
         this.getContentPane().setLayout( null );
@@ -158,7 +172,7 @@ public class ExperimentEditor extends JDialog {
         _status.setBounds( 100, 80, 210, 25 );
         _status.setToolTipText( "Current status of this experiment." );
         namePanel.add( _status );
-        _status.setVisible( true );
+        _status.setVisible( false );
         JLabel statusLabel = new JLabel( "Status:" );
         statusLabel.setBounds( 10, 80, 85, 25 );
         statusLabel.setHorizontalAlignment( JLabel.RIGHT );
@@ -173,7 +187,6 @@ public class ExperimentEditor extends JDialog {
             }
         });
         namePanel.add( _statusList );
-        _statusList.setVisible( false );
         _created = new JLabel( "" );
         _created.setBounds( 100, 140, 210, 25 );
         _created.setToolTipText( "Date this experiment was created (assigned by database if available)." );
@@ -331,7 +344,7 @@ public class ExperimentEditor extends JDialog {
         
         //  This panel is used to display and adjust antenna information.
         IndexedPanel antennaPanel = new IndexedPanel( "Antennas" );
-        antennaPanel.openHeight( 200 );
+        antennaPanel.openHeight( 400 );
         antennaPanel.closedHeight( 20 );
         antennaPanel.open( false );
         _scrollPane.addNode( antennaPanel );
@@ -352,6 +365,72 @@ public class ExperimentEditor extends JDialog {
             }
         });
         scanPanel.add( _scanGrid );
+        
+        //  This panel is used to determine file names and related matters.
+        IndexedPanel namesPanel = new IndexedPanel( "Names, Etc." );
+        namesPanel.openHeight( 160 );
+        namesPanel.closedHeight( 20 );
+        namesPanel.open( false );
+        _scrollPane.addNode( namesPanel );
+        _inputFileBaseName = new SaneTextField();
+        _inputFileBaseName.setBounds( 170, 30, 200, 25 );
+        _inputFileBaseName.addActionListener( new ActionListener() {
+            public void actionPerformed(  ActionEvent e ) {
+                produceV2dFile();
+            }
+        });
+        _inputFileBaseName.setToolTipText( "Base name for input files created by vex2difx on the DiFX host (leave blank for default)." );
+        namesPanel.add( _inputFileBaseName );
+        JLabel inputFileLabel = new JLabel( "Input File Base Name:" );
+        inputFileLabel.setBounds( 10, 30, 155, 25 );
+        inputFileLabel.setHorizontalAlignment( JLabel.RIGHT );
+        namesPanel.add( inputFileLabel );
+        _inputFileSequenceStart = new NumberBox();
+        _inputFileSequenceStart.setBounds( 170, 60, 100, 25 );
+        _inputFileSequenceStart.minimum( 1 );
+        _inputFileSequenceStart.maximum( 900 );
+        _inputFileSequenceStart.intValue( 1 );
+        _inputFileSequenceStart.addActionListener( new ActionListener() {
+            public void actionPerformed(  ActionEvent e ) {
+                produceV2dFile();
+            }
+        });
+        namesPanel.add( _inputFileSequenceStart );
+        _inputFileSequenceStart.setToolTipText( "Start of numbers attached to the base name to create unique input file names." );
+        JLabel sequenceStartLabel = new JLabel( "Sequence Start:" );
+        sequenceStartLabel.setBounds( 10, 60, 155, 25 );
+        sequenceStartLabel.setHorizontalAlignment( JLabel.RIGHT );
+        namesPanel.add( sequenceStartLabel );
+        _inputJobNames = new JCheckBox( "Based on Input Files" );
+        _inputJobNames.setBounds( 170, 90, 325, 25 );
+        _inputJobNames.addActionListener( new ActionListener() {
+            public void actionPerformed(  ActionEvent e ) {
+                _inputJobNames.setSelected( true );
+                _scanJobNames.setSelected( false );
+            }
+        });
+        namesPanel.add( _inputJobNames );
+        _scanJobNames = new JCheckBox( "Use Scan Name" );
+        _scanJobNames.setBounds( 170, 120, 325, 25 );
+        _scanJobNames.addActionListener( new ActionListener() {
+            public void actionPerformed(  ActionEvent e ) {
+                _inputJobNames.setSelected( false );
+                _scanJobNames.setSelected( true );
+            }
+        });
+        namesPanel.add( _scanJobNames );
+        if ( _settings.defaultNames().scanBasedJobNames ) {
+            _scanJobNames.setSelected( true );
+            _inputJobNames.setSelected( false );
+        }
+        else {
+            _scanJobNames.setSelected( false );
+            _inputJobNames.setSelected( true );
+        }
+        JLabel jobNameLabel = new JLabel( "Job Names:" );
+        jobNameLabel.setBounds( 10, 90, 155, 25 );
+        jobNameLabel.setHorizontalAlignment( JLabel.RIGHT );
+        namesPanel.add( jobNameLabel );
         
         //  The v2d editor allows the .v2d file to be edited by hand.  At the
         //  moment it is visible, but I plan to make it not so!
@@ -471,7 +550,7 @@ public class ExperimentEditor extends JDialog {
         buttonPanel.add( _dataLabel );
         _currentDataCheck = new JCheckBox( "Current Data" );
         _currentDataCheck.setBounds( 100, 110, 125, 25 );
-        _currentDataCheck.setToolTipText( "New pass will contain all existing jobs and data for this experiment not already in a pass." );
+        _currentDataCheck.setToolTipText( "Dump all existing jobs and data for this experiment (that are not part of a pass) into the new pass." );
         _currentDataCheck.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _newJobsCheck.setSelected( false );
@@ -501,11 +580,12 @@ public class ExperimentEditor extends JDialog {
         _singleInputFileCheck.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _settings.defaultNames().singleInputFile = _singleInputFileCheck.isSelected();
+                produceV2dFile();
             }
         });
         buttonPanel.add( _singleInputFileCheck );
         _singleInputFileCheck.setSelected( _settings.defaultNames().singleInputFile );
-        _cancelButton = new JButton( "Dismiss" );
+        _cancelButton = new JButton( "Cancel" );
         _cancelButton.setBounds( 100, 140, 100, 25 );
         _cancelButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
@@ -513,14 +593,26 @@ public class ExperimentEditor extends JDialog {
             }
         });
         buttonPanel.add( _cancelButton );
-        _okButton = new JButton( "Edit" );
+        _okButton = new JButton( "Apply" );
         _okButton.setBounds( 210, 140, 100, 25 );
         _okButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                ok( true );
+                //ok( true );
+                applyButtonAction();
             }
         });
         buttonPanel.add( _okButton );
+        
+        //  The "status" panel shows information about the progress of different
+        //  activities.
+        IndexedPanel statusPanel = new IndexedPanel( "" );
+        statusPanel.openHeight( 25 );
+        statusPanel.alwaysOpen( true );
+        statusPanel.noArrow( true );
+        _statusLabel = new JLabel( "" );
+        _statusLabel.setHorizontalAlignment( JLabel.RIGHT );
+        statusPanel.add( _statusLabel );
+        _scrollPane.addNode( statusPanel );
         
         _allObjectsBuilt = true;
         
@@ -539,19 +631,10 @@ public class ExperimentEditor extends JDialog {
             _menuBar.setBounds( 0, 0, w, 25 );
         if ( _allObjectsBuilt ) {
             _scrollPane.setBounds( 0, 25, w, h - 47 );
-            if ( _displayPassInfo ) {
-                _createPass.setBounds( 100, 20, 25, 25 );
-                _passName.setBounds( 285, 20, w - 310, 25 );
-                _cancelButton.setBounds( w - 235, 140, 100, 25 );
-                _okButton.setBounds( w - 125, 140, 100, 25 );
-            }
-            else {
-                _createPass.setVisible( false );
-                _passName.setVisible( false );
-                _passLabel.setVisible( false );
-                _cancelButton.setBounds( w - 235, 140, 100, 25 );
-                _okButton.setBounds( w - 125, 140, 100, 25 );
-            }
+            _createPass.setBounds( 100, 20, 25, 25 );
+            _passName.setBounds( 285, 20, w - 310, 25 );
+            _cancelButton.setBounds( w - 235, 140, 100, 25 );
+            _okButton.setBounds( w - 125, 140, 100, 25 );
             _directory.setBounds( 100, 170, w - 125, 25 );
             _vexFileName.setBounds( 100, 200, w - 255, 25 );
             _previousVexFileButton.setBounds( w - 150, 200, 125, 25 );
@@ -574,7 +657,12 @@ public class ExperimentEditor extends JDialog {
             _v2dEditor.setBounds( 10, 50, w - 35, 440 );
             _passDirectory.setBounds( 285, 50, w - 310, 25 );
             _stagingArea.setBounds( 285, 80, w - 310, 25 );
-            _antennaPane.setBounds( 10, 30, w - 35, 160 );
+            _antennaPane.setBounds( 0, 20, w - 25, 380 );
+            for ( Iterator<BrowserNode> iter = _antennaPane.browserTopNode().childrenIterator(); iter.hasNext(); ) {
+                AntennaPanel thisPanel = (AntennaPanel)iter.next();
+                thisPanel.newWidth( w - 25 );
+            }
+            _statusLabel.setBounds( 10, 0, w - 35, 25 );
         }
     }
     
@@ -772,8 +860,9 @@ public class ExperimentEditor extends JDialog {
         
         public AntennaPanel( String title ) {
             super( title );
+            _this = this;
             this.closedHeight( 20 );
-            this.openHeight( 130 );
+            this.openHeight( 110 );
             this.open( false );
             _useCheck = new JCheckBox( "" );
             _useCheck.setBounds( 100, 2, 18, 20 );
@@ -801,6 +890,9 @@ public class ExperimentEditor extends JDialog {
                     _fileCheck.setSelected( false );
                     _eVLBICheck.setSelected( false );
                     _dataSource.setText( (String)_vsnList.getSelectedItem() );
+                    _fileFilter.setEnabled( false );
+                    _fileList.setVisible( false );
+                    _this.openHeight( 110 );
                     produceV2dFile();
                 }
             } );
@@ -838,7 +930,7 @@ public class ExperimentEditor extends JDialog {
             for ( ; iter.hasNext(); )
                 _vsnList.addItem( iter.next().name );
             _fileCheck = new JCheckBox( "" );
-            _fileCheck.setBounds( 200, 55, 25, 25 );
+            _fileCheck.setBounds( 200, 80, 25, 25 );
             _fileCheck.setSelected( false );
             _fileCheck.addActionListener( new ActionListener() {
                 public void actionPerformed( ActionEvent evt ) {
@@ -846,17 +938,35 @@ public class ExperimentEditor extends JDialog {
                     _fileCheck.setSelected( true );
                     _eVLBICheck.setSelected( false );
                     _vsnList.setEnabled( false );
-                    _dataSource.setText( "some file" );
+                    _dataSource.setText( "files " + _fileFilter.getText().trim() + "*" );
+                    _fileFilter.setEnabled( true );
+                    _fileList.setVisible( true );
+                    _this.openHeight( 250 );
                     produceV2dFile();
                 }
             } );
             this.add( _fileCheck );
-            JLabel fileLabel = new JLabel( "File: " );
-            fileLabel.setBounds( 100, 55, 95, 25 );
+            JLabel fileLabel = new JLabel( "Files: " );
+            fileLabel.setBounds( 100, 80, 95, 25 );
             fileLabel.setHorizontalAlignment( JLabel.RIGHT );
             this.add( fileLabel );
+            _fileFilter = new SaneTextField();
+            _fileFilter.setEnabled( false );
+            _fileFilter.addActionListener( new ActionListener() {
+                public void actionPerformed( ActionEvent evt ) {
+                    fileFilterCallback();
+                }
+            } );
+            this.add( _fileFilter );
+            _fileList = new NodeBrowserScrollPane();
+            _fileList.setBackground( Color.WHITE );
+            this.add( _fileList );
+            JLabel fileFilterLabel = new JLabel( "Filter:" );
+            fileFilterLabel.setHorizontalAlignment( JLabel.RIGHT );
+            fileFilterLabel.setBounds( 195, 80, 80, 25 );
+            this.add( fileFilterLabel );
             _eVLBICheck = new JCheckBox( "" );
-            _eVLBICheck.setBounds( 200, 80, 25, 25 );
+            _eVLBICheck.setBounds( 200, 55, 25, 25 );
             _eVLBICheck.setSelected( false );
             _eVLBICheck.addActionListener( new ActionListener() {
                 public void actionPerformed( ActionEvent evt ) {
@@ -865,18 +975,133 @@ public class ExperimentEditor extends JDialog {
                     _eVLBICheck.setSelected( true );
                     _vsnList.setEnabled( false );
                     _dataSource.setText( "some file" );
+                    _fileFilter.setEnabled( false );
+                    _fileList.setVisible( false );
+                    _this.openHeight( 110 );
                     produceV2dFile();
                 }
             } );
             this.add( _eVLBICheck );
             JLabel eVLBILabel = new JLabel( "E-Transfer: " );
-            eVLBILabel.setBounds( 100, 80, 95, 25 );
+            eVLBILabel.setBounds( 100, 55, 95, 25 );
             eVLBILabel.setHorizontalAlignment( JLabel.RIGHT );
             this.add( eVLBILabel );
             //  Default setup.  This should come from the SystemSettings class so
             //  it is saved between runs.
             _vsnCheck.setSelected( true );
             _changeListeners = new EventListenerList();
+        }
+        
+        /*
+         * Change things to match a new width.
+         */
+        public void newWidth( int w ) {
+            _fileFilter.setBounds( 280, 80, w - 305, 25 );
+            _fileList.setBounds( 230, 110, w - 255, 120 );
+        }
+
+        /*
+         * This function is called when the file filter is changed.  It gets a list
+         * of files from the DiFX Host that match the current filter.
+         */
+        public void fileFilterCallback() {
+            final ArrayList<String> newList = new ArrayList<String>();
+            final Cursor cursor = this.getCursor();
+            final IndexedPanel _this = this;
+            this.setCursor( Cursor.getPredefinedCursor( Cursor.WAIT_CURSOR ) );
+            DiFXCommand_ls ls = new DiFXCommand_ls( _fileFilter.getText().trim() + "*", _settings );
+            ls.addEndListener( new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    _this.setCursor( cursor );
+                    //  Found anything at all?
+                    if ( newList.size() > 0 ) {
+                        Iterator<String> iter = newList.iterator();
+                        String commonString = iter.next();
+                        clearFileList();
+                        addToFileList( commonString );
+                        for ( ; iter.hasNext(); ) {
+                            String newStr = iter.next();
+                            addToFileList( newStr );
+                            int i = 0;
+                            while ( commonString.regionMatches( 0, newStr, 0, i ) )
+                                ++i;
+                            commonString = commonString.substring( 0, i + 1 );
+                        }
+                        //  The common string becomes the new contents of the filter...
+                        _fileFilter.setText( commonString );
+                        _fileFilter.setCaretPosition( commonString.length() );
+                        _dataSource.setText( "files " + _fileFilter.getText().trim() + "*" );
+                    }
+                    dispatchChangeCallback();
+                }
+            });
+            ls.addIncrementalListener( new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    newList.add( e.getActionCommand().trim() );
+                }
+            });
+            ls.send();
+        }
+        
+        protected class FileListItem extends IndexedPanel {
+            
+            FileListItem( String filename, boolean use ) {
+                super( filename );
+                this.alwaysOpen( true );
+                this.openHeight( 20 );
+                this.noArrow( true );
+                this.backgroundColor( Color.WHITE );
+                this.drawFrame( false );
+                _use = new JCheckBox( "" );
+                _use.setBounds( 5, 0, 20, 20 );
+                _use.setBackground( Color.WHITE );
+                //  Any change in the "use" needs to trigger a change event.
+                _use.addActionListener( new ActionListener() {
+                    public void actionPerformed( ActionEvent evt ) {
+                        dispatchChangeCallback();
+                    }
+                } );
+                if ( use )
+                    _use.setSelected( true );
+                this.add( _use );
+            }
+            
+            public boolean use() { return _use.isSelected(); }
+            public void use( boolean newVal ) { _use.setSelected( newVal ); }
+            
+            protected JCheckBox _use;
+            
+        }
+        
+        /*
+         * Add a new item to the list of files - presumably a new file name.
+         */
+        public void addToFileList( String newFile ) {
+            //  Make sure this doesn't terminate with a "/" character - so we
+            //  know its a file.
+            if ( newFile.charAt( newFile.length() - 1 ) != '/' )
+                _fileList.addNode( new FileListItem( newFile, true ) );
+        }
+        
+        /*
+         * Clear all items from the list of files.
+         */
+        public void clearFileList() {
+            _fileList.browserTopNode().clearChildren();
+        }
+        
+        /*
+         * Return a list of all filenames listed in the file list.  Only those
+         * items with the "use" check are listed.
+         */
+        public ArrayList<String> fileList() {
+            ArrayList<String> newList = new ArrayList<String>();
+            for ( Iterator<BrowserNode> iter = _fileList.browserTopNode().childrenIterator(); iter.hasNext(); ) {
+                FileListItem newItem = (FileListItem)iter.next();
+                if ( newItem.use() )
+                    newList.add( newItem.name() );
+            }
+            return newList;
         }
         
         public boolean use() { return _useCheck.isSelected(); }
@@ -909,6 +1134,9 @@ public class ExperimentEditor extends JDialog {
         protected JComboBox _vsnList;
         protected JLabel _dataSource;
         protected EventListenerList _changeListeners;
+        protected SaneTextField _fileFilter;
+        protected NodeBrowserScrollPane _fileList;
+        protected AntennaPanel _this;
         
     }
     
@@ -985,13 +1213,13 @@ public class ExperimentEditor extends JDialog {
     }
     protected void ok( boolean newVal ) {
         _ok = newVal;
-        if ( _editMode )
+        if ( _newExperimentMode )
             this.setVisible( false );
         else {
             if ( !_ok )
                 this.setVisible( false );
             else
-                editMode( true );
+                newExperimentMode( true );
         }
     }
     public boolean ok() { return _ok; }
@@ -1010,39 +1238,20 @@ public class ExperimentEditor extends JDialog {
         else
             _id.setText( newVal.toString() );
     }
-    public boolean editMode() { return _editMode; }
-    public void editMode( boolean newVal ) { 
-        _editMode = newVal;
-        if ( _editMode ) {
+    public boolean newExperimentMode() { return _newExperimentMode; }
+    /*
+     * In "new experiment mode" the name, id, directory, etc of the experiment are editable.
+     * If not, they are considered set - they are displayed, but can't be edited.
+     */
+    public void newExperimentMode( boolean newVal ) { 
+        _newExperimentMode = newVal;
+        if ( _newExperimentMode ) {
             _name.setVisible( true );
             _nameAsLabel.setVisible( false );
             _number.setVisible( true );
             _numberAsLabel.setVisible( false );
             _directory.setVisible( true );
             _directoryAsLabel.setVisible( false );
-            _okButton.setText( "Apply" );
-            _cancelButton.setText( "Cancel" );
-            Iterator iter = _settings.experimentStatusList().entrySet().iterator();
-            String saveStatus = status();
-            for ( ; iter.hasNext(); )
-                _statusList.addItem( ((SystemSettings.ExperimentStatusEntry)((Map.Entry)iter.next()).getValue()).status );
-            _statusList.setVisible( true );
-            _status.setVisible( false );
-            this.status( saveStatus );
-            _vexFileName.setVisible( true );
-            _vexFileNameAsLabel.setVisible( false );
-            if ( _displayPassInfo ) {
-                _passName.setVisible( true );
-                _createPass.setVisible( true );
-                JLabel passLabel = new JLabel( "Create Pass:" );
-                passLabel.setBounds( 10, 230, 85, 25 );
-                passLabel.setHorizontalAlignment( JLabel.RIGHT );
-                this.getContentPane().add( passLabel );
-            }
-            else {
-                _passName.setVisible( false );
-                _createPass.setVisible( false );
-            }
         }
         else {
             _name.setVisible( false );
@@ -1051,18 +1260,19 @@ public class ExperimentEditor extends JDialog {
             _numberAsLabel.setVisible( true );
             _directory.setVisible( false );
             _directoryAsLabel.setVisible( true );
-            _okButton.setText( "Edit" );
-            _cancelButton.setText( "Dismiss" );
-            _statusList.setVisible( false );
-            _status.setVisible( true );
-            _vexFileName.setVisible( false );
-            _vexFileNameAsLabel.setVisible( true );
-            _passName.setVisible( false );
-            _createPass.setVisible( false );
         }
+        //  Set up new options for the status list.  We kind of count on this function
+        //  being called each time this window is displayed...which ultimately may not
+        //  bright.
+        Iterator iter = _settings.experimentStatusList().entrySet().iterator();
+        String saveStatus = status();
+        for ( ; iter.hasNext(); )
+            _statusList.addItem( ((SystemSettings.ExperimentStatusEntry)((Map.Entry)iter.next()).getValue()).status );
+        _statusList.setVisible( true );
+        this.status( saveStatus );
     }
     protected void inDataBaseAction() {
-        if ( !_editMode )
+        if ( !_newExperimentMode )
             _inDataBase.setSelected( _saveInDataBase );
         else
             _saveInDataBase = _inDataBase.isSelected();
@@ -1105,8 +1315,6 @@ public class ExperimentEditor extends JDialog {
     public String passType() {
         return (String)_passTypeList.getItemAt( _passTypeList.getSelectedIndex() );
     }
-    
-    public void displayPassInfo( boolean newVal ) { _displayPassInfo = newVal; }
     
     public void vexFileName( String newVal ) { _vexFileName.setText( newVal ); }
     public String vexFileName() { return _vexFileName.getText(); }
@@ -1178,6 +1386,7 @@ public class ExperimentEditor extends JDialog {
         String passDir = "";
         if ( this.createPass() )
             passDir = passDirectory() + "/";
+        _statusLabel.setText( "Writing file \"" + directory() + "/" + passDir + vexFileName() + "\"" );
         _fileSend = new DiFXCommand_sendFile( directory() + "/" + passDir + vexFileName(), _settings );
         _fileSend.addEndListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
@@ -1225,7 +1434,15 @@ public class ExperimentEditor extends JDialog {
                 }
             }
         });
+        _operationComplete = false;
+        _fileSend.addEndListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _operationComplete = true;
+            }
+        });
         _fileSend.sendString( _editor.text() );
+        while ( !_operationComplete )
+            try { Thread.sleep( 10 ); } catch ( Exception e ) {}
     }
     
     DiFXCommand_sendFile _fileSendV2d;
@@ -1290,7 +1507,15 @@ public class ExperimentEditor extends JDialog {
                 }
             }
         });
+        _operationComplete = false;
+        _fileSendV2d.addEndListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _operationComplete = true;
+            }
+        });
         _fileSendV2d.sendString( _v2dEditor.text() );
+        while ( !_operationComplete )
+            try { Thread.sleep( 10 ); } catch ( Exception e ) {}
     }
 
     /*
@@ -1355,16 +1580,25 @@ public class ExperimentEditor extends JDialog {
         
         //  The .vex file - the only required parameter.  We give the full path
         //  to the file.
-        str += "vex = " + _vexFileName.getText() + "\n\n";
+        str += "vex = " + _vexFileName.getText() + "\n";
         
         //  This keeps vex2difx from splitting up jobs in an unexpected way
-        str += "maxGap = 180000\n\n";
+        str += "maxGap = 180000\n";
         
         //  Whether or not we should split into one scan per job
         if ( _singleInputFileCheck.isSelected() )
-            str += "singleScan = false\n\n";  // this is the default
+            str += "singleScan = false\n";  // this is the default
         else
-            str += "singleScan = true\n\n";
+            str += "singleScan = true\n";
+        
+        //  The base name of input files - we only do this if the user has set it.
+        if ( _inputFileBaseName.getText() != null && !_inputFileBaseName.getText().contentEquals( "" ) )
+            str += "jobSeries = " + _inputFileBaseName.getText() + "\n";
+        
+        //  This is where vex2difx will start numbering things.
+        str += "startSeries = " + _inputFileSequenceStart.intValue() + "\n";
+        
+        str += "\n";
         
         //  The antennas included in this experiment...
         if ( _antennaList != null && !_antennaList.useList().isEmpty() ) {
@@ -1422,6 +1656,13 @@ public class ExperimentEditor extends JDialog {
                             // Warning, perhaps?
                         }
                     }
+                    else if ( antenna.useFile() ) {
+                        ArrayList<String> fileList = antenna.fileList();
+                        if ( fileList.size() > 0 ) {
+                            for ( Iterator<String> jter = fileList.iterator(); jter.hasNext(); )
+                                str += "   file = " + jter.next() + "\n";
+                        }
+                    }
                     str += "}\n\n";
                 }
             }
@@ -1441,7 +1682,231 @@ public class ExperimentEditor extends JDialog {
     public String v2dFile() {
         return _v2dEditor.text();
     }
+    
+    /*
+     * Actions performed when the "apply" button is hit.
+     */
+    protected void applyButtonAction() {
         
+        if ( _operationRunning ) {
+            _operationCancelled = true;
+            _operationRunning = false;
+            _okButton.setText( "Apply" );
+        }
+        else {
+            _operationCancelled = false;
+            _operationRunning = true;
+            _okButton.setText( "Cancel" );
+            ApplyThread app = new ApplyThread();
+            app.start();
+        }
+        
+    }
+    
+    protected class ApplyThread extends Thread {
+        
+        public void run() {
+        
+            //  Attempt a connection to the database.  We do this each time apply is
+            //  hit so we can respond to changed circumstances (database is suddenly there,
+            //  or suddenly not available).
+            QueueDBConnection db = null;
+            if ( _settings.useDataBase() ) {
+                db = new QueueDBConnection( _settings );
+                if ( !db.connected() )
+                    db = null;
+            }
+
+            //  If this is a new experiment, create a node for it and fill it with
+            //  appropriate data.  Also, create directories on the DiFX host and add it
+            //  to the database (if it is available).
+            if ( _thisExperiment == null ) {
+                _statusLabel.setText( "creating experiment \"" + name() + "\"" );
+                _thisExperiment = new ExperimentNode( name(), _settings );
+                //  Let the experiment know where this editor is so it can bring it up in future.
+                _thisExperiment.editor( _this );
+                Integer newExperimentId = 1;
+                String creationDate = _created.getText();
+                //  Only add the item to the database if the user has requested it.
+                if ( inDataBase() ) {
+                    if ( db != null ) {
+                        _statusLabel.setText( "adding experiment to database" );
+                        db.newExperiment( name(), number(), _settings.experimentStatusID( status() ),
+                                directory(), vexFileName() );
+                        //  See which ID the data base assigned...it will be the largest one.  Also
+                        //  save the creation date.
+                        newExperimentId = 0;
+                        ResultSet dbExperimentList = db.experimentList();
+                        try {
+                            while ( dbExperimentList.next() ) {
+                                int newId = dbExperimentList.getInt( "id" );
+                                if ( newId > newExperimentId ) {
+                                    newExperimentId = newId;
+                                    creationDate = dbExperimentList.getString( "dateCreated" );
+                                }
+                            }
+                        } catch ( Exception e ) {
+                                java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+                        }
+                    }
+                    //  Produce a warning if that failed.  This isn't critical.
+                    else {
+                        JOptionPane.showMessageDialog( _this, "Unable to add this item to the database\n"
+                                + "(you can add it later).",
+                                "Database Warning", JOptionPane.WARNING_MESSAGE );
+                        inDataBase( false );
+                    }
+                }
+                //  Set items that shouldn't change.
+                _thisExperiment.id( newExperimentId );
+                _thisExperiment.creationDate( creationDate );
+                _thisExperiment.inDataBase( inDataBase() );
+                _thisExperiment.number( number() );
+                _thisExperiment.status( status() );
+                _thisExperiment.directory( directory() );
+                _thisExperiment.vexFile( vexFileName() );  //  BLAT - accept multiple vex file names!!!!
+                //  Make the directory on the DiFX host...
+                _statusLabel.setText( "creating experiment directory on DiFX host" );
+                DiFXCommand_mkdir mkdir = new DiFXCommand_mkdir( directory(), _settings );
+                mkdir.send();
+                //  Add the node to the queue browser.
+                _settings.queueBrowser().addExperiment( _thisExperiment );
+            }
+
+            //  Create a pass if explicitly requested OR if jobs are being created.  If
+            //  the latter is true without the former being true, a dummy pass called 
+            //  "default" will be created.  This pass will be in the datebase but will
+            //  not have its own directory on the DiFX host and the queue browser will
+            //  know not to display it - its jobs simply appear under the experiment.
+            if ( createPass() || _newJobsCheck.isSelected() ) {
+                //  Add the pass to the database...
+                String newPassName = passName();
+                if ( !createPass() )
+                    newPassName = "default";
+                else
+                    _statusLabel.setText( "creating pass \"" + newPassName + "\"" );
+                int newPassId = 0;
+                if ( db != null ) {
+                    _statusLabel.setText( "adding pass information to database" );
+                    db.newPass( newPassName, _settings.passTypeID( passType() ), _thisExperiment.id() );
+                    //  See which ID the data base assigned...it will be the largest one that
+                    //  is associated with this experiment.  This is safer than looking for the
+                    //  name (because a name might be duplicated).
+                    ResultSet dbPassList = db.passList();
+                    try {
+                        while ( dbPassList.next() ) {
+                            int newId = dbPassList.getInt( "id" );
+                            int experimentId = dbPassList.getInt( "experimentID" );
+                            if ( experimentId == _thisExperiment.id() && newId > newPassId )
+                                newPassId = newId;
+                        }
+                    } catch ( Exception e ) {
+                            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+                    }
+                }
+                //  This creates a "node" that will appear in the browser (or won't in the
+                //  case of the "default" pass).
+                _newPass = new PassNode( newPassName, _settings );
+                _thisExperiment.addChild( _newPass );
+                //  Create the pass directory on the DiFX host if the user has requested a
+                //  pass directory.
+                if ( createPass() ) {
+                    _statusLabel.setText( "creating pass directory on DiFX host" );
+                    DiFXCommand_mkdir mkdir = new DiFXCommand_mkdir( directory() + "/" + passDirectory(), _settings );
+                    mkdir.send();
+                }
+
+                //  Create new jobs in the current pass (if requested).
+                if ( _newJobsCheck.isSelected() ) {
+                    //  Write the .vex file.  This will be put in the pass directory if one is being
+                    //  created, otherwise in the experiment directory.
+                    writeVexFile();
+                    //  Create the .v2d file.  This will be put in the pass directory if it
+                    //  exists, or the main experiment directory if not.
+                    writeV2dFile();
+                    //  Run vex2difx on the new pass and v2d file.
+                    String passDir = directory();
+                    if ( createPass() )
+                        passDir += "/" + passDirectory();
+                    DiFXCommand_vex2difx v2d = new DiFXCommand_vex2difx( passDir, v2dFileName(), _settings );
+                    v2d.addIncrementalListener( new ActionListener() {
+                        public void actionPerformed( ActionEvent e ) {
+                            newFileCallback( e.getActionCommand() );
+                        }
+                    });
+                    v2d.send();
+                }
+                
+            }
+
+            //  Move "current" data (i.e. all files in the experiment directory) into
+            //  the pass directory.
+            if ( _currentDataCheck.isSelected() ) {
+            }
+
+            //  The "create pass" checkbox setting is saved to the settings as the new default.
+            _settings.defaultNames().createPassOnExperimentCreation = createPass();
+            
+            //  Make this window go away!
+            _statusLabel.setText( "" );
+            setVisible( false );
+
+        }
+          
+        /*
+         * This function is called when the vex2difx process produces a new file
+         * (triggered by a callback from the vex2difx thread, thus the name).  If
+         * the file is an ".input" file, it creates a new job based on it.
+         */
+        public void newFileCallback( String newFile ) {
+            //  Get the extension and "full name" (the full path without the extension) on this new file...
+            String extn = newFile.substring( newFile.lastIndexOf( '.' ) + 1 ).trim();
+            String fullName = newFile.substring( 0, newFile.lastIndexOf( '.' ) ).trim();
+            //  If its an .input or .calc file, create a new job based on it.
+            if ( extn.contentEquals( "input" ) || extn.contentEquals( "calc" ) ) {
+                //  See if we've already created it by searching existing jobs for the
+                //  "full name".
+                JobNode newJob = null;
+                for ( Iterator<BrowserNode> iter = _newPass.childrenIterator(); iter.hasNext(); ) {
+                    JobNode thisJob = (JobNode)iter.next();
+                    if ( fullName.contentEquals( thisJob.fullName() ) )
+                        newJob = thisJob;
+                }
+                //  Okay...maybe we have to create it.
+                if ( newJob == null ) {
+                    //  Produce a job "name"...for the moment, these are based on the
+                    //  filenames produced by vex2difx.  Ultimately we may give the user
+                    //  some more palatable choices.
+                    String jobName = newFile.substring( newFile.lastIndexOf( '/' ) + 1, newFile.lastIndexOf( '.' ) );
+                    //  Create a node associated with this new job, then put it into
+                    //  the appropriate pass so that it will appear in the queue browser.
+                    _statusLabel.setText( "creating new job \"" + jobName + "\"" );
+                    newJob = new JobNode( jobName, _settings );
+                    newJob.fullName( fullName );
+                    _newPass.addChild( newJob );
+                    newJob.passNode( _newPass );
+                    _settings.queueBrowser().addJob( newJob );
+                }
+                //  Apply this file to the job.
+                if ( extn.contentEquals( "input" ) )
+                    newJob.inputFile( newFile.trim() );
+                else if ( extn.contentEquals( "calc" ) )
+                    newJob.calcFile( newFile.trim() );
+            }
+        }
+
+        /*
+         * This callback occurs when the vex2difx process is complete.
+         */
+        public void endCallback( String newFile ) {
+            _statusLabel.setText( "vex2difx process completed!" );
+        }
+        
+        PassNode _newPass;
+
+    }
+        
+    protected ExperimentNode _thisExperiment;
     protected SaneTextField _name;
     protected JLabel _nameAsLabel;
     protected NumberBox _number;
@@ -1451,7 +1916,7 @@ public class ExperimentEditor extends JDialog {
     protected JCheckBox _inDataBase;
     protected JLabel _id;
     protected JLabel _created;
-    protected boolean _editMode;
+    protected boolean _newExperimentMode;
     protected boolean _saveInDataBase;
     protected JButton _okButton;
     protected JButton _cancelButton;
@@ -1467,7 +1932,6 @@ public class ExperimentEditor extends JDialog {
     protected JCheckBox _createPass;
     protected SaneTextField _passName;
     protected JLabel _passLabel;
-    protected boolean _displayPassInfo;
     protected ExperimentEditor _this;
     protected NodeBrowserScrollPane _scrollPane;
     protected JMenuBar _menuBar;
@@ -1502,5 +1966,13 @@ public class ExperimentEditor extends JDialog {
     protected boolean _keepPassDirectory;
     protected NodeBrowserScrollPane _antennaPane;
     protected AntennaList _antennaList;
+    protected SaneTextField _inputFileBaseName;
+    protected NumberBox _inputFileSequenceStart;
+    protected JCheckBox _inputJobNames;
+    protected JCheckBox _scanJobNames;
+    protected JLabel _statusLabel;
+    protected boolean _operationComplete;
+    protected boolean _operationCancelled;
+    protected boolean _operationRunning;
     
 }

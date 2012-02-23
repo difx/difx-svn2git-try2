@@ -762,6 +762,7 @@ public class SystemSettings extends JFrame {
         _defaultNames.localFileLocation = "";
         _defaultNames.createPassOnExperimentCreation = true;
         _defaultNames.singleInputFile = false;
+        _defaultNames.scanBasedJobNames = true;
     }
     
     /*
@@ -1167,6 +1168,7 @@ public class SystemSettings extends JFrame {
             if ( doiConfig.getDefaultNamesLocalFileLocation() != null )
                 _defaultNames.localFileLocation = doiConfig.getDefaultNamesLocalFileLocation();
             _defaultNames.singleInputFile = doiConfig.isDefaultSingleInputFile();
+            _defaultNames.scanBasedJobNames = doiConfig.isDefaultNamesScanBasedJobNames();
             generateBroadcastChangeEvent();
             generateDatabaseChangeEvent();
             
@@ -1254,6 +1256,7 @@ public class SystemSettings extends JFrame {
         doiConfig.setDefaultNamesViaFtpLocation( _defaultNames.viaFtpLocation );
         doiConfig.setDefaultNamesLocalFileLocation( _defaultNames.localFileLocation );
         doiConfig.setDefaultSingleInputFile( _defaultNames.singleInputFile );
+        doiConfig.setDefaultNamesScanBasedJobNames( _defaultNames.scanBasedJobNames );
         
         try {
             javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance( doiConfig.getClass().getPackage().getName() );
@@ -1662,6 +1665,7 @@ public class SystemSettings extends JFrame {
         String localFileLocation;
         boolean createPassOnExperimentCreation;
         boolean singleInputFile;
+        boolean scanBasedJobNames;
     }
     protected DefaultNames _defaultNames;
     

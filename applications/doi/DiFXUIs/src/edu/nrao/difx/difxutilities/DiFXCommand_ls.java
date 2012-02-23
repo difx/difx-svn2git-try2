@@ -1,15 +1,13 @@
 /*
- * Run the "vex2difx" command on the DiFX host.  The mk5daemon process on the DiFX
- * host will create a bunch of files.  The full path to each file created is
- * transmitted via a TCP socket connection back to this process, which receives
- * the data in a thread.  Call backs (incremental and end) tell us when each new
- * line of data appears and when all are done.
+ * The "ls" command performs an ls on a "filter" (path, with wildcards allowed)
+ * on the DiFX Host.  It does this as the difx user, so permissions of that
+ * user apply.  Data are returned via TCP socket.
  */
 package edu.nrao.difx.difxutilities;
 
 import edu.nrao.difx.difxview.SystemSettings;
 
-import edu.nrao.difx.xmllib.difxmessage.DifxVex2DifxRun;
+import edu.nrao.difx.xmllib.difxmessage.DifxFileOperation;
 
 import java.net.Socket;
 import java.net.ServerSocket;
@@ -27,29 +25,31 @@ import javax.swing.event.EventListenerList;
  *
  * @author jspitzak
  */
-public class DiFXCommand_vex2difx extends DiFXCommand {
+public class DiFXCommand_ls extends DiFXCommand {
     
-    public DiFXCommand_vex2difx( String passPath, String file, SystemSettings settings ) {
+    public DiFXCommand_ls( String filter, SystemSettings settings ) {
         super( settings );
-        this.header().setType( "DifxVex2DifxRun" );
-        DifxVex2DifxRun v2d = this.factory().createDifxVex2DifxRun();
-        v2d.setUser( settings.difxControlUser() );
-        v2d.setNode( settings.difxControlAddress() );
-        v2d.setDifxPath( settings.difxPath() );
-        v2d.setPassPath( passPath );
-        v2d.setFile( file );
+        this.header().setType( "DifxFileOperation" );
+        DifxFileOperation ls = this.factory().createDifxFileOperation();
+        ls.setPath( filter );
+        ls.setOperation( "ls" );
+        ls.setArg( "-d -p" );
+        //  The "data" node is assumed to be the same as the DiFX "control" node
+        //  (at least for now).
+        ls.setDataNode( settings.difxControlAddress() );
         _port = _settings.newDifxTransferPort();
-        v2d.setPort( _port );
+        ls.setPort( _port );
         try {
-            v2d.setAddress( java.net.InetAddress.getLocalHost().getHostAddress() );
+            ls.setAddress( java.net.InetAddress.getLocalHost().getHostAddress() );
         } catch ( java.net.UnknownHostException e ) {
         }
-        this.body().setDifxVex2DifxRun( v2d );
+        this.body().setDifxFileOperation( ls );
         //  These lists contain "listeners" for callbacks when things occur...incremental
         //  read progress and the end of reading.
         _incrementalListeners = new EventListenerList();
         _endListeners = new EventListenerList();
     }
+    
     
     public void addIncrementalListener( ActionListener a ) {
         _incrementalListeners.add( ActionListener.class, a );
@@ -86,8 +86,8 @@ public class DiFXCommand_vex2difx extends DiFXCommand {
         super.send();
     }
         
-    //  This thread reads the results of the vex2difx operation as reported by mk5daemon
-    //  (basically a list of files created by the process).  It produces two callbacks -
+    //  This thread reads the results of the ls operation as reported by mk5daemon
+    //  (a list of files that match the pattern).  It produces two callbacks -
     //  the incremental callback for each filename read; and the end callback when
     //  all reading is complete.
     protected class ResultReader extends Thread {

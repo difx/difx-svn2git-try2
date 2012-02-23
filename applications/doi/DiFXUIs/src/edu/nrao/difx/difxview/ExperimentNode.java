@@ -58,7 +58,7 @@ public class ExperimentNode extends QueueBrowserNode {
         _popup.add( unselectJobsItem );
         _popup.add( new JSeparator() );
         JMenuItem menuItem4 = new JMenuItem( "Edit Properties" );
-        menuItem4.setToolTipText( "Show/Edit the properties of this Experiment." );
+        menuItem4.setToolTipText( "Show/Edit the properties of this Experiment, add a new Pass, and create new Jobs." );
         menuItem4.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 propertiesAction();
@@ -90,15 +90,6 @@ public class ExperimentNode extends QueueBrowserNode {
             }
         });
         _popup.add( deleteExperimentItem );
-        _popup.add( new JSeparator() );
-        JMenuItem addPassItem = new JMenuItem( "Add New Pass" );
-        addPassItem.setToolTipText( "Add a new Pass to this Experiment." );
-        addPassItem.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                addNewPassAction();
-            }
-        });
-        _popup.add( addPassItem );
 
         _label.setText( _name );
     }
@@ -210,109 +201,92 @@ public class ExperimentNode extends QueueBrowserNode {
     }
     
     /*
-     * Add a new pass to this experiment.  A name is given (it can be null), and
-     * the pass editor can be automatically launched.
+     * Set the editor window that is used to change items associated with this
+     * experiment.
      */
-    public void addNewPassAction() {
-        
-        Component comp = this.getParent();
-        while ( comp.getParent() != null )
-            comp = comp.getParent();
-        Point pt = this.getLocationOnScreen();
-        PassEditor win =
-            new PassEditor( (Frame)comp, pt.x + 25, pt.y + 25, _settings );
-        win.setTitle( "Create New Pass" );
-        win.type( "unknown" );
-        win.visible();
-        //  Actually create the pass if the user hit "apply".
-        if ( win.ok() ) {
-            PassNode newPass = new PassNode( win.name(), _settings );
-            this.addChild( newPass );
-        }
+    public void editor( ExperimentEditor newEditor ) {
+        _editor = newEditor;
     }
     
     /*
-     * Bring up a display/editor for the properties of this experiment.  This is
-     * a modal display.  Any changes are applied after the window is closed.
+     * Bring up a display/editor for the properties of this experiment.  The
+     * editor may or may not already exist - if it does not, create it.
      */
     public void propertiesAction() {
-        Component comp = this.getParent();
-        while ( comp.getParent() != null )
-            comp = comp.getParent();
-        Point pt = this.getLocationOnScreen();
-        ExperimentEditor win =
-                new ExperimentEditor( (Frame)comp, pt.x + 25, pt.y + 25, _settings );
-        win.setTitle( "Experiment Properties" );
-        win.editMode( false );
-        win.number( this.number() );
-        win.name( this.name() );
-        win.id( this.id() );
-        win.inDataBase( this.inDataBase() );
-        win.created( creationDate() );
-        win.status( this.status() );
-        win.directory( this.directory() );
-        win.vexFileName( this.vexFile() );
-        win.displayPassInfo( false );
-        win.visible();
-        //  See if the user made any edition changes.  If so, apply them to the
-        //  database (if requested) and locally.
-        if ( win.ok() && win.editMode() ) {
-            if ( win.inDataBase() ) {
-                QueueDBConnection db = new QueueDBConnection( _settings );
-                if ( db.connected() ) {
-                    //  If the item didn't already exist in the database, create it.
-                    if ( !this.inDataBase() ) {
-                        db.newExperiment( win.name(), win.number(), _settings.experimentStatusID( win.status() ),
-                                win.directory(), win.vexFileName() );
-                        //  See which ID the data base assigned...it will be the largest one.  Also
-                        //  save the creation date.
-                        int newExperimentId = 0;
-                        String creationDate = this.creationDate();
-                        ResultSet dbExperimentList = db.experimentList();
-                        try {
-                            while ( dbExperimentList.next() ) {
-                                int newId = dbExperimentList.getInt( "id" );
-                                if ( newId > newExperimentId ) {
-                                    newExperimentId = newId;
-                                    creationDate = dbExperimentList.getString( "dateCreated" );
-                                }
-                            }
-                        } catch ( Exception e ) {
-                                java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
-                        }
-                        this.id( newExperimentId );
-                        this.creationDate( creationDate );
-                    }
-                    else {
-                        db.updateExperiment( this.id(), "code", win.name() );
-                        db.updateExperiment( this.id(), "number", win.number().toString() );
-                        db.updateExperiment( this.id(), "statusID", _settings.experimentStatusID(win.status() ).toString() );
-                    }
-                }
-                else {
-                    JOptionPane.showMessageDialog( this, "Unable to edit this item to the database\n"
-                            + "as it cannot be contacted or your \"Use Database\" setting is off.",
-                            "Database Warning", JOptionPane.WARNING_MESSAGE );
-                    win.inDataBase( false );
-                }
-            }
-            this.name( win.name() );
-            this.number( win.number() );
-            this.status( win.status() );
-            this.inDataBase( win.inDataBase() );
-            this.directory( win.directory() );
-            this.vexFile( win.vexFileName() );
-            //  Change the name of the directory on the DiFX host.
-            //  BLAT there might be other paths we need to change??  In the jobs entries in
-            //  database for instance?
-            if ( !this.directory().contentEquals( win.directory() ) ) {
-                DiFXCommand_mv mv = new DiFXCommand_mv( this.directory(), win.directory(), _settings );
-                mv.send();
-                this.directory( win.directory() );
-            }
-            //  Write the .vex file there.
-            win.writeVexFile();
+        if ( _editor == null ) {
+            Point pt = this.getLocationOnScreen();
+            _editor = new ExperimentEditor( pt.x + 25, pt.y + 25, _settings );
+            _editor.number( this.number() );
+            _editor.name( this.name() );
+            _editor.id( this.id() );
+            _editor.inDataBase( this.inDataBase() );
+            _editor.created( creationDate() );
+            _editor.status( this.status() );
+            _editor.directory( this.directory() );
+            _editor.vexFileName( this.vexFile() );
         }
+        _editor.setTitle( "Edit Experiment " + name() );
+        _editor.newExperimentMode( false );
+        _editor.visible();
+//        //  See if the user made any edition changes.  If so, apply them to the
+//        //  database (if requested) and locally.
+//        if ( _editor.ok() && _editor.editMode() ) {
+//            if ( _editor.inDataBase() ) {
+//                QueueDBConnection db = new QueueDBConnection( _settings );
+//                if ( db.connected() ) {
+//                    //  If the item didn't already exist in the database, create it.
+//                    if ( !this.inDataBase() ) {
+//                        db.newExperiment( _editor.name(), _editor.number(), _settings.experimentStatusID( _editor.status() ),
+//                                _editor.directory(), _editor.vexFileName() );
+//                        //  See which ID the data base assigned...it will be the largest one.  Also
+//                        //  save the creation date.
+//                        int newExperimentId = 0;
+//                        String creationDate = this.creationDate();
+//                        ResultSet dbExperimentList = db.experimentList();
+//                        try {
+//                            while ( dbExperimentList.next() ) {
+//                                int newId = dbExperimentList.getInt( "id" );
+//                                if ( newId > newExperimentId ) {
+//                                    newExperimentId = newId;
+//                                    creationDate = dbExperimentList.getString( "dateCreated" );
+//                                }
+//                            }
+//                        } catch ( Exception e ) {
+//                                java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+//                        }
+//                        this.id( newExperimentId );
+//                        this.creationDate( creationDate );
+//                    }
+//                    else {
+//                        db.updateExperiment( this.id(), "code", _editor.name() );
+//                        db.updateExperiment( this.id(), "number", win.number().toString() );
+//                        db.updateExperiment( this.id(), "statusID", _settings.experimentStatusID(win.status() ).toString() );
+//                    }
+//                }
+//                else {
+//                    JOptionPane.showMessageDialog( this, "Unable to edit this item to the database\n"
+//                            + "as it cannot be contacted or your \"Use Database\" setting is off.",
+//                            "Database Warning", JOptionPane.WARNING_MESSAGE );
+//                    win.inDataBase( false );
+//                }
+//            }
+//            this.name( win.name() );
+//            this.number( win.number() );
+//            this.status( win.status() );
+//            this.inDataBase( win.inDataBase() );
+//            this.directory( win.directory() );
+//            this.vexFile( win.vexFileName() );
+//            //  Change the name of the directory on the DiFX host.
+//            //  BLAT there might be other paths we need to change??  In the jobs entries in
+//            //  database for instance?
+//            if ( !this.directory().contentEquals( win.directory() ) ) {
+//                DiFXCommand_mv mv = new DiFXCommand_mv( this.directory(), win.directory(), _settings );
+//                mv.send();
+//                this.directory( win.directory() );
+//            }
+//            //  Write the .vex file there.
+//            win.writeVexFile();
+//        }
     }
     
     public void copyAction() {
@@ -350,5 +324,6 @@ public class ExperimentNode extends QueueBrowserNode {
     protected String _directory;
     protected String _vexFile;
     
+    protected ExperimentEditor _editor;
     
 }

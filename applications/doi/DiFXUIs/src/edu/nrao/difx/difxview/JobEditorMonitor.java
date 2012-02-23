@@ -33,6 +33,7 @@ import javax.swing.Timer;
 import java.awt.Color;
 
 import java.util.Iterator;
+import java.util.Scanner;
 
 import javax.swing.event.EventListenerList;
 
@@ -40,6 +41,7 @@ import mil.navy.usno.widgetlib.IndexedPanel;
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.NumberBox;
 import mil.navy.usno.widgetlib.BrowserNode;
+import mil.navy.usno.widgetlib.SimpleTextEditor;
 
 public class JobEditorMonitor extends JFrame {
     
@@ -81,6 +83,40 @@ public class JobEditorMonitor extends JFrame {
             }
         } );
         this.add( _scrollPane );
+        
+        //  This panel shows us the input file.  This can actually be edited,
+        //  but editing won't do anything.
+        IndexedPanel inputFilePanel = new IndexedPanel( "View Input File" );
+        inputFilePanel.openHeight( 400 );
+        inputFilePanel.closedHeight( 25 );
+        inputFilePanel.open( false );
+        _scrollPane.addNode( inputFilePanel );
+        _inputFileEditor = new SimpleTextEditor();
+        inputFilePanel.add( _inputFileEditor );
+        _refreshInputButton = new JButton( "Read .input File" );
+        _refreshInputButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _jobNode.requestInputFile();
+            }
+        } );
+        inputFilePanel.add( _refreshInputButton );
+
+        //  This panel shows us the input file.  This can actually be edited,
+        //  but editing won't do anything.
+        IndexedPanel calcFilePanel = new IndexedPanel( "View Calc File" );
+        calcFilePanel.openHeight( 400 );
+        calcFilePanel.closedHeight( 25 );
+        calcFilePanel.open( false );
+        _scrollPane.addNode( calcFilePanel );
+        _calcFileEditor = new SimpleTextEditor();
+        calcFilePanel.add( _calcFileEditor );
+        _refreshCalcButton = new JButton( "Read .calc File" );
+        _refreshCalcButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _jobNode.requestCalcFile();
+            }
+        } );
+        calcFilePanel.add( _refreshCalcButton );
 
         IndexedPanel machinesListPanel = new IndexedPanel( "Machines List" );
         machinesListPanel.openHeight( 215 );
@@ -227,6 +263,10 @@ public class JobEditorMonitor extends JFrame {
             _applyButton.setBounds( 30 + 2 * thirdSize, 175, thirdSize/2 - 5, 25 );
             _forceOverwrite.setBounds( 30 + 3 * thirdSize - thirdSize/2 - 5, 145, thirdSize/2 - 5, 25 );
             _machinesLock.setBounds( 30 + 3 * thirdSize - thirdSize/2 - 5, 175, thirdSize/2 - 5, 25 );
+            _inputFileEditor.setBounds( 10, 30, w - 35, 360 );
+            _calcFileEditor.setBounds( 10, 30, w - 35, 360 );
+            _refreshInputButton.setBounds( w - 185, 2, 150, 20 );
+            _refreshCalcButton.setBounds( w - 185, 2, 150, 20 );
         }
     }
     
@@ -666,114 +706,114 @@ public class JobEditorMonitor extends JFrame {
     }
     
     /*
-    public void readJobData() {
-        //System.out.printf("***************** Data Model read input and calc file. \n");
+     * Parse the string data as if it came from an .input file (which, presumably,
+     * it did).
+     */
+    public void parseInputFile( String str ) {
 
-        // -- read the job's data files: .input and .calc
-        try {
-            // -- read *.input
+        _inputFileEditor.text( str );
+        Scanner strScan = new Scanner( str );
+        strScan.useDelimiter( System.getProperty( "line.separator" ) );
 
-            String jobFile = getProjectPath() + "/" + getObjName();
-            FileReader frInput = new FileReader(jobFile + ".input");
-            BufferedReader brInput = new BufferedReader(frInput);
+        while ( strScan.hasNext() ) {
+            String sInput = strScan.next();
 
-            String sInput;
-            while ((sInput = brInput.readLine()) != null) {
-                setInputFile(jobFile + ".input");
-                setCalcFile(jobFile + ".calc");
-                setOutputFile(jobFile + ".difx");
-
-                if (sInput.contains("DELAY FILENAME:")) {
-                    sInput = sInput.substring(sInput.indexOf(":") + 1);
-                    setDelayFile(sInput.trim());
-                } else if (sInput.contains("UVW FILENAME:")) {
-                    sInput = sInput.substring(sInput.indexOf(":") + 1);
-                    setUvwFile(sInput.trim());
-                } else if (sInput.contains("CORE CONF FILENAME:")) {
-                    sInput = sInput.substring(sInput.indexOf(":") + 1);
-                    setCoreConfigFile(sInput.trim());
-                } else if (sInput.contains("EXECUTE TIME (SEC):")) {
-                    sInput = sInput.substring(sInput.indexOf(":") + 1);
-                    setExecuteTimeSeconds(Integer.parseInt(sInput.trim()));
-                } else if (sInput.contains("START MJD:")) {
-                    sInput = sInput.substring(sInput.indexOf(":") + 1);
-                    setStartMJD(Integer.parseInt(sInput.trim()));
-                } else if (sInput.contains("START SECONDS:")) {
-                    sInput = sInput.substring(sInput.indexOf(":") + 1);
-                    if (sInput.contains(".")) {
-                        sInput = sInput.substring(0, sInput.indexOf("."));
-                    }
-                    setStartSeconds(Integer.parseInt(sInput.trim()));
-                } else if (sInput.contains("ACTIVE DATASTREAMS:")) {
-                    sInput = sInput.substring(sInput.indexOf(":") + 1);
-                    setActiveDatastreams(Integer.parseInt(sInput.trim()));
-                } else if (sInput.contains("ACTIVE BASELINES:")) {
-                    sInput = sInput.substring(sInput.indexOf(":") + 1);
-                    setActiveBaselines(Integer.parseInt(sInput.trim()));
-                } else if (sInput.contains("VIS BUFFER LENGTH:")
-                        || sInput.contains("OUTPUT FORMAT:")
-                        || sInput.contains("OUTPUT FILENAME:")) {
-                    sInput = sInput.substring(sInput.indexOf(":") + 1);
-                } else if (sInput.contains("NUM CHANNELS:")) {
-                    sInput = sInput.substring(sInput.indexOf(":") + 1);
-                    setNumChannels(Integer.parseInt(sInput.trim()));
-                } else if (sInput.contains("TELESCOPE ENTRIES:")) {
-                    sInput = sInput.substring(sInput.indexOf(":") + 1);
-                    setNumAntennas(Integer.parseInt(sInput.trim()));
-                } else if (sInput.contains("TELESCOPE NAME ")) {
-                    // Create antenna for the job
-                    Module newMod = new Module();
-                    newMod.setObjType("Module");
-
-                    String sInputObjID = sInput.substring(sInput.indexOf(":") - 2, sInput.indexOf(":"));
-                    String sInputObjName = sInput.substring(sInput.indexOf(":") + 1);
-
-                    // Note: the .input file is zero based
-                    newMod.setObjId(Integer.parseInt(sInputObjID.trim()));
-                    newMod.setObjName(sInputObjName.trim());
-
-                    addModule(newMod);
-                } else if (sInput.contains("FILE ")) {
-                    String sInputObjID = sInput.substring(sInput.indexOf("/") - 2, sInput.indexOf("/"));
-                    String sInputVSN = sInput.substring(sInput.indexOf(":") + 1);
-
-                    // -- Each job contains an module, and VSN
-                    // Find module via object ID
-                    Module curMod = getModule(Integer.parseInt(sInputObjID.trim()));
-
-                    // Update the antenna's VSN (module)
-                    curMod.setModuleVSN(sInputVSN.trim());
-
+            if (sInput.contains("DELAY FILENAME:")) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+//                setDelayFile(sInput.trim());
+            } else if (sInput.contains("UVW FILENAME:")) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+//                setUvwFile(sInput.trim());
+            } else if (sInput.contains("CORE CONF FILENAME:")) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+//                setCoreConfigFile(sInput.trim());
+            } else if (sInput.contains("EXECUTE TIME (SEC):")) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+//                setExecuteTimeSeconds(Integer.parseInt(sInput.trim()));
+            } else if (sInput.contains("START MJD:")) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+//                setStartMJD(Integer.parseInt(sInput.trim()));
+            } else if (sInput.contains("START SECONDS:")) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+                if (sInput.contains(".")) {
+                    sInput = sInput.substring(0, sInput.indexOf("."));
                 }
+//                setStartSeconds(Integer.parseInt(sInput.trim()));
+            } else if (sInput.contains("ACTIVE DATASTREAMS:")) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+//                setActiveDatastreams(Integer.parseInt(sInput.trim()));
+            } else if (sInput.contains("ACTIVE BASELINES:")) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+//                setActiveBaselines(Integer.parseInt(sInput.trim()));
+            } else if (sInput.contains("VIS BUFFER LENGTH:")
+                    || sInput.contains("OUTPUT FORMAT:")
+                    || sInput.contains("OUTPUT FILENAME:")) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+            } else if (sInput.contains("NUM CHANNELS:")) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+//                setNumChannels(Integer.parseInt(sInput.trim()));
+            } else if (sInput.contains("TELESCOPE ENTRIES:")) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+//                setNumAntennas(Integer.parseInt(sInput.trim()));
+            } else if (sInput.contains("TELESCOPE NAME ")) {
+                // Create antenna for the job
+//                Module newMod = new Module();
+//                newMod.setObjType("Module");
+//
+//                String sInputObjID = sInput.substring(sInput.indexOf(":") - 2, sInput.indexOf(":"));
+//                String sInputObjName = sInput.substring(sInput.indexOf(":") + 1);
+//
+//                // Note: the .input file is zero based
+//                newMod.setObjId(Integer.parseInt(sInputObjID.trim()));
+//                newMod.setObjName(sInputObjName.trim());
+//
+//                addModule(newMod);
+            } else if (sInput.contains("FILE ")) {
+                String sInputObjID = sInput.substring(sInput.indexOf("/") - 2, sInput.indexOf("/"));
+                String sInputVSN = sInput.substring(sInput.indexOf(":") + 1);
+
+                // -- Each job contains an module, and VSN
+                // Find module via object ID
+//                Module curMod = getModule(Integer.parseInt(sInputObjID.trim()));
+
+                // Update the antenna's VSN (module)
+//                curMod.setModuleVSN(sInputVSN.trim());
+
             }
+        }
 
-            frInput.close();
+    }
 
-            // -- read *.calc
+    /*
+     * Parse the string data as if it came from an .input file (which, presumably,
+     * it did).
+     */
+    public void parseCalcFile( String str ) {
 
-            FileReader frCalc = new FileReader(jobFile + ".calc");
-            BufferedReader brCalc = new BufferedReader(frCalc);
+        _calcFileEditor.text( str );
+        Scanner strScan = new Scanner( str );
+        strScan.useDelimiter( System.getProperty( "line.separator" ) );
 
-            String sCalc;
-            while ((sCalc = brCalc.readLine()) != null) {
+        while ( strScan.hasNext() ) {
+            String sCalc = strScan.next();
                 if (sCalc.contains("JOB ID:")) {
                     sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
-                    setJobID(sCalc.trim());
+//                    setJobID(sCalc.trim());
                 } else if (sCalc.contains("OBSCODE:")) {
                     sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
-                    setObsCode(sCalc.trim());
+//                    setObsCode(sCalc.trim());
                 } else if (sCalc.contains("JOB START TIME:")) {
                     sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
-                    setJobStartTimeMJD(new BigDecimal(sCalc.trim()));
+//                    setJobStartTimeMJD(new BigDecimal(sCalc.trim()));
                 } else if (sCalc.contains("JOB STOP TIME:")) {
                     sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
-                    setJobStopTimeMJD(new BigDecimal(sCalc.trim()));
+//                    setJobStopTimeMJD(new BigDecimal(sCalc.trim()));
                 } else if (sCalc.contains("NUM TELESCOPES:")) {
                     sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
-                    setNumTelescopes(Integer.parseInt(sCalc.trim()));
+//                    setNumTelescopes(Integer.parseInt(sCalc.trim()));
                 } else if (sCalc.contains("DIFX VERSION:")) {
                     sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
-                    setDifxVersion(sCalc.trim());
+//                    setDifxVersion(sCalc.trim());
                 } else if (sCalc.contains("NAME:")) {
                     sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
                 } else if (sCalc.contains("SHELF:")) {
@@ -781,23 +821,18 @@ public class JobEditorMonitor extends JFrame {
                     String sCalcShelf = sCalc.substring(sCalc.indexOf(":") + 1);
 
                     // Find antenna via object ID
-                    Module curMod = getModule(Integer.parseInt(sCalcObjID.trim()));
+///                    Module curMod = getModule(Integer.parseInt(sCalcObjID.trim()));
 
                     // update the antenna's shelf
-                    curMod.setShelf(sCalcShelf.trim());
+//                    curMod.setShelf(sCalcShelf.trim());
 
                     //newJob.setNumTelescopes(Integer.parseInt(trimmed));
                 }
             }
 
-            frCalc.close();
+//            frCalc.close();
             //System.out.printf("***************** Data model read input and calc file complete. \n");
-        } catch (Exception e) {
-            System.out.println("Exception: " + e);
-        }
     }
-     * 
-     */
    
     protected EventListenerList _stateChangeListeners;
     protected JobNode _jobNode;
@@ -833,4 +868,8 @@ public class JobEditorMonitor extends JFrame {
     
     protected boolean _processorsEdited;
     protected boolean _dataSourcesEdited;
+    protected SimpleTextEditor _inputFileEditor;
+    protected SimpleTextEditor _calcFileEditor;
+    protected JButton _refreshInputButton;
+    protected JButton _refreshCalcButton;
 }

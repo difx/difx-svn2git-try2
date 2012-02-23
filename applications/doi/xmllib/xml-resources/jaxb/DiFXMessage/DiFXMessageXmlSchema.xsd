@@ -154,6 +154,7 @@
                 <xsd:element ref="defaultNamesViaFtpLocation"/>
                 <xsd:element ref="defaultNamesLocalFileLocation"/>
                 <xsd:element ref="defaultSingleInputFile"/>
+                <xsd:element ref="defaultNamesScanBasedJobNames"/>
                 
                 <xsd:element ref="suppressUnknownMessageWarnings"/>
 
@@ -231,6 +232,7 @@
     <xsd:element name="defaultNamesViaFtpLocation" type="xsd:string"></xsd:element>
     <xsd:element name="defaultNamesLocalFileLocation" type="xsd:string"></xsd:element>
     <xsd:element name="defaultSingleInputFile" type="xsd:boolean"></xsd:element>
+    <xsd:element name="defaultNamesScanBasedJobNames" type="xsd:boolean"></xsd:element>
 
     <xsd:element name="suppressUnknownMessageWarnings" type="xsd:boolean"></xsd:element>
 
@@ -344,6 +346,8 @@
             <xsd:element name="operation" type="xsd:string"></xsd:element>
             <xsd:element name="dataNode" type="xsd:string"></xsd:element>
             <xsd:element name="arg" type="xsd:string"></xsd:element>
+            <xsd:element name="address" type="xsd:string"></xsd:element>
+            <xsd:element name="port" type="xsd:int"></xsd:element>
         </xsd:sequence>
     </xsd:complexType>
 
@@ -354,6 +358,8 @@
             <xsd:element name="difxPath" type="xsd:string"></xsd:element>
             <xsd:element name="passPath" type="xsd:string"></xsd:element>
             <xsd:element name="file" type="xsd:string"></xsd:element>
+            <xsd:element name="address" type="xsd:string"></xsd:element>
+            <xsd:element name="port" type="xsd:int"></xsd:element>
         </xsd:sequence>
     </xsd:complexType>
 

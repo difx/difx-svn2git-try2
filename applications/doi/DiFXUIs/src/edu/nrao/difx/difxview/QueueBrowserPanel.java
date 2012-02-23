@@ -315,7 +315,23 @@ public class QueueBrowserPanel extends TearOffPanel {
     }
 
     /*
-     * Add a new experiment to the browser and the database.
+     * Add a new experiment to the browser.
+     */
+    public void addExperiment( ExperimentNode newExperiment ) {
+        _browserPane.addNode( newExperiment );
+    }
+    
+    /*
+     * Add a new job to the header.  This is so changes in header column widths
+     * apply to the job.
+     */
+    public void addJob( JobNode newJob ) {
+        _header.addJob( newJob );
+    }
+    
+    /*
+     * Allow the user to produce a new experiment by bringing up the Experiment
+     * Editor.
      */
     protected void newExperiment() {
         //  If the user is currently using the data base, try to connect to it.
@@ -363,15 +379,11 @@ public class QueueBrowserPanel extends TearOffPanel {
             }
         }
         
-        //  Open a popup window where the user can specify details of the new experiment.
-        //  This window is modal.  All of the "Component" crap is used to give the popup
-        //  a "frame" in which to reside.
-        Component comp = this.getParent();
-        while ( comp.getParent() != null )
-            comp = comp.getParent();
+        //  Open a window where the user can specify details of the new experiment.
         Point pt = _newButton.getLocationOnScreen();
         ExperimentEditor win =
-                new ExperimentEditor( (Frame)comp, pt.x + 25, pt.y + 25, _systemSettings );
+                new ExperimentEditor( pt.x + 25, pt.y + 25, _systemSettings );
+                //new ExperimentEditor( (Frame)comp, pt.x + 25, pt.y + 25, _systemSettings );
         win.setTitle( "Create New Experiment" );
         win.number( 0 );
         win.name( "Experiment_" + newExperimentId.toString() );
@@ -390,101 +402,9 @@ public class QueueBrowserPanel extends TearOffPanel {
         win.addVexFileName( "three" );
         win.keepDirectory( false );
         win.passName( "Production Pass" );
-        win.displayPassInfo( true );
         win.createPass( _systemSettings.defaultNames().createPassOnExperimentCreation );
-        win.editMode( true );
+        win.newExperimentMode( true );
         win.visible();
-        //  If the user hit the "ok" button, add this new experiment to our list of
-        //  experiments and to the database (if we are using it).  Otherwise, bail out.
-        if ( win.ok() ) {
-            if ( db != null ) {
-                db.newExperiment( win.name(), win.number(), _systemSettings.experimentStatusID( win.status() ),
-                        win.directory(), win.vexFileName() );
-                //  See which ID the data base assigned...it will be the largest one.  Also
-                //  save the creation date.
-                newExperimentId = 0;
-                ResultSet dbExperimentList = db.experimentList();
-                try {
-                    while ( dbExperimentList.next() ) {
-                        int newId = dbExperimentList.getInt( "id" );
-                        if ( newId > newExperimentId ) {
-                            newExperimentId = newId;
-                            creationDate = dbExperimentList.getString( "dateCreated" );
-                        }
-                    }
-                } catch ( Exception e ) {
-                        java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
-                }
-            }
-            //  If the user has requested that an item be put in the database and
-            //  they are either not using it or it is not there, produce a warning.
-            else if ( win.inDataBase() ) {
-                JOptionPane.showMessageDialog( this, "Unable to add this item to the database\n"
-                        + "(you can add it later).",
-                        "Database Warning", JOptionPane.WARNING_MESSAGE );
-                win.inDataBase( false );
-            }
-            ExperimentNode thisExperiment = new ExperimentNode( win.name(), _systemSettings );
-            thisExperiment.id( newExperimentId );
-            thisExperiment.creationDate( creationDate );
-            thisExperiment.inDataBase( win.inDataBase() );
-            thisExperiment.number( win.number() );
-            thisExperiment.status( win.status() );
-            thisExperiment.directory( win.directory() );
-            thisExperiment.vexFile( win.vexFileName() );
-            //  Make the directory on the DiFX host...
-            DiFXCommand_mkdir mkdir = new DiFXCommand_mkdir( win.directory(), _systemSettings );
-            mkdir.send();
-            _browserPane.addNode( thisExperiment );
-            //  If a pass was created along with the experiment, create that and add it
-            //  to the experiment.  The pass will have default properties.
-            if ( win.createPass() ) {
-                //  Add the pass to the database...
-                int newPassId = 0;
-                if ( db != null ) {
-                    db.newPass( win.passName(), _systemSettings.passTypeID( win.passType() ), newExperimentId );
-                    //  See which ID the data base assigned...it will be the largest one that
-                    //  is associated with this experiment.  This is safer than looking for the
-                    //  name (because a name might be duplicated).
-                    ResultSet dbPassList = db.passList();
-                    try {
-                        while ( dbPassList.next() ) {
-                            int newId = dbPassList.getInt( "id" );
-                            int experimentId = dbPassList.getInt( "experimentID" );
-                            if ( experimentId == newExperimentId && newId > newPassId )
-                                newPassId = newId;
-                        }
-                    } catch ( Exception e ) {
-                            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
-                    }
-                }
-                //  This creates a "node" that will appear in the browser
-                PassNode newPass = new PassNode( win.passName(), _systemSettings );
-                thisExperiment.addChild( newPass );
-                //  Create the pass directory on the DiFX host if the user has requested a
-                //  pass directory.
-                mkdir = new DiFXCommand_mkdir( win.directory() + "/" + win.passDirectory(), _systemSettings );
-                mkdir.send();
-                //  Write the .vex file there.  At the moment this is written to the pass directory....
-                win.writeVexFile();
-                //  Create the .v2d file.  This will be put in the pass directory if it
-                //  exists, or the main experiment directory if not.
-                win.writeV2dFile();
-                try { Thread.sleep( 1000 ); } catch ( Exception e ) {} //  make sure that file is written!
-                //  Add any jobs created to the pass.
-                for ( Iterator iter = win.onScans().iterator(); iter.hasNext(); ) {
-                    JobNode newJob = new JobNode( (String)iter.next(), _systemSettings );
-                    newPass.addChild( newJob );
-                    newJob.passNode( newPass );
-                    _header.addJob( newJob );
-                }
-                //  Run vex2difx on the new pass and v2d file.
-                DiFXCommand_vex2difx v2d = new DiFXCommand_vex2difx( win.directory() + "/" + win.passDirectory(), win.v2dFileName(), _systemSettings );
-                v2d.send();
-            }
-            //  The "create pass" checkbox setting is saved to the settings as the new default.
-            _systemSettings.defaultNames().createPassOnExperimentCreation = win.createPass();
-        }
     }
         
     protected void newJob() {};

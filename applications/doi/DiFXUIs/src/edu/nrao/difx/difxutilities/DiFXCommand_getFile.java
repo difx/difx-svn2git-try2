@@ -58,6 +58,7 @@ public class DiFXCommand_getFile extends DiFXCommand {
         xfer.setPort( _port );
         xfer.setDirection( "from DiFX" );
         xfer.setOrigin( filename );
+        xfer.setDestination( "none" );
         //  The "data" node is assumed to be the same as the DiFX "control" node
         //  (at least for now).
         xfer.setDataNode( settings.difxControlAddress() );

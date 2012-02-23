@@ -81,7 +81,24 @@
     <h4>DiFX Version</h4>
     The DiFX Version is passed to <span style="font-style: italic;">mk5daemon</span>
     when running a correlator job.&nbsp; It should match the version of
-    DiFX being run on the head node.<br>
+    DiFX being run on the head node.&nbsp; <span style="font-style:
+      italic;">Don't worry too much about this field - currently it does
+      nothing!</span><br>
+    <h4>DiFX Path</h4>
+    <p>The DiFX Path field allows you to set the path <span
+        style="font-style: italic;">mk5daemon</span> will follow when
+      running DiFX executables (specifically <span style="font-style:
+        italic;">vex2difx </span>and <span style="font-style: italic;">mpirun</span>)
+      - it points to the top level of your DiFX software tree on your
+      DiFX host (e.g. "<span style="font-family: monospace;">/usr/local/difx</span>"
+      or something similar).&nbsp; Using this field you can easily
+      switch your processing between different versions of DiFX
+      software, if, for instance, you want to test an upgrade of the
+      software.&nbsp; For normal operation you can leave this field
+      blank, in which case <span style="font-style: italic;">mk5daemon</span>
+      will use the environment variable <span style="font-family:
+        monospace;">DIFX_PREFIX</span> to determine the path.<br>
+    </p>
     <h2><a name="Broadcast_Network"></a>Broadcast Network</h2>
     The broadcast network is used by DiFX processes to communicate with
     each other.&nbsp; It is used by the user interface <span
@@ -194,6 +211,7 @@
 
 
 
+
     See <a href="#Database_Remote_Access">Problems with Database Remote
       Access</a> in the trouble-shooting section for details.<br>
     <h4>Password</h4>
@@ -233,6 +251,7 @@
     does it involve much network traffic, however the database probably
     doesn't change much so an interval of a few seconds should be fine.<br>
     <h2><a name="Testing_the_Database_Configuration"></a>Trouble-shooting
+
 
 
 
@@ -322,6 +341,7 @@
 
 
 
+
         Communications link failure The last packet sent successfully to
         the server was 0 milliseconds ago. The driver has not received
         any packets from the server.</code></div>
@@ -330,6 +350,7 @@
     This error indicates that the connection to the remote mySQL
     database failed.&nbsp; Check that the DiFX host exits and in on the
     network (using the <a href="#Database_Ping_Test">Ping Test</a>).&nbsp;
+
 
 
 

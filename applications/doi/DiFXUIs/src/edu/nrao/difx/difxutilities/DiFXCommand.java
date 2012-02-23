@@ -56,7 +56,7 @@ public class DiFXCommand {
         _difxMsg.setBody( _body );
         JAXBDiFXProcessor xmlProc = new JAXBDiFXProcessor( _difxMsg );
         String xmlString = xmlProc.ConvertToXML();
-                if ( xmlString != null )
+        if ( xmlString != null )
             SendMessage.writeToSocket( xmlString, _settings );
     }
     
