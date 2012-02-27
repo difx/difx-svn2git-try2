@@ -34,6 +34,7 @@ import java.awt.Color;
 
 import java.util.Iterator;
 import java.util.Scanner;
+import java.util.HashMap;
 
 import javax.swing.event.EventListenerList;
 
@@ -119,15 +120,17 @@ public class JobEditorMonitor extends JFrame {
         calcFilePanel.add( _refreshCalcButton );
 
         IndexedPanel machinesListPanel = new IndexedPanel( "Machines List" );
-        machinesListPanel.openHeight( 215 );
+        machinesListPanel.openHeight( 395 );
         machinesListPanel.closedHeight( 20 );
         _scrollPane.addNode( machinesListPanel );
         _dataSourcesPane = new NodeBrowserScrollPane();
+        _dataSourcesPane.setBackground( Color.WHITE );
         machinesListPanel.add( _dataSourcesPane );
         _dataSourcesLabel = new JLabel( "Data Nodes:" );
         _dataSourcesLabel.setHorizontalAlignment( JLabel.LEFT );
         machinesListPanel.add( _dataSourcesLabel );
         _processorsPane = new NodeBrowserScrollPane();
+        _processorsPane.setBackground( Color.WHITE );
         machinesListPanel.add( _processorsPane );
         _processorsLabel = new JLabel( "Processor Nodes:" );
         _processorsLabel.setHorizontalAlignment( JLabel.LEFT );
@@ -181,10 +184,6 @@ public class JobEditorMonitor extends JFrame {
         _machinesLock = new JCheckBox( "Lock From Apply" );
         _machinesLock.setToolTipText( "Protect these settings from \"universal\" appications (apply all, apply selected, etc) by other jobs." );
         machinesListPanel.add( _machinesLock );
-        _forceOverwrite = new JCheckBox( "Force Overwrite" );
-        _forceOverwrite.setToolTipText( "Force the overwrite of the \".difx\" output file if one already exists." );
-        _forceOverwrite.setSelected( true );
-        machinesListPanel.add( _forceOverwrite );
         
         IndexedPanel runControlPanel = new IndexedPanel( "Run Controls" );
         runControlPanel.openHeight( 200 );
@@ -215,6 +214,11 @@ public class JobEditorMonitor extends JFrame {
         _restartSeconds.value( 0.0 );
         _restartSeconds.setBounds( 230, 30, 100, 25 );
         runControlPanel.add( _restartSeconds );
+        _forceOverwrite = new JCheckBox( "Force Overwrite" );
+        _forceOverwrite.setToolTipText( "Force the overwrite of the \".difx\" output file if one already exists." );
+        _forceOverwrite.setSelected( true );
+        _forceOverwrite.setBounds( 130, 60, 150, 25 );
+        runControlPanel.add( _forceOverwrite );
         JLabel restartAtLabel = new JLabel( "at:" );
         restartAtLabel.setBounds( 180, 30, 45, 25 );
         restartAtLabel.setHorizontalAlignment( JLabel.RIGHT );
@@ -252,17 +256,16 @@ public class JobEditorMonitor extends JFrame {
             _menuBar.setBounds( 0, 0, w, 25 );
         if ( _allObjectsBuilt ) {
             _scrollPane.setBounds( 0, 25, w, h - 25 );
-            int thirdSize = ( w - 50 ) / 3;
-            _dataSourcesLabel.setBounds( 10, 25, thirdSize, 25 );
-            _dataSourcesPane.setBounds( 10, 50, thirdSize, 150 );
-            _processorsLabel.setBounds( 20 + thirdSize, 25, thirdSize, 25 );
-            _processorsPane.setBounds( 20 + thirdSize, 50, thirdSize, 150 );
-            _threadsLabel.setBounds( 20 + thirdSize + 160, 25, 80, 25 );
-            _headNodeLabel.setBounds( 30 + 2 * thirdSize, 25, thirdSize, 25 );
-            _headNode.setBounds( 30 + 2 * thirdSize, 50, thirdSize, 25 );
-            _applyButton.setBounds( 30 + 2 * thirdSize, 175, thirdSize/2 - 5, 25 );
-            _forceOverwrite.setBounds( 30 + 3 * thirdSize - thirdSize/2 - 5, 145, thirdSize/2 - 5, 25 );
-            _machinesLock.setBounds( 30 + 3 * thirdSize - thirdSize/2 - 5, 175, thirdSize/2 - 5, 25 );
+            int thirdSize = ( w - 60 ) / 3;
+            _dataSourcesLabel.setBounds( 10, 25, w - 50, 25 );
+            _dataSourcesPane.setBounds( 10, 50, w - 50, 150 );
+            _processorsLabel.setBounds( 10, 205, 2 * thirdSize, 25 );
+            _processorsPane.setBounds( 10, 230, 2 * thirdSize, 150 );
+            _threadsLabel.setBounds( 170, 205, 80, 25 );
+            _headNodeLabel.setBounds( 30 + 2 * thirdSize, 205, thirdSize, 25 );
+            _headNode.setBounds( 30 + 2 * thirdSize, 230, thirdSize, 25 );
+            _applyButton.setBounds( 30 + 2 * thirdSize, 355, thirdSize/2 - 5, 25 );
+            _machinesLock.setBounds( 30 + 3 * thirdSize - thirdSize/2 - 5, 355, thirdSize/2 - 5, 25 );
             _inputFileEditor.setBounds( 10, 30, w - 35, 360 );
             _calcFileEditor.setBounds( 10, 30, w - 35, 360 );
             _refreshInputButton.setBounds( w - 185, 2, 150, 20 );
@@ -277,12 +280,15 @@ public class JobEditorMonitor extends JFrame {
     }
     
     public void applyThisJob() {
+        /*
         for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
-            ListNode thisNode = (ListNode)(iter.next());
+            DataNode thisNode = (DataNode)(iter.next());
             if ( thisNode.selected() )
                 System.out.println( thisNode.name() );
         }
+         * 
+         */
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
             ProcessorNode thisNode = (ProcessorNode)(iter.next());
@@ -311,14 +317,17 @@ public class JobEditorMonitor extends JFrame {
             return;
         if ( target == this )
             return;
+        /*
         Iterator<BrowserNode> targetIter = target.dataSourcesIterator();
         for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
                 iter.hasNext() && targetIter.hasNext(); ) {
-            ListNode thisNode = (ListNode)(iter.next());
-            ListNode targetNode = (ListNode)(targetIter.next());
+            DataNode thisNode = (DataNode)(iter.next());
+            DataNode targetNode = (DataNode)(targetIter.next());
             targetNode.selected( thisNode.selected() );               
         }
-        targetIter = target.processorsIterator();
+         * 
+         */
+        Iterator<BrowserNode> targetIter = target.processorsIterator();
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext() && targetIter.hasNext(); ) {
             ProcessorNode thisNode = (ProcessorNode)(iter.next());
@@ -375,7 +384,7 @@ public class JobEditorMonitor extends JFrame {
     public String headNode() { return _headNode.getText(); }
     public void headNode( String newVal ) { _headNode.setText( newVal ); }
     
-    public void startJob() {
+    synchronized public void startJob() {
         ObjectFactory factory = new ObjectFactory();
 
         // Create header
@@ -388,7 +397,7 @@ public class JobEditorMonitor extends JFrame {
 
         // Create start job command
         DifxStart jobStart = factory.createDifxStart();
-        jobStart.setInput( _jobNode.inputFile() ); //_jobNode.directoryPath() + "/" + _jobNode.name() + ".input");
+        jobStart.setInput( _jobNode.inputFile() );
 
         // Use the "USNO" version of the start function in mk5daemon
         jobStart.setFunction( "USNO" );
@@ -409,40 +418,29 @@ public class JobEditorMonitor extends JFrame {
         // -- datastreams, enabled only
         DifxStart.Datastream dataStream = factory.createDifxStartDatastream();
 
-        //  Grab all of the "checked" data stream node names...
+        //  Include all of the "checked" data stream node names...
         String dataNodeNames = "";
         for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
-            ListNode thisNode = (ListNode)(iter.next());
-            if ( thisNode.selected() )
-                dataNodeNames += thisNode.name() + " ";
+            DataNode thisNode = (DataNode)(iter.next());
+            dataNodeNames += thisNode.name() + " ";
         }
         dataStream.setNodes( dataNodeNames );
         jobStart.setDatastream(dataStream);
 
-        // -- process and threads, enabled only
-        DifxStart.Process process = factory.createDifxStartProcess();
-        DifxStart.Process process2 = factory.createDifxStartProcess();
-
+        // Add enabled processors and threads.  Don't include processors that have no
+        // threads!
         String processNodeNames = "";
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
             ProcessorNode thisNode = (ProcessorNode)(iter.next());
-            if ( thisNode.selected() )
-                processNodeNames += thisNode.name() + " "; // + thisNode.threadsText() + " ";
+            if ( thisNode.selected() ) {
+                DifxStart.Process process = factory.createDifxStartProcess();
+                process.setNodes( thisNode.name() );
+                process.setThreads( thisNode.threadsText() );
+                jobStart.getProcess().add( process );
+            }
         }
-        process.setNodes( processNodeNames );
-        
-        String processThreads = "";
-        for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
-                iter.hasNext(); ) {
-            ProcessorNode thisNode = (ProcessorNode)(iter.next());
-            if ( thisNode.selected() )
-                processThreads += thisNode.threadsText() + " ";
-        }
-                
-        process.setThreads( processThreads );
-        jobStart.getProcess().add( process );
 
         // force deletion of existing output file if this box has been checked.
         if ( _forceOverwrite.isSelected() )
@@ -461,6 +459,7 @@ public class JobEditorMonitor extends JFrame {
         JAXBDiFXProcessor xmlProc = new JAXBDiFXProcessor(difxMsg);
         String xmlString = xmlProc.ConvertToXML();
         
+        System.out.println( ">>>>>>>>>>\n" + xmlString + "\n<<<<<<<<<" );
         if ( xmlString != null )
             SendMessage.writeToSocket( xmlString, _settings );
     }
@@ -521,9 +520,38 @@ public class JobEditorMonitor extends JFrame {
      * This class is used to contain the name of a single node for the data source
      * and processor lists.
      */
-    protected class ListNode extends BrowserNode {
+    protected class DataNode extends BrowserNode {
         
-        public ListNode( String name ) {
+        public DataNode( String name ) {
+            super( name );
+        }
+        
+        @Override
+        public void createAdditionalItems() {
+            _dataObject = new JLabel( "" );
+            this.add( _dataObject );
+        }
+        
+        @Override
+        public void positionItems() {
+            _label.setBounds( 10, 0, 190, _ySize );
+            _dataObject.setBounds( 200, 0, 500, 25 );
+        }
+        
+        public void dataObject( String newVal ) { _dataObject.setText( newVal ); }
+        public String dataObject() { return _dataObject.getText(); }
+        
+        protected JLabel _dataObject;
+    }
+    
+    /*
+     * This class provides information about a "Processor".  It allows
+     * the user to use the processor as the "head node" and tracks the number of
+     * cores available.
+     */
+    protected class ProcessorNode extends BrowserNode {
+        
+        public ProcessorNode( String name ) {
             super( name );
         }
         
@@ -532,36 +560,6 @@ public class JobEditorMonitor extends JFrame {
             _selected = new JCheckBox();
             _selected.setBackground( Color.WHITE );
             this.add( _selected );
-        }
-        
-        @Override
-        public void positionItems() {
-            _selected.setBounds( 7, 2, 18, 18 );
-            _label.setBounds( 30, 0, 190, _ySize );
-        }
-        
-        public boolean selected() { return _selected.isSelected(); }
-        public void selected( boolean newVal ) { _selected.setSelected( newVal ); }
-        
-        public boolean foundIt;
-        protected JCheckBox _selected;
-        
-    }
-    
-    /*
-     * This class inherits the ListNode class to provide a "Processor".  It allows
-     * the user to use the processor as the "head node" and tracks the number of
-     * cores available.
-     */
-    protected class ProcessorNode extends ListNode {
-        
-        public ProcessorNode( String name ) {
-            super( name );
-        }
-        
-        @Override
-        public void createAdditionalItems() {
-            super.createAdditionalItems();
             _popup = new JPopupMenu();
             JMenuItem menuItem2 = new JMenuItem( "Make " + this.name() + " the head node" );
             menuItem2.addActionListener(new ActionListener() {
@@ -579,6 +577,7 @@ public class JobEditorMonitor extends JFrame {
         @Override
         public void positionItems() {
             super.positionItems();
+            _selected.setBounds( 7, 2, 18, 18 );
             _threads.setBounds( 210, 1, 30, 18 );
         }
         
@@ -588,20 +587,26 @@ public class JobEditorMonitor extends JFrame {
         public Integer threads() { return _threads.intValue(); }
         public String threadsText() { return _threads.getText(); }
         
+        public boolean selected() { return _selected.isSelected(); }
+        public void selected( boolean newVal ) { _selected.setSelected( newVal ); }
+        
         protected int _cores;
         protected NumberBox _threads;
+        public boolean foundIt;
+        protected JCheckBox _selected;
         
     }
     
     /*
-     * Fill the processor and data source lists from the Hardware Monitor.
+     * Fill the processor list from the Hardware Monitor and the data sources
+     * list from our collected information.
      */
-    public void loadHardwareLists() {
+    synchronized public void loadHardwareLists() {
         //  We need to "relocate" everything in the existing processor list, so unset a
         //  "found" flag for each.
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); )
-            ( (ListNode)(iter.next()) ).foundIt = false;        
+            ( (ProcessorNode)(iter.next()) ).foundIt = false;        
         //  These are all of the processing nodes that the hardware monitor knows
         //  about.  See if they are in the list.
         for ( Iterator<BrowserNode> iter = _settings.hardwareMonitor().clusterNodes().children().iterator();
@@ -615,7 +620,7 @@ public class JobEditorMonitor extends JFrame {
                     BrowserNode testNode = iter2.next();
                     if ( testNode.name() == thisModule.name() ) {
                         foundNode = testNode;
-                        ( (ListNode)(testNode) ).foundIt = true;
+                        ( (ProcessorNode)(testNode) ).foundIt = true;
                     }
                 }
                 //  New node?  Then add it to the list.
@@ -631,7 +636,7 @@ public class JobEditorMonitor extends JFrame {
         //  Now purge the list of any items that were not "found"....
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
-            ListNode testNode = (ListNode)(iter.next());
+            ProcessorNode testNode = (ProcessorNode)(iter.next());
             if ( !testNode.foundIt )
                 _processorsPane.browserTopNode().removeChild( testNode );
             else {
@@ -642,6 +647,21 @@ public class JobEditorMonitor extends JFrame {
             }
         }
 
+        //  The data source list is built using the known data requirements (which
+        //  we get by parsing the .input file).  These are contained in the "_dataSources"
+        //  hash table.  This is a list of data items needed to run the job, along
+        //  with data sources if they are known.  We can also search here for data
+        //  sources, and check that those we know about are on line.
+        _dataSourcesPane.browserTopNode().clearChildren();
+        if ( _dataSources != null ) {
+            for ( Iterator<String> jter = _dataSources.keySet().iterator(); jter.hasNext(); ) {
+                String dataObject = jter.next();
+                DataNode newNode = new DataNode( _dataSources.get( dataObject ) );
+                _dataSourcesPane.addNode( newNode );
+            }
+        }
+        /*
+         * PROBABLY GETTING RID OF THIS JUNK
         //  Do the same stuff for the data source list
         for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
                 iter.hasNext(); )
@@ -684,6 +704,8 @@ public class JobEditorMonitor extends JFrame {
                     _dataSourcesEdited = true;
             }
         }
+         * 
+         */
 
     }
     
@@ -709,7 +731,13 @@ public class JobEditorMonitor extends JFrame {
      * Parse the string data as if it came from an .input file (which, presumably,
      * it did).
      */
-    public void parseInputFile( String str ) {
+    synchronized public void parseInputFile( String str ) {
+        
+        //  This is a list that holds our data sources and the files/modules/whatever
+        //  associated with them (keyed by file/module/whatever).
+        if ( _dataSources == null )
+            _dataSources = new HashMap<String,String>();
+        _dataSources.clear();
 
         _inputFileEditor.text( str );
         Scanner strScan = new Scanner( str );
@@ -769,20 +797,34 @@ public class JobEditorMonitor extends JFrame {
 //
 //                addModule(newMod);
             } else if (sInput.contains("FILE ")) {
-                String sInputObjID = sInput.substring(sInput.indexOf("/") - 2, sInput.indexOf("/"));
-                String sInputVSN = sInput.substring(sInput.indexOf(":") + 1);
-
-                // -- Each job contains an module, and VSN
-                // Find module via object ID
-//                Module curMod = getModule(Integer.parseInt(sInputObjID.trim()));
-
-                // Update the antenna's VSN (module)
-//                curMod.setModuleVSN(sInputVSN.trim());
+                //  The "FILE" line has lists the data sources used in a job.  We need
+                //  to use these to make a list of data sources for eventual transmission
+                //  to mk5daemon when starting a job.
+                String inputSourceID = sInput.substring(sInput.indexOf("/") - 2, sInput.indexOf("/"));
+                String inputObject = sInput.substring(sInput.indexOf(":") + 1).trim();
+                
+                //  Find the data source associated with this input object.  First,
+                //  search the list of file sources we have.
+                String dataSource = null;
+                System.out.println( "input object: " + inputObject );
+                if ( _editor != null ) {
+                    System.out.println( "data source:  " + _editor.nodeForFile( inputObject ) );
+                    dataSource = _editor.nodeForFile( inputObject );
+                }
+                
+                //  Put the data source that we've found for this object in our hash
+                //  table...including "null" if we've failed to find it!
+                _dataSources.put( inputObject, dataSource );
 
             }
         }
 
     }
+    
+    /*
+     * Give this job a link to the editor, which we need for some things.
+     */
+    public void editor( ExperimentEditor newVal ) { _editor = newVal; }
 
     /*
      * Parse the string data as if it came from an .input file (which, presumably,
@@ -872,4 +914,7 @@ public class JobEditorMonitor extends JFrame {
     protected SimpleTextEditor _calcFileEditor;
     protected JButton _refreshInputButton;
     protected JButton _refreshCalcButton;
+    protected ExperimentEditor _editor;
+    
+    protected HashMap<String,String> _dataSources;
 }

@@ -275,22 +275,23 @@ public class VexFileParser {
             else if ( thisLine.length() > 5 && thisLine.substring( 0, 5 ).equalsIgnoreCase( "START" ) ) {
                 //  Convert the start time to a Java Calendar format.
                 if ( currentScan != null ) {
+                    String dataStr = skipEq( thisLine );
                     currentScan.start = new GregorianCalendar();
-                    currentScan.start.set( Calendar.YEAR, Integer.parseInt( thisLine.substring( 8, 12 )));
-                    currentScan.start.set( Calendar.DAY_OF_YEAR, Integer.parseInt( thisLine.substring( 13, 16 )));
-                    currentScan.start.set( Calendar.HOUR_OF_DAY, Integer.parseInt( thisLine.substring( 17, 19 )));
-                    currentScan.start.set( Calendar.MINUTE, Integer.parseInt( thisLine.substring( 20, 22 )));
-                    currentScan.start.set( Calendar.SECOND, Integer.parseInt( thisLine.substring( 23, 25 )));
+                    currentScan.start.set( Calendar.YEAR, Integer.parseInt( dataStr.substring( 0, 4 )));
+                    currentScan.start.set( Calendar.DAY_OF_YEAR, Integer.parseInt( dataStr.substring( 5, 8 )));
+                    currentScan.start.set( Calendar.HOUR_OF_DAY, Integer.parseInt( dataStr.substring( 9, 11 )));
+                    currentScan.start.set( Calendar.MINUTE, Integer.parseInt( dataStr.substring( 12, 14 )));
+                    currentScan.start.set( Calendar.SECOND, Integer.parseInt( dataStr.substring( 15, 17 )));
                 }
             }
             else if ( thisLine.length() > 4 && thisLine.substring( 0, 4 ).equalsIgnoreCase( "MODE" ) ) {
                 if ( currentScan != null ) {
-                    currentScan.mode = thisLine.substring( 7 );
+                    currentScan.mode = skipEq( thisLine );
                 }
             }
             else if ( thisLine.length() > 6 && thisLine.substring( 0, 6 ).equalsIgnoreCase( "SOURCE" ) ) {
                 if ( currentScan != null ) {
-                    currentScan.source = thisLine.substring( 9 );
+                    currentScan.source = skipEq( thisLine );
                 }
             }
             else if ( thisLine.length() > 7 && thisLine.substring( 0, 7 ).equalsIgnoreCase( "STATION" ) ) {
@@ -395,6 +396,14 @@ public class VexFileParser {
      */
     protected void parseSourceData( ArrayList<String> data ) {
         //System.out.println( "source data" );
+    }
+    
+    /*
+     * Skip to the character immediately following an "=" sign, which is a common
+     * thing to have to do...
+     */
+    protected String skipEq( String inString ) {
+        return inString.substring( inString.indexOf( '=' ) + 1 ).trim();
     }
 
     public double revision() { return _revision; }

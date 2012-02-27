@@ -209,6 +209,13 @@ public class ExperimentNode extends QueueBrowserNode {
     }
     
     /*
+     * Return a pointer to the editor.
+     */
+    public ExperimentEditor editor() {
+        return _editor;
+    }
+    
+    /*
      * Bring up a display/editor for the properties of this experiment.  The
      * editor may or may not already exist - if it does not, create it.
      */

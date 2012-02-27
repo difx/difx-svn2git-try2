@@ -43,6 +43,7 @@ import java.util.Iterator;
 import java.util.Calendar;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 
 import java.text.SimpleDateFormat;
 
@@ -1018,10 +1019,10 @@ public class ExperimentEditor extends JFrame { //JDialog {
                         Iterator<String> iter = newList.iterator();
                         String commonString = iter.next();
                         clearFileList();
-                        addToFileList( commonString );
+                        addToFileList( commonString, _settings.difxControlAddress() );
                         for ( ; iter.hasNext(); ) {
                             String newStr = iter.next();
-                            addToFileList( newStr );
+                            addToFileList( newStr, _settings.difxControlAddress() );
                             int i = 0;
                             while ( commonString.regionMatches( 0, newStr, 0, i ) )
                                 ++i;
@@ -1045,7 +1046,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         
         protected class FileListItem extends IndexedPanel {
             
-            FileListItem( String filename, boolean use ) {
+            FileListItem( String filename, String sourceNode, boolean use ) {
                 super( filename );
                 this.alwaysOpen( true );
                 this.openHeight( 20 );
@@ -1064,23 +1065,27 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 if ( use )
                     _use.setSelected( true );
                 this.add( _use );
+                sourceNode( sourceNode );
             }
             
             public boolean use() { return _use.isSelected(); }
             public void use( boolean newVal ) { _use.setSelected( newVal ); }
+            public String sourceNode() { return _sourceNode; }
+            public void sourceNode( String newVal ) { _sourceNode = newVal; }
             
             protected JCheckBox _use;
+            protected String _sourceNode;
             
         }
         
         /*
          * Add a new item to the list of files - presumably a new file name.
          */
-        public void addToFileList( String newFile ) {
+        public void addToFileList( String newFile, String sourceNode ) {
             //  Make sure this doesn't terminate with a "/" character - so we
             //  know its a file.
             if ( newFile.charAt( newFile.length() - 1 ) != '/' )
-                _fileList.addNode( new FileListItem( newFile, true ) );
+                _fileList.addNode( new FileListItem( newFile, sourceNode, true ) );
         }
         
         /*
@@ -1102,6 +1107,18 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     newList.add( newItem.name() );
             }
             return newList;
+        }
+        
+        /*
+         * Return the machine name associated with the given file item.
+         */
+        public String machineForFile( String filename ) {
+            for ( Iterator<BrowserNode> iter = _fileList.browserTopNode().childrenIterator(); iter.hasNext(); ) {
+                FileListItem newItem = (FileListItem)iter.next();
+                if ( newItem.name().contentEquals( filename ) )
+                    return newItem.sourceNode();
+            }
+            return null;
         }
         
         public boolean use() { return _useCheck.isSelected(); }
@@ -1641,7 +1658,12 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     "Zero Scans Included", JOptionPane.WARNING_MESSAGE );
         }
         
-        //  Describe specifics for each used antenna...data source, etc.
+        //  Describe specifics for each used antenna...data source, etc.  The following
+        //  hash map allows us to locate the machines that each file source originated
+        //  from.  This is needed when running jobs.
+        if ( _fileToNodeMap == null )
+            _fileToNodeMap = new HashMap<String,String>();
+        _fileToNodeMap.clear();
         if ( _antennaList != null && !_antennaList.useList().isEmpty() ) {
             for ( Iterator<AntennaPanel> iter = _antennaList.useList().iterator(); iter.hasNext(); ) {
                 AntennaPanel antenna = iter.next();
@@ -1659,8 +1681,11 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     else if ( antenna.useFile() ) {
                         ArrayList<String> fileList = antenna.fileList();
                         if ( fileList.size() > 0 ) {
-                            for ( Iterator<String> jter = fileList.iterator(); jter.hasNext(); )
-                                str += "   file = " + jter.next() + "\n";
+                            for ( Iterator<String> jter = fileList.iterator(); jter.hasNext(); ) {
+                                String filename = jter.next();
+                                str += "   file = " + filename + "\n";
+                                _fileToNodeMap.put( filename, antenna.machineForFile( filename ) );
+                            }
                         }
                     }
                     str += "}\n\n";
@@ -1674,6 +1699,14 @@ public class ExperimentEditor extends JFrame { //JDialog {
         
         
         _v2dEditor.text( str );
+    }
+    
+    /*
+     * Using the "file to node" map, find the data source (node name) associated
+     * with a file.
+     */
+    public String nodeForFile( String filename ) {
+        return _fileToNodeMap.get( filename );
     }
     
     /*
@@ -1851,6 +1884,10 @@ public class ExperimentEditor extends JFrame { //JDialog {
             _statusLabel.setText( "" );
             setVisible( false );
 
+            //  Reset the Apply button for next time.
+            _operationCancelled = true;
+            _operationRunning = false;
+            _okButton.setText( "Apply" );
         }
           
         /*
@@ -1886,6 +1923,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     _newPass.addChild( newJob );
                     newJob.passNode( _newPass );
                     _settings.queueBrowser().addJob( newJob );
+                    newJob.editorMonitor().editor( _this );
                 }
                 //  Apply this file to the job.
                 if ( extn.contentEquals( "input" ) )
@@ -1905,7 +1943,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         PassNode _newPass;
 
     }
-        
+    
     protected ExperimentNode _thisExperiment;
     protected SaneTextField _name;
     protected JLabel _nameAsLabel;
@@ -1974,5 +2012,6 @@ public class ExperimentEditor extends JFrame { //JDialog {
     protected boolean _operationComplete;
     protected boolean _operationCancelled;
     protected boolean _operationRunning;
+    protected HashMap<String,String> _fileToNodeMap;
     
 }
