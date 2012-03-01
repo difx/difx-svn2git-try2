@@ -808,9 +808,23 @@ public class JobEditorMonitor extends JFrame {
                 String dataSource = null;
                 System.out.println( "input object: " + inputObject );
                 if ( _editor != null ) {
-                    System.out.println( "data source:  " + _editor.nodeForFile( inputObject ) );
                     dataSource = _editor.nodeForFile( inputObject );
                 }
+                
+                //  Failing that, see if a mark5 unit has this data source as a module.
+                if ( dataSource == null ) {
+                    for ( Iterator<BrowserNode> iter = _settings.hardwareMonitor().mk5Modules().children().iterator();
+                        iter.hasNext(); ) {
+                        Mark5Node thisNode = (Mark5Node)iter.next();
+                        if ( !thisNode.ignore() ) {
+                            if ( thisNode.bankAVSN() != null && inputObject.contentEquals( thisNode.bankAVSN() ) )
+                                dataSource = thisNode.bankAVSN();
+                            if ( thisNode.bankBVSN() != null && inputObject.contentEquals( thisNode.bankBVSN() ) )
+                                dataSource = thisNode.bankBVSN();
+                        }
+                    }
+                }
+                
                 
                 //  Put the data source that we've found for this object in our hash
                 //  table...including "null" if we've failed to find it!
