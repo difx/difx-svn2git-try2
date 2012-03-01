@@ -250,7 +250,7 @@ public class Mark5Node extends ClusterNode {
     public void widthCurrentJob( int newVal ) { _widthCurrentJob = newVal; }
     
     public String bankAVSN() { return _bankAVSN.getText(); }
-    public String bankBVSN() { return _bankAVSN.getText(); }
+    public String bankBVSN() { return _bankBVSN.getText(); }
     
     protected ActivityMonitorLight _stateChanged;
     protected boolean _showStateChanged;

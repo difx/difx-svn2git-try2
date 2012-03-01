@@ -35,6 +35,7 @@ import java.awt.Color;
 import java.util.Iterator;
 import java.util.Scanner;
 import java.util.HashMap;
+import java.util.ArrayList;
 
 import javax.swing.event.EventListenerList;
 
@@ -653,8 +654,8 @@ public class JobEditorMonitor extends JFrame {
         //  with data sources if they are known.  We can also search here for data
         //  sources, and check that those we know about are on line.
         _dataSourcesPane.browserTopNode().clearChildren();
-        if ( _dataSources != null ) {
-            for ( Iterator<String> jter = _dataSources.keySet().iterator(); jter.hasNext(); ) {
+        if ( _dataObjects != null ) {
+            for ( Iterator<String> jter = _dataObjects.iterator(); jter.hasNext(); ) {
                 String dataObject = jter.next();
                 DataNode newNode = new DataNode( _dataSources.get( dataObject ) );
                 _dataSourcesPane.addNode( newNode );
@@ -737,7 +738,10 @@ public class JobEditorMonitor extends JFrame {
         //  associated with them (keyed by file/module/whatever).
         if ( _dataSources == null )
             _dataSources = new HashMap<String,String>();
+        if ( _dataObjects == null )
+            _dataObjects = new ArrayList<String>();
         _dataSources.clear();
+        _dataObjects.clear();
 
         _inputFileEditor.text( str );
         Scanner strScan = new Scanner( str );
@@ -806,7 +810,6 @@ public class JobEditorMonitor extends JFrame {
                 //  Find the data source associated with this input object.  First,
                 //  search the list of file sources we have.
                 String dataSource = null;
-                System.out.println( "input object: " + inputObject );
                 if ( _editor != null ) {
                     dataSource = _editor.nodeForFile( inputObject );
                 }
@@ -818,9 +821,9 @@ public class JobEditorMonitor extends JFrame {
                         Mark5Node thisNode = (Mark5Node)iter.next();
                         if ( !thisNode.ignore() ) {
                             if ( thisNode.bankAVSN() != null && inputObject.contentEquals( thisNode.bankAVSN() ) )
-                                dataSource = thisNode.bankAVSN();
+                                dataSource = thisNode.name();
                             if ( thisNode.bankBVSN() != null && inputObject.contentEquals( thisNode.bankBVSN() ) )
-                                dataSource = thisNode.bankBVSN();
+                                dataSource = thisNode.name();
                         }
                     }
                 }
@@ -828,6 +831,7 @@ public class JobEditorMonitor extends JFrame {
                 
                 //  Put the data source that we've found for this object in our hash
                 //  table...including "null" if we've failed to find it!
+                _dataObjects.add( inputObject );
                 _dataSources.put( inputObject, dataSource );
 
             }
@@ -931,4 +935,5 @@ public class JobEditorMonitor extends JFrame {
     protected ExperimentEditor _editor;
     
     protected HashMap<String,String> _dataSources;
+    protected ArrayList<String> _dataObjects;
 }
