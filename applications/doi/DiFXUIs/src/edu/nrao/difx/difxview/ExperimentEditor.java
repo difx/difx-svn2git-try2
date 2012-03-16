@@ -44,6 +44,7 @@ import java.util.Calendar;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.GregorianCalendar;
 
 import java.text.SimpleDateFormat;
 
@@ -344,14 +345,31 @@ public class ExperimentEditor extends JFrame { //JDialog {
         editorPanel.add( _useMyEditor );
         
         //  This panel is used to display and adjust antenna information.
-        IndexedPanel antennaPanel = new IndexedPanel( "Antennas" );
-        antennaPanel.openHeight( 400 );
+        IndexedPanel antennaPanel = new IndexedPanel( "Stations" );
+        antennaPanel.openHeight( 220 );
         antennaPanel.closedHeight( 20 );
         antennaPanel.open( false );
+        antennaPanel.resizeOnTopBar( true );
         _scrollPane.addNode( antennaPanel );
         _antennaPane = new NodeBrowserScrollPane();
-        antennaPanel.add( _antennaPane );
+        _antennaPane.drawFrame( false );
+        _antennaPane.setLevel( 1 );
+        _antennaPane.respondToResizeEvents( true );
+        _antennaPane.noTimer();
+        antennaPanel.addScrollPane( _antennaPane );
         
+        //  This panel contains the list of sources.
+        IndexedPanel sourcePanel = new IndexedPanel( "Sources" );
+        sourcePanel.open( false );
+        sourcePanel.closedHeight( 20 );
+        sourcePanel.resizeOnTopBar( true );
+        _scrollPane.addNode( sourcePanel );
+        _sourcePane = new NodeBrowserScrollPane();
+        _sourcePane.drawFrame( false );
+        _sourcePane.setLevel( 1 );
+        _sourcePane.respondToResizeEvents( true );
+        _sourcePane.noTimer();
+        sourcePanel.addScrollPane( _sourcePane );
         
         //  This panel is used to select scans, which turn into jobs.
         IndexedPanel scanPanel = new IndexedPanel( "Scan Selection" );
@@ -366,6 +384,32 @@ public class ExperimentEditor extends JFrame { //JDialog {
             }
         });
         scanPanel.add( _scanGrid );
+        _selectAllScansButton = new JButton( "Select All" );
+        _selectAllScansButton.setBounds( 10, 30, 100, 25 );
+        _selectAllScansButton.setToolTipText( "Select all scans for which all restrictions apply." );
+        _selectAllScansButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _scanGrid.allOn();
+                produceV2dFile();
+            }
+        });
+        scanPanel.add( _selectAllScansButton );
+        _selectNoScansButton = new JButton( "Clear All" );
+        _selectNoScansButton.setBounds( 115, 30, 100, 25 );
+        _selectNoScansButton.setToolTipText( "De-select all scans." );
+        _selectNoScansButton.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _scanGrid.allOff();
+                produceV2dFile();
+            }
+        });
+        scanPanel.add( _selectNoScansButton );
+        _timeLimits = new TimeLimitPanel();
+        scanPanel.add( _timeLimits );
+        JLabel timeLimitsLabel = new JLabel( "Time Limits:" );
+        timeLimitsLabel.setBounds( 180, 30, 145, 25 );
+        timeLimitsLabel.setHorizontalAlignment( JLabel.RIGHT );
+        scanPanel.add( timeLimitsLabel );
         
         //  This panel is used to determine file names and related matters.
         IndexedPanel namesPanel = new IndexedPanel( "Names, Etc." );
@@ -586,6 +630,18 @@ public class ExperimentEditor extends JFrame { //JDialog {
         });
         buttonPanel.add( _singleInputFileCheck );
         _singleInputFileCheck.setSelected( _settings.defaultNames().singleInputFile );
+        _doSanityCheck = new JCheckBox( "" );
+        _doSanityCheck.setToolTipText( "Check the settings for stations, files, etc, and warn of any problems." );
+        _doSanityCheck.setSelected( _settings.defaultNames().jobCreationSanityCheck );
+        _doSanityCheck.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _settings.defaultNames().jobCreationSanityCheck = _doSanityCheck.isSelected();
+            }
+        });
+        buttonPanel.add( _doSanityCheck );
+        _doSanityLabel = new JLabel( "Do Sanity Check:" );
+        _doSanityLabel.setHorizontalAlignment( JLabel.RIGHT );
+        buttonPanel.add( _doSanityLabel );
         _cancelButton = new JButton( "Cancel" );
         _cancelButton.setBounds( 100, 140, 100, 25 );
         _cancelButton.addActionListener( new ActionListener() {
@@ -653,14 +709,22 @@ public class ExperimentEditor extends JFrame { //JDialog {
             _fromExperiment.setBounds( 20, 140, 150, 25 );
             _vexBrowseButton.setBounds( 175, 140, 100, 25 );
             _goButton.setBounds( w - 125, 170, 100, 25 );
-            _scanGrid.setBounds( 10, 40, w - 35, 350 );
+            _doSanityCheck.setBounds( w - 50, 110, 25, 25 );
+            _doSanityLabel.setBounds( w - 250, 110, 195, 25 );
+            _scanGrid.setBounds( 10, 60, w - 35, 330 );
+            _timeLimits.setBounds( 330, 20, w - 355, 35 );
             _v2dFileName.setBounds( 100, 20, w - 125, 25 );
             _v2dEditor.setBounds( 10, 50, w - 35, 440 );
             _passDirectory.setBounds( 285, 50, w - 310, 25 );
             _stagingArea.setBounds( 285, 80, w - 310, 25 );
-            _antennaPane.setBounds( 0, 20, w - 25, 380 );
+            _antennaPane.setBounds( 0, 20, w, _antennaPane.dataHeight() );
             for ( Iterator<BrowserNode> iter = _antennaPane.browserTopNode().childrenIterator(); iter.hasNext(); ) {
-                AntennaPanel thisPanel = (AntennaPanel)iter.next();
+                StationPanel thisPanel = (StationPanel)iter.next();
+                thisPanel.newWidth( w - 25 );
+            }
+            _sourcePane.setBounds( 0, 20, w, _sourcePane.dataHeight() );
+            for ( Iterator<BrowserNode> iter = _sourcePane.browserTopNode().childrenIterator(); iter.hasNext(); ) {
+                SourcePanel thisPanel = (SourcePanel)iter.next();
                 thisPanel.newWidth( w - 25 );
             }
             _statusLabel.setBounds( 10, 0, w - 35, 25 );
@@ -854,19 +918,24 @@ public class ExperimentEditor extends JFrame { //JDialog {
     }
     
     /*
-     * This class is used to display information about an antenna.  It is an IndexedPanel
-     * with a bunch of controls.
+     * This class is used to display information about a source.  It is an IndexedPanel
+     * with a few controls.  May need to be put in its own file (like StationPanel) if
+     * it gets much more complex.
      */
-    public class AntennaPanel extends IndexedPanel {
-        
-        public AntennaPanel( String title ) {
-            super( title );
+    public class SourcePanel extends IndexedPanel {
+
+        public SourcePanel( VexFileParser.Source source, SystemSettings settings ) {
+            super( source.name );
+            _settings = settings;
             _this = this;
+            _changeListeners = new EventListenerList();
             this.closedHeight( 20 );
-            this.openHeight( 110 );
+            this.openHeight( 200 );
             this.open( false );
+            this.drawFrame( false );
+            this.resizeOnTopBar( true );
             _useCheck = new JCheckBox( "" );
-            _useCheck.setBounds( 100, 2, 18, 20 );
+            _useCheck.setBounds( 200, 2, 18, 16 );
             _useCheck.setSelected( true );
             _useCheck.addActionListener( new ActionListener() {
                 public void actionPerformed( ActionEvent evt ) {
@@ -874,262 +943,11 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 }
             } );
             this.add( _useCheck );
-            _dataSource = new JLabel( "unknown" );
-            _dataSource.setBounds( 230, 2, 400, 20 );
-            this.add( _dataSource );
-            JLabel dataSourceLabel= new JLabel( "Data Source: " );
-            dataSourceLabel.setBounds( 100, 2, 125, 20 );
-            dataSourceLabel.setHorizontalAlignment( JLabel.RIGHT );
-            this.add( dataSourceLabel );
-            _vsnCheck = new JCheckBox( "" );
-            _vsnCheck.setBounds( 200, 30, 25, 25 );
-            _vsnCheck.setSelected( false );
-            _vsnCheck.addActionListener( new ActionListener() {
-                public void actionPerformed( ActionEvent evt ) {
-                    _vsnCheck.setSelected( true );
-                    _vsnList.setEnabled( true );
-                    _fileCheck.setSelected( false );
-                    _eVLBICheck.setSelected( false );
-                    _dataSource.setText( (String)_vsnList.getSelectedItem() );
-                    _fileFilter.setEnabled( false );
-                    _fileList.setVisible( false );
-                    _this.openHeight( 110 );
-                    produceV2dFile();
-                }
-            } );
-            this.add( _vsnCheck );
-            JLabel vsnLabel = new JLabel( "Module: " );
-            vsnLabel.setBounds( 100, 30, 95, 25 );
-            vsnLabel.setHorizontalAlignment( JLabel.RIGHT );
-            this.add( vsnLabel );
-            _vsnList = new JComboBox();
-            _vsnList.setBounds( 230, 30, 210, 25 );
-            _vsnList.setToolTipText( "VSN of module containing data for this antenna." );
-            _vsnList.setEditable( true );
-            //  This little bit causes a typed-in item to be treated as a module name.
-            _vsnList.getEditor().addActionListener( new ActionListener() {
-                public void actionPerformed( ActionEvent e ) {
-                    _dataSource.setText( (String)_vsnList.getEditor().getItem() );
-                    //  If not already in the list of VSNs, add this name.
-                    if ( !_settings.dataSourceInList( (String)_vsnList.getEditor().getItem(), "VSN" ) ) {
-                        if ( ((String)_vsnList.getEditor().getItem()).length() > 0 )
-                            _settings.addDataSource( (String)_vsnList.getEditor().getItem(), "VSN", "hardware" );
-                    }
-                    produceV2dFile();
-                }
-            });
-            _vsnList.setBackground( Color.WHITE );
-            _vsnList.addActionListener( new ActionListener() {
-                public void actionPerformed( ActionEvent e ) {
-                    _dataSource.setText( (String)_vsnList.getSelectedItem() );
-                    produceV2dFile();
-                }
-            });
-            this.add( _vsnList );
-            _vsnList.setEnabled( true );
-            Iterator<SystemSettings.DataSource> iter = _settings.listDataSources( "VSN" ).iterator();
-            for ( ; iter.hasNext(); )
-                _vsnList.addItem( iter.next().name );
-            _fileCheck = new JCheckBox( "" );
-            _fileCheck.setBounds( 200, 80, 25, 25 );
-            _fileCheck.setSelected( false );
-            _fileCheck.addActionListener( new ActionListener() {
-                public void actionPerformed( ActionEvent evt ) {
-                    _vsnCheck.setSelected( false );
-                    _fileCheck.setSelected( true );
-                    _eVLBICheck.setSelected( false );
-                    _vsnList.setEnabled( false );
-                    _dataSource.setText( "files " + _fileFilter.getText().trim() + "*" );
-                    _fileFilter.setEnabled( true );
-                    _fileList.setVisible( true );
-                    _this.openHeight( 250 );
-                    produceV2dFile();
-                }
-            } );
-            this.add( _fileCheck );
-            JLabel fileLabel = new JLabel( "Files: " );
-            fileLabel.setBounds( 100, 80, 95, 25 );
-            fileLabel.setHorizontalAlignment( JLabel.RIGHT );
-            this.add( fileLabel );
-            _fileFilter = new SaneTextField();
-            _fileFilter.setEnabled( false );
-            _fileFilter.addActionListener( new ActionListener() {
-                public void actionPerformed( ActionEvent evt ) {
-                    fileFilterCallback();
-                }
-            } );
-            this.add( _fileFilter );
-            _fileList = new NodeBrowserScrollPane();
-            _fileList.setBackground( Color.WHITE );
-            this.add( _fileList );
-            JLabel fileFilterLabel = new JLabel( "Filter:" );
-            fileFilterLabel.setHorizontalAlignment( JLabel.RIGHT );
-            fileFilterLabel.setBounds( 195, 80, 80, 25 );
-            this.add( fileFilterLabel );
-            _eVLBICheck = new JCheckBox( "" );
-            _eVLBICheck.setBounds( 200, 55, 25, 25 );
-            _eVLBICheck.setSelected( false );
-            _eVLBICheck.addActionListener( new ActionListener() {
-                public void actionPerformed( ActionEvent evt ) {
-                    _vsnCheck.setSelected( false );
-                    _fileCheck.setSelected( false );
-                    _eVLBICheck.setSelected( true );
-                    _vsnList.setEnabled( false );
-                    _dataSource.setText( "some file" );
-                    _fileFilter.setEnabled( false );
-                    _fileList.setVisible( false );
-                    _this.openHeight( 110 );
-                    produceV2dFile();
-                }
-            } );
-            this.add( _eVLBICheck );
-            JLabel eVLBILabel = new JLabel( "E-Transfer: " );
-            eVLBILabel.setBounds( 100, 55, 95, 25 );
-            eVLBILabel.setHorizontalAlignment( JLabel.RIGHT );
-            this.add( eVLBILabel );
-            //  Default setup.  This should come from the SystemSettings class so
-            //  it is saved between runs.
-            _vsnCheck.setSelected( true );
-            _changeListeners = new EventListenerList();
-        }
-        
-        /*
-         * Change things to match a new width.
-         */
-        public void newWidth( int w ) {
-            _fileFilter.setBounds( 280, 80, w - 305, 25 );
-            _fileList.setBounds( 230, 110, w - 255, 120 );
         }
 
-        /*
-         * This function is called when the file filter is changed.  It gets a list
-         * of files from the DiFX Host that match the current filter.
-         */
-        public void fileFilterCallback() {
-            final ArrayList<String> newList = new ArrayList<String>();
-            final Cursor cursor = this.getCursor();
-            final IndexedPanel _this = this;
-            this.setCursor( Cursor.getPredefinedCursor( Cursor.WAIT_CURSOR ) );
-            DiFXCommand_ls ls = new DiFXCommand_ls( _fileFilter.getText().trim() + "*", _settings );
-            ls.addEndListener( new ActionListener() {
-                public void actionPerformed( ActionEvent e ) {
-                    _this.setCursor( cursor );
-                    //  Found anything at all?
-                    if ( newList.size() > 0 ) {
-                        Iterator<String> iter = newList.iterator();
-                        String commonString = iter.next();
-                        clearFileList();
-                        addToFileList( commonString, _settings.difxControlAddress() );
-                        for ( ; iter.hasNext(); ) {
-                            String newStr = iter.next();
-                            addToFileList( newStr, _settings.difxControlAddress() );
-                            int i = 0;
-                            while ( commonString.regionMatches( 0, newStr, 0, i ) )
-                                ++i;
-                            commonString = commonString.substring( 0, i + 1 );
-                        }
-                        //  The common string becomes the new contents of the filter...
-                        _fileFilter.setText( commonString );
-                        _fileFilter.setCaretPosition( commonString.length() );
-                        _dataSource.setText( "files " + _fileFilter.getText().trim() + "*" );
-                    }
-                    dispatchChangeCallback();
-                }
-            });
-            ls.addIncrementalListener( new ActionListener() {
-                public void actionPerformed( ActionEvent e ) {
-                    newList.add( e.getActionCommand().trim() );
-                }
-            });
-            ls.send();
+        public void newWidth( int w ) {
         }
-        
-        protected class FileListItem extends IndexedPanel {
-            
-            FileListItem( String filename, String sourceNode, boolean use ) {
-                super( filename );
-                this.alwaysOpen( true );
-                this.openHeight( 20 );
-                this.noArrow( true );
-                this.backgroundColor( Color.WHITE );
-                this.drawFrame( false );
-                _use = new JCheckBox( "" );
-                _use.setBounds( 5, 0, 20, 20 );
-                _use.setBackground( Color.WHITE );
-                //  Any change in the "use" needs to trigger a change event.
-                _use.addActionListener( new ActionListener() {
-                    public void actionPerformed( ActionEvent evt ) {
-                        dispatchChangeCallback();
-                    }
-                } );
-                if ( use )
-                    _use.setSelected( true );
-                this.add( _use );
-                sourceNode( sourceNode );
-            }
-            
-            public boolean use() { return _use.isSelected(); }
-            public void use( boolean newVal ) { _use.setSelected( newVal ); }
-            public String sourceNode() { return _sourceNode; }
-            public void sourceNode( String newVal ) { _sourceNode = newVal; }
-            
-            protected JCheckBox _use;
-            protected String _sourceNode;
-            
-        }
-        
-        /*
-         * Add a new item to the list of files - presumably a new file name.
-         */
-        public void addToFileList( String newFile, String sourceNode ) {
-            //  Make sure this doesn't terminate with a "/" character - so we
-            //  know its a file.
-            if ( newFile.charAt( newFile.length() - 1 ) != '/' )
-                _fileList.addNode( new FileListItem( newFile, sourceNode, true ) );
-        }
-        
-        /*
-         * Clear all items from the list of files.
-         */
-        public void clearFileList() {
-            _fileList.browserTopNode().clearChildren();
-        }
-        
-        /*
-         * Return a list of all filenames listed in the file list.  Only those
-         * items with the "use" check are listed.
-         */
-        public ArrayList<String> fileList() {
-            ArrayList<String> newList = new ArrayList<String>();
-            for ( Iterator<BrowserNode> iter = _fileList.browserTopNode().childrenIterator(); iter.hasNext(); ) {
-                FileListItem newItem = (FileListItem)iter.next();
-                if ( newItem.use() )
-                    newList.add( newItem.name() );
-            }
-            return newList;
-        }
-        
-        /*
-         * Return the machine name associated with the given file item.
-         */
-        public String machineForFile( String filename ) {
-            for ( Iterator<BrowserNode> iter = _fileList.browserTopNode().childrenIterator(); iter.hasNext(); ) {
-                FileListItem newItem = (FileListItem)iter.next();
-                if ( newItem.name().contentEquals( filename ) )
-                    return newItem.sourceNode();
-            }
-            return null;
-        }
-        
-        public boolean use() { return _useCheck.isSelected(); }
-        public boolean useVsn() { return _vsnCheck.isSelected(); }
-        public boolean useFile() { return _fileCheck.isSelected(); }
-        public boolean useEVLBI() { return _eVLBICheck.isSelected(); }
-        public String vsnSource() { return (String)_vsnList.getSelectedItem(); }
-        
-        /*
-         * Add a "listener" to callbacks when any changes to button states occur.
-         */
+
         public void addChangeListener( ActionListener a ) {
             _changeListeners.add( ActionListener.class, a );
         }
@@ -1143,30 +961,24 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     ((ActionListener)listeners[i+1]).actionPerformed( new ActionEvent( this, ActionEvent.ACTION_PERFORMED, "" ) );
             }
         }
-
-        protected JCheckBox _useCheck;
-        protected JCheckBox _vsnCheck;
-        protected JCheckBox _fileCheck;
-        protected JCheckBox _eVLBICheck;
-        protected JComboBox _vsnList;
-        protected JLabel _dataSource;
-        protected EventListenerList _changeListeners;
-        protected SaneTextField _fileFilter;
-        protected NodeBrowserScrollPane _fileList;
-        protected AntennaPanel _this;
         
+        public boolean use() { return _useCheck.isSelected(); }
+
+        protected SourcePanel _this;
+        protected JCheckBox _useCheck;
+        protected EventListenerList _changeListeners;
     }
     
     /*
      * This is a list of antenna panels that provides some useful information about the
      * data in the list.
      */
-    public class AntennaList extends ArrayList<AntennaPanel> {
+    public class AntennaList extends ArrayList<StationPanel> {
         
-        public ArrayList<AntennaPanel> useList() {
-            ArrayList<AntennaPanel> list = new ArrayList<AntennaPanel>();
-            for ( Iterator<AntennaPanel> iter = this.iterator(); iter.hasNext(); ) {
-                AntennaPanel panel = iter.next();
+        public ArrayList<StationPanel> useList() {
+            ArrayList<StationPanel> list = new ArrayList<StationPanel>();
+            for ( Iterator<StationPanel> iter = this.iterator(); iter.hasNext(); ) {
+                StationPanel panel = iter.next();
                 if ( panel.use() )
                     list.add( panel );
             }
@@ -1175,6 +987,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         
     }
     
+
     /*
      * Read the current vex file, which is stored in the editor, and parse out items
      * that we can use in the .v2d file.
@@ -1182,37 +995,114 @@ public class ExperimentEditor extends JFrame { //JDialog {
     public void parseNewVexFile() {
         VexFileParser vexData = new VexFileParser();
         vexData.data( _editor.text() );
+        Calendar minTime = null;
+        Calendar maxTime = null;
         //  Build a grid out of the scans found
+        _scanGrid.clearButtons();
+        _timeLimits.clearButtons();
         if ( vexData.scanList() != null ) {
             for ( Iterator iter = vexData.scanList().iterator(); iter.hasNext(); ) {
                 VexFileParser.Scan scan = (VexFileParser.Scan)iter.next();
                 String tooltip = scan.name + "\n" + scan.source + "\n" +
                         scan.start.get( Calendar.YEAR ) + "-" + scan.start.get( Calendar.DAY_OF_YEAR ) + " (" +
                         scan.start.get( Calendar.MONTH ) + "/" + scan.start.get( Calendar.DAY_OF_MONTH ) + ")  " +
-                        scan.start.get( Calendar.HOUR_OF_DAY ) + ":" +
-                        scan.start.get( Calendar.MINUTE ) + ":" + scan.start.get( Calendar.SECOND ) + "\n";
+                        String.format( "%02d", scan.start.get( Calendar.HOUR_OF_DAY ) ) + ":" +
+                        String.format( "%02d", scan.start.get( Calendar.MINUTE ) ) + ":" + 
+                        String.format( "%02d", scan.start.get( Calendar.SECOND ) ) + "\n";
                 for ( Iterator jter = scan.station.iterator(); jter.hasNext(); ) {
                     VexFileParser.ScanStation station = (VexFileParser.ScanStation)jter.next();
                     tooltip += station.wholeString + "\n";
+                    //  Find the start and end time of this observation.
+                    Calendar startTime = scan.start;
+                    startTime.add( Calendar.SECOND, station.delay );
+                    Calendar endTime = scan.start;
+                    endTime.add( Calendar.SECOND, station.delay + station.duration );
+                    //  Check these against the minimum and maximum times for the whole set of scans
+                    //  described by this .vex file.
+                    if ( minTime == null ) {
+                        minTime = startTime;
+                        maxTime = endTime;
+                    }
+                    else {
+                        if ( startTime.before( minTime ) )
+                            minTime = startTime;
+                        if ( endTime.after( maxTime ) )
+                            maxTime = endTime;
+                    }
                 }
-                _scanGrid.addButton( scan.name, tooltip, true );
+                //  Add a new button to the grid, then attach the associated data to it so they
+                //  can be consulted later.
+                ButtonGrid.GridButton newButton = _scanGrid.addButton( scan.name, tooltip, true );
+                newButton.data( scan );
+                _timeLimits.addButton( newButton, scan );
             }
         }
-        //  Add panels of information about each antenna.
+        //  Set the limits on the time limit panel.
+        _timeLimits.limits( minTime, maxTime );
+        //  Add panels of information about each antenna.  First we clear the existing
+        //  lists of antennas (these might have been formed the last time the .vex file
+        //  was parsed).
+        _antennaPane.clear();
+        if ( _antennaList != null )
+            _antennaList.clear();
         if ( vexData.stationList() != null ) {
             for ( Iterator<VexFileParser.Station> iter = vexData.stationList().iterator(); iter.hasNext(); ) {
                 VexFileParser.Station station = iter.next();
                 //  Make a new panel to hold this station.
                 if ( _antennaList == null )
                     _antennaList = new AntennaList();
-                AntennaPanel panel = new AntennaPanel( station.name );
+                StationPanel panel = new StationPanel( station, _settings );
                 panel.addChangeListener( new ActionListener() {
                     public void actionPerformed( ActionEvent evt ) {
+                        //  Slightly slippery here...this ignores user's specific selections
+                        //  of scans and turns on/off all those that meet station restrictions
+                        //  (as well as other restrictions - sources, etc.).
+                        _scanGrid.allOn();
                         produceV2dFile();
                     }
                 } );
                 _antennaPane.addNode( panel );
                 _antennaList.add( panel );
+                //  Add the appropriate site information for this station.
+                for ( Iterator<VexFileParser.Site> jter = vexData.siteList().iterator(); jter.hasNext(); ) {
+                    VexFileParser.Site site = jter.next();
+                    if ( site.name.equalsIgnoreCase( station.site ) )
+                        panel.addSiteInformation( site );
+                }
+                //  Same for antenna information.
+                for ( Iterator<VexFileParser.Antenna> jter = vexData.antennaList().iterator(); jter.hasNext(); ) {
+                    VexFileParser.Antenna antenna = jter.next();
+                    if ( antenna.name.equalsIgnoreCase( station.antenna ) )
+                        panel.addAntennaInformation( antenna );
+                }
+            }
+        }
+        //  Add panels of information about each source.
+        _sourcePane.clear();
+        if ( vexData.sourceList() != null ) {
+            for ( Iterator<VexFileParser.Source> iter = vexData.sourceList().iterator(); iter.hasNext(); ) {
+                VexFileParser.Source source = iter.next();
+                //  Make sure this source is used in one of the scans!  If not, we
+                //  ignore it, as the user should have no interest in it.
+                boolean keepSource = false;
+                for ( Iterator<VexFileParser.Scan> jter = vexData.scanList().iterator(); jter.hasNext() && !keepSource; ) {
+                    VexFileParser.Scan scan = jter.next();
+                    if ( scan.source.equalsIgnoreCase( source.name ) )
+                        keepSource = true;
+                }
+                if ( keepSource ) {
+                    SourcePanel panel = new SourcePanel( source, _settings );
+                    panel.addChangeListener( new ActionListener() {
+                        public void actionPerformed( ActionEvent evt ) {
+                            //  Slightly slippery here...this ignores user's specific selections
+                            //  of scans and turns on/off all those that meet station restrictions
+                            //  (as well as other restrictions - sources, etc.).
+                            _scanGrid.allOn();
+                            produceV2dFile();
+                        }
+                    } );
+                    _sourcePane.addNode( panel );
+                }
             }
         }
         produceV2dFile();
@@ -1575,6 +1465,46 @@ public class ExperimentEditor extends JFrame { //JDialog {
     public void produceV2dFile() {
         //  Before creating this file, check the scan selections, as changes to
         //  settings may have changed the restrictions on them.
+        for ( Iterator<ButtonGrid.GridButton> iter = _scanGrid.buttonList().iterator(); iter.hasNext(); ) {
+            ButtonGrid.GridButton button = iter.next();
+            //  Check any scan button that is already on against chosen antennas.
+            if ( button.on() ) {
+                VexFileParser.Scan scan = (VexFileParser.Scan)button.data();
+                //  The list of stations/antennas that is on...both of the scans antennas must
+                //  be included or it will be turned off.
+                boolean _stationsMatch = true;
+                for ( Iterator jter = scan.station.iterator(); jter.hasNext(); ) {
+                    VexFileParser.ScanStation station = (VexFileParser.ScanStation)jter.next();
+                    if ( _antennaList == null || _antennaList.useList().isEmpty() )
+                        _stationsMatch = false;
+                    else {
+                        boolean stationFound = false;
+                        for ( Iterator<StationPanel> kter = _antennaList.useList().iterator(); kter.hasNext(); ) {
+                            StationPanel antenna = kter.next();
+                            if ( antenna.name().equalsIgnoreCase( station.name ) ) {
+                                stationFound = true;
+                            }
+                        }
+                        if ( !stationFound )
+                            _stationsMatch = false;
+                    }
+                }
+                if ( !_stationsMatch )
+                    button.on( false );
+            }
+            //  Next check against the sources that have been chosen.
+            if ( button.on() ) {
+                VexFileParser.Scan scan = (VexFileParser.Scan)button.data();
+                boolean _sourceFound = false;
+                for ( Iterator<BrowserNode> jter = _sourcePane.browserTopNode().childrenIterator(); jter.hasNext() && !_sourceFound; ) {
+                    SourcePanel source = (SourcePanel)jter.next();
+                    if ( scan.source.equalsIgnoreCase( source.name() ) && source.use() )
+                        _sourceFound = true;
+                }
+                if ( !_sourceFound )
+                    button.on( false );
+            }
+        }
         //  Create a v2d file name, if one hasn't been used already....we use the
         //  .vex file name (if it exists).
         if ( _v2dFileName.getText().length() == 0 ) {
@@ -1620,8 +1550,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
         //  The antennas included in this experiment...
         if ( _antennaList != null && !_antennaList.useList().isEmpty() ) {
             str += "antennas = ";
-            for ( Iterator<AntennaPanel> iter = _antennaList.useList().iterator(); iter.hasNext(); ) {
-                AntennaPanel antenna = iter.next();
+            for ( Iterator<StationPanel> iter = _antennaList.useList().iterator(); iter.hasNext(); ) {
+                StationPanel antenna = iter.next();
                 if ( antenna.use() ) {
                     str += antenna.name();
                     if ( iter.hasNext() )
@@ -1654,8 +1584,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     + "}\n\n";
         }
         else {
-            JOptionPane.showMessageDialog( _this, "No scans have been chosen for this processing\n(so no jobs will be created)!",
-                    "Zero Scans Included", JOptionPane.WARNING_MESSAGE );
+//            JOptionPane.showMessageDialog( _this, "No scans have been chosen for this processing\n(so no jobs will be created)!",
+//                    "Zero Scans Included", JOptionPane.WARNING_MESSAGE );
         }
         
         //  Describe specifics for each used antenna...data source, etc.  The following
@@ -1665,8 +1595,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
             _fileToNodeMap = new HashMap<String,String>();
         _fileToNodeMap.clear();
         if ( _antennaList != null && !_antennaList.useList().isEmpty() ) {
-            for ( Iterator<AntennaPanel> iter = _antennaList.useList().iterator(); iter.hasNext(); ) {
-                AntennaPanel antenna = iter.next();
+            for ( Iterator<StationPanel> iter = _antennaList.useList().iterator(); iter.hasNext(); ) {
+                StationPanel antenna = iter.next();
                 if ( antenna.use() ) {
                     str += "ANTENNA " + antenna.name() + "\n";
                     str += "{\n";
@@ -1688,6 +1618,16 @@ public class ExperimentEditor extends JFrame { //JDialog {
                             }
                         }
                     }
+                    //  Position changes.
+                    if ( antenna.positionXChange() )
+                        str += "   X = " + antenna.positionX().toString() + "\n";
+                    if ( antenna.positionYChange() )
+                        str += "   Y = " + antenna.positionY().toString() + "\n";
+                    if ( antenna.positionZChange() )
+                        str += "   Z = " + antenna.positionZ().toString() + "\n";
+                    //  Clock settings.
+                    if ( antenna.deltaClockChange() )
+                        str += "   deltaClock = " + antenna.deltaClock() + "\n";
                     str += "}\n\n";
                 }
             }
@@ -1739,6 +1679,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
     protected class ApplyThread extends Thread {
         
         public void run() {
+            
+            boolean continueRun = true;
         
             //  Attempt a connection to the database.  We do this each time apply is
             //  hit so we can respond to changed circumstances (database is suddenly there,
@@ -1812,6 +1754,59 @@ public class ExperimentEditor extends JFrame { //JDialog {
             //  not have its own directory on the DiFX host and the queue browser will
             //  know not to display it - its jobs simply appear under the experiment.
             if ( createPass() || _newJobsCheck.isSelected() ) {
+                
+                //  Do some sanity checking on the settings that went into the v2d file.
+                if ( _doSanityCheck.isSelected() ) {
+                    if ( _antennaList != null && !_antennaList.useList().isEmpty() ) {                    
+                        for ( Iterator<StationPanel> iter = _antennaList.useList().iterator(); iter.hasNext(); ) {
+                            StationPanel antenna = iter.next();
+                            if ( antenna.use() ) {
+                                if ( antenna.useVsn() ) {
+                                    if ( antenna.vsnSource() != null && antenna.vsnSource().length() > 0 ) {
+                                        //  Try to locate the directory list.  If it does not
+                                        //  exist, see if the use wants to continue.
+                                        int exs = DiFXCommand_ls.fileExists( 4, antenna.dirListLocation(), _settings );
+                                        if ( exs == DiFXCommand_ls.FILE_DOESNT_EXIST ) {
+                                            int ret = JOptionPane.showConfirmDialog( _this, 
+                                                    "The directory listing for VSN " + antenna.vsnSource() + "\""
+                                                    + antenna.dirListLocation() + "\" does not exist.\nDo you wish to continue?",
+                                                    "Directory Listing Not Found", 
+                                                    JOptionPane.YES_NO_OPTION );
+                                            if ( ret == JOptionPane.NO_OPTION )
+                                                continueRun = false;
+                                        }
+                                    }
+                                    else {
+                                        int ret = JOptionPane.showConfirmDialog( _this, 
+                                                "No VSN has been specified for antenna " + antenna.name() + ".\nDo you wish to continue?",
+                                                antenna.name() + "Lacks Data Source", 
+                                                JOptionPane.YES_NO_OPTION );
+                                        if ( ret == JOptionPane.NO_OPTION )
+                                            continueRun = false;
+                                    }
+                                }
+                                else if ( antenna.useFile() ) {
+                                    ArrayList<String> fileList = antenna.fileList();
+                                    if ( fileList.size() > 0 ) {
+                                        for ( Iterator<String> jter = fileList.iterator(); jter.hasNext(); ) {
+                                            String filename = jter.next();
+                                            _fileToNodeMap.put( filename, antenna.machineForFile( filename ) );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        int ret = JOptionPane.showConfirmDialog( _this, 
+                                "No antennas have been selected for these obeservations.\nDo you wish to continue?",
+                                "No Antennas Selected", 
+                                JOptionPane.YES_NO_OPTION );
+                        if ( ret == JOptionPane.NO_OPTION )
+                            continueRun = false;
+                    }
+                }
+                
                 //  Add the pass to the database...
                 String newPassName = passName();
                 if ( !createPass() )
@@ -1867,6 +1862,11 @@ public class ExperimentEditor extends JFrame { //JDialog {
                             newFileCallback( e.getActionCommand() );
                         }
                     });
+                    v2d.addEndListener( new ActionListener() {
+                        public void actionPerformed( ActionEvent e ) {
+                            endCallback( e.getActionCommand() );
+                        }
+                    });
                     v2d.send();
                 }
                 
@@ -1895,10 +1895,11 @@ public class ExperimentEditor extends JFrame { //JDialog {
          * (triggered by a callback from the vex2difx thread, thus the name).  If
          * the file is an ".input" file, it creates a new job based on it.
          */
-        public void newFileCallback( String newFile ) {
+        synchronized public void newFileCallback( String newFile ) {
             //  Get the extension and "full name" (the full path without the extension) on this new file...
             String extn = newFile.substring( newFile.lastIndexOf( '.' ) + 1 ).trim();
             String fullName = newFile.substring( 0, newFile.lastIndexOf( '.' ) ).trim();
+            //BLATSystem.out.println( "new file callback!" );
             //  If its an .input or .calc file, create a new job based on it.
             if ( extn.contentEquals( "input" ) || extn.contentEquals( "calc" ) ) {
                 //  See if we've already created it by searching existing jobs for the
@@ -1918,12 +1919,15 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     //  Create a node associated with this new job, then put it into
                     //  the appropriate pass so that it will appear in the queue browser.
                     _statusLabel.setText( "creating new job \"" + jobName + "\"" );
+                    //BLATSystem.out.println( "creating new job \"" + jobName + "\"" );
                     newJob = new JobNode( jobName, _settings );
                     newJob.fullName( fullName );
+                    //BLATSystem.out.println( "adding job name " + fullName );
                     _newPass.addChild( newJob );
                     newJob.passNode( _newPass );
                     _settings.queueBrowser().addJob( newJob );
                     newJob.editorMonitor().editor( _this );
+                    //BLATSystem.out.println( "done with that!" );
                 }
                 //  Apply this file to the job.
                 if ( extn.contentEquals( "input" ) )
@@ -1936,8 +1940,9 @@ public class ExperimentEditor extends JFrame { //JDialog {
         /*
          * This callback occurs when the vex2difx process is complete.
          */
-        public void endCallback( String newFile ) {
+        synchronized public void endCallback( String newFile ) {
             _statusLabel.setText( "vex2difx process completed!" );
+            //BLATSystem.out.println( "vex2difx process completed!" );
         }
         
         PassNode _newPass;
@@ -2013,5 +2018,11 @@ public class ExperimentEditor extends JFrame { //JDialog {
     protected boolean _operationCancelled;
     protected boolean _operationRunning;
     protected HashMap<String,String> _fileToNodeMap;
+    protected JCheckBox _doSanityCheck;
+    protected JLabel _doSanityLabel;
+    protected JButton _selectAllScansButton;
+    protected JButton _selectNoScansButton;
+    protected NodeBrowserScrollPane _sourcePane;
+    protected TimeLimitPanel _timeLimits;
     
 }

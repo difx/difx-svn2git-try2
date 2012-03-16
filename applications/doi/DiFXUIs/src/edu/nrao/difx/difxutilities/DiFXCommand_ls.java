@@ -14,6 +14,9 @@ import java.net.ServerSocket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
@@ -134,5 +137,47 @@ public class DiFXCommand_ls extends DiFXCommand {
     protected EventListenerList _incrementalListeners;
     protected EventListenerList _endListeners;
     protected int _port;
+    
+    static public int FILE_EXISTS = 1;
+    static public int FILE_DOESNT_EXIST = 0;
+    static public int LS_TIMEOUT = -1;
+    /*
+     * This is a quick method for determining whether a file exists or not (on 
+     * the DiFX host).  It has three possible responses:
+     *    1 = file exists
+     *    0 = file does not exist
+     *   -1 = connection timed out
+     * The number of seconds for the timeout is specified as the first argument.
+     */
+    static private boolean doneLs;
+    static private boolean foundLs;
+    static public int fileExists( int tsecs, String path, SystemSettings settings ) {
+        doneLs = false;
+        foundLs = false;
+        DiFXCommand_ls ls = new DiFXCommand_ls( path, settings );
+        ls.addEndListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                doneLs = true;
+            }
+        });
+        ls.addIncrementalListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                if ( e.getActionCommand().trim().length() > 0 )
+                    foundLs = true;
+            }
+        });
+        ls.send();
+        //  Check back every tenth of a second...
+        int count = tsecs * 10;
+        while ( count > 0 ) {
+            try { Thread.sleep( 100 ); } catch ( Exception e ) {}
+            count -= 1;
+            if ( foundLs )
+                return FILE_EXISTS;
+            if ( doneLs )
+                return FILE_DOESNT_EXIST;
+        }
+        return LS_TIMEOUT;
+    }
 
 }

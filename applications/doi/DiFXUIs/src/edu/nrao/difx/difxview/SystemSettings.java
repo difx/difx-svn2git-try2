@@ -118,6 +118,7 @@ public class SystemSettings extends JFrame {
 				_this.newSize();
 			}
 		} );
+        
 
     }
     
@@ -756,6 +757,8 @@ public class SystemSettings extends JFrame {
         _windowConfiguration.settingsWindowW = 800;
         _windowConfiguration.settingsWindowH = 775;
         this.setSize( _windowConfiguration.settingsWindowW, _windowConfiguration.settingsWindowH );
+        _windowConfiguration.jobEditorMonitorWindowW = 900;
+        _windowConfiguration.jobEditorMonitorWindowW = 500;
         _defaultNames.vexFileSource = "";
         _defaultNames.viaHttpLocation = "";
         _defaultNames.viaFtpLocation = "";
@@ -763,6 +766,8 @@ public class SystemSettings extends JFrame {
         _defaultNames.createPassOnExperimentCreation = true;
         _defaultNames.singleInputFile = false;
         _defaultNames.scanBasedJobNames = true;
+        _defaultNames.dirListLocation = "";
+        _defaultNames.jobCreationSanityCheck = true;
     }
     
     /*
@@ -1159,6 +1164,10 @@ public class SystemSettings extends JFrame {
             if ( doiConfig.getWindowConfigSettingsWindowH() != 0 )
                 _windowConfiguration.settingsWindowH = doiConfig.getWindowConfigSettingsWindowH();
             this.setSize( _windowConfiguration.settingsWindowW, _windowConfiguration.settingsWindowH );
+            if ( doiConfig.getWindowConfigJobEditorMonitorWindowW() != 0 )
+                _windowConfiguration.jobEditorMonitorWindowW = doiConfig.getWindowConfigJobEditorMonitorWindowW();
+            if ( doiConfig.getWindowConfigJobEditorMonitorWindowH() != 0 )
+                _windowConfiguration.jobEditorMonitorWindowH = doiConfig.getWindowConfigJobEditorMonitorWindowH();
             if ( doiConfig.getDefaultNamesVexFileSource() != null )
                 _defaultNames.vexFileSource = doiConfig.getDefaultNamesVexFileSource();
             if ( doiConfig.getDefaultNamesViaHttpLocation() != null )
@@ -1169,6 +1178,9 @@ public class SystemSettings extends JFrame {
                 _defaultNames.localFileLocation = doiConfig.getDefaultNamesLocalFileLocation();
             _defaultNames.singleInputFile = doiConfig.isDefaultSingleInputFile();
             _defaultNames.scanBasedJobNames = doiConfig.isDefaultNamesScanBasedJobNames();
+            if ( doiConfig.getDefaultNamesDirListLocation() != null )
+                _defaultNames.dirListLocation = doiConfig.getDefaultNamesDirListLocation();
+            _defaultNames.jobCreationSanityCheck = doiConfig.isDefaultJobCreationSanityCheck();
             generateBroadcastChangeEvent();
             generateDatabaseChangeEvent();
             
@@ -1250,6 +1262,8 @@ public class SystemSettings extends JFrame {
         doiConfig.setWindowConfigExperimentEditorH( _windowConfiguration.experimentEditorH );
         doiConfig.setWindowConfigSettingsWindowW( this.getWidth() );
         doiConfig.setWindowConfigSettingsWindowH( this.getHeight() );
+        doiConfig.setWindowConfigJobEditorMonitorWindowW( _windowConfiguration.jobEditorMonitorWindowW );
+        doiConfig.setWindowConfigJobEditorMonitorWindowH( _windowConfiguration.jobEditorMonitorWindowH );
         
         doiConfig.setDefaultNamesVexFileSource( _defaultNames.vexFileSource );
         doiConfig.setDefaultNamesViaHttpLocation( _defaultNames.viaHttpLocation );
@@ -1257,6 +1271,8 @@ public class SystemSettings extends JFrame {
         doiConfig.setDefaultNamesLocalFileLocation( _defaultNames.localFileLocation );
         doiConfig.setDefaultSingleInputFile( _defaultNames.singleInputFile );
         doiConfig.setDefaultNamesScanBasedJobNames( _defaultNames.scanBasedJobNames );
+        doiConfig.setDefaultNamesDirListLocation( _defaultNames.dirListLocation );
+        doiConfig.setDefaultJobCreationSanityCheck( _defaultNames.jobCreationSanityCheck );
         
         try {
             javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance( doiConfig.getClass().getPackage().getName() );
@@ -1654,6 +1670,8 @@ public class SystemSettings extends JFrame {
         int experimentEditorH;
         int settingsWindowW;
         int settingsWindowH;
+        int jobEditorMonitorWindowW;
+        int jobEditorMonitorWindowH;
     }
     protected WindowConfiguration _windowConfiguration;
     
@@ -1666,6 +1684,8 @@ public class SystemSettings extends JFrame {
         boolean createPassOnExperimentCreation;
         boolean singleInputFile;
         boolean scanBasedJobNames;
+        boolean jobCreationSanityCheck;
+        String dirListLocation;
     }
     protected DefaultNames _defaultNames;
     

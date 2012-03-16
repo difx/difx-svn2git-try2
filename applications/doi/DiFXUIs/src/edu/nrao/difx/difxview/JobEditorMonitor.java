@@ -56,7 +56,8 @@ public class JobEditorMonitor extends JFrame {
         _settings = settings;
         _settings.setLookAndFeel();
         this.setLayout( null );
-        this.setBounds( 500, 100, 900, 500 );
+        this.setBounds( 500, 100, _settings.windowConfiguration().jobEditorMonitorWindowW,
+                _settings.windowConfiguration().jobEditorMonitorWindowH );
         this.setTitle( "Control/Monitor for " + _jobNode.name() );
         _menuBar = new JMenuBar();
         _menuBar.setVisible( true );
@@ -253,6 +254,12 @@ public class JobEditorMonitor extends JFrame {
     public void newSize() {
         int w = this.getWidth();
         int h = this.getHeight();
+        //  The current sizes are saved in the settings...but we can't be certain
+        //  the _settings variable has been set yet.
+        if ( _settings != null ) {
+            _settings.windowConfiguration().jobEditorMonitorWindowW = w;
+            _settings.windowConfiguration().jobEditorMonitorWindowH = h;
+        }
         if ( _menuBar != null )
             _menuBar.setBounds( 0, 0, w, 25 );
         if ( _allObjectsBuilt ) {
@@ -460,7 +467,6 @@ public class JobEditorMonitor extends JFrame {
         JAXBDiFXProcessor xmlProc = new JAXBDiFXProcessor(difxMsg);
         String xmlString = xmlProc.ConvertToXML();
         
-        System.out.println( ">>>>>>>>>>\n" + xmlString + "\n<<<<<<<<<" );
         if ( xmlString != null )
             SendMessage.writeToSocket( xmlString, _settings );
     }
@@ -480,7 +486,7 @@ public class JobEditorMonitor extends JFrame {
 
         // Create start job command
         DifxStop jobStop = factory.createDifxStop();
-        jobStop.setInput( _jobNode.inputFile() ); //_jobNode.directoryPath() + "/" + _jobNode.name() + ".input");
+        jobStop.setInput( _jobNode.inputFile() );
 
         // -- Create the XML defined messages and process through the system
         Body body = factory.createBody();

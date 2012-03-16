@@ -173,12 +173,6 @@ public class VexFileParser {
                     if ( _stationList == null )
                         _stationList = new ArrayList<Station>();
                     _stationList.add( currentStation );
-//                    System.out.println( ">" + currentStation.name );
-//                    System.out.println( ">" + currentStation.site );
-//                    System.out.println( ">" + currentStation.antenna );
-//                    for ( Iterator<String> jter = currentStation.dasList.iterator(); jter.hasNext(); ) {
-//                        System.out.println( ">" + jter.next() );
-//                    }
                 }
             }
         }
@@ -229,14 +223,6 @@ public class VexFileParser {
                     if ( _antennaList == null )
                         _antennaList = new ArrayList<Antenna>();
                     _antennaList.add( currentAntenna );
-//                    System.out.println( ">" + currentAntenna.name );
-//                    System.out.println( ">" + currentAntenna.diameter );
-//                    System.out.println( ">" + currentAntenna.axis_type );
-//                    System.out.println( ">" + currentAntenna.axis_offset );
-//                    System.out.println( ">" + currentAntenna.pointing_sector );
-//                    for ( Iterator<String> jter = currentAntenna.motion.iterator(); jter.hasNext(); ) {
-//                        System.out.println( ">" + jter.next() );
-//                    }
                 }
             }
         }
@@ -377,14 +363,6 @@ public class VexFileParser {
                     if ( _siteList == null )
                         _siteList = new ArrayList<Site>();
                     _siteList.add( currentSite );
-//                    System.out.println( ">" + currentSite.name );
-//                    System.out.println( ">" + currentSite.type );
-//                    System.out.println( ">" + currentSite.site_name );
-//                    System.out.println( ">" + currentSite.id );
-//                    System.out.println( ">" + currentSite.position );
-//                    System.out.println( ">" + currentSite.horizon_map_az );
-//                    System.out.println( ">" + currentSite.horizon_map_el );
-//                    System.out.println( ">" + currentSite.occupation_code );
                 }
             }
         }
@@ -395,7 +373,54 @@ public class VexFileParser {
      * of the source information for the observations.
      */
     protected void parseSourceData( ArrayList<String> data ) {
-        //System.out.println( "source data" );
+        Source currentSource = null;
+        for ( Iterator<String> iter = data.iterator(); iter.hasNext(); ) {
+            String thisLine = iter.next();
+            //  Find the "scan" string indicating the start of a scan.
+            if ( thisLine.length() > 3 && thisLine.substring( 0, 3 ).equalsIgnoreCase( "DEF" ) ) {
+                //  Create a new scan.
+                currentSource = new Source();
+                currentSource.def = thisLine.substring( thisLine.indexOf( ' ' ) ).trim();
+            }
+            else if ( thisLine.length() > 11 && thisLine.substring( 0, 11 ).equalsIgnoreCase( "SOURCE_NAME" ) ) {
+                if ( currentSource != null ) {
+                    currentSource.name = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() > 11 && thisLine.substring( 0, 11 ).equalsIgnoreCase( "SOURCE_TYPE" ) ) {
+                if ( currentSource != null ) {
+                    currentSource.type = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() > 8 && thisLine.substring( 0, 8 ).equalsIgnoreCase( "IAU_NAME" ) ) {
+                if ( currentSource != null ) {
+                    currentSource.IAU_name = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() > 2 && thisLine.substring( 0, 2 ).equalsIgnoreCase( "RA" ) ) {
+                if ( currentSource != null ) {
+                    currentSource.ra = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() > 3 && thisLine.substring( 0, 3 ).equalsIgnoreCase( "DEC" ) ) {
+                if ( currentSource != null ) {
+                    currentSource.dec = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() > 15 && thisLine.substring( 0, 15 ).equalsIgnoreCase( "REF_COORD_FRAME" ) ) {
+                if ( currentSource != null ) {
+                    currentSource.refCoordFrame = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() >= 6 && thisLine.substring( 0, 6 ).equalsIgnoreCase( "ENDDEF" ) ) {
+                if ( currentSource != null ) {
+                    //  Add the current scan to the list of scans.
+                    if ( _sourceList == null )
+                        _sourceList = new ArrayList<Source>();
+                    _sourceList.add( currentSource );
+                }
+            }
+        }
     }
     
     /*
@@ -409,6 +434,9 @@ public class VexFileParser {
     public double revision() { return _revision; }
     public ArrayList<Scan> scanList() { return _scanList; }
     public ArrayList<Station> stationList() { return _stationList; }
+    public ArrayList<Site> siteList() { return _siteList; }
+    public ArrayList<Antenna> antennaList() { return _antennaList; }
+    public ArrayList<Source> sourceList() { return _sourceList; }
     
     public class ScanStation {
         String name;
@@ -453,6 +481,16 @@ public class VexFileParser {
         String occupation_code;
     }
     
+    public class Source {
+        String def;
+        String name;
+        String type;
+        String IAU_name;
+        String ra;
+        String dec;
+        String refCoordFrame;
+    }
+    
     protected double _revision;
     protected int _pos;
     protected int _length;
@@ -461,5 +499,6 @@ public class VexFileParser {
     protected ArrayList<Station> _stationList;
     protected ArrayList<Antenna> _antennaList;
     protected ArrayList<Site> _siteList;
+    protected ArrayList<Source> _sourceList;
     
 }

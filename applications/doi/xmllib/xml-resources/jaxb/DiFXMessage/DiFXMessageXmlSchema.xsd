@@ -148,6 +148,8 @@
                 <xsd:element ref="windowConfigExperimentEditorH"/>
                 <xsd:element ref="windowConfigSettingsWindowW"/>
                 <xsd:element ref="windowConfigSettingsWindowH"/>
+                <xsd:element ref="windowConfigJobEditorMonitorWindowW"/>
+                <xsd:element ref="windowConfigJobEditorMonitorWindowH"/>
 
                 <xsd:element ref="defaultNamesVexFileSource"/>
                 <xsd:element ref="defaultNamesViaHttpLocation"/>
@@ -155,6 +157,8 @@
                 <xsd:element ref="defaultNamesLocalFileLocation"/>
                 <xsd:element ref="defaultSingleInputFile"/>
                 <xsd:element ref="defaultNamesScanBasedJobNames"/>
+                <xsd:element ref="defaultNamesDirListLocation"/>
+                <xsd:element ref="defaultJobCreationSanityCheck"/>
                 
                 <xsd:element ref="suppressUnknownMessageWarnings"/>
 
@@ -226,6 +230,8 @@
     <xsd:element name="windowConfigExperimentEditorH" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigSettingsWindowW" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigSettingsWindowH" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigJobEditorMonitorWindowW" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigJobEditorMonitorWindowH" type="xsd:int"></xsd:element>
                 
     <xsd:element name="defaultNamesVexFileSource" type="xsd:string"></xsd:element>
     <xsd:element name="defaultNamesViaHttpLocation" type="xsd:string"></xsd:element>
@@ -233,6 +239,8 @@
     <xsd:element name="defaultNamesLocalFileLocation" type="xsd:string"></xsd:element>
     <xsd:element name="defaultSingleInputFile" type="xsd:boolean"></xsd:element>
     <xsd:element name="defaultNamesScanBasedJobNames" type="xsd:boolean"></xsd:element>
+    <xsd:element name="defaultNamesDirListLocation" type="xsd:string"></xsd:element>
+    <xsd:element name="defaultJobCreationSanityCheck" type="xsd:boolean"></xsd:element>
 
     <xsd:element name="suppressUnknownMessageWarnings" type="xsd:boolean"></xsd:element>
 
