@@ -723,8 +723,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 StationPanel thisPanel = (StationPanel)iter.next();
                 thisPanel.newWidth( w - 25 );
             }
-            _sourcePane.setBounds( 0, 20, w, _sourcePane.dataHeight() );
             try {
+                _sourcePane.setBounds( 0, 20, w, _sourcePane.dataHeight() );
                 for ( Iterator<BrowserNode> iter = _sourcePane.browserTopNode().childrenIterator(); iter.hasNext(); ) {
                     SourcePanel thisPanel = (SourcePanel)iter.next();
                     thisPanel.newWidth( w - 25 );
