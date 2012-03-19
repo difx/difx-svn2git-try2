@@ -390,6 +390,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         _selectAllScansButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _scanGrid.allOn();
+                _timeLimits.maxLimits();
                 produceV2dFile();
             }
         });
@@ -723,9 +724,12 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 thisPanel.newWidth( w - 25 );
             }
             _sourcePane.setBounds( 0, 20, w, _sourcePane.dataHeight() );
-            for ( Iterator<BrowserNode> iter = _sourcePane.browserTopNode().childrenIterator(); iter.hasNext(); ) {
-                SourcePanel thisPanel = (SourcePanel)iter.next();
-                thisPanel.newWidth( w - 25 );
+            try {
+                for ( Iterator<BrowserNode> iter = _sourcePane.browserTopNode().childrenIterator(); iter.hasNext(); ) {
+                    SourcePanel thisPanel = (SourcePanel)iter.next();
+                    thisPanel.newWidth( w - 25 );
+                }
+            } catch ( java.util.ConcurrentModificationException e ) {
             }
             _statusLabel.setBounds( 10, 0, w - 35, 25 );
         }

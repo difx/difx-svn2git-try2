@@ -270,6 +270,14 @@ public class TimeLimitPanel extends JPanel implements MouseMotionListener,
     }
     
     /*
+     * Set user limits to the min and max of the timeline.
+     */
+    public void maxLimits() {
+        _minUser.setTimeInMillis( _minTime.getTimeInMillis() );
+        _maxUser.setTimeInMillis( _maxTime.getTimeInMillis() );
+    }
+    
+    /*
      * Class that holds the information about a job.
      */
     protected class ButtonInfo {
