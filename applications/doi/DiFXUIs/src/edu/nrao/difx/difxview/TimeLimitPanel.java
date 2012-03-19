@@ -450,18 +450,30 @@ public class TimeLimitPanel extends JPanel implements MouseMotionListener,
     public void mouseMoved( MouseEvent e ) {
         _lastX = e.getX();
         _lastY = e.getY();
-        if ( _lastX > _minPos - 5 && _lastX < _minPos + 5 ) {
-            _inMinButtonLimits = true;
-            _inMinTime = _minUser.getTimeInMillis();
-        }
-        else
-            _inMinButtonLimits = false;
+        //  Track whether we are over the "user maximum" button.
         if ( _lastX > _maxPos - 5 && _lastX < _maxPos + 5 ) {
             _inMaxButtonLimits = true;
             _inMaxTime = _maxUser.getTimeInMillis();
         }
+        //  Also, if the user maximum is off the right edge of the screen, we will
+        //  allow the user to grab it as if it is right on the edge.
+        else if ( _maxUser.after( _maxView ) && _lastX > this.getWidth() - 5 ) {
+            _inMaxButtonLimits = true;
+            _inMaxTime = _maxView.getTimeInMillis();
+        }
         else
             _inMaxButtonLimits = false;
+        //  Same for the user minimum.
+        if ( _lastX > _minPos - 5 && _lastX < _minPos + 5 ) {
+            _inMinButtonLimits = true;
+            _inMinTime = _minUser.getTimeInMillis();
+        }
+        else if ( _minUser.before( _minView ) && _lastX < 5 ) {
+            _inMinButtonLimits = true;
+            _inMinTime = _minView.getTimeInMillis();
+        }
+        else
+            _inMinButtonLimits = false;
     }
     
     @Override

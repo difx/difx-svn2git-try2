@@ -337,6 +337,11 @@ public class VexFileParser {
                     currentSite.id = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
                 }
             }
+            else if ( thisLine.length() > 13 && thisLine.substring( 0, 19 ).equalsIgnoreCase( "SITE_POSITION_EPOCH" ) ) {
+                if ( currentSite != null ) {
+                    currentSite.positionEpoch = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
             else if ( thisLine.length() > 13 && thisLine.substring( 0, 13 ).equalsIgnoreCase( "SITE_POSITION" ) ) {
                 if ( currentSite != null ) {
                     currentSite.position = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
@@ -476,6 +481,7 @@ public class VexFileParser {
         String site_name;
         String id;
         String position;
+        String positionEpoch;
         String horizon_map_az;
         String horizon_map_el;
         String occupation_code;

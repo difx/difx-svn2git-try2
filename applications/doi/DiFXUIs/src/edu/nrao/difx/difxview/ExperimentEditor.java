@@ -1037,7 +1037,11 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 _timeLimits.addButton( newButton, scan );
             }
         }
-        //  Set the limits on the time limit panel.
+        //  Set the limits on the time limit panel.  We expand this a few percent beyond the
+        //  actual limits to make sure everything is contained in the original timeline.
+        int adj = (int)( ( maxTime.getTimeInMillis() - minTime.getTimeInMillis() ) / 50 );
+        minTime.add( Calendar.MILLISECOND, -adj );
+        maxTime.add( Calendar.MILLISECOND, adj );
         _timeLimits.limits( minTime, maxTime );
         //  Add panels of information about each antenna.  First we clear the existing
         //  lists of antennas (these might have been formed the last time the .vex file
