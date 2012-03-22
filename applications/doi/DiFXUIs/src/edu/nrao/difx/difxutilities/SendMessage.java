@@ -30,13 +30,14 @@ public class SendMessage {
    }
 
     public static void writeToSocket( String outString, SystemSettings systemSettings )
+             throws java.net.UnknownHostException 
     {
         try
         {
             MulticastSocket sock = new MulticastSocket();
             
             // Marchall bytes, create packet and send
-            byte[] buffer = outString.getBytes();            
+            byte[] buffer = outString.getBytes();
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length,
                                                        InetAddress.getByName( systemSettings.difxControlAddress() ),
                                                        systemSettings.difxControlPort() );
@@ -45,10 +46,13 @@ public class SendMessage {
             sock.send(packet);
             sock.close();
         }
+        catch ( java.net.UnknownHostException e ) {
+            throw( e );
+        }
         catch (IOException ex)
         {
             java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex); //NOI18N
-        }   
+        }
 
     }
     

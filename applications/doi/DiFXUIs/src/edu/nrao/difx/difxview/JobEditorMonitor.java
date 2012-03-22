@@ -468,7 +468,13 @@ public class JobEditorMonitor extends JFrame {
         String xmlString = xmlProc.ConvertToXML();
         
         if ( xmlString != null )
+            try {
             SendMessage.writeToSocket( xmlString, _settings );
+            }
+            catch ( Exception e ) {
+               java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
+                       e.getMessage() );  //BLAT should be a pop-up
+            }
     }
     
     public void pauseJob() {}
@@ -500,7 +506,13 @@ public class JobEditorMonitor extends JFrame {
         String xmlString = xmlProc.ConvertToXML();
         
         if ( xmlString != null )
+            try {
             SendMessage.writeToSocket( xmlString, _settings );
+            }
+            catch ( Exception e ) {
+               java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
+                       e.getMessage() );  //BLAT should be a pop-up
+            }
     }
     
     /*

@@ -21,6 +21,7 @@ import java.awt.event.ActionEvent;
 
 import java.io.DataInputStream;
 
+import java.net.UnknownHostException;
 import javax.swing.event.EventListenerList;
 
 /**
@@ -80,7 +81,7 @@ public class DiFXCommand_vex2difx extends DiFXCommand {
     }
     
     @Override
-    public void send() {
+    public void send() throws java.net.UnknownHostException {
         ResultReader reader = new ResultReader();
         reader.start();
         super.send();

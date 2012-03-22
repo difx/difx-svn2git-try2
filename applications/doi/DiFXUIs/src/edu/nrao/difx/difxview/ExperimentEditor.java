@@ -32,7 +32,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
 import javax.swing.JFrame;
 
-//import java.awt.Frame;
+import java.awt.Frame;
 import java.awt.Color;
 import java.awt.Point;
 import java.awt.Component;
@@ -58,6 +58,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.FileNotFoundException;
 
+import java.net.UnknownHostException;
 import java.util.Locale;
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.IndexedPanel;
@@ -790,60 +791,19 @@ public class ExperimentEditor extends JFrame { //JDialog {
      */
     public void getVexFromSource() {
         if ( _fromHost.isSelected() ) {
-            _settings.defaultNames().vexFileSource = _fromHostLocation.getText();
-            _fileGet = new DiFXCommand_getFile( _fromHostLocation.getText(), _settings );
-            _fileGet.addEndListener( new ActionListener() {
-                public void actionPerformed( ActionEvent e ) {
-                    //  Check the file size....this will tell us if anything went
-                    //  wrong, and to some degree what.
-                    int fileSize = _fileGet.fileSize();
-                    if ( fileSize > 0 ) {
-                        //  Was it only partially read?
-                        if ( fileSize > _fileGet.inString().length() )
-                            JOptionPane.showMessageDialog( _this, "Warning - connection terminated with "
-                                    + _fileGet.inString().length() + " of "
-                                    + fileSize + " bytes read." );
-                        _editor.text( _fileGet.inString() );
-                        parseNewVexFile();
-                    }
-                    else if ( fileSize == 0 ) {
-                         JOptionPane.showMessageDialog( _this, "File \"" + _fromHostLocation.getText() + "\" has zero length.",
-                                 "Zero Length File", JOptionPane.WARNING_MESSAGE );
-                    }
-                    else if ( fileSize == -10 ) {
-                         JOptionPane.showMessageDialog( _this, "Socket connection timed out before DiFX host connected.",
-                                 "Socket Timeout", JOptionPane.ERROR_MESSAGE );                                        }
-                    else if ( fileSize == -11 ) {
-                         JOptionPane.showMessageDialog( _this, "File transfer failed - " + _fileGet.error(),
-                                 "File Transfer Error", JOptionPane.ERROR_MESSAGE );
-                    }
-                    else if ( fileSize == -1 ) {
-                        JOptionPane.showMessageDialog( _this, "Bad file name (probably the path was not complete.",
-                                "File Name Error", JOptionPane.ERROR_MESSAGE );
-                    }
-                    else if ( fileSize == -2 ) {
-                        JOptionPane.showMessageDialog( _this, "Requested file \"" + _fromHostLocation.getText() + "\" does not exist.",
-                                "File Not Found", JOptionPane.ERROR_MESSAGE );
-                    }
-                    else if ( fileSize == -3 ) {
-                        JOptionPane.showMessageDialog( _this, "Error - DiFX user " + _settings.difxControlUser()
-                             + " does not have read permission for named file.",
-                                "Permission Denied", JOptionPane.ERROR_MESSAGE );
-                    }
-                    else if ( fileSize == -4 ) {
-                        JOptionPane.showMessageDialog( _this, "DiFX user name " + _settings.difxControlUser() +
-                             " not valid on DiFX host.", "Bad User Name",
-                             JOptionPane.ERROR_MESSAGE );   
-                    }
-                    else {
-                        JOptionPane.showMessageDialog( _this, "Unknown error encountered during file transfer.",
-                                "Unknown Error",
-                                JOptionPane.ERROR_MESSAGE );
-                    }
-
-                }
-            });            
-            _fileGet.readString();
+            Component comp = this;
+            while ( comp.getParent() != null )
+                comp = comp.getParent();
+            Point pt = _fromHost.getLocationOnScreen();
+            GetFileMonitor fileGet = new GetFileMonitor( (Frame)comp, pt.x + 25, pt.y + 25, _fromHostLocation.getText(), _settings );
+            //fileGet.setVisible( true );
+            //  We only use the content of the file if it was read successfully.
+            if ( fileGet.success() ) {
+                _settings.defaultNames().vexFileSource = _fromHostLocation.getText();
+                _editor.text( fileGet.inString() );
+                _editor.top();
+                parseNewVexFile();
+            }
         }
         else if ( _viaHttp.isSelected() ) {
             _settings.defaultNames().viaHttpLocation = _viaHttpLocation.getText();
@@ -1285,153 +1245,6 @@ public class ExperimentEditor extends JFrame { //JDialog {
         new AePlayWave( _settings.guiDocPath() + "/cantdo.wav" ).start();
         JOptionPane.showMessageDialog( this, "That feature has not been implemented." );
     }
-    
-    DiFXCommand_sendFile _fileSend;
-    /*
-     * Send the contents of the text editor to the DiFX host, writing it in the
-     * location specified by the vexFileName.
-     */
-    public void writeVexFile() {
-        //  First, make sure there IS a vex file name.
-        if ( vexFileName().length() <= 0 ) {
-            JOptionPane.showMessageDialog( _this, "No .vex file name was specified.",
-                    "Missing Filename", JOptionPane.WARNING_MESSAGE );
-            return;
-        }
-        String passDir = "";
-        if ( this.createPass() )
-            passDir = passDirectory() + "/";
-        _statusLabel.setText( "Writing file \"" + directory() + "/" + passDir + vexFileName() + "\"" );
-        _fileSend = new DiFXCommand_sendFile( directory() + "/" + passDir + vexFileName(), _settings );
-        _fileSend.addEndListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                int fileSize = _fileSend.fileSize();
-                if ( fileSize >= 0 ) {
-                    if ( fileSize < _editor.text().length() ) {
-                        JOptionPane.showMessageDialog( _this, "Only " + _fileSend.fileSize() + 
-                                " of " + _editor.text().length() + " characters were transmitted.",
-                                "Transfer Incomplete", JOptionPane.ERROR_MESSAGE );
-                    }
-                }
-                else if ( fileSize == -10 ) {
-                     JOptionPane.showMessageDialog( _this, "Socket connection timed out before DiFX host connected.",
-                             "Socket Timeout", JOptionPane.ERROR_MESSAGE );                                        }
-                else if ( fileSize == -11 ) {
-                     JOptionPane.showMessageDialog( _this, "File transfer failed - " + _fileGet.error(),
-                             "File Transfer Error", JOptionPane.ERROR_MESSAGE );
-                }
-                else if ( fileSize == -1 ) {
-                    JOptionPane.showMessageDialog( _this, "Mangled path name - does the destination directory start with \"/\"?",
-                            "Path Error", JOptionPane.ERROR_MESSAGE );
-                }
-                else if ( fileSize == -2 ) {
-                    JOptionPane.showMessageDialog( _this, "Destination directory does not exist.",
-                            "Directory Not Found", JOptionPane.ERROR_MESSAGE );
-                }
-                else if ( fileSize == -3 ) {
-                    JOptionPane.showMessageDialog( _this, "Error - DiFX user " + _settings.difxControlUser()
-                         + " does not have proper permissions for the destination directory.",
-                            "Permission Denied", JOptionPane.ERROR_MESSAGE );
-                }
-                else if ( fileSize == -4 ) {
-                    JOptionPane.showMessageDialog( _this, "DiFX user name " + _settings.difxControlUser() +
-                         " not valid on DiFX host.", "Bad User Name",
-                         JOptionPane.ERROR_MESSAGE );   
-                }
-                else if ( fileSize == -5 ) {
-                    JOptionPane.showMessageDialog( _this, "Destination directory is not valid.", "Bad Directory",
-                         JOptionPane.ERROR_MESSAGE );   
-                }
-                else {
-                    JOptionPane.showMessageDialog( _this, "Unknown error encountered during file transfer.",
-                                "Unknown Error",
-                         JOptionPane.ERROR_MESSAGE );   
-                }
-            }
-        });
-        _operationComplete = false;
-        _fileSend.addEndListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                _operationComplete = true;
-            }
-        });
-        _fileSend.sendString( _editor.text() );
-        while ( !_operationComplete )
-            try { Thread.sleep( 10 ); } catch ( Exception e ) {}
-    }
-    
-    DiFXCommand_sendFile _fileSendV2d;
-    /*
-     * Send the contents of the v2d text editor to the DiFX host, writing it in the
-     * location of the .v2d file name.
-     */
-    public void writeV2dFile() {
-        //  First, make sure there IS a vex file name.
-        if ( v2dFileName().length() <= 0 ) {
-            JOptionPane.showMessageDialog( _this, "No .v2d file name was specified.",
-                    "Missing Filename", JOptionPane.WARNING_MESSAGE );
-            return;
-        }
-        String passDir = "";
-        if ( this.createPass() )
-            passDir = passDirectory() + "/";
-        _fileSendV2d = new DiFXCommand_sendFile( directory() + "/" + passDir + v2dFileName(), _settings );
-        _fileSendV2d.addEndListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                int fileSize = _fileSendV2d.fileSize();
-                if ( fileSize >= 0 ) {
-                    if ( fileSize < _v2dEditor.text().length() ) {
-                        JOptionPane.showMessageDialog( _this, "Only " + _fileSendV2d.fileSize() + 
-                                " of " + _v2dEditor.text().length() + " characters were transmitted.",
-                                "Transfer Incomplete", JOptionPane.ERROR_MESSAGE );
-                    }
-                }
-                else if ( fileSize == -10 ) {
-                     JOptionPane.showMessageDialog( _this, "Socket connection timed out before DiFX host connected.",
-                             "Socket Timeout", JOptionPane.ERROR_MESSAGE );                                        }
-                else if ( fileSize == -11 ) {
-                     JOptionPane.showMessageDialog( _this, "File transfer failed - " + _fileGet.error(),
-                             "File Transfer Error", JOptionPane.ERROR_MESSAGE );
-                }
-                else if ( fileSize == -1 ) {
-                    JOptionPane.showMessageDialog( _this, "Mangled path name - does the destination directory start with \"/\"?",
-                            "Path Error", JOptionPane.ERROR_MESSAGE );
-                }
-                else if ( fileSize == -2 ) {
-                    JOptionPane.showMessageDialog( _this, "Destination directory does not exist.",
-                            "Directory Not Found", JOptionPane.ERROR_MESSAGE );
-                }
-                else if ( fileSize == -3 ) {
-                    JOptionPane.showMessageDialog( _this, "Error - DiFX user " + _settings.difxControlUser()
-                         + " does not have proper permissions for the destination directory.",
-                            "Permission Denied", JOptionPane.ERROR_MESSAGE );
-                }
-                else if ( fileSize == -4 ) {
-                    JOptionPane.showMessageDialog( _this, "DiFX user name " + _settings.difxControlUser() +
-                         " not valid on DiFX host.", "Bad User Name",
-                         JOptionPane.ERROR_MESSAGE );   
-                }
-                else if ( fileSize == -5 ) {
-                    JOptionPane.showMessageDialog( _this, "Destination directory is not valid.", "Bad Directory",
-                         JOptionPane.ERROR_MESSAGE );   
-                }
-                else {
-                    JOptionPane.showMessageDialog( _this, "Unknown error encountered during file transfer.",
-                                "Unknown Error",
-                         JOptionPane.ERROR_MESSAGE );   
-                }
-            }
-        });
-        _operationComplete = false;
-        _fileSendV2d.addEndListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                _operationComplete = true;
-            }
-        });
-        _fileSendV2d.sendString( _v2dEditor.text() );
-        while ( !_operationComplete )
-            try { Thread.sleep( 10 ); } catch ( Exception e ) {}
-    }
 
     /*
      * Add a name to the current "vex file list".  This is a list of vex file names
@@ -1751,7 +1564,12 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 //  Make the directory on the DiFX host...
                 _statusLabel.setText( "creating experiment directory on DiFX host" );
                 DiFXCommand_mkdir mkdir = new DiFXCommand_mkdir( directory(), _settings );
-                mkdir.send();
+                try {
+                    mkdir.send();
+                } catch ( java.net.UnknownHostException e ) {
+                    //  BLAT Should be a pop-up and we shouldn't continue this operation
+                    java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+                } 
                 //  Add the node to the queue browser.
                 _settings.queueBrowser().addExperiment( _thisExperiment );
             }
@@ -1773,15 +1591,19 @@ public class ExperimentEditor extends JFrame { //JDialog {
                                     if ( antenna.vsnSource() != null && antenna.vsnSource().length() > 0 ) {
                                         //  Try to locate the directory list.  If it does not
                                         //  exist, see if the use wants to continue.
-                                        int exs = DiFXCommand_ls.fileExists( 4, antenna.dirListLocation(), _settings );
-                                        if ( exs == DiFXCommand_ls.FILE_DOESNT_EXIST ) {
-                                            int ret = JOptionPane.showConfirmDialog( _this, 
-                                                    "The directory listing for VSN " + antenna.vsnSource() + "\""
-                                                    + antenna.dirListLocation() + "\" does not exist.\nDo you wish to continue?",
-                                                    "Directory Listing Not Found", 
-                                                    JOptionPane.YES_NO_OPTION );
-                                            if ( ret == JOptionPane.NO_OPTION )
-                                                continueRun = false;
+                                        try {
+                                            int exs = DiFXCommand_ls.fileExists( 4, antenna.dirListLocation(), _settings );
+                                            if ( exs == DiFXCommand_ls.FILE_DOESNT_EXIST ) {
+                                                int ret = JOptionPane.showConfirmDialog( _this, 
+                                                        "The directory listing for VSN " + antenna.vsnSource() + "\""
+                                                        + antenna.dirListLocation() + "\" does not exist.\nDo you wish to continue?",
+                                                        "Directory Listing Not Found", 
+                                                        JOptionPane.YES_NO_OPTION );
+                                                if ( ret == JOptionPane.NO_OPTION )
+                                                    continueRun = false;
+                                            }
+                                        } catch ( java.net.UnknownHostException e ) {
+                                            //  BLAT handle this properly!
                                         }
                                     }
                                     else {
@@ -1837,7 +1659,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
                                 newPassId = newId;
                         }
                     } catch ( Exception e ) {
-                            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+                        java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
                     }
                 }
                 //  This creates a "node" that will appear in the browser (or won't in the
@@ -1849,19 +1671,41 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 if ( createPass() ) {
                     _statusLabel.setText( "creating pass directory on DiFX host" );
                     DiFXCommand_mkdir mkdir = new DiFXCommand_mkdir( directory() + "/" + passDirectory(), _settings );
-                    mkdir.send();
+                    try {
+                        mkdir.send();
+                    } catch ( java.net.UnknownHostException e ) {
+                        JOptionPane.showMessageDialog( _this, "Error - DiFX host \"" + _settings.difxControlAddress()
+                             + "\" unknown.",
+                                "Host Unknown", JOptionPane.ERROR_MESSAGE );
+                        continueRun = false;
+                    } 
                 }
 
                 //  Create new jobs in the current pass (if requested).
                 if ( _newJobsCheck.isSelected() ) {
                     //  Write the .vex file.  This will be put in the pass directory if one is being
                     //  created, otherwise in the experiment directory.
-                    writeVexFile();
+                    //  First, make sure there IS a vex file name.
+                    if ( vexFileName().length() <= 0 ) {
+                        JOptionPane.showMessageDialog( _this, "No .vex file name was specified.",
+                                "Missing Filename", JOptionPane.WARNING_MESSAGE );
+                    }
+                    String passDir = "";
+                    if ( createPass() )
+                        passDir = passDirectory() + "/";
+                    _statusLabel.setText( "Writing file \"" + directory() + "/" + passDir + vexFileName() + "\"" );
+                    Component comp = _okButton;
+                    while ( comp.getParent() != null )
+                        comp = comp.getParent();
+                    Point pt = _okButton.getLocationOnScreen();
+                    SendFileMonitor sendVex = new SendFileMonitor( (Frame)comp, pt.x + 25, pt.y + 25,
+                            directory() + "/" + passDir + vexFileName(), _editor.text(), _settings );
                     //  Create the .v2d file.  This will be put in the pass directory if it
                     //  exists, or the main experiment directory if not.
-                    writeV2dFile();
+                    SendFileMonitor sendV2d = new SendFileMonitor( (Frame)comp, pt.x + 25, pt.y + 25,
+                            directory() + "/" + passDir + v2dFileName(), _v2dEditor.text(), _settings );
                     //  Run vex2difx on the new pass and v2d file.
-                    String passDir = directory();
+                    passDir = directory();
                     if ( createPass() )
                         passDir += "/" + passDirectory();
                     DiFXCommand_vex2difx v2d = new DiFXCommand_vex2difx( passDir, v2dFileName(), _settings );
@@ -1875,13 +1719,21 @@ public class ExperimentEditor extends JFrame { //JDialog {
                             endCallback( e.getActionCommand() );
                         }
                     });
-                    v2d.send();
+                    try {
+                        v2d.send();
+                    } catch ( java.net.UnknownHostException e ) {
+                        JOptionPane.showMessageDialog( _this, "Error - DiFX host \"" + _settings.difxControlAddress()
+                             + "\" unknown.",
+                                "Host Unknown", JOptionPane.ERROR_MESSAGE );
+                        continueRun = false;
+                    }
                 }
                 
             }
 
             //  Move "current" data (i.e. all files in the experiment directory) into
             //  the pass directory.
+            //  BLAT this needs to be done, obviously
             if ( _currentDataCheck.isSelected() ) {
             }
 

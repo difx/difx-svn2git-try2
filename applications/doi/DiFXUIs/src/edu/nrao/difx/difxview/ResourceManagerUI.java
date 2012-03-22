@@ -657,7 +657,11 @@ public class ResourceManagerUI extends javax.swing.JFrame
             // send out the message
             if ((mController != null) && (difxMsg != null))
             {
+                try {
                mController.writeToSocket(difxMsg);
+                } catch ( java.net.UnknownHostException e ) {
+                    // BLAT is this even used?
+                }
             }
 
          } // -- if (mark5 != null)
@@ -699,7 +703,11 @@ public class ResourceManagerUI extends javax.swing.JFrame
             // send out the message
             if ((mController != null) && (difxMsg != null))
             {
+                try {
                mController.writeToSocket(difxMsg);
+                } catch ( java.net.UnknownHostException e ) {
+                    // BLAT is this even used?
+                }
             }
 
          } // -- if (mark5 != null)
@@ -728,7 +736,11 @@ public class ResourceManagerUI extends javax.swing.JFrame
             // send out the message
             if ((mController != null) && (difxMsg != null))
             {
+                try {
                mController.writeToSocket(difxMsg);
+                } catch ( java.net.UnknownHostException e ) {
+                    // BLAT is this even used?
+                }
             }
          }
       }

@@ -12,6 +12,7 @@ import edu.nrao.difx.xmllib.difxmessage.Body;
 import edu.nrao.difx.difxcontroller.JAXBDiFXProcessor;
 
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
+import java.net.UnknownHostException;
 
 /**
  *
@@ -51,7 +52,8 @@ public class DiFXCommand {
     /*
      * Convert the message to XML and send it.
      */
-    public void send() {
+    public void send() throws java.net.UnknownHostException
+    {
         _difxMsg.setHeader( _header );
         _difxMsg.setBody( _body );
         JAXBDiFXProcessor xmlProc = new JAXBDiFXProcessor( _difxMsg );

@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import java.net.UnknownHostException;
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.IndexedPanel;
 
@@ -424,7 +425,11 @@ public class StationPanel extends IndexedPanel {
                 newList.add( e.getActionCommand().trim() );
             }
         });
-        ls.send();
+        try {
+            ls.send();
+        } catch ( java.net.UnknownHostException e ) {
+            //  BLAT handle this
+        }
     }
 
     protected class FileListItem extends IndexedPanel {

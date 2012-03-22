@@ -67,12 +67,13 @@ public class DiFXCommand_getFile extends DiFXCommand {
         //  read progress and the end of reading.
         _incrementalListeners = new EventListenerList();
         _endListeners = new EventListenerList();
+        _acceptListeners = new EventListenerList();
     }
     
     /*
      * Read a string of text.  
      */
-    public void readString() {
+    public void readString() throws java.net.UnknownHostException {
         StringReader reader = new StringReader();
         reader.start();
         super.send();
@@ -106,6 +107,20 @@ public class DiFXCommand_getFile extends DiFXCommand {
         }
     }
     
+    public void addAcceptListener( ActionListener a ) {
+        _acceptListeners.add( ActionListener.class, a );
+    }
+
+    protected void acceptCallback() {
+        Object[] listeners = _acceptListeners.getListenerList();
+        // loop through each listener and pass on the event if needed
+        int numListeners = listeners.length;
+        for ( int i = 0; i < numListeners; i+=2 ) {
+            if ( listeners[i] == ActionListener.class )
+                ((ActionListener)listeners[i+1]).actionPerformed( new ActionEvent( this, ActionEvent.ACTION_PERFORMED, "" ) );
+        }
+    }
+    
     //  This class reads a text file that can contain UTF characters.  It produces
     //  a string.
     protected class StringReader extends Thread {
@@ -119,14 +134,15 @@ public class DiFXCommand_getFile extends DiFXCommand {
                 ssock.setSoTimeout( 10000 );  //  timeout is in millisec
                 try {
                     Socket sock = ssock.accept();
+                    acceptCallback();
                     //  Turn the socket into a "data stream", which has useful
                     //  functions.
                     DataInputStream in = new DataInputStream( sock.getInputStream() );
                     //  Read the size of the incoming data (bytes).  This is the
                     //  total size - it will be broken into blocks.
                     _fileSize = in.readInt();
-                    incrementalCallback();
                     _inString = "";
+                    incrementalCallback();
                     while ( _inString.length() < _fileSize ) {
                         _inString += in.readUTF();
                         incrementalCallback();
@@ -154,6 +170,7 @@ public class DiFXCommand_getFile extends DiFXCommand {
     protected String _inString;
     protected EventListenerList _incrementalListeners;
     protected EventListenerList _endListeners;
+    protected EventListenerList _acceptListeners;
     protected String _error;
     protected int _port;
 

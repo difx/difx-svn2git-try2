@@ -557,8 +557,10 @@ public class JobNode extends QueueBrowserNode {
                             "Unknown error encountered during file transfer of " + _inputFile.getText() + "." );
                     }
                 }
-            });            
-            fileGet.readString();
+            });  
+            try {
+                fileGet.readString();
+            } catch ( Exception e ) {} //  BLAT we should be using the GetFileMonitor class here instead...
     }
     
     /*

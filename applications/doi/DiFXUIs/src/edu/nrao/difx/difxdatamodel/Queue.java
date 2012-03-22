@@ -929,7 +929,10 @@ System.out.printf("Add disjoint job ==> %s %s %s %s. \n", job.getObjName(), job.
                job.setCorrelationStartUTC();
                setCurrentJob(job);
 
-               SendMessage.writeToSocket( xmlString, _systemSettings );
+               //SendMessage.writeToSocket( xmlString, _systemSettings );
+               java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
+                       "Using Queue Class, which is deprecated code!" );
+
             }
             else
             {
@@ -967,7 +970,9 @@ System.out.printf("Add disjoint job ==> %s %s %s %s. \n", job.getObjName(), job.
                 // do not set the current job to null until the mpidone is received.
                 // setCurrentJob(null);
 
-                SendMessage.writeToSocket( xmlString, _systemSettings );
+//                SendMessage.writeToSocket( xmlString, _systemSettings );
+               java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
+                       "Using Queue Class, which is deprecated code!" );
             }
             else
             {
@@ -1128,7 +1133,9 @@ System.out.printf("Add disjoint job ==> %s %s %s %s. \n", job.getObjName(), job.
             setCurrentJob(null);
 
             // do not send until fully tested.
-            SendMessage.writeToSocket( xmlString, _systemSettings );
+//            SendMessage.writeToSocket( xmlString, _systemSettings );
+               java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
+                       "Using Queue Class, which is deprecated code!" );
          }
          else
          {
@@ -1158,7 +1165,9 @@ System.out.printf("Add disjoint job ==> %s %s %s %s. \n", job.getObjName(), job.
             setCurrentJob(null);
 
             // do not send until fully tested.
-            SendMessage.writeToSocket( xmlString, _systemSettings );
+//            SendMessage.writeToSocket( xmlString, _systemSettings );
+               java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
+                       "Using Queue Class, which is deprecated code!" );
          }
          else
          {

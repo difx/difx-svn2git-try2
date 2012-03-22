@@ -35,6 +35,7 @@ import edu.nrao.difx.xmllib.difxmessage.Body;
 import edu.nrao.difx.xmllib.difxmessage.DifxCommand;
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 import edu.nrao.difx.xmllib.difxmessage.DifxAlert;
+import java.net.UnknownHostException;
 /**
  *
  * @author jspitzak
@@ -373,7 +374,11 @@ public class ClusterNode extends BrowserNode {
             difxMsg.setHeader( header );
             difxMsg.setBody( body );
             
+            try {
             _difxController.writeToSocket( difxMsg );
+            } catch ( java.net.UnknownHostException e ) {
+                //  BLAT handle properly
+            }
         }
     }
 

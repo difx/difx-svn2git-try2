@@ -10,6 +10,7 @@ import edu.nrao.difx.difxdatamodel.*;
 import edu.nrao.difx.difxutilities.SendMessage;
 import edu.nrao.difx.xmllib.difxmessage.*;
 
+import java.net.UnknownHostException;
 import javax.swing.*;
 
 /**
@@ -140,6 +141,7 @@ public class DiFXController {
    }
    
    public void writeToSocket( DifxMessage difxMsg )
+           throws java.net.UnknownHostException
    {
       //System.out.printf("***************** DiFX Controller write to socket. \n");
 

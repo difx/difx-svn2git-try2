@@ -22,6 +22,7 @@ import java.awt.event.ActionEvent;
 
 import java.io.DataInputStream;
 
+import java.net.UnknownHostException;
 import javax.swing.event.EventListenerList;
 
 /**
@@ -83,7 +84,7 @@ public class DiFXCommand_ls extends DiFXCommand {
     }
     
     @Override
-    public void send() {
+    public void send() throws java.net.UnknownHostException {
         ResultReader reader = new ResultReader();
         reader.start();
         super.send();
@@ -151,7 +152,8 @@ public class DiFXCommand_ls extends DiFXCommand {
      */
     static private boolean doneLs;
     static private boolean foundLs;
-    static public int fileExists( int tsecs, String path, SystemSettings settings ) {
+    static public int fileExists( int tsecs, String path, SystemSettings settings ) 
+        throws java.net.UnknownHostException {
         doneLs = false;
         foundLs = false;
         DiFXCommand_ls ls = new DiFXCommand_ls( path, settings );
