@@ -22,6 +22,11 @@ from difxdb.model import model
 from difxdb.difxdbconfig import DifxDbConfig
 from difxdb.model.dbConnection import Schema, Connection
 from difxdb.business.experimentaction import *
+from difxdb.business.versionhistoryaction import *
+
+# minimum database schema version required by comedia
+minSchemaMajor = 1
+minSchemaMinor = 0
 
 class GenericWindow(object):
     def __init__(self, parent=None,rootWidget=None):
@@ -41,8 +46,11 @@ class MainWindow(GenericWindow):
         
         self.rootWidget.title("expad: Experiment Administration")
         
+        self.expEdit = 0
+        self.selectedExperiment = None
         self.selectedExpIndex = -1
         self.cboStatusVar = StringVar()
+        self.defaultBgColor = self.rootWidget["background"]
         
         self.expStati = []
         for status in  session.query(model.ExperimentStatus).order_by("statuscode").all():
@@ -83,7 +91,7 @@ class MainWindow(GenericWindow):
         Label(frmDetail, text="status: ").grid(row=10,column=0, sticky=W)
         self.txtCode = Entry(frmDetail, text = "")
         self.txtNumber = Entry(frmDetail, text = "")
-        self.cboStatus = OptionMenu (frmDetail, self.cboStatusVar, *self.expStati , command=self.changeStatusEvent)
+        self.cboStatus = OptionMenu (frmDetail, self.cboStatusVar, *self.expStati ,command=self.onExpDetailChange)
         self.btnUpdate = Button(frmDetail, text="update experiment", command=self.updateExpEvent)
         self.btnDelete = Button(frmDetail, text="delete experiment", command=self.deleteExpEvent)
         
@@ -103,8 +111,52 @@ class MainWindow(GenericWindow):
         self.btnDelete.grid(row=20, column=0, columnspan=2, sticky=E+W)
         
         # bind events
-        self.cboStatus.bind("<ButtonRelease-1>", self.changeStatusEvent) 
+        self.txtNumber.bind("<KeyRelease>", self.onExpDetailChange)
+        
+        self.btnUpdate["state"] = DISABLED
+        self.btnDelete["state"] = DISABLED
   
+    def onExpDetailChange(self, Event):
+        
+        self.expEdit = 0
+         
+        if (self.selectedExperiment is None):
+            return
+        
+        self.expEdit += self.setChangeColor(self.txtNumber, self.txtNumber.get(), self.selectedExperiment.number)
+        self.expEdit += self.setChangeColor(self.cboStatus, self.cboStatusVar.get(), self.selectedExperiment.status.experimentstatus)
+        
+              
+        if self.expEdit > 0:
+            self.btnUpdate["state"] = NORMAL
+            self.btnUpdate["fg"] = "red"
+            self.btnUpdate["activeforeground"] = "red"
+        else:
+            self.btnUpdate["state"] = DISABLED
+            
+            
+        
+  
+    def setChangeColor(self, component, componentValue, compareValue):
+        
+        isChange = 0
+        color = self.defaultBgColor
+        editColor = "red"
+        
+        
+        if (str(compareValue) != componentValue):
+            
+            component.config(bg = editColor)
+            if component.__class__.__name__ == OptionMenu:
+                component.config(bg=editColor, activebackground=editColor)
+            isChange = 1
+        else:   
+            component.config(bg = color)
+            if component.__class__.__name__ == OptionMenu:
+                component.config(bg=color, activebackground=color)
+
+        return isChange
+    
     def updateExpListbox(self):
          
         exps = session.query(model.Experiment).order_by(desc(model.Experiment.number)).all()
@@ -115,10 +167,16 @@ class MainWindow(GenericWindow):
             self.grdExps.appendData((exp.code, "%04d" % exp.number, exp.status.experimentstatus))
             
         self.grdExps.update()
+        self.grdExps.selection_set(self.selectedExpIndex)
         
-        self.updateExpDetails()
+        self.getExpDetails()
  
-    def updateExpDetails(self):
+    def getExpDetails(self):
+        '''
+        Retrieve the  experiment details from the database
+        for the currently selected listbox item.
+        Update the detail text fields accordingly
+        '''
         
         self.txtCode["state"] = NORMAL
         self.txtNumber["state"] = NORMAL
@@ -132,9 +190,9 @@ class MainWindow(GenericWindow):
             self.txtCode["state"] = DISABLED
             self.txtNumber["state"] = DISABLED
             
+            self.selectedExperiment = None
             return
         
-        self.btnUpdate["state"] = NORMAL
         self.btnDelete["state"] = NORMAL
         self.cboStatus["state"] = NORMAL
         
@@ -142,12 +200,14 @@ class MainWindow(GenericWindow):
         selectedCode = self.grdExps.get(self.selectedExpIndex)[0]
         
         exp = getExperimentByCode(session, selectedCode)
-        
-        self.cboStatusVar.set(exp.status.experimentstatus)
-        
+             
         if (exp != None):
+            self.cboStatusVar.set(exp.status.experimentstatus)
             self.txtCode.insert(0, exp.code)
             self.txtNumber.insert(0, "%04d" % exp.number)
+            
+            #remember original state of the selected experiment record
+            self.selectedExperiment = exp
         
         self.txtCode["state"] = DISABLED
         
@@ -158,7 +218,7 @@ class MainWindow(GenericWindow):
         else:
             self.selectedExpIndex =  -1
         
-        self.updateExpDetails()
+        self.getExpDetails()
     
     def updateExpEvent(self):
         
@@ -175,7 +235,12 @@ class MainWindow(GenericWindow):
         exp.number = self.txtNumber.get()
         
         session.commit()
+        session.flush()
     
+    
+        self.selectedExperiment = exp
+        self.editExp = 0
+        self.onExpDetailChange(None)
         self.updateExpListbox()
         
     def deleteExpEvent(self):
@@ -288,6 +353,11 @@ if __name__ == "__main__":
 
         dbConn = Schema(connection)
         session = dbConn.session()
+        
+        if not isSchemaVersion(session, minSchemaMajor, minSchemaMinor):
+            major, minor = getCurrentSchemaVersionNumber(session)
+            print "Current difxdb database schema is %s.%s but %s.%s is minimum requirement." % (major, minor, minSchemaMajor, minSchemaMinor)
+            sys.exit(1)
     
         mainDlg = MainWindow(None, rootWidget=root)
 
