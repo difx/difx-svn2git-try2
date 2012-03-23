@@ -18,6 +18,7 @@ import tkMessageBox
 import PIL
 import barcode
 
+from difxdb.business.versionhistoryaction import *
 from difxdb.business.experimentaction import * 
 from difxdb.business.moduleaction import *
 from difxdb.business.slotaction import *
@@ -35,6 +36,9 @@ from sqlalchemy import *
 from Tkinter import *
 from tkinter.multilistbox import *
 
+# minimum database schema version required by comedia
+minSchemaMajor = 1
+minSchemaMinor = 0
 
 class GenericWindow(object):
     def __init__(self, parent=None,rootWidget=None):
@@ -296,6 +300,7 @@ class MainWindow(GenericWindow):
             
             #session.update(slot)
             session.commit()
+            session.flush()
         
         self.frmEditExperiment.grid_remove()
         self.moduleEdit = 0
@@ -521,6 +526,7 @@ class MainWindow(GenericWindow):
 
             session.delete(module) 
             session.commit()
+            session.flush()
 
             self.clearSlotSelection()
 
@@ -885,6 +891,7 @@ class CheckinWindow(GenericWindow):
                 newModule.experiments.append(exp)
 
             session.commit()
+            session.flush()
 
             if (self.chkPrintLibLabelVar.get() == 1):
                 self.parent.printLibraryLabel(slotName = selectedSlot.location)
@@ -1032,16 +1039,26 @@ class ScanModulesWindow(GenericWindow):
             
             Label(frmModules, text="module", relief="flat").grid(row=0,column=0, sticky=E+W)
             Label(frmModules, text="assigned exp.", relief="flat").grid(row=0,column=1, sticky=E+W)
-            Label(frmModules, text="scanned exp.",relief="flat").grid(row=0,column=2, sticky=E+W)
+            Label(frmModules, text="parsed exp.",relief="flat").grid(row=0,column=2, sticky=E+W)
+            Label(frmModules, text="parse errors.",relief="flat").grid(row=0,column=3, sticky=E+W)
 
             for module in self.checkList:
-
+                if module.parseErrors > 0:
+                    color = "red"
+                else:
+                    color = "black"
+                errorString = "%s / %s" % (module.parseErrors, module.numScans)
                 Label(frmModules, text=module.vsn, relief="sunken", justify="left",padx=10).grid(row=rowCount,column=0, sticky=E+W)
                 Label(frmModules, text=list(module.assignedExps), relief="sunken", justify="left", padx=10).grid(row=rowCount,column=1, sticky=E+W)
                 Label(frmModules, text=list(module.scannedExps),relief="sunken", justify="left", padx=10).grid(row=rowCount,column=2, sticky=E+W)
-                Radiobutton(frmModules, text="fix", variable=module.action, value=0, state=NORMAL).grid(row=rowCount, column=3)
-                Radiobutton(frmModules, text="don't fix, remind me later", variable=module.action, value=1).grid(row=rowCount, column=4)
-                Radiobutton(frmModules, text="don't fix, don't remind me again", variable=module.action, value=2).grid(row=rowCount, column=5)
+                Label(frmModules, text=errorString,fg = color,relief="sunken", justify="left", padx=10).grid(row=rowCount,column=3, sticky=E+W)
+                
+                # if no experiments have been scanned or assigned don't allow to close this case
+                if len(module.scannedExps) > 0 or len(module.assignedExps) > 0:
+                    Radiobutton(frmModules, text="fix", variable=module.action, value=0, state=NORMAL).grid(row=rowCount, column=5)
+                    Radiobutton(frmModules, text="don't fix, don't ask again", variable=module.action, value=2).grid(row=rowCount, column=7)
+                Radiobutton(frmModules, text="resolve later", variable=module.action, value=1, state=NORMAL).grid(row=rowCount, column=6)
+                
 
                 rowCount += 1
         
@@ -1054,6 +1071,7 @@ class ScanModulesWindow(GenericWindow):
             for module in self.manualList: 
                 Label(frmModules, text=module.vsn, relief="sunken", justify="left",padx=10).grid(row=rowCount,column=0, sticky=E+W)
                 Label(frmModules, text="Please assign the experiment(s) manually", relief="sunken", justify="left", padx=10).grid(row=rowCount,column=1, sticky=E+W)
+                rowCount += 1
             
         btnOK = Button(self.dlg, text="OK", command=self.updateModuleEvent)
         btnCancel = Button(self.dlg, text="Cancel", command=self.dlg.destroy)
@@ -1085,7 +1103,7 @@ class ScanModulesWindow(GenericWindow):
             # check if .dir file exists
             if (not hasDir(module.vsn)):
                 continue
-            
+                     
             try:
                 difxdir = DifxDir(settings["dirPath"], module.vsn)
             except Exception as e:
@@ -1101,8 +1119,8 @@ class ScanModulesWindow(GenericWindow):
             # compare associated experiments
             for exp in module.experiments:
                 assignedExps.append(exp.code)
-         
-            if (sorted(scannedExps) != sorted(assignedExps)):
+              
+            if (sorted(scannedExps) != sorted(assignedExps)) or (difxdir.getParseErrorCount() > 0):
               
                 checkModule = self.CheckModuleItem()
                 checkModule.vsn = module.vsn
@@ -1110,21 +1128,23 @@ class ScanModulesWindow(GenericWindow):
                 checkModule.scannedExps = scannedExps
                 checkModule.numScans = difxdir.getScanCount()
                 checkModule.stationCode = difxdir.getStationCode()
-                
+                checkModule.parseErrors = difxdir.getParseErrorCount() 
+
                 self.checkList.append(checkModule)
                 
-            elif (difxdir.getParseErrorCount() > 0):
-                warnModule = self.CheckModuleItem()
-                warnModule.vsn = module.vsn
-                self.manualList.append(warnModule)
+          #  elif (difxdir.getParseErrorCount() > 0):
+          #      warnModule = self.CheckModuleItem()
+          #      warnModule.vsn = module.vsn
+          #      self.manualList.append(warnModule)
                 
             else:
-                print "scanned ", module.vsn
+                #print "scanned ", module.vsn
                 # update module information
                 module.numScans = difxdir.getScanCount()
                 module.stationCode = difxdir.getStationCode()
            
         session.commit()
+        session.flush()
         
         if (len(outdatedDir) > 0):
             errStr = ""
@@ -1163,8 +1183,10 @@ class ScanModulesWindow(GenericWindow):
                     exp = getExperimentByCode(session, expCode)
                     module.experiments.append(exp)
                     module.numScans = checkModule.numScans
+                    module.stationCode = checkModule.stationCode
                         
                 session.commit()
+                session.flush()
                 
                 continue
             # action was 'remind again'
@@ -1174,8 +1196,11 @@ class ScanModulesWindow(GenericWindow):
             elif (checkModule.action.get() == 2):
                 module.numScans = checkModule.numScans
                 session.commit()
+                session.flush()
                 
         session.commit()
+        session.flush()
+        
         self.parent.refreshStatusEvent()
         self.dlg.destroy()
         
@@ -1188,6 +1213,7 @@ class ScanModulesWindow(GenericWindow):
             self.scannedExps = deque()
             self.action = IntVar()
             self.numScans = 0
+            self.parseErrors = 0
             
             self.action.set(0)
         
@@ -1361,6 +1387,7 @@ if __name__ == "__main__":
     
     mainDlg = MainWindow(None, rootWidget=root)
     
+    #  check for DIFXROOT environment
     if (os.getenv("DIFXROOT") == None):
         sys.exit("Error: environment variable DIFXROOT must be defined.")
     settings["difxRoot"] = os.getenv("DIFXROOT")
@@ -1403,6 +1430,11 @@ if __name__ == "__main__":
         session = dbConn.session()
 
         mainDlg.isConnected = True
+        
+        if not isSchemaVersion(session, minSchemaMajor, minSchemaMinor):
+            major, minor = getCurrentSchemaVersionNumber(session)
+            print "Current difxdb database schema is %s.%s but %s.%s is minimum requirement." % (major, minor, minSchemaMajor, minSchemaMinor)
+            sys.exit(1)
         
     except Exception as e:
         print "Error: ",  e, "\nPlease check your database settings in %s " % settings["configFile"] 
