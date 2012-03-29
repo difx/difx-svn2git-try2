@@ -162,6 +162,13 @@
                 
                 <xsd:element ref="suppressUnknownMessageWarnings"/>
 
+                <xsd:element ref="eopURL"/>
+                <xsd:element ref="leapSecondsURL"/>
+                <xsd:element ref="useLeapSecondsURL"/>
+                <xsd:element ref="leapSecondsValue"/>
+                <xsd:element ref="autoUpdateEOP"/>
+                <xsd:element ref="autoUpdateSeconds"/>
+
             </xsd:sequence>
         </xsd:complexType>
     </xsd:element>
@@ -244,6 +251,13 @@
 
     <xsd:element name="suppressUnknownMessageWarnings" type="xsd:boolean"></xsd:element>
 
+    <xsd:element name="eopURL" type="xsd:string"></xsd:element>
+    <xsd:element name="leapSecondsURL" type="xsd:string"></xsd:element>
+    <xsd:element name="useLeapSecondsURL" type="xsd:boolean"></xsd:element>
+    <xsd:element name="leapSecondsValue" type="xsd:int"></xsd:element>
+    <xsd:element name="autoUpdateEOP" type="xsd:boolean"></xsd:element>
+    <xsd:element name="autoUpdateSeconds" type="xsd:int"></xsd:element>
+                
     <xsd:complexType name="mark5Status">
         <xsd:sequence>
             <xsd:element name="bankAVSN" type="xsd:string"></xsd:element>

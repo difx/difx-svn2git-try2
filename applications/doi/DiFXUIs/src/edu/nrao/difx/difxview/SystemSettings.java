@@ -27,11 +27,21 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentEvent;
 import java.awt.Color;
+import java.awt.Point;
 import java.util.Calendar;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.FileWriter;
+
+import java.net.URL;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.io.IOException;
+
+import javax.swing.Action;
+import javax.swing.AbstractAction;
+import javax.swing.Timer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -60,6 +70,7 @@ import mil.navy.usno.widgetlib.PingTest;
 import mil.navy.usno.widgetlib.MessageScrollPane;
 import mil.navy.usno.widgetlib.MessageNode;
 import mil.navy.usno.widgetlib.SaneTextField;
+import mil.navy.usno.widgetlib.SimpleTextEditor;
 
 import javax.swing.JFrame;
 
@@ -551,7 +562,7 @@ public class SystemSettings extends JFrame {
         _scrollPane.addNode( _addressesPanel );
         
         IndexedPanel jobSettingsPanel = new IndexedPanel( "Job Settings" );
-        jobSettingsPanel.openHeight( 275 );
+        jobSettingsPanel.openHeight( 85 );
         jobSettingsPanel.closedHeight( 20 );
         jobSettingsPanel.labelWidth( 300 );
         _scrollPane.addNode( jobSettingsPanel );
@@ -577,6 +588,149 @@ public class SystemSettings extends JFrame {
         _useStagingArea.setToolTipText( "Use the staging area to run jobs (or don't)." );
         jobSettingsPanel.add( useStagingAreaLabel );
         jobSettingsPanel.add( _useStagingArea );
+        
+        IndexedPanel eopSettingsPanel = new IndexedPanel( "EOP Settings" );
+        //  These editors may or may not be displayed, but they are used to hold
+        //  EOP and leap second data regardless.
+        _eopText = new SimpleTextEditor();
+        _leapSecondText = new SimpleTextEditor();
+        eopSettingsPanel.openHeight( 145 );
+        eopSettingsPanel.closedHeight( 20 );
+        eopSettingsPanel.labelWidth( 300 );
+        _scrollPane.addNode( eopSettingsPanel );
+        _eopURL = new SaneTextField();
+        _eopURL.setToolTipText( "URL of the file containing EOP data." );
+        _eopURL.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                updateEOPNow();
+            }
+        } );
+        eopSettingsPanel.add( _eopURL );
+        JLabel eopURLLabel = new JLabel( "EOP URL:" );
+        eopURLLabel.setBounds( 10, 25, 150, 25 );
+        eopURLLabel.setHorizontalAlignment( JLabel.RIGHT );
+        eopSettingsPanel.add( eopURLLabel );
+        _viewEOPFile = new JButton( "View" );
+        _viewEOPFile.setToolTipText( "View the contents of the most recent EOP file (load new data if necessary)." );
+        _viewEOPFile.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                if ( _eopDisplay == null ) {
+                    _eopDisplay = new JFrame();
+                    _eopDisplay.setTitle( "Current EOP Data" );
+                    Point pt = _viewEOPFile.getLocationOnScreen();
+                    _eopDisplay.setBounds( pt.x + 100, pt.y + 50, 500, 500 );
+                    _eopDisplay.add( _eopText );
+                }
+                if ( _eopText.text() == null || _eopText.text().length() == 0 )
+                    updateEOPNow();
+                _eopDisplay.setVisible( true );
+            }
+        } );
+        eopSettingsPanel.add( _viewEOPFile );
+        _leapSecondsURL = new SaneTextField();
+        _leapSecondsURL.setToolTipText( "URL of the file containing leap second data." );
+        _leapSecondsURL.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                updateEOPNow();
+            }
+        } );
+        eopSettingsPanel.add( _leapSecondsURL );
+        _viewLeapSecondsFile = new JButton( "View" );
+        _viewLeapSecondsFile.setToolTipText( "View the contents of the most recent leap seconds file (load new data if necessary)." );
+        _viewLeapSecondsFile.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                if ( _leapSecondDisplay == null ) {
+                    _leapSecondDisplay = new JFrame();
+                    _leapSecondDisplay.setTitle( "Current Leap Second Data" );
+                    Point pt = _viewLeapSecondsFile.getLocationOnScreen();
+                    _leapSecondDisplay.setBounds( pt.x + 100, pt.y + 50, 500, 500 );
+                    _leapSecondDisplay.add( _leapSecondText );
+                }
+                if ( _leapSecondText.text() == null || _leapSecondText.text().length() == 0 )
+                    updateEOPNow();
+                _leapSecondDisplay.setVisible( true );
+            }
+        } );
+        eopSettingsPanel.add( _viewLeapSecondsFile );
+        JLabel leapSecondsURLLabel = new JLabel( "Leap Seconds URL:" );
+        leapSecondsURLLabel.setBounds( 10, 55, 130, 25 );
+        leapSecondsURLLabel.setHorizontalAlignment( JLabel.RIGHT );
+        eopSettingsPanel.add( leapSecondsURLLabel );
+        _useLeapSecondsURL = new JCheckBox( "" );
+        _useLeapSecondsURL.setBounds( 140, 55, 20, 25 );
+        _useLeapSecondsURL.setToolTipText( "Obtain leap second data from the given URL." );
+        _useLeapSecondsURL.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                leapSecondChoice( _useLeapSecondsURL );
+            }
+        } );
+        eopSettingsPanel.add( _useLeapSecondsURL );
+        JLabel leapSecondsValueLabel = new JLabel( "static value:" );
+        leapSecondsValueLabel.setBounds( 10, 85, 130, 25 );
+        leapSecondsValueLabel.setHorizontalAlignment( JLabel.RIGHT );
+        eopSettingsPanel.add( leapSecondsValueLabel );
+        _useLeapSecondsValue = new JCheckBox( "" );
+        _useLeapSecondsValue.setBounds( 140, 85, 20, 25 );
+        _useLeapSecondsValue.setToolTipText( "Use the given static value as the number of leap seconds." );
+        _useLeapSecondsValue.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                leapSecondChoice( _useLeapSecondsValue );
+            }
+        } );
+        eopSettingsPanel.add( _useLeapSecondsValue );
+        _leapSecondsValue = new NumberBox();
+        _leapSecondsValue.setBounds( 165, 85, 120, 25 );
+        _leapSecondsValue.precision( 0 );
+        eopSettingsPanel.add( _leapSecondsValue );
+        _autoUpdateEOP = new JCheckBox( "" );
+        _autoUpdateEOP.setBounds( 140, 115, 20, 25 );
+        _autoUpdateEOP.setToolTipText( "Periodically update the EOP and leap second data." );
+        _autoUpdateEOP.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                if ( _autoUpdateEOP.isSelected() ) {
+                    updateEOPNow();
+                    _eopTimer.start();
+                }
+                else {
+                    _eopTimer.stop();
+                }
+            }
+        } );
+        eopSettingsPanel.add( _autoUpdateEOP );
+        JLabel autoUpdateLabel = new JLabel( "auto update:" );
+        autoUpdateLabel.setBounds( 10, 115, 130, 25 );
+        autoUpdateLabel.setHorizontalAlignment( JLabel.RIGHT );
+        eopSettingsPanel.add( autoUpdateLabel );
+        _autoUpdateSeconds = new NumberBox();
+        _autoUpdateSeconds.setBounds( 220, 115, 120, 25 );
+        _autoUpdateSeconds.precision( 0 );
+        _autoUpdateSeconds.minimum( 1 );
+        _autoUpdateSeconds.setToolTipText( "Number of seconds between automatic updates of EOP and leap second data." );
+        eopSettingsPanel.add( _autoUpdateSeconds );
+        JLabel autoUpdateLabel1 = new JLabel( "every:" );
+        autoUpdateLabel1.setBounds( 160, 115, 55, 25 );
+        autoUpdateLabel1.setHorizontalAlignment( JLabel.RIGHT );
+        eopSettingsPanel.add( autoUpdateLabel1 );
+        JLabel autoUpdateLabel2 = new JLabel( "seconds" );
+        autoUpdateLabel2.setBounds( 345, 115, 100, 25 );
+        eopSettingsPanel.add( autoUpdateLabel2 );
+        _updateEOPNow = new JButton( "Update Now" );
+        _updateEOPNow.setToolTipText( "Update the EOP and leap second data now." );
+        _updateEOPNow.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                updateEOPNow();
+            }
+        } );
+        eopSettingsPanel.add( _updateEOPNow );
+        Action updateDrawingAction = new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                ++_eopTimerCount;
+                if ( _eopTimerCount >= _autoUpdateSeconds.intValue() )
+                    updateEOPNow();
+            }
+        };
+        _eopTimer = new Timer( 1000, updateDrawingAction );
 
         _allObjectsBuilt = true;
         
@@ -633,6 +787,171 @@ public class SystemSettings extends JFrame {
             //  Job settings
             _workingDirectory.setBounds( 165, 25, w - 185, 25 );
             _stagingArea.setBounds( 165, 55, w - 185, 25 );
+            _eopURL.setBounds( 165, 25, w - 295, 25 );
+            _viewEOPFile.setBounds( w - 125, 25, 100, 25 );
+            _leapSecondsURL.setBounds( 165, 55, w - 295, 25 );
+            _viewLeapSecondsFile.setBounds( w - 125, 55, 100, 25 );
+            _updateEOPNow.setBounds( w - 250, 115, 120, 25 );
+        }
+    }
+    
+    /*
+     * Called when one of the checks associated with leap seconds is picked.
+     */
+    protected void leapSecondChoice( JCheckBox check ) {
+        if ( check == _useLeapSecondsURL ) {
+            _useLeapSecondsURL.setSelected( true );
+            _useLeapSecondsValue.setSelected( false );
+            _leapSecondsURL.setEnabled( true );
+            _leapSecondsValue.setEnabled( false );
+            updateEOPNow();
+        }
+        else {
+            _useLeapSecondsURL.setSelected( false );
+            _useLeapSecondsValue.setSelected( true );
+            _leapSecondsURL.setEnabled( false );
+            _leapSecondsValue.setEnabled( true );
+        }
+    }
+    
+    /*
+     * Called whenever an update is required for the EOP and leap second data.
+     */
+    protected void updateEOPNow() {
+        //  Read the specified EOP data.
+        try {
+            URL url = new URL( _eopURL.getText() );
+            url.openConnection();
+            InputStream reader = url.openStream();
+            byte[] buffer = new byte[100000];
+            int bytesRead = 0;
+            _eopText.text( "" );
+            while ( ( bytesRead = reader.read( buffer, 0, 99999 ) ) > 0 ) {
+                _eopText.addText( new String( buffer ).substring( 0, bytesRead ) );
+        }
+        } catch ( IOException e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                "EOP URL " + _eopURL.getText() + " triggered exception: " + e.getMessage() );
+        }
+        //  If the leap second data is being read from a URL, do that.
+        if ( _useLeapSecondsURL.isSelected() ) {
+            try {
+                URL url = new URL( _leapSecondsURL.getText() );
+                url.openConnection();
+                InputStream reader = url.openStream();
+                byte[] buffer = new byte[100000];
+                int bytesRead = 0;
+                _leapSecondText.text( "" );
+                while ( ( bytesRead = reader.read( buffer, 0, 99999 ) ) > 0 ) {
+                    _leapSecondText.addText( new String( buffer ).substring( 0, bytesRead ) );
+            }
+            } catch ( IOException e ) {
+                java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Leap Second URL " + _leapSecondsURL.getText() + " triggered exception: " + e.getMessage() );
+            }
+        }
+        _eopTimerCount = 0;
+        //  In case anyone is out there listening, generate callbacks indicating
+        //  new EOP data exist.
+        generateEOPChangeEvent();
+        eopData( 2447302.0 - 3.0, 2447302.0 + 3.0 );
+    }
+    
+    public class EOPStructure {
+        double date;     //  Julian day
+        double tai_utc;  //  Leap second for the day
+        double xPole;    //  X pole coordinate in 0.1 arcsec
+        double yPole;    //  Y pole coordinate in 0.1 arcsec
+        double ut1_tai;  //  UT1 - TAI in microseconds of time
+        double sXPole;   //  X pole uncertainty in 0.1 arcsec
+        double sYPole;   //  Y pole uncertainty in 0.1 arcsec
+        double sUt1_tai; //  UT1-TAI uncertainty in microseconds of time
+    }
+
+    /*
+     * Generate an array list of structures containing EOP data for a specified range
+     * of days.
+     */
+    public ArrayList<EOPStructure> eopData( double before, double after ) {
+        ArrayList<EOPStructure> newList = new ArrayList<EOPStructure>();
+        int fromIndex = 0;
+        String content = _eopText.text();
+        int toIndex = content.indexOf( '\n', 0 );
+        while ( toIndex != -1 ) {
+            try {
+                double testDate = Double.parseDouble( content.substring( fromIndex, fromIndex + 9 ) );
+                if ( testDate > before && testDate < after ) {
+                    EOPStructure newEOP = new EOPStructure();
+                    newEOP.date = testDate;
+                    newEOP.tai_utc = leapSecond( testDate );
+                    newEOP.xPole = Double.parseDouble( _eopText.text().substring( fromIndex + 10, fromIndex + 17 ) );
+                    newEOP.yPole = Double.parseDouble( _eopText.text().substring( fromIndex + 18, fromIndex + 26 ) );
+                    newEOP.ut1_tai = Double.parseDouble( _eopText.text().substring( fromIndex + 26, fromIndex + 35 ) );
+                    newEOP.sXPole = Double.parseDouble( _eopText.text().substring( fromIndex + 36, fromIndex + 42 ) );
+                    newEOP.sYPole = Double.parseDouble( _eopText.text().substring( fromIndex + 43, fromIndex + 49 ) );
+                    newEOP.sUt1_tai = Double.parseDouble( _eopText.text().substring( fromIndex + 50, fromIndex + 57 ) );
+                    newList.add( newEOP );
+                }
+            } catch ( java.lang.NumberFormatException e ) {
+                //  We expect a few of these...comments, etc.
+            }
+            fromIndex = toIndex + 1;
+            toIndex = content.indexOf( '\n', fromIndex );
+        }
+        return newList;
+    }
+    
+    /*
+     * Generate a leap second from the leap second data for a specific Julian date.
+     */
+    public double leapSecond( double date ) {
+        //  See if we are using a constant value...in which case we just return
+        //  that.
+        if ( _useLeapSecondsValue.isSelected() ) {
+            return _leapSecondsValue.value();
+        }
+        else {
+            //  Plod through the leap second data looking for the correct date.
+            if ( _leapSecondText.text() == null || _leapSecondText.text().length() == 0 ) {
+                java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "No current leap second data available." );
+                return 0.0;
+            }
+            else {
+                //  Plod through the leap second data looking for the nearest date
+                //  before the date we are looking for.
+                int fromIndex = 0;
+                int toIndex = _leapSecondText.text().indexOf( '\n', 0 );
+                boolean found = false;
+                double testDay = 0.0;
+                double testLeap = 0.0;
+                int count = 0;
+                while ( toIndex != -1 && !found ) {
+                    testDay = Double.parseDouble( _leapSecondText.text().substring( fromIndex + 17, fromIndex + 27 ) );
+                    if ( testDay > date )
+                        found = true;
+                    testLeap = Double.parseDouble( _leapSecondText.text().substring( fromIndex + 38, fromIndex + 49 ) );
+                    fromIndex = toIndex + 1;
+                    toIndex = _leapSecondText.text().indexOf( '\n', fromIndex );
+                    ++count;
+                }
+                //  See what happened...
+                if ( found && count == 0 ) {
+                    java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                        "Request for Julian date (" + date + ") prior to earliest date in leap second data ("
+                            + testDay + ")." );
+                }
+                else if ( !found && count == 0 ) {
+                    java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                        "Leap second data appears to be empty." );
+                }
+                else if ( !found ) {
+                    java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                        "Request for Julian date (" + date + ") after last date in leap second data ("
+                            + testDay + ")." );
+                }
+                return testLeap;
+            }
         }
     }
     
@@ -768,6 +1087,13 @@ public class SystemSettings extends JFrame {
         _defaultNames.scanBasedJobNames = true;
         _defaultNames.dirListLocation = "";
         _defaultNames.jobCreationSanityCheck = true;
+        _eopURL.setText( "http://gemini.gsfc.nasa.gov/solve_save/usno_finals.erp" );
+        _leapSecondsURL.setText( "http://gemini.gsfc.nasa.gov/500/oper/solve_apriori_files/ut1ls.dat" );
+        _leapSecondsValue.value( -34 );
+        _autoUpdateSeconds.value( 3600 );
+        leapSecondChoice( _useLeapSecondsURL );
+        _autoUpdateEOP.setSelected( true );
+        _eopTimer.start();
     }
     
     /*
@@ -1023,6 +1349,30 @@ public class SystemSettings extends JFrame {
     }
     
     /*
+     * Add a new listener for EOP data changes.
+     */
+    public void eopChangeListener( ActionListener a ) {
+        if ( _eopChangeListeners == null )
+            _eopChangeListeners = new EventListenerList();
+        _eopChangeListeners.add( ActionListener.class, a );
+    }
+
+    /*
+     * Inform all listeners of a change to broadcast-related items.
+     */
+    protected void generateEOPChangeEvent() {
+        if ( _eopChangeListeners == null )
+            return;
+        Object[] listeners = _eopChangeListeners.getListenerList();
+        // loop through each listener and pass on the event if needed
+        int numListeners = listeners.length;
+        for ( int i = 0; i < numListeners; i+=2 ) {
+            if ( listeners[i] == ActionListener.class )
+                ((ActionListener)listeners[i+1]).actionPerformed( null );
+        }
+    }
+    
+    /*
      * Parse a settings file (XML).  We are set up to deal with "old" settings
      * files - those that may not have parameters we are looking for.  We try not
      * to over-write our default settings when such situations arise, although
@@ -1181,6 +1531,21 @@ public class SystemSettings extends JFrame {
             if ( doiConfig.getDefaultNamesDirListLocation() != null )
                 _defaultNames.dirListLocation = doiConfig.getDefaultNamesDirListLocation();
             _defaultNames.jobCreationSanityCheck = doiConfig.isDefaultJobCreationSanityCheck();
+            if ( doiConfig.getEopURL() != null )
+                _eopURL.setText( doiConfig.getEopURL() );
+            if ( doiConfig.getLeapSecondsURL() != null );
+                _leapSecondsURL.setText( doiConfig.getLeapSecondsURL() );
+            _useLeapSecondsURL.setSelected( doiConfig.isUseLeapSecondsURL() );
+            if ( _useLeapSecondsURL.isSelected() )
+                leapSecondChoice( _useLeapSecondsURL );
+            else
+                leapSecondChoice( _useLeapSecondsValue );
+            if ( doiConfig.getLeapSecondsValue() != 0 )
+                _leapSecondsValue.intValue( doiConfig.getLeapSecondsValue() );
+            _autoUpdateEOP.setSelected( doiConfig.isAutoUpdateEOP() );
+            if ( doiConfig.getAutoUpdateSeconds() != 0 )
+                _autoUpdateSeconds.value( doiConfig.getAutoUpdateSeconds() );
+            updateEOPNow();
             generateBroadcastChangeEvent();
             generateDatabaseChangeEvent();
             
@@ -1273,6 +1638,13 @@ public class SystemSettings extends JFrame {
         doiConfig.setDefaultNamesScanBasedJobNames( _defaultNames.scanBasedJobNames );
         doiConfig.setDefaultNamesDirListLocation( _defaultNames.dirListLocation );
         doiConfig.setDefaultJobCreationSanityCheck( _defaultNames.jobCreationSanityCheck );
+        
+        doiConfig.setEopURL( _eopURL.getText() );
+        doiConfig.setLeapSecondsURL( _leapSecondsURL.getText() );
+        doiConfig.setUseLeapSecondsURL( _useLeapSecondsURL.isSelected() );
+        doiConfig.setLeapSecondsValue( _leapSecondsValue.intValue() );
+        doiConfig.setAutoUpdateEOP( _autoUpdateEOP.isSelected() );
+        doiConfig.setAutoUpdateSeconds( _autoUpdateSeconds.intValue() );
         
         try {
             javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance( doiConfig.getClass().getPackage().getName() );
@@ -1635,6 +2007,25 @@ public class SystemSettings extends JFrame {
     protected JFormattedTextField _stagingArea;
     protected JCheckBox _useStagingArea;
     
+    //  EOP Settings items.
+    protected SaneTextField _eopURL;
+    protected SaneTextField _leapSecondsURL;
+    protected JButton _viewEOPFile;
+    protected JButton _viewLeapSecondsFile;
+    protected JCheckBox _useLeapSecondsURL;
+    protected JCheckBox _useLeapSecondsValue;
+    protected NumberBox _leapSecondsValue;
+    protected JCheckBox _autoUpdateEOP;
+    protected NumberBox _autoUpdateSeconds;
+    protected JButton _updateEOPNow;
+    
+    protected Timer _eopTimer;
+    protected int _eopTimerCount;
+    protected SimpleTextEditor _eopText;
+    protected SimpleTextEditor _leapSecondText;
+    protected JFrame _eopDisplay;
+    protected JFrame _leapSecondDisplay;
+    
     //  The "look and feel" that applies to all GUI components.
     protected String _lookAndFeel;
     
@@ -1693,6 +2084,7 @@ public class SystemSettings extends JFrame {
     //  setting changes by adding themselves to these lists.
     EventListenerList _databaseChangeListeners;
     EventListenerList _broadcastChangeListeners;
+    EventListenerList _eopChangeListeners;
     
     //  All settings use the same file chooser.
     JFileChooser _fileChooser;

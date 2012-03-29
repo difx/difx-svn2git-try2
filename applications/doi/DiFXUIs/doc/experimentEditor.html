@@ -226,6 +226,33 @@
     <h3>GUI Controls: Stations</h3>
     <h3>GUI Controls: Sources</h3>
     <h3>GUI Controls: Scan Selection</h3>
+    <h3>GUI Controls: EOP Data</h3>
+    <p><img style=" width: 830px; height: 310px;" alt=""
+        src="images/experimentEditor/eop.png"><br>
+    </p>
+    Earth Orientation Parameter (EOP) data are necessary for a
+    correlation process to run (they are required by <span
+      style="font-style: italic;">calcif2</span>).&nbsp; The Experiment
+    Editor provides EOP data, when available, from two different
+    sources:<br>
+    <ol>
+      <li>The <span style="font-family: monospace;">.vex</span> file
+        may contain EOP data.&nbsp; Often these data are a "projection"
+        into the future, as they are produced when observations occur
+        (and before actual EOP measurements are made).&nbsp; They are
+        usually reasonably accurate.</li>
+      <li>EOP data is obtained from a URL, as specified in the Settings
+        menu.&nbsp; If the URL is set up correctly, and the connection
+        to the internet is good, these data should always be
+        available.&nbsp; They will be at least as accurate as the
+        "projected" data that may already exist in the <span
+          style="font-family: monospace;">.vex</span> file, and in fact
+        may represent actual measurements and thus be better (they most
+        likely will never be worse).&nbsp; The GUI updates these data
+        when it is started and roughly every hour thereafter.</li>
+    </ol>
+    Of the two sources, the updated EOP data are probably preferred (the
+    Experiment Editor will pick them when available).<br>
     <h3>GUI Controls: Names, Etc.</h3>
     <h3>GUI Controls: .v2d File<br>
     </h3>
@@ -251,6 +278,49 @@
       on?&nbsp; Following is a step-by-step description of the
       operations performed.<br>
     </p>
+    <h6>EOP Data</h6>
+    <p>Your choice of source (either <span style="font-family:
+        monospace;">.vex</span> file or external URL) and the
+      availability of EOP data will cause a number of things to
+      happen.&nbsp; The following is a list of actions taken by the GUI
+      based on what it can do, and what it is told to do (note that the
+      GUI will not allow you to choose a source for which data are
+      unavailable):<br>
+    </p>
+    <ul>
+      <li><span style="font-weight: bold;">You choose the <span
+            style="font-family: monospace;">.vex</span> file as the EOP
+          source:</span> No EOP data will be installed in the <span
+          style="font-family: monospace;">.v2d</span> file, and the <span
+          style="font-family: monospace;">.vex</span> file will be
+        copied to the DiFX host as is, with its EOP data intact.</li>
+      <li><span style="font-weight: bold;">EOP data are available <span
+            style="font-style: italic;">ONLY</span> from the .vex file:</span>
+        Same as above.</li>
+      <li><span style="font-weight: bold;">You choose the&nbsp; external
+          URL as the EOP source:</span> The EOP data in the <span
+          style="font-family: monospace;">.vex</span> file is edited out
+        before the file is copied to the DiFX host (this is the only
+        instance where any changes are made to <span
+          style="font-family: monospace;">.vex</span> files, but this
+        action is necessary because combining EOP data from multiple
+        sources is messy and dangerous).&nbsp; The EOP data from the
+        external URL are put into the <span style="font-family:
+          monospace;">.v2d</span> file.</li>
+      <li><span style="font-weight: bold;">EOP data are available <span
+            style="font-style: italic;">ONLY</span> from the external
+          URL:</span> The <span style="font-family: monospace;">.vex</span>
+        file is copied unchanged.&nbsp; The EOP data from the external
+        URL are put into the <span style="font-family: monospace;">.v2d</span>
+        file.<br>
+      </li>
+      <li><span style="font-weight: bold;">No EOP data available from
+          either <span style="font-family: monospace;">.vex</span> or
+          external URL:</span>&nbsp; Because a correlation won't run
+        without EOP data, this is a "fail" condition.&nbsp; An error
+        pop-up will be produced and no further "apply" actions will be
+        taken.</li>
+    </ul>
     <h3>Be Yourself</h3>
     <p>Running DiFX correlation jobs is a complex process, and to some
       degree it may seem that the GUI "steers" users toward a particular

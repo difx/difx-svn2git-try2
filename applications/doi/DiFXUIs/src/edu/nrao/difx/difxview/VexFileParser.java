@@ -54,33 +54,34 @@ public class VexFileParser {
             String line = nextLine();
             if ( line == null )
                 endOfFile = true;
-            else {
-                //  See if the line looks like the start of a new section.
-                if ( line.charAt( 0 ) == '$' ) {
-                    //  Figure out what to do with the collected data based on the
-                    //  section type (of the previous section!).  Any sections we
-                    //  don't know about we simply ignore.
-                    if ( sectionName.equalsIgnoreCase( "$STATION" ) )
-                        parseStationData( sectionData );
-                    else if ( sectionName.equalsIgnoreCase( "$ANTENNA" ) )
-                        parseAntennaData( sectionData );
-                    else if ( sectionName.equalsIgnoreCase( "$FREQ" ) )
-                        parseFreqData( sectionData );
-                    else if ( sectionName.equalsIgnoreCase( "$SCHED" ) )
-                        parseSchedData( sectionData );
-                    else if ( sectionName.equalsIgnoreCase( "$SITE" ) )
-                        parseSiteData( sectionData );
-                    else if ( sectionName.equalsIgnoreCase( "$SOURCE" ) )
-                        parseSourceData( sectionData );
-                    //  Clear the data list and record this new section.
-                    sectionName = line;
-                    sectionData.clear();
-                }
-                else
-                    //  Tack this string on the list associated with our current
-                    //  section.
-                    sectionData.add( line );
+            //  See if the line looks like the start of a new section (or the
+            //  end of the file).
+            if ( line == null || line.charAt( 0 ) == '$' ) {
+                //  Figure out what to do with the collected data based on the
+                //  section type (of the previous section!).  Any sections we
+                //  don't know about we simply ignore.
+                if ( sectionName.equalsIgnoreCase( "$STATION" ) )
+                    parseStationData( sectionData );
+                else if ( sectionName.equalsIgnoreCase( "$ANTENNA" ) )
+                    parseAntennaData( sectionData );
+                else if ( sectionName.equalsIgnoreCase( "$FREQ" ) )
+                    parseFreqData( sectionData );
+                else if ( sectionName.equalsIgnoreCase( "$SCHED" ) )
+                    parseSchedData( sectionData );
+                else if ( sectionName.equalsIgnoreCase( "$SITE" ) )
+                    parseSiteData( sectionData );
+                else if ( sectionName.equalsIgnoreCase( "$SOURCE" ) )
+                    parseSourceData( sectionData );
+                else if ( sectionName.equalsIgnoreCase( "$EOP" ) )
+                    parseEOPData( sectionData );
+                //  Clear the data list and record this new section.
+                sectionName = line;
+                sectionData.clear();
             }
+            else
+                //  Tack this string on the list associated with our current
+                //  section.
+                sectionData.add( line );
         }
     }
     
@@ -429,6 +430,65 @@ public class VexFileParser {
     }
     
     /*
+     * Extract "EOP" data from a list of data lines.
+     */
+    protected void parseEOPData( ArrayList<String> data ) {
+        EOP currentEOP = null;
+        for ( Iterator<String> iter = data.iterator(); iter.hasNext(); ) {
+            String thisLine = iter.next();
+            //  Find the "scan" string indicating the start of a scan.
+            if ( thisLine.length() > 3 && thisLine.substring( 0, 3 ).equalsIgnoreCase( "DEF" ) ) {
+                //  Create a new scan.
+                currentEOP = new EOP();
+                currentEOP.def = thisLine.substring( thisLine.indexOf( ' ' ) ).trim();
+            }
+            else if ( thisLine.length() > 7 && thisLine.substring( 0, 7 ).equalsIgnoreCase( "TAI-UTC" ) ) {
+                if ( currentEOP != null ) {
+                    currentEOP.tai_utc = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() > 6 && thisLine.substring( 0, 6 ).equalsIgnoreCase( "A1-TAI" ) ) {
+                if ( currentEOP != null ) {
+                    currentEOP.a1_tai = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() > 13 && thisLine.substring( 0, 13 ).equalsIgnoreCase( "EOP_REF_EPOCH" ) ) {
+                if ( currentEOP != null ) {
+                    currentEOP.eop_ref_epoch = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() > 14 && thisLine.substring( 0, 14 ).equalsIgnoreCase( "NUM_EOP_POINTS" ) ) {
+                if ( currentEOP != null ) {
+                    currentEOP.num_eop_points = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() > 7 && thisLine.substring( 0, 7 ).equalsIgnoreCase( "UT1-UTC" ) ) {
+                if ( currentEOP != null ) {
+                    currentEOP.ut1_utc = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() > 8 && thisLine.substring( 0, 8 ).equalsIgnoreCase( "X_WOBBLE" ) ) {
+                if ( currentEOP != null ) {
+                    currentEOP.x_wobble = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() > 8 && thisLine.substring( 0, 8 ).equalsIgnoreCase( "Y_WOBBLE" ) ) {
+                if ( currentEOP != null ) {
+                    currentEOP.y_wobble = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                }
+            }
+            else if ( thisLine.length() >= 6 && thisLine.substring( 0, 6 ).equalsIgnoreCase( "ENDDEF" ) ) {
+                if ( currentEOP != null ) {
+                    //  Add the current scan to the list of scans.
+                    if ( _eopList == null )
+                        _eopList = new ArrayList<EOP>();
+                    _eopList.add( currentEOP );
+                }
+            }
+        }
+    }
+    
+    /*
      * Skip to the character immediately following an "=" sign, which is a common
      * thing to have to do...
      */
@@ -442,6 +502,7 @@ public class VexFileParser {
     public ArrayList<Site> siteList() { return _siteList; }
     public ArrayList<Antenna> antennaList() { return _antennaList; }
     public ArrayList<Source> sourceList() { return _sourceList; }
+    public ArrayList<EOP> eopList() { return _eopList; }
     
     public class ScanStation {
         String name;
@@ -497,6 +558,43 @@ public class VexFileParser {
         String refCoordFrame;
     }
     
+    public class EOP {
+        String def;
+        String tai_utc;
+        String a1_tai;
+        String eop_ref_epoch;
+        String num_eop_points;
+        String ut1_utc;
+        String x_wobble;
+        String y_wobble;
+    }
+    
+    static String deleteEOPData( String inStr ) {
+        String outStr = "";
+        int pos = 0;
+        int endPos = 0;
+        boolean done = false;
+        boolean inEOP = false;
+        while ( !done ) {
+            endPos = inStr.indexOf( '\n', pos );
+            if ( endPos == -1 ) {
+                done = true;
+            }
+            else {
+                if ( !inEOP && inStr.substring( pos, endPos ).trim().regionMatches( true, 0, "$EOP;", 0, 5 ) ) {
+                    inEOP = true;
+                }
+                else if ( inStr.substring( pos, endPos ).trim().charAt( 0 ) == '$' ) {
+                    inEOP = false;
+                }
+                if ( !inEOP )
+                    outStr += inStr.substring( pos, endPos + 1 );
+                pos = endPos + 1;
+            }
+        }
+        return outStr;
+    }
+    
     protected double _revision;
     protected int _pos;
     protected int _length;
@@ -506,5 +604,6 @@ public class VexFileParser {
     protected ArrayList<Antenna> _antennaList;
     protected ArrayList<Site> _siteList;
     protected ArrayList<Source> _sourceList;
+    protected ArrayList<EOP> _eopList;
     
 }
