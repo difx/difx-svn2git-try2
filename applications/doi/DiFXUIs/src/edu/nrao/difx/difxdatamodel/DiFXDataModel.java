@@ -73,7 +73,7 @@ public class DiFXDataModel {
      */
     private void updateFromSystemSettings() {
         updataDatabaseFromSystemSettings();
-        readResourcesConfig( _systemSettings.resourcesFile() );
+        //readResourcesConfig( _systemSettings.resourcesFile() );
     }
     
     public void updataDatabaseFromSystemSettings() {
@@ -1494,65 +1494,65 @@ public class DiFXDataModel {
 //        }
 //    }
 
-    public void readResourcesConfig(String fileToOpen) {
-        //System.out.printf("******** Data model read resources config file data. \n");
-
-        // Create factory to create messages
-        ObjectFactory factory = new ObjectFactory();
-
-        // Read the resource config file into diFxMessage and process one line at a time
-        Scanner s = null;
-        try {
-            FileReader fReader = new FileReader(fileToOpen);
-            BufferedReader bReader = new BufferedReader(fReader);
-            s = new Scanner(bReader);
-            while (s.hasNext()) {
-                Header header = factory.createHeader();
-                header.setFrom("DOIView");
-                header.setTo("DOIModel");
-                header.setMpiProcessId("0");
-                header.setIdentifier("doi");
-                header.setType("DOIMessage");
-
-                Body body = factory.createBody();
-                DoiResourceConfig resource = factory.createDoiResourceConfig();
-
-                String strtok = s.next();
-                if (strtok.contains("mark5fx") || strtok.contains("swc")) {
-                    resource.setName(strtok);
-                    strtok = s.next();
-                    resource.setNumCPUs(Short.valueOf(strtok));
-                    strtok = s.next();
-                    resource.setNumCores(Short.valueOf(strtok));
-                    strtok = s.next();
-                    resource.setBogusGHz(Float.valueOf(strtok));
-                    strtok = s.next();
-                    resource.setType(Short.valueOf(strtok));
-
-                    // this needs to be revisited...assume resource enabled
-                    resource.setEnabled(true);
-
-                    // set resource data into the body
-                    body.setDoiResourceConfig(resource);
-
-                    // update the data model with DifxMessage
-                    DifxMessage difxMsg = factory.createDifxMessage();
-                    difxMsg.setHeader(header);
-                    difxMsg.setBody(body);
-                    serviceDataModel(difxMsg);
-                }
-
-            } // -- while (s.hasNext())
-        } catch (Exception e) {
-            System.out.println("Exception: " + e);
-        } finally {
-            if (s != null) {
-                s.close();
-            }
-        }
-
-        //System.out.printf("******** Data model read resources config file complete. \n");
-    }
+//    public void readResourcesConfig(String fileToOpen) {
+//        //System.out.printf("******** Data model read resources config file data. \n");
+//
+//        // Create factory to create messages
+//        ObjectFactory factory = new ObjectFactory();
+//
+//        // Read the resource config file into diFxMessage and process one line at a time
+//        Scanner s = null;
+//        try {
+//            FileReader fReader = new FileReader(fileToOpen);
+//            BufferedReader bReader = new BufferedReader(fReader);
+//            s = new Scanner(bReader);
+//            while (s.hasNext()) {
+//                Header header = factory.createHeader();
+//                header.setFrom("DOIView");
+//                header.setTo("DOIModel");
+//                header.setMpiProcessId("0");
+//                header.setIdentifier("doi");
+//                header.setType("DOIMessage");
+//
+//                Body body = factory.createBody();
+//                DoiResourceConfig resource = factory.createDoiResourceConfig();
+//
+//                String strtok = s.next();
+//                if (strtok.contains("mark5fx") || strtok.contains("swc")) {
+//                    resource.setName(strtok);
+//                    strtok = s.next();
+//                    resource.setNumCPUs(Short.valueOf(strtok));
+//                    strtok = s.next();
+//                    resource.setNumCores(Short.valueOf(strtok));
+//                    strtok = s.next();
+//                    resource.setBogusGHz(Float.valueOf(strtok));
+//                    strtok = s.next();
+//                    resource.setType(Short.valueOf(strtok));
+//
+//                    // this needs to be revisited...assume resource enabled
+//                    resource.setEnabled(true);
+//
+//                    // set resource data into the body
+//                    body.setDoiResourceConfig(resource);
+//
+//                    // update the data model with DifxMessage
+//                    DifxMessage difxMsg = factory.createDifxMessage();
+//                    difxMsg.setHeader(header);
+//                    difxMsg.setBody(body);
+//                    serviceDataModel(difxMsg);
+//                }
+//
+//            } // -- while (s.hasNext())
+//        } catch (Exception e) {
+//            System.out.println("Exception: " + e);
+//        } finally {
+//            if (s != null) {
+//                s.close();
+//            }
+//        }
+//
+//        //System.out.printf("******** Data model read resources config file complete. \n");
+//    }
 
     public int loadQueueFromDatabase() throws Exception {
 

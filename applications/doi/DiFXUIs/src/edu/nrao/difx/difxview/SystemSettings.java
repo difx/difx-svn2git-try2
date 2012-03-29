@@ -1017,7 +1017,7 @@ public class SystemSettings extends JFrame {
     public void setDefaults() {
         _jaxbPackage = "edu.nrao.difx.xmllib.difxmessage";
         _home = "/home/swc/difx";
-        _resourcesFile = "/cluster/difx/DiFX_trunk_64/conf/resources.difx";
+        //_resourcesFile = "/cluster/difx/DiFX_trunk_64/conf/resources.difx";
         _loggingEnabled = false;
         _statusValidDuration = 2000l;
         _ipAddress.setText( "224.2.2.1" );
@@ -1033,7 +1033,7 @@ public class SystemSettings extends JFrame {
         _difxPath.setText( "/usr/local/swc/difx" );
         _dbUseDataBase.setSelected( true );
         _dbVersion.setText( "unknown" );
-        _dbHost.setText( "c3po.aoc.nrao.edu" );
+        _dbHost.setText( "swc02.usno.navy.mil" );
         _dbSID.setText( "difx" );
         _dbPWD.setText( "difx2010" );
         _dbName.setText( "difxdb" );
@@ -1089,7 +1089,7 @@ public class SystemSettings extends JFrame {
         _defaultNames.jobCreationSanityCheck = true;
         _eopURL.setText( "http://gemini.gsfc.nasa.gov/solve_save/usno_finals.erp" );
         _leapSecondsURL.setText( "http://gemini.gsfc.nasa.gov/500/oper/solve_apriori_files/ut1ls.dat" );
-        _leapSecondsValue.value( -34 );
+        _leapSecondsValue.value( 34 );
         _autoUpdateSeconds.value( 3600 );
         leapSecondChoice( _useLeapSecondsURL );
         _autoUpdateEOP.setSelected( true );
@@ -1116,8 +1116,8 @@ public class SystemSettings extends JFrame {
     public void home( String newVal ) { _home = newVal; }
     public String home() { return _home; }
     
-    public void resourcesFile( String newVal ) { _resourcesFile = newVal; }
-    public String resourcesFile() { return _resourcesFile; }
+    //public void resourcesFile( String newVal ) { _resourcesFile = newVal; }
+    //public String resourcesFile() { return _resourcesFile; }
     
     public void loggingEnabled( boolean newVal ) { _loggingEnabled = newVal; }
     public boolean loggingEnabled() { return _loggingEnabled; }
@@ -1402,8 +1402,8 @@ public class SystemSettings extends JFrame {
             doiConfig = (DoiSystemConfig) unmarshaller.unmarshal( theFile );
             if ( doiConfig.getDifxHome() != null )
                 this.home( doiConfig.getDifxHome() );
-            if ( doiConfig.getResourcesFile() != null )   // BLAT do we still use this thing?
-                this.resourcesFile( doiConfig.getResourcesFile() );
+            //if ( doiConfig.getResourcesFile() != null )   // BLAT do we still use this thing?
+            //    this.resourcesFile( doiConfig.getResourcesFile() );
             if ( doiConfig.getDbHost() != null )
                 this.dbHost( doiConfig.getDbHost() );
             if ( doiConfig.getDbSID() != null )
@@ -1533,7 +1533,7 @@ public class SystemSettings extends JFrame {
             _defaultNames.jobCreationSanityCheck = doiConfig.isDefaultJobCreationSanityCheck();
             if ( doiConfig.getEopURL() != null )
                 _eopURL.setText( doiConfig.getEopURL() );
-            if ( doiConfig.getLeapSecondsURL() != null );
+            if ( doiConfig.getLeapSecondsURL() != null && doiConfig.getLeapSecondsURL().length() > 0 );
                 _leapSecondsURL.setText( doiConfig.getLeapSecondsURL() );
             _useLeapSecondsURL.setSelected( doiConfig.isUseLeapSecondsURL() );
             if ( _useLeapSecondsURL.isSelected() )
@@ -1564,7 +1564,7 @@ public class SystemSettings extends JFrame {
         ObjectFactory factory = new ObjectFactory();
         DoiSystemConfig doiConfig = factory.createDoiSystemConfig();
         doiConfig.setDifxHome( this.home() );
-        doiConfig.setResourcesFile( this.resourcesFile() );
+        //doiConfig.setResourcesFile( this.resourcesFile() );
         doiConfig.setDbHost( this.dbHost() );
         doiConfig.setDbSID( this.dbSID() );
         doiConfig.setDbPassword( this.dbPWD() );
@@ -1955,7 +1955,7 @@ public class SystemSettings extends JFrame {
     
     protected String _jaxbPackage;
     protected String _home;
-    protected String _resourcesFile;
+    //protected String _resourcesFile;
     protected boolean _loggingEnabled;
     protected long _statusValidDuration;
     //  DiFX Control Connection
