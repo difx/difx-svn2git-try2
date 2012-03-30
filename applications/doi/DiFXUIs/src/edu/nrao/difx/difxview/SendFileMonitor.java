@@ -55,6 +55,7 @@ public class SendFileMonitor extends PopupMonitor {
      */
     public void run() {
         try {
+            status( "Awaiting connection from " + _settings.difxControlAddress() );
             _fileSend.sendString( _content );
         } catch ( java.net.UnknownHostException e ) {
             error( "Connection failed: DiFX host \"" + _settings.difxControlAddress() + "\" is unknown.", null );

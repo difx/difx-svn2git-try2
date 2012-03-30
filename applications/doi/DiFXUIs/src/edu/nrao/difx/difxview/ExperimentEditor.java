@@ -1914,6 +1914,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     DiFXCommand_mkdir mkdir = new DiFXCommand_mkdir( directory() + "/" + passDirectory(), _settings );
                     try {
                         mkdir.send();
+                        //  Delay for a second to make sure mk5daemon has a chance to do this and recover.
+                        try { Thread.sleep( 1000 ); } catch ( Exception e ) {}
                     } catch ( java.net.UnknownHostException e ) {
                         JOptionPane.showMessageDialog( _this, "Error - DiFX host \"" + _settings.difxControlAddress()
                              + "\" unknown.",
@@ -1970,6 +1972,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     });
                     try {
                         v2d.send();
+                        try { Thread.sleep( 1000 ); } catch ( Exception e ) {}
                     } catch ( java.net.UnknownHostException e ) {
                         JOptionPane.showMessageDialog( _this, "Error - DiFX host \"" + _settings.difxControlAddress()
                              + "\" unknown.",
