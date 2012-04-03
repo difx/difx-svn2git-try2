@@ -1951,10 +1951,14 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     Point pt = _okButton.getLocationOnScreen();
                     SendFileMonitor sendVex = new SendFileMonitor( (Frame)comp, pt.x + 25, pt.y + 25,
                             directory() + "/" + passDir + vexFileName(), vexData, _settings );
+                    //  Delay for a bit to avoid having the following operation step on the end of this
+                    //  one.  Mk5daemon may still be busy.
+                    try { Thread.sleep( 1000 ); } catch ( Exception e ) {}
                     //  Create the .v2d file.  This will be put in the pass directory if it
                     //  exists, or the main experiment directory if not.
                     SendFileMonitor sendV2d = new SendFileMonitor( (Frame)comp, pt.x + 25, pt.y + 25,
                             directory() + "/" + passDir + v2dFileName(), _v2dEditor.text(), _settings );
+                    try { Thread.sleep( 1000 ); } catch ( Exception e ) {}
                     //  Run vex2difx on the new pass and v2d file.
                     passDir = directory();
                     if ( createPass() )

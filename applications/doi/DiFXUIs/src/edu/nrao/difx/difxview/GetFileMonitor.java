@@ -76,7 +76,7 @@ public class GetFileMonitor extends PopupMonitor {
         //  Check the file size....this will tell us if anything went
         //  wrong, and to some degree what.
         int fileSize = _fileGet.fileSize();
-        if ( fileSize == _fileGet.inString().length() ) {
+        if ( _fileGet.inString() != null && fileSize == _fileGet.inString().length() ) {
             //  It worked!  Set the "success" value and get rid of the window.
             successCondition();
             return;

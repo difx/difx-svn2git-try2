@@ -46,8 +46,14 @@
     root's home directory).&nbsp; If you don't, create one with the
     following command (answer any questions by hitting "return"):<br>
     <pre>	ssh-keygen -t rsa</pre>
+    You will have to log out and log back in for the new key to be
+    active, or type:<br>
+    <pre>	ssh-add</pre>
     Then type this for <span style="font-weight: bold;">every node</span>
-    you are using (including the DiFX host iteself!):<br>
+    you are using, including the DiFX host itself.&nbsp; You should use
+    complete addresses for machine names, not aliases (it is not
+    entirely clear that this is a problem, but we had some issues with
+    it):<br>
     <pre>	ssh-copy-id user@node<br></pre>
     For instance, if your DiFX user is "difx", your DiFX host is "king"
     and your other processing nodes and mark 5's are "pawn1", "pawn2",
@@ -212,6 +218,9 @@
 
 
 
+
+
+
     See <a href="#Database_Remote_Access">Problems with Database Remote
       Access</a> in the trouble-shooting section for details.<br>
     <h4>Password</h4>
@@ -251,6 +260,9 @@
     does it involve much network traffic, however the database probably
     doesn't change much so an interval of a few seconds should be fine.<br>
     <h2><a name="Testing_the_Database_Configuration"></a>Trouble-shooting
+
+
+
 
 
 
@@ -334,22 +346,19 @@
       <br>
       <br>
     </code>
-    <div style="margin-left: 40px; font-weight: bold;"><code>SQLException:
-
-
-
-
-
-
-
-        Communications link failure The last packet sent successfully to
-        the server was 0 milliseconds ago. The driver has not received
-        any packets from the server.</code></div>
+    <div style="margin-left: 40px; font-weight: bold;">
+      <h6><code>SQLException: Communications link failure The last
+          packet sent successfully to the server was 0 milliseconds ago.
+          The driver has not received any packets from the server.</code></h6>
+    </div>
     <div style="margin-left: 40px;"><br>
     </div>
     This error indicates that the connection to the remote mySQL
     database failed.&nbsp; Check that the DiFX host exits and in on the
     network (using the <a href="#Database_Ping_Test">Ping Test</a>).&nbsp;
+
+
+
 
 
 
@@ -381,7 +390,12 @@
     mySQL installation.<br>
     <br>
     <br>
-    <pre style="font-weight: bold; margin-left: 40px;">SQLException: Access denied for user 'difxw'@'10.1.2.45' (using password: YES)</pre>
+    <div style="margin-left: 40px; font-weight: bold;">
+      <h6><code>SQLException: Access denied for user 'difxw'@'10.1.2.45'
+          (using password: YES)</code></h6>
+      <h6><code></code></h6>
+      <code><br>
+      </code></div>
     Access to the database can be denied for a number of reasons.&nbsp;
     Check your user name and password (these need to be mySQL user name
     and password, not necessarily the user name and password you use to
@@ -412,7 +426,9 @@
     At this point we reach the limits of my personal mySQL knowledge.<br>
     <br>
     <br>
-    <pre style="font-weight: bold; margin-left: 40px;">Database contains 0 jobs.</pre>
+    <h6> <span style="font-weight: bold; font-family: monospace;">&nbsp;&nbsp;&nbsp;
+        Database contains 0 jobs.</span></h6>
+    <br>
     This is not an error, however you may encounter this message.&nbsp;
     It simply means there are no jobs queued in the specified
     database.&nbsp; If this is not what you expect (because, for

@@ -134,7 +134,6 @@ public class DiFXCommand_sendFile extends DiFXCommand {
                 _error = e.toString();
                 _fileSize = -11;
             }
-            incrementalCallback();
             endCallback();
         }
         
