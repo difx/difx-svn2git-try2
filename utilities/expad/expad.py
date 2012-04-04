@@ -209,6 +209,7 @@ class MainWindow(GenericWindow):
         
         self.txtCode.delete(0,END)
         self.txtNumber.delete(0,END)
+	self.txtReleasedBy.delete(0,END)
         self.txtDateArchived.delete(0,END)
         self.txtArchivedBy.delete(0,END)     
         self.txtComment.delete(1.0,END)
