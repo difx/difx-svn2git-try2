@@ -1807,6 +1807,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 DiFXCommand_mkdir mkdir = new DiFXCommand_mkdir( directory(), _settings );
                 try {
                     mkdir.send();
+                    try { Thread.sleep( 1000 ); } catch ( Exception e ) {}
                 } catch ( java.net.UnknownHostException e ) {
                     //  BLAT Should be a pop-up and we shouldn't continue this operation
                     java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
