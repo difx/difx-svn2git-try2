@@ -129,6 +129,28 @@ public class QueueDBConnection {
     }
     
     /*
+     * Generate a list of all jobs in the data base with the given limitation.
+     */
+    public ResultSet jobListLimited( String limitation ) {
+        try {
+            return _db.selectData( "select * from " + _settings.dbName() + ".Job where " + limitation );
+        } catch ( Exception e ) {
+            return null;
+        }
+    }
+    
+    /*
+     * Generate a list of all jobs in the data base in the given Pass.
+     */
+    public ResultSet jobListByPassId( int passId ) {
+        try {
+            return jobListLimited( "passID = " + passId );
+        } catch ( Exception e ) {
+            return null;
+        }
+    }
+    
+    /*
      * Delete the given experiment from the database.  The experiment is identified
      * by its unique ID.
      */
@@ -198,6 +220,36 @@ public class QueueDBConnection {
     }
     
     /*
+     * Create a new job.
+     */
+    public boolean newJob( String name, Integer passId, Integer jobNumber, Double jobStart,
+            Double jobDuration, String inputFile, String difxVersion, Integer numAntennas,
+            Integer numForeign, Integer statusId ) {
+        if ( !this.connected() )
+            return false;
+        try {
+        int updateCount = _db.updateData( "insert into " + _settings.dbName() + 
+                        ".Job (passID, jobNumber, jobStart, jobDuration, inputFile, difxVersion, numAntennas, numForeign, statusID) values("
+                + " \"" + passId.toString() + "\","
+                + " \"" + jobNumber.toString() + "\","
+                + " \"" + jobStart.toString() + "\","
+                + " \"" + jobDuration.toString() + "\","
+                + " \"" + inputFile + "\","
+                + " \"" + difxVersion + "\","
+                + " \"" + numAntennas.toString() + "\","
+                + " \"" + numForeign.toString() + "\","
+                + " \"" + statusId.toString() + "\" )" );
+        if ( updateCount > 0 )
+            return true;
+        else
+            return false;
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            return false;
+        }
+    }
+    
+    /*
      * Update an element of a specified experiment (identified by ID).  It will change
      * a specific field to a specific value - both are strings.  Return the number of items
      * updated.
@@ -208,6 +260,24 @@ public class QueueDBConnection {
         try {
             return _db.updateData( "update " + _settings.dbName()
                     +  ".Experiment set " + param + " = \"" + setting + "\""
+                    + " where id = \"" + id.toString() + "\"" );
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            return 0;
+        }
+    }
+    
+    /*
+     * Update an element of a specified job (identified by ID).  It will change
+     * a specific field to a specific value - both are strings.  Return the number of items
+     * updated.
+     */
+    public int updateJob( Integer id, String param, String setting ) {
+        if ( id == null )
+            return 0;
+        try {
+            return _db.updateData( "update " + _settings.dbName()
+                    +  ".Job set " + param + " = \"" + setting + "\""
                     + " where id = \"" + id.toString() + "\"" );
         } catch ( Exception e ) {
             java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );

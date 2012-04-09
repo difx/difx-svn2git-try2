@@ -16,13 +16,10 @@ import javax.swing.JPopupMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JSeparator;
-import javax.swing.JOptionPane;
 
 import java.awt.Font;
 import java.awt.Color;
 import java.awt.Insets;
-import java.awt.Frame;
-import java.awt.Component;
 import java.awt.Point;
 
 import java.io.File;
@@ -42,12 +39,8 @@ import java.awt.event.ActionListener;
 import edu.nrao.difx.difxdatamodel.*;
 import edu.nrao.difx.difxcontroller.*;
 
-import edu.nrao.difx.difxutilities.DiFXCommand_mkdir;
-import edu.nrao.difx.difxutilities.DiFXCommand_vex2difx;
-
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 
-import edu.nrao.difx.difxdatabase.DBConnection;
 import edu.nrao.difx.difxdatabase.QueueDBConnection;
 
 import java.awt.event.KeyEvent;
@@ -70,19 +63,11 @@ public class QueueBrowserPanel extends TearOffPanel {
         _mainLabel.setBounds( 5, 0, 150, 20 );
         _mainLabel.setFont( new Font( "Dialog", Font.BOLD, 14 ) );
         add( _mainLabel );
-        //  The popup menu for the "New" button.
-        _newMenu = new JPopupMenu();
-        JMenuItem newExperimentItem = new JMenuItem( "Experiment" );
-        newExperimentItem.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                newExperiment();
-            }
-        });
-        _newMenu.add( newExperimentItem );
-        _newButton = new JButton( "New..." );
+        _newButton = new JButton( "New" );
+        _newButton.setToolTipText( "Create a new experiment." );
         _newButton.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                _newMenu.show( _newButton, 0, 25 );
+                newExperiment();
             }
         });
         this.add( _newButton );
@@ -235,7 +220,7 @@ public class QueueBrowserPanel extends TearOffPanel {
         super.setBounds( x, y, width, height );
         _newButton.setBounds( 5, 30, 100, 25 );
         _selectButton.setBounds( 110, 30, 100, 25 );
-        _showButton.setBounds( 215, 30, 100, 25 );
+        _showButton.setBounds( 220, 30, 100, 25 );
         _updateButton.setBounds( width - 120, 30, 110, 25 );
         _autoButton.setBounds( width - 145, 30, 25, 25 );
     }
@@ -331,7 +316,6 @@ public class QueueBrowserPanel extends TearOffPanel {
         Point pt = _newButton.getLocationOnScreen();
         ExperimentEditor win =
                 new ExperimentEditor( pt.x + 25, pt.y + 25, _systemSettings );
-                //new ExperimentEditor( (Frame)comp, pt.x + 25, pt.y + 25, _systemSettings );
         win.setTitle( "Create New Experiment" );
         win.number( 0 );
         win.name( "Experiment_" + newExperimentId.toString() );
@@ -352,7 +336,7 @@ public class QueueBrowserPanel extends TearOffPanel {
         win.passName( "Production Pass" );
         win.createPass( _systemSettings.defaultNames().createPassOnExperimentCreation );
         win.newExperimentMode( true );
-        win.visible();
+        win.setVisible( true );
     }
         
     protected void selectAll() {};
@@ -645,7 +629,7 @@ public class QueueBrowserPanel extends TearOffPanel {
                     thisJob.speedUpFactor( dbJobList.getDouble( "speedupFactor" ) );
                     thisJob.numAntennas( dbJobList.getInt( "numAntennas" ) );
                     thisJob.numForeignAntennas( dbJobList.getInt( "numForeign" ) );
-                    thisJob.dutyCycle( dbJobList.getString( "dutyCycle" ) );
+                    thisJob.dutyCycle( dbJobList.getDouble( "dutyCycle" ) );
                     thisJob.status( "unknown" );
                     thisJob.active( false );
                     thisJob.statusId( dbJobList.getInt( "statusID" ) );
@@ -704,48 +688,6 @@ public class QueueBrowserPanel extends TearOffPanel {
      * been de-queued, i.e. removed from the database.
      */
     protected void checkQueueStatusFromDatabase() {
-    }
-    
-    /*
-     * This method services a data message from the data model.  It adds information
-     * about any projects or jobs to appropriate lists, creating new nodes on the lists
-     * as new items appear.
-     * 
-     * IT LOOKS LIKE THIS FUNCTION IS NOT USED!!!!
-     */
-    protected void serviceDataUpdatePoop() {
-        
-        //  This would be unlikely...
-        if ( _dataModel == null )
-            return;
-        
-        //  Get all jobs the data model knows about.
-        List<Job> jobs = _dataModel.getJobs();
-        
-        //  Change the displayed properties for each job.
-        if ( jobs != null ) {
-            //  Run through each unit in the list of Mark5 modules and change their 
-            //  displayed properties.
-            for ( Iterator<Job> iter = jobs.iterator(); iter.hasNext(); ) {
-                Job thisJob = iter.next();
-                System.out.println( thisJob.getJobID() ); 
-                //  Find the node in our browser that represents this unit.
-                ExperimentNode processor = null;
-//                for ( Iterator<BrowserNode> iter2 = _clusterNodes.children().iterator(); iter2.hasNext(); ) {
-//                    BrowserNode thisModule = iter2.next();
-//                    if ( thisModule.name().equals( thisProcessor.getObjName() ) )
-//                        processor = (ClusterNode)thisModule;
-//                }
-//                //  If there was no node representing this unit, create one.
-//                if ( processor == null ) {
-//                    processor = new ClusterNode( thisProcessor.getObjName() );
-//                    _clusterNodes.addChild( processor );
-//                }
-//                //  Update the processor with new data.
-//                processor.setData( thisProcessor );
-            }
-        }
-        
     }
     
     /*
@@ -824,7 +766,6 @@ public class QueueBrowserPanel extends TearOffPanel {
     protected boolean _updateNow;
     protected UpdateLoop _updateLoop;
     protected JButton _newButton;
-    protected JPopupMenu _newMenu;
     protected JButton _selectButton;
     protected JPopupMenu _selectMenu;
     protected JButton _showButton;

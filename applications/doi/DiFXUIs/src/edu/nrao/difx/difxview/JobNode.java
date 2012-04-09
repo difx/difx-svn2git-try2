@@ -40,6 +40,7 @@ import edu.nrao.difx.xmllib.difxmessage.DifxStatus;
 import java.awt.Font;
 
 import edu.nrao.difx.difxdatabase.DBConnection;
+import edu.nrao.difx.difxdatabase.QueueDBConnection;
 
 /**
  *
@@ -133,16 +134,16 @@ public class JobNode extends QueueBrowserNode {
         _correlationEnd.setText( "" );
         showCorrelationEnd( false );
         this.add( _correlationEnd );
-        _jobStart = new ColumnTextArea();
-        _jobStart.justify( ColumnTextArea.RIGHT );
-        _jobStart.setText( "" );
+        _jobStartText = new ColumnTextArea();
+        _jobStartText.justify( ColumnTextArea.RIGHT );
+        _jobStartText.setText( "" );
         showJobStart( true );
-        this.add( _jobStart );
-        _jobDuration = new ColumnTextArea();
-        _jobDuration.justify( ColumnTextArea.RIGHT );
-        _jobDuration.setText( "" );
+        this.add( _jobStartText );
+        _jobDurationText = new ColumnTextArea();
+        _jobDurationText.justify( ColumnTextArea.RIGHT );
+        _jobDurationText.setText( "" );
         showJobDuration( true );
-        this.add( _jobDuration );
+        this.add( _jobDurationText );
         _inputFile = new ColumnTextArea();
         _inputFile.justify( ColumnTextArea.RIGHT );
         _inputFile.setText( "" );
@@ -178,11 +179,11 @@ public class JobNode extends QueueBrowserNode {
         _numForeignAntennas.setText( "" );
         showNumForeignAntennas( true );
         this.add( _numForeignAntennas );
-        _dutyCycle = new ColumnTextArea();
-        _dutyCycle.justify( ColumnTextArea.RIGHT );
-        _dutyCycle.setText( "" );
+        _dutyCycleText = new ColumnTextArea();
+        _dutyCycleText.justify( ColumnTextArea.RIGHT );
+        _dutyCycleText.setText( "" );
         showDutyCycle( true );
-        this.add( _dutyCycle );
+        this.add( _dutyCycleText );
         _status = new ColumnTextArea();
         _status.justify( ColumnTextArea.RIGHT );
         _status.setText( "" );
@@ -325,10 +326,10 @@ public class JobNode extends QueueBrowserNode {
             setTextArea( _correlationStart, _widthCorrelationStart );
         if ( _correlationEnd.isVisible() )
             setTextArea( _correlationEnd, _widthCorrelationEnd );
-        if ( _jobStart.isVisible() )
-            setTextArea( _jobStart, _widthJobStart );
-        if ( _jobDuration.isVisible() )
-            setTextArea( _jobDuration, _widthJobDuration );
+        if ( _jobStartText.isVisible() )
+            setTextArea( _jobStartText, _widthJobStart );
+        if ( _jobDurationText.isVisible() )
+            setTextArea( _jobDurationText, _widthJobDuration );
         if ( _inputFile.isVisible() )
             setTextArea( _inputFile, _widthInputFile );
         if ( _outputFile.isVisible() )
@@ -343,8 +344,8 @@ public class JobNode extends QueueBrowserNode {
             setTextArea( _numAntennas, _widthNumAntennas );
         if ( _numForeignAntennas.isVisible() )
             setTextArea( _numForeignAntennas, _widthNumForeignAntennas );
-        if ( _dutyCycle.isVisible() )
-            setTextArea( _dutyCycle, _widthDutyCycle );
+        if ( _dutyCycleText.isVisible() )
+            setTextArea( _dutyCycleText, _widthDutyCycle );
         if ( _status.isVisible() )
             setTextArea( _status, _widthStatus );
         if ( _active.isVisible() )
@@ -457,9 +458,16 @@ public class JobNode extends QueueBrowserNode {
     
     /*
      * This is a generic database update function for this object.  It will change
-     * a specific field to a specific value - both are strings.
+     * a specific field to a specific value - both are strings.  
      */
     public void updateDatabase( String param, String setting ) {
+        QueueDBConnection db = null;
+        if ( _settings.useDataBase() ) {
+            db = new QueueDBConnection( _settings );
+            if ( db.connected() ) {
+                db.updateJob( _databaseJobId, param, setting );
+            }
+        }
         DBConnection dbConnection = new DBConnection( _settings.dbURL(), _settings.jdbcDriver(),
             _settings.dbSID(), _settings.dbPWD() );
         try {
@@ -671,10 +679,18 @@ public class JobNode extends QueueBrowserNode {
     public String correlationStart() { return _correlationStart.getText(); }
     public void correlationEnd( String newVal ) { _correlationEnd.setText( newVal ); }
     public String correlationEnd() { return _correlationEnd.getText(); }
-    public void jobStart( double newVal ) { _jobStart.setText( String.format( "%10.3f", newVal ) ); }
-    public double jobStart() { return new Double( _jobStart.getText() ).doubleValue(); }
-    public void jobDuration( double newVal ) { _jobDuration.setText( String.format( "%10.3f", newVal ) ); }
-    public double jobDuration() { return new Double( _jobDuration.getText() ).doubleValue(); }
+    public void jobStart( double newVal ) { 
+        _jobStartText.setText( String.format( "%10.3f", newVal ) );
+        _jobStart = newVal;
+    }
+    public Double jobStart() { 
+        return _jobStart;
+    }
+    public void jobDuration( Double newVal ) { 
+        _jobDurationText.setText( String.format( "%10.3f", newVal ) );
+        _jobDuration = newVal;
+    }
+    public Double jobDuration() { return _jobDuration; }
     public void inputFile( String newVal ) { 
         _inputFile.setText( newVal );
         //  Convert to a file to extract the directory path...
@@ -703,7 +719,7 @@ public class JobNode extends QueueBrowserNode {
         _numAntennas.setText( String.format( "%10d", newVal ) );
         newWeightDisplay( newVal );
     }
-    public int numAntennas() { return new Integer( _numAntennas.getText() ).intValue(); }
+    public Integer numAntennas() { return Integer.parseInt( _numAntennas.getText().trim() ); }
     public void weight( String antenna, String newString ) {
         double newVal = Double.valueOf( newString );
         for ( int i = 0; i < _weights.length; ++i ) {
@@ -729,8 +745,11 @@ public class JobNode extends QueueBrowserNode {
     }
     public void numForeignAntennas( int newVal ) { _numForeignAntennas.setText( String.format( "%10d", newVal ) ); }
     public int numForeignAntennas() { return new Integer( _numForeignAntennas.getText() ).intValue(); }
-    public void dutyCycle( String newVal ) { _dutyCycle.setText( newVal ); }
-    public String dutyCycle() { return _dutyCycle.getText(); }
+    public void dutyCycle( Double newVal ) { 
+        _dutyCycleText.setText( String.format( "%10.3f", newVal ) );
+        _dutyCycle = newVal;
+    }
+    public Double dutyCycle() { return _dutyCycle; }
     public void status( String newVal ) { _status.setText( newVal ); }
     public String status() { return _status.getText(); }
     public void active( boolean newVal ) { _active.on( newVal ); }
@@ -749,8 +768,8 @@ public class JobNode extends QueueBrowserNode {
     public void showQueueTime( boolean newVal ) { _queueTime.setVisible( newVal ); }
     public void showCorrelationStart( boolean newVal ) { _correlationStart.setVisible( newVal ); }
     public void showCorrelationEnd( boolean newVal ) { _correlationEnd.setVisible( newVal ); }
-    public void showJobStart( boolean newVal ) { _jobStart.setVisible( newVal ); }
-    public void showJobDuration( boolean newVal ) { _jobDuration.setVisible( newVal ); }
+    public void showJobStart( boolean newVal ) { _jobStartText.setVisible( newVal ); }
+    public void showJobDuration( boolean newVal ) { _jobDurationText.setVisible( newVal ); }
     public void showInputFile( boolean newVal ) { _inputFile.setVisible( newVal ); }
     public void showOutputFile( boolean newVal ) { _outputFile.setVisible( newVal ); }
     public void showOutputSize( boolean newVal ) { _outputSize.setVisible( newVal ); }
@@ -758,7 +777,7 @@ public class JobNode extends QueueBrowserNode {
     public void showSpeedUpFactor( boolean newVal ) { _speedUpFactor.setVisible( newVal ); }
     public void showNumAntennas( boolean newVal ) { _numAntennas.setVisible( newVal ); }
     public void showNumForeignAntennas( boolean newVal ) { _numForeignAntennas.setVisible( newVal ); }
-    public void showDutyCycle( boolean newVal ) { _dutyCycle.setVisible( newVal ); }
+    public void showDutyCycle( boolean newVal ) { _dutyCycleText.setVisible( newVal ); }
     public void showStatus( boolean newVal ) { _status.setVisible( newVal ); }
     public void showActive( boolean newVal ) { _active.setVisible( newVal ); }
     public void showStatusId( boolean newVal ) { _statusId.setVisible( newVal ); }
@@ -804,6 +823,9 @@ public class JobNode extends QueueBrowserNode {
     
     public JobEditorMonitor editorMonitor() { return _editorMonitor; }
     
+    public Integer databaseJobId() { return _databaseJobId; }
+    public void databaseJobId( Integer newVal ) { _databaseJobId = newVal; }
+    
     protected PassNode _passNode;
     
     protected JButton _startButton;
@@ -828,10 +850,12 @@ public class JobNode extends QueueBrowserNode {
     protected int _widthCorrelationStart;
     protected ColumnTextArea _correlationEnd;
     protected int _widthCorrelationEnd;
-    protected ColumnTextArea _jobStart;
+    protected ColumnTextArea _jobStartText;
     protected int _widthJobStart;
-    protected ColumnTextArea _jobDuration;
+    protected Double _jobStart;
+    protected ColumnTextArea _jobDurationText;
     protected int _widthJobDuration;
+    protected Double _jobDuration;
     protected ColumnTextArea _inputFile;
     protected int _widthInputFile;
     protected ColumnTextArea _outputFile;
@@ -846,8 +870,9 @@ public class JobNode extends QueueBrowserNode {
     protected int _widthNumAntennas;
     protected ColumnTextArea _numForeignAntennas;
     protected int _widthNumForeignAntennas;
-    protected ColumnTextArea _dutyCycle;
+    protected ColumnTextArea _dutyCycleText;
     protected int _widthDutyCycle;
+    protected Double _dutyCycle;
     protected ColumnTextArea _status;
     protected int _widthStatus;
     protected ActivityMonitorLight _active;
@@ -881,4 +906,5 @@ public class JobNode extends QueueBrowserNode {
     protected String _fullName;
     
     protected SystemSettings _settings;
+    protected Integer _databaseJobId;
 }

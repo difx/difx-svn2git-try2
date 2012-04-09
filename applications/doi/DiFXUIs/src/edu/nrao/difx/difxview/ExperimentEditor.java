@@ -652,19 +652,10 @@ public class ExperimentEditor extends JFrame { //JDialog {
         _doSanityLabel = new JLabel( "Do Sanity Check:" );
         _doSanityLabel.setHorizontalAlignment( JLabel.RIGHT );
         buttonPanel.add( _doSanityLabel );
-        _cancelButton = new JButton( "Cancel" );
-        _cancelButton.setBounds( 100, 140, 100, 25 );
-        _cancelButton.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                ok( false );
-            }
-        });
-        buttonPanel.add( _cancelButton );
         _okButton = new JButton( "Apply" );
         _okButton.setBounds( 210, 140, 100, 25 );
         _okButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                //ok( true );
                 applyButtonAction();
             }
         });
@@ -700,7 +691,6 @@ public class ExperimentEditor extends JFrame { //JDialog {
             _scrollPane.setBounds( 0, 25, w, h - 47 );
             _createPass.setBounds( 100, 20, 25, 25 );
             _passName.setBounds( 285, 20, w - 310, 25 );
-            _cancelButton.setBounds( w - 235, 140, 100, 25 );
             _okButton.setBounds( w - 125, 140, 100, 25 );
             _directory.setBounds( 100, 170, w - 125, 25 );
             _vexFileName.setBounds( 100, 200, w - 255, 25 );
@@ -1312,22 +1302,6 @@ public class ExperimentEditor extends JFrame { //JDialog {
         _number.intValue( newVal );
         _numberAsLabel.setText( newVal.toString() );
     }
-    protected void ok( boolean newVal ) {
-        _ok = newVal;
-        if ( _newExperimentMode )
-            this.setVisible( false );
-        else {
-            if ( !_ok )
-                this.setVisible( false );
-            else
-                newExperimentMode( true );
-        }
-    }
-    public boolean ok() { return _ok; }
-    public void visible() {
-        _ok = false;
-        this.setVisible( true );
-    }
     public boolean inDataBase() { return _inDataBase.isSelected(); }
     public void inDataBase( boolean newVal ) { 
         _inDataBase.setSelected( newVal );
@@ -1885,20 +1859,21 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     newPassName = "default";
                 else
                     _statusLabel.setText( "creating pass \"" + newPassName + "\"" );
-                int newPassId = 0;
+                _databasePassId = 0;
                 if ( db != null ) {
                     _statusLabel.setText( "adding pass information to database" );
                     db.newPass( newPassName, _settings.passTypeID( passType() ), _thisExperiment.id() );
                     //  See which ID the data base assigned...it will be the largest one that
                     //  is associated with this experiment.  This is safer than looking for the
-                    //  name (because a name might be duplicated).
+                    //  name (because a name might be duplicated).  We need the pass ID so we can
+                    //  properly connect any jobs created to it in the database.
                     ResultSet dbPassList = db.passList();
                     try {
                         while ( dbPassList.next() ) {
                             int newId = dbPassList.getInt( "id" );
                             int experimentId = dbPassList.getInt( "experimentID" );
-                            if ( experimentId == _thisExperiment.id() && newId > newPassId )
-                                newPassId = newId;
+                            if ( experimentId == _thisExperiment.id() && newId > _databasePassId )
+                                _databasePassId = newId;
                         }
                     } catch ( Exception e ) {
                         java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
@@ -1907,6 +1882,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 //  This creates a "node" that will appear in the browser (or won't in the
                 //  case of the "default" pass).
                 _newPass = new PassNode( newPassName, _settings );
+                if ( !createPass() )
+                    _newPass.setHeight( 0 );
                 _thisExperiment.addChild( _newPass );
                 //  Create the pass directory on the DiFX host if the user has requested a
                 //  pass directory.
@@ -2013,10 +1990,17 @@ public class ExperimentEditor extends JFrame { //JDialog {
          * the file is an ".input" file, it creates a new job based on it.
          */
         synchronized public void newFileCallback( String newFile ) {
+            //  Get a connection to the database if we are using it.
+            QueueDBConnection db = null;
+            if ( _settings.useDataBase() ) {
+                db = new QueueDBConnection( _settings );
+                if ( !db.connected() )
+                    db = null;
+            }
             //  Get the extension and "full name" (the full path without the extension) on this new file...
             String extn = newFile.substring( newFile.lastIndexOf( '.' ) + 1 ).trim();
             String fullName = newFile.substring( 0, newFile.lastIndexOf( '.' ) ).trim();
-            //BLATSystem.out.println( "new file callback!" );
+            int databaseJobId = 0;
             //  If its an .input or .calc file, create a new job based on it.
             if ( extn.contentEquals( "input" ) || extn.contentEquals( "calc" ) ) {
                 //  See if we've already created it by searching existing jobs for the
@@ -2044,13 +2028,40 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     newJob.passNode( _newPass );
                     _settings.queueBrowser().addJob( newJob );
                     newJob.editorMonitor().editor( _this );
-                    //BLATSystem.out.println( "done with that!" );
+                    //  Add the new job to the database (if we are using it).
+                    if ( db != null ) {
+                        _statusLabel.setText( "adding job information to database" );
+                        db.newJob( jobName, _databasePassId, 0, 0.0, 0.0, "", _settings.difxVersion(),
+                                0, 0, _settings.jobStatusID( "unknown" ) );
+                        //  See which ID the data base assigned to the job...it will be the largest one that
+                        //  is associated with the current pass.  This is safer than looking for the
+                        //  name (because a name might be duplicated).  We need the job ID so we can
+                        //  properly change items associated with it as we find them.
+                        ResultSet dbJobList = db.jobListByPassId( _databasePassId );
+                        try {
+                            while ( dbJobList.next() ) {
+                                int newId = dbJobList.getInt( "id" );
+                                if ( newId > databaseJobId )
+                                    databaseJobId = newId;
+                            }
+                        } catch ( Exception e ) {
+                            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+                        }
+                    }
+                    newJob.databaseJobId( databaseJobId );
+                    
                 }
                 //  Apply this file to the job.
-                if ( extn.contentEquals( "input" ) )
+                if ( extn.contentEquals( "input" ) ) {
                     newJob.inputFile( newFile.trim() );
-                else if ( extn.contentEquals( "calc" ) )
+                    //  Add the input file path to the database if we are using it.
+                    if ( db != null ) {
+                        db.updateJob( databaseJobId, "inputFile", newFile.trim() );
+                    }
+                }
+                else if ( extn.contentEquals( "calc" ) ) {
                     newJob.calcFile( newFile.trim() );
+                }
             }
         }
 
@@ -2071,7 +2082,6 @@ public class ExperimentEditor extends JFrame { //JDialog {
     protected JLabel _nameAsLabel;
     protected NumberBox _number;
     protected JLabel _numberAsLabel;
-    protected boolean _ok;
     protected Timer _timeoutTimer;
     protected JCheckBox _inDataBase;
     protected JLabel _id;
@@ -2079,7 +2089,6 @@ public class ExperimentEditor extends JFrame { //JDialog {
     protected boolean _newExperimentMode;
     protected boolean _saveInDataBase;
     protected JButton _okButton;
-    protected JButton _cancelButton;
     protected JLabel _status;
     protected JComboBox _statusList;
     protected SystemSettings _settings;
@@ -2148,5 +2157,6 @@ public class ExperimentEditor extends JFrame { //JDialog {
     protected JCheckBox _newEOPUseCheck;
     protected ArrayList<SystemSettings.EOPStructure> _newEOP;
     protected boolean _deleteEOPFromVex;
+    protected int _databasePassId;
     
 }

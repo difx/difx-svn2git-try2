@@ -234,7 +234,7 @@ public class ExperimentNode extends QueueBrowserNode {
         }
         _editor.setTitle( "Edit Experiment " + name() );
         _editor.newExperimentMode( false );
-        _editor.visible();
+        _editor.setVisible( true );
 //        //  See if the user made any edition changes.  If so, apply them to the
 //        //  database (if requested) and locally.
 //        if ( _editor.ok() && _editor.editMode() ) {

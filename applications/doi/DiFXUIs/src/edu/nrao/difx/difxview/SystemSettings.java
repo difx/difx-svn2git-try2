@@ -1844,6 +1844,62 @@ public class SystemSettings extends JFrame {
     }
     
     /*
+     * Return the current list of job status types, or try to create one
+     * from the database if it doesn't exist yet.
+     */
+    public Map<Integer, JobStatusEntry> jobStatusList() {
+        if ( _jobStatusList == null )
+            _jobStatusList = new HashMap<Integer, JobStatusEntry>();
+        if ( _jobStatusList.isEmpty() ) {            
+            QueueDBConnection db = new QueueDBConnection( this );
+            if ( db.connected() ) {
+                ResultSet dbJobStatusList = db.jobStatusList();
+                try {
+                    while ( dbJobStatusList.next() ) {
+                        _jobStatusList.put( dbJobStatusList.getInt( "id" ),
+                                new JobStatusEntry( dbJobStatusList.getInt( "active" ),
+                                        dbJobStatusList.getString( "status" ) ) );
+                    }
+                } catch ( Exception e ) {
+                    java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+                }
+            }
+        }
+        return _jobStatusList;
+    }
+    
+    /*
+     * Obtain the "id" of an experiment status from its string form.
+     */
+    public Integer jobStatusID( String status ) {
+        Map<Integer, JobStatusEntry> jobStatusList = jobStatusList();
+        if ( jobStatusList == null )
+            return 0;
+        Iterator iter = jobStatusList.entrySet().iterator();
+        for ( ; iter.hasNext(); ) {
+            Map.Entry m = (Map.Entry)iter.next();
+            if ( ((JobStatusEntry)m.getValue()).status.contentEquals( status ) )
+                return ((Integer)m.getKey());
+        }
+        return 0;
+    }
+    
+    /*
+     * Obtain the string form of an experiment status from its ID.
+     */
+    public String jobStatusString( Integer id ) {
+        if ( _jobStatusList == null )
+            return null;
+        Iterator iter = _jobStatusList.entrySet().iterator();
+        for ( ; iter.hasNext(); ) {
+            Map.Entry m = (Map.Entry)iter.next();
+            if ( (Integer)m.getKey() == id )
+                return ((JobStatusEntry)m.getValue()).status;
+        }
+        return null;
+    }
+    
+    /*
      * Return the current list of pass types, or try to create one
      * from the database if it doesn't exist yet.
      */
@@ -2109,6 +2165,15 @@ public class SystemSettings extends JFrame {
         public String status;
     }
     protected Map<Integer, ExperimentStatusEntry> _experimentStatusList;
+    public class JobStatusEntry {
+        public JobStatusEntry( Integer newActive, String newStatus ) {
+            active = newActive;
+            status = newStatus;
+        }
+        public Integer active;
+        public String status;
+    }
+    protected Map<Integer, JobStatusEntry> _jobStatusList;
     
     //  These lists contain "type" values that can be applied to passes.
     //  Nominally they come from the database, but in the absense of the database the

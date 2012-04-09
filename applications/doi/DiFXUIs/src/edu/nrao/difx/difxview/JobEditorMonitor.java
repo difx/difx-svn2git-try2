@@ -777,34 +777,38 @@ public class JobEditorMonitor extends JFrame {
             } else if (sInput.contains("CORE CONF FILENAME:")) {
                 sInput = sInput.substring(sInput.indexOf(":") + 1);
 //                setCoreConfigFile(sInput.trim());
-            } else if (sInput.contains("EXECUTE TIME (SEC):")) {
+            } else if ( sInput.contains( "EXECUTE TIME (SEC):" ) ) {
+                sInput = sInput.substring( sInput.indexOf(":") + 1 );
+                executeTime( Integer.parseInt( sInput.trim() ) );
+            } else if ( sInput.contains( "START MJD:" ) ) {
                 sInput = sInput.substring(sInput.indexOf(":") + 1);
-//                setExecuteTimeSeconds(Integer.parseInt(sInput.trim()));
-            } else if (sInput.contains("START MJD:")) {
-                sInput = sInput.substring(sInput.indexOf(":") + 1);
-//                setStartMJD(Integer.parseInt(sInput.trim()));
+                startMJD( Integer.parseInt( sInput.trim() ) );
             } else if (sInput.contains("START SECONDS:")) {
+                //  Throws away any fractional seconds...
                 sInput = sInput.substring(sInput.indexOf(":") + 1);
                 if (sInput.contains(".")) {
                     sInput = sInput.substring(0, sInput.indexOf("."));
                 }
-//                setStartSeconds(Integer.parseInt(sInput.trim()));
+                startSeconds( Integer.parseInt( sInput.trim() ) );
             } else if (sInput.contains("ACTIVE DATASTREAMS:")) {
                 sInput = sInput.substring(sInput.indexOf(":") + 1);
 //                setActiveDatastreams(Integer.parseInt(sInput.trim()));
             } else if (sInput.contains("ACTIVE BASELINES:")) {
                 sInput = sInput.substring(sInput.indexOf(":") + 1);
 //                setActiveBaselines(Integer.parseInt(sInput.trim()));
-            } else if (sInput.contains("VIS BUFFER LENGTH:")
-                    || sInput.contains("OUTPUT FORMAT:")
-                    || sInput.contains("OUTPUT FILENAME:")) {
+            } else if ( sInput.contains( "VIS BUFFER LENGTH:" ) ) {
                 sInput = sInput.substring(sInput.indexOf(":") + 1);
+            } else if ( sInput.contains( "OUTPUT FORMAT:" ) ) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+            } else if ( sInput.contains( "OUTPUT FILENAME:" )) {
+                sInput = sInput.substring(sInput.indexOf(":") + 1);
+                _jobNode.outputFile( sInput.trim() );
             } else if (sInput.contains("NUM CHANNELS:")) {
                 sInput = sInput.substring(sInput.indexOf(":") + 1);
 //                setNumChannels(Integer.parseInt(sInput.trim()));
             } else if (sInput.contains("TELESCOPE ENTRIES:")) {
                 sInput = sInput.substring(sInput.indexOf(":") + 1);
-//                setNumAntennas(Integer.parseInt(sInput.trim()));
+                _jobNode.numAntennas( Integer.parseInt( sInput.trim() ) );
             } else if (sInput.contains("TELESCOPE NAME ")) {
                 // Create antenna for the job
 //                Module newMod = new Module();
@@ -854,6 +858,13 @@ public class JobEditorMonitor extends JFrame {
 
             }
         }
+        
+        _jobNode.jobStart( (double)startMJD() + (double)startSeconds() / 24.0 / 3600.0 );
+        _jobNode.jobDuration( (double)executeTime() / 24.0 / 3600.0 );
+        _jobNode.updateDatabase( "outputFile", _jobNode.outputFile() );
+        _jobNode.updateDatabase( "jobStart", _jobNode.jobStart().toString() );
+        _jobNode.updateDatabase( "jobDuration", _jobNode.jobDuration().toString() );
+        _jobNode.updateDatabase( "numAntennas", _jobNode.numAntennas().toString() );
 
     }
     
@@ -882,7 +893,7 @@ public class JobEditorMonitor extends JFrame {
 //                    setObsCode(sCalc.trim());
                 } else if (sCalc.contains("JOB START TIME:")) {
                     sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
-//                    setJobStartTimeMJD(new BigDecimal(sCalc.trim()));
+//                    setJobStartTimeMJD( new BigDecimal( sCalc.trim() ) );
                 } else if (sCalc.contains("JOB STOP TIME:")) {
                     sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
 //                    setJobStopTimeMJD(new BigDecimal(sCalc.trim()));
@@ -891,7 +902,11 @@ public class JobEditorMonitor extends JFrame {
 //                    setNumTelescopes(Integer.parseInt(sCalc.trim()));
                 } else if (sCalc.contains("DIFX VERSION:")) {
                     sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
+                    _jobNode.difxVersion( sCalc.trim() );
 //                    setDifxVersion(sCalc.trim());
+                } else if ( sCalc.contains( "DUTY CYCLE:" ) ) {
+                    sCalc = sCalc.substring( sCalc.indexOf( ":" ) + 1 );
+                    _jobNode.dutyCycle( Double.parseDouble( sCalc.trim() ) );
                 } else if (sCalc.contains("NAME:")) {
                     sCalc = sCalc.substring(sCalc.indexOf(":") + 1);
                 } else if (sCalc.contains("SHELF:")) {
@@ -906,11 +921,21 @@ public class JobEditorMonitor extends JFrame {
 
                     //newJob.setNumTelescopes(Integer.parseInt(trimmed));
                 }
-            }
+        }
+
+        _jobNode.updateDatabase( "difxVersion", _jobNode.difxVersion() );
+        _jobNode.updateDatabase( "dutyCycle", _jobNode.dutyCycle().toString() );
 
 //            frCalc.close();
             //System.out.printf("***************** Data model read input and calc file complete. \n");
     }
+    
+    public Integer startMJD() { return _startMJD; }
+    public void startMJD( Integer newVal ) { _startMJD = newVal; }
+    public Integer startSeconds() { return _startSeconds; }
+    public void startSeconds( Integer newVal ) { _startSeconds = newVal; }
+    public Integer executeTime() { return _executeTime; }
+    public void executeTime( Integer newVal ) { _executeTime = newVal; }
    
     protected EventListenerList _stateChangeListeners;
     protected JobNode _jobNode;
@@ -954,4 +979,9 @@ public class JobEditorMonitor extends JFrame {
     
     protected HashMap<String,String> _dataSources;
     protected ArrayList<String> _dataObjects;
+    
+    protected Integer _executeTime;
+    protected Integer _startMJD;
+    protected Integer _startSeconds;
+    
 }
