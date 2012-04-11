@@ -151,25 +151,6 @@ public class QueueDBConnection {
     }
     
     /*
-     * Delete the given experiment from the database.  The experiment is identified
-     * by its unique ID.
-     */
-    public void deleteExperiment( Integer id ) {
-        //  We can't handle null ID's.
-        if ( id == null )
-            return;
-        try {
-            //  Handle the possibility that the segment is null.
-            _db.updateData( "delete from " + _settings.dbName() + 
-                    ".Experiment"
-                    + " where id = \"" + id.toString() + "\"" );
-        } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
-        }
-    }
-    SystemSettings _settings;
-    
-    /*
      * Create a new experiment.  The data base will automatically assign a unique
      * ID number, but we give it name, number (used to be called "segment"), 
      * initial status, directory, and vex filename.  Return whether this operation 
@@ -250,6 +231,57 @@ public class QueueDBConnection {
     }
     
     /*
+     * Delete the given experiment from the database.  The experiment is identified
+     * by its unique ID.
+     */
+    public void deleteExperiment( Integer id ) {
+        //  We can't handle null ID's.
+        if ( id == null )
+            return;
+        try {
+            _db.updateData( "delete from " + _settings.dbName() + 
+                    ".Experiment"
+                    + " where id = \"" + id.toString() + "\"" );
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+        }
+    }
+    
+    /*
+     * Delete the given pass from the database.  The pass is identified
+     * by its unique ID.
+     */
+    public void deletePass( Integer id ) {
+        //  We can't handle null ID's.
+        if ( id == null )
+            return;
+        try {
+            _db.updateData( "delete from " + _settings.dbName() + 
+                    ".Pass"
+                    + " where id = \"" + id.toString() + "\"" );
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+        }
+    }
+    
+    /*
+     * Delete the given job from the database.  The job is identified
+     * by its unique ID.
+     */
+    public void deleteJob( Integer id ) {
+        //  We can't handle null ID's.
+        if ( id == null )
+            return;
+        try {
+            _db.updateData( "delete from " + _settings.dbName() + 
+                    ".Job"
+                    + " where id = \"" + id.toString() + "\"" );
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+        }
+    }
+    
+    /*
      * Update an element of a specified experiment (identified by ID).  It will change
      * a specific field to a specific value - both are strings.  Return the number of items
      * updated.
@@ -260,6 +292,24 @@ public class QueueDBConnection {
         try {
             return _db.updateData( "update " + _settings.dbName()
                     +  ".Experiment set " + param + " = \"" + setting + "\""
+                    + " where id = \"" + id.toString() + "\"" );
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            return 0;
+        }
+    }
+    
+    /*
+     * Update an element of a specified pass (identified by ID).  It will change
+     * a specific field to a specific value - both are strings.  Return the number of items
+     * updated.
+     */
+    public int updatePass( Integer id, String param, String setting ) {
+        if ( id == null )
+            return 0;
+        try {
+            return _db.updateData( "update " + _settings.dbName()
+                    +  ".Pass set " + param + " = \"" + setting + "\""
                     + " where id = \"" + id.toString() + "\"" );
         } catch ( Exception e ) {
             java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
@@ -286,5 +336,6 @@ public class QueueDBConnection {
     }
     
     DBConnection _db;
+    SystemSettings _settings;
     
 }

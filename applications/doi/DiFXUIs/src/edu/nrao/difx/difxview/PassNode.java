@@ -20,6 +20,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import edu.nrao.difx.difxdatabase.DBConnection;
+import edu.nrao.difx.difxdatabase.QueueDBConnection;
 import java.sql.ResultSet;
 
 /**
@@ -32,6 +33,7 @@ public class PassNode extends QueueBrowserNode {
         super( name );
         _name = name;
         _settings = settings;
+        this.labelWidth( 400 );
     }
     
     @Override
@@ -204,8 +206,21 @@ public class PassNode extends QueueBrowserNode {
             thisJob.removeFromDatabase();
         }
         clearChildren();
-        //  DATABASE TODO: Remove this pass from the database.
-        System.out.println( "Remove pass " + _name.toString() + " from the database" );
+        //  We can't remove the pass from the DiFX host because we don't necessarily
+        //  know the name of the directory we are in.  If we did, we'd just remove the
+        //  entire directory.  We could use the .v2d file name to get it, but the
+        //  database doesn't currently store this information.  So we're leaving a 
+        //  little litter on the DiFX host.  BLAT
+        //  Remove the pass from the database (if we are using it).
+        if ( this.inDatabase() ) {
+            QueueDBConnection db = null;
+            if ( _settings.useDataBase() ) {
+                db = new QueueDBConnection( _settings );
+                if ( db.connected() ) {
+                    db.deletePass( _id );
+                }
+            }
+        }
         //  Remove this pass from its parent experiment.
         ((BrowserNode)(this.getParent())).removeChild( this );
     }
@@ -277,19 +292,15 @@ public class PassNode extends QueueBrowserNode {
      * which we have to look up in the database first.
      */
     public void changeTypeInDatabase() {
-        DBConnection dbConnection = new DBConnection( _settings.dbURL(), _settings.jdbcDriver(),
-            _settings.dbSID(), _settings.dbPWD() );
-        try {
-            dbConnection.connectToDB();
-            ResultSet passIdInfo = dbConnection.selectData( "select * from " + _settings.dbName() + ".PassType" );
-            while ( passIdInfo.next() ) {
-                String passIdName = passIdInfo.getString( "type" );                
-                Integer passId = passIdInfo.getInt( "id" );
-                if ( passIdName.contentEquals( _type ) )
+        if ( this.inDatabase() ) {
+            QueueDBConnection db = null;
+            if ( _settings.useDataBase() ) {
+                db = new QueueDBConnection( _settings );
+                if ( db.connected() ) {
+                    Integer passId = _settings.passTypeID( _type );
                     updateDatabase( "passTypeID", passId.toString() );
+                }
             }
-        } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
         }
     }
     
@@ -298,14 +309,14 @@ public class PassNode extends QueueBrowserNode {
      * a specific field to a specific value - both are strings.
      */
     public void updateDatabase( String param, String setting ) {
-        DBConnection dbConnection = new DBConnection( _settings.dbURL(), _settings.jdbcDriver(),
-            _settings.dbSID(), _settings.dbPWD() );
-        try {
-            dbConnection.connectToDB();
-            int updateCount = dbConnection.updateData( "update " + _settings.dbName() + 
-                    ".Pass set " + param + " = \"" + setting + "\" where id = \"" + _id.toString() + "\"" );
-        } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+        if ( this.inDatabase() ) {
+            QueueDBConnection db = null;
+            if ( _settings.useDataBase() ) {
+                db = new QueueDBConnection( _settings );
+                if ( db.connected() ) {
+                    db.updatePass( _id, param, setting );
+                }
+            }
         }
     }
 

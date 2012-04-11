@@ -1888,9 +1888,10 @@ public class SystemSettings extends JFrame {
      * Obtain the string form of an experiment status from its ID.
      */
     public String jobStatusString( Integer id ) {
-        if ( _jobStatusList == null )
+        Map<Integer, JobStatusEntry> jobStatusList = jobStatusList();
+        if ( jobStatusList == null )
             return null;
-        Iterator iter = _jobStatusList.entrySet().iterator();
+        Iterator iter = jobStatusList.entrySet().iterator();
         for ( ; iter.hasNext(); ) {
             Map.Entry m = (Map.Entry)iter.next();
             if ( (Integer)m.getKey() == id )
@@ -1927,9 +1928,10 @@ public class SystemSettings extends JFrame {
      * Obtain the "id" of a pass type from its string form.
      */
     public Integer passTypeID( String status ) {
-        if ( _passTypeList == null )
+        Map<Integer, String> passTypeList = passTypeList();
+        if ( passTypeList == null )
             return 0;
-        Iterator iter = _passTypeList.entrySet().iterator();
+        Iterator iter = passTypeList.entrySet().iterator();
         for ( ; iter.hasNext(); ) {
             Map.Entry m = (Map.Entry)iter.next();
             if ( ((String)m.getValue()).contentEquals( status ) )
@@ -1942,9 +1944,10 @@ public class SystemSettings extends JFrame {
      * Obtain the string form of an pass type from its ID.
      */
     public String passTypeString( Integer id ) {
-        if ( _passTypeList == null )
+        Map<Integer, String> passTypeList = passTypeList();
+        if ( passTypeList == null )
             return null;
-        Iterator iter = _passTypeList.entrySet().iterator();
+        Iterator iter = passTypeList.entrySet().iterator();
         for ( ; iter.hasNext(); ) {
             Map.Entry m = (Map.Entry)iter.next();
             if ( (Integer)m.getKey() == id )

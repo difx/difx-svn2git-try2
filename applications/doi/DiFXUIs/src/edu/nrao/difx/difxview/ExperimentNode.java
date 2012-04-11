@@ -23,6 +23,7 @@ import java.awt.event.ActionListener;
 import edu.nrao.difx.difxdatabase.QueueDBConnection;
 
 import edu.nrao.difx.difxutilities.DiFXCommand_mv;
+import edu.nrao.difx.difxutilities.DiFXCommand_rm;
 
 import java.sql.ResultSet;
 
@@ -167,7 +168,8 @@ public class ExperimentNode extends QueueBrowserNode {
             if ( ans == 1 )
                 return;
         }
-        deleteThisExperiment();        
+        deleteThisExperiment();
+        _settings.queueBrowser().updateUI();
     }
 
     /*
@@ -179,10 +181,21 @@ public class ExperimentNode extends QueueBrowserNode {
             thisPass.deleteThisPass();
         }
         clearChildren();
+        //  Remove this experiment from the DiFX host.  This is simply a matter of
+        //  deleting the entire directory associated with it.
+        System.out.println( "remove \"" + this.directory() + "\"" );
+        DiFXCommand_rm rm = new DiFXCommand_rm( this.directory(), "-rf", _settings );
+        try { rm.send(); } catch ( Exception e ) {}
         //  Remove this experiment from the database.
-        QueueDBConnection db = new QueueDBConnection( _settings );
-        if ( db.connected() )
-            db.deleteExperiment( _id );
+        if ( this.inDatabase() ) {
+            QueueDBConnection db = null;
+            if ( _settings.useDataBase() ) {
+                db = new QueueDBConnection( _settings );
+                if ( db.connected() ) {
+                    db.deleteExperiment( _id );
+                }
+            }
+        }
         //  Remove this experiment from its parent - the queue browser.
         ((BrowserNode)(this.getParent())).removeChild( this );
         System.out.println( "delete does not currently remove the entire experiement on the DiFX host!" );
@@ -226,7 +239,7 @@ public class ExperimentNode extends QueueBrowserNode {
             _editor.number( this.number() );
             _editor.name( this.name() );
             _editor.id( this.id() );
-            _editor.inDataBase( this.inDataBase() );
+            _editor.inDataBase( this.inDatabase() );
             _editor.created( creationDate() );
             _editor.status( this.status() );
             _editor.directory( this.directory() );
@@ -235,65 +248,6 @@ public class ExperimentNode extends QueueBrowserNode {
         _editor.setTitle( "Edit Experiment " + name() );
         _editor.newExperimentMode( false );
         _editor.setVisible( true );
-//        //  See if the user made any edition changes.  If so, apply them to the
-//        //  database (if requested) and locally.
-//        if ( _editor.ok() && _editor.editMode() ) {
-//            if ( _editor.inDataBase() ) {
-//                QueueDBConnection db = new QueueDBConnection( _settings );
-//                if ( db.connected() ) {
-//                    //  If the item didn't already exist in the database, create it.
-//                    if ( !this.inDataBase() ) {
-//                        db.newExperiment( _editor.name(), _editor.number(), _settings.experimentStatusID( _editor.status() ),
-//                                _editor.directory(), _editor.vexFileName() );
-//                        //  See which ID the data base assigned...it will be the largest one.  Also
-//                        //  save the creation date.
-//                        int newExperimentId = 0;
-//                        String creationDate = this.creationDate();
-//                        ResultSet dbExperimentList = db.experimentList();
-//                        try {
-//                            while ( dbExperimentList.next() ) {
-//                                int newId = dbExperimentList.getInt( "id" );
-//                                if ( newId > newExperimentId ) {
-//                                    newExperimentId = newId;
-//                                    creationDate = dbExperimentList.getString( "dateCreated" );
-//                                }
-//                            }
-//                        } catch ( Exception e ) {
-//                                java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
-//                        }
-//                        this.id( newExperimentId );
-//                        this.creationDate( creationDate );
-//                    }
-//                    else {
-//                        db.updateExperiment( this.id(), "code", _editor.name() );
-//                        db.updateExperiment( this.id(), "number", win.number().toString() );
-//                        db.updateExperiment( this.id(), "statusID", _settings.experimentStatusID(win.status() ).toString() );
-//                    }
-//                }
-//                else {
-//                    JOptionPane.showMessageDialog( this, "Unable to edit this item to the database\n"
-//                            + "as it cannot be contacted or your \"Use Database\" setting is off.",
-//                            "Database Warning", JOptionPane.WARNING_MESSAGE );
-//                    win.inDataBase( false );
-//                }
-//            }
-//            this.name( win.name() );
-//            this.number( win.number() );
-//            this.status( win.status() );
-//            this.inDataBase( win.inDataBase() );
-//            this.directory( win.directory() );
-//            this.vexFile( win.vexFileName() );
-//            //  Change the name of the directory on the DiFX host.
-//            //  BLAT there might be other paths we need to change??  In the jobs entries in
-//            //  database for instance?
-//            if ( !this.directory().contentEquals( win.directory() ) ) {
-//                DiFXCommand_mv mv = new DiFXCommand_mv( this.directory(), win.directory(), _settings );
-//                mv.send();
-//                this.directory( win.directory() );
-//            }
-//            //  Write the .vex file there.
-//            win.writeVexFile();
-//        }
     }
     
     public void copyAction() {

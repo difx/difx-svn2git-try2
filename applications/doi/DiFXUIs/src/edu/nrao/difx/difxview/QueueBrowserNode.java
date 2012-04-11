@@ -22,8 +22,8 @@ public class QueueBrowserNode extends BrowserNode {
     public void id( int newVal ) { _id = newVal; }
     public Integer id() { return _id; }
     
-    public void inDataBase( boolean newVal ) { _inDataBase = newVal; }
-    public boolean inDataBase() { return _inDataBase; }
+    public void inDatabase( boolean newVal ) { _inDataBase = newVal; }
+    public boolean inDatabase() { return _inDataBase; }
     
     protected boolean _persist;
     protected boolean _found;

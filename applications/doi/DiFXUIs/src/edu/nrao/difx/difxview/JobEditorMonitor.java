@@ -776,6 +776,8 @@ public class JobEditorMonitor extends JFrame {
 //                setUvwFile(sInput.trim());
             } else if (sInput.contains("CORE CONF FILENAME:")) {
                 sInput = sInput.substring(sInput.indexOf(":") + 1);
+            } else if (sInput.contains("CALC FILENAME:")) {
+                _jobNode.calcFile( sInput.substring(sInput.indexOf(":") + 1).trim() );
 //                setCoreConfigFile(sInput.trim());
             } else if ( sInput.contains( "EXECUTE TIME (SEC):" ) ) {
                 sInput = sInput.substring( sInput.indexOf(":") + 1 );

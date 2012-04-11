@@ -12,6 +12,7 @@ import mil.navy.usno.plotlib.Plot2DObject;
 import mil.navy.usno.plotlib.Track2D;
 
 import edu.nrao.difx.difxutilities.DiFXCommand_getFile;
+import edu.nrao.difx.difxutilities.DiFXCommand_rm;
 
 import javax.swing.JButton;
 import javax.swing.JPopupMenu;
@@ -71,16 +72,6 @@ public class JobNode extends QueueBrowserNode {
             }
         });
         this.add( _selectedButton );
-        //  This field is used to edit the name of the experiment when "rename"
-        //  is picked from the popup menu.
-        _nameEditor = new JTextField( "" );
-        _nameEditor.setVisible( false );
-        _nameEditor.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                nameEditorAction();
-            }
-        });
-        this.add( _nameEditor );
 //        _startButton = new JButton( "Start" );
 //        this.add( _startButton );
 //        _editButton = new JButton( "Edit" );
@@ -215,16 +206,8 @@ public class JobNode extends QueueBrowserNode {
             }
         });
         _popup.add( _selectMenuItem );
-        JMenuItem menuItem2a = new JMenuItem( "Rename" );
-        menuItem2a.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                renameAction();
-            }
-        });
-        _popup.add( menuItem2a );
-        JMenuItem menuItem3 = new JMenuItem( "Copy" );
-        _popup.add( menuItem3 );
         JMenuItem deleteItem = new JMenuItem( "Delete" );
+        deleteItem.setToolTipText( "Delete this experiment.  Deletions also apply to the database (if used)." );
         deleteItem.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 deleteAction();
@@ -259,8 +242,6 @@ public class JobNode extends QueueBrowserNode {
             }
         });
         _popup.add( menuItem7 );
-        JMenuItem menuItem9 = new JMenuItem( "Reset" );
-        _popup.add( menuItem9 );
     }
     
     @Override
@@ -271,7 +252,6 @@ public class JobNode extends QueueBrowserNode {
         _networkActivity.setBounds( _xOff, 6, 10, 10 );
         _xOff += 14;
         _label.setBounds( _xOff, 0, _widthName, _ySize );
-        _nameEditor.setBounds( _xOff, 0, _widthName, _ySize );
         _xOff += _widthName;
         _state.setBounds( _xOff + 1, 1, _widthState - 2, 18 );
         _xOff += _widthState;
@@ -302,8 +282,10 @@ public class JobNode extends QueueBrowserNode {
         else {
             if ( _weights != null ) {
                 for ( int i = 0; i < _antenna.length && i < _weight.length; ++i ) {
-                    _antenna[i].setVisible( false );
-                    _weight[i].setVisible( false );
+                    if ( _antenna[i] != null )
+                        _antenna[i].setVisible( false );
+                    if ( _weight[i] != null )
+                        _weight[i].setVisible( false );
 //                    _weightPlotWindow[i].setVisible( false );
                 }
             }
@@ -377,30 +359,6 @@ public class JobNode extends QueueBrowserNode {
     }
     
     /*
-     * This function responds to a rename request from the popup menu.  It replaces
-     * the "label" text field with an editable field containing the name.
-     */
-    public void renameAction() {
-        _nameEditor.setText( _label.getText() );
-        _nameEditor.setVisible( true );
-        _label.setVisible( false );
-    }
-    
-    /*
-     * This is the callback for the editable name field triggered by a rename
-     * request.  It replaces the label containing the name with whatever is in
-     * the edited field.  The change must be sent to the database as well!
-     */
-    public void nameEditorAction() {
-        _label.setText( _nameEditor.getText() );
-        _label.setVisible( true );
-        _nameEditor.setVisible( false );
-        _monitorMenuItem.setText( "Control/Monitor for " + name() );
-        _editorMonitor.setTitle( "Control/Monitor for " + name() );
-        updateDatabase( "name", name() );
-    }
-    
-    /*
      * Select or unselect this item.  This is the callback for the button.
      */
     public void selectedButtonAction() {
@@ -431,11 +389,13 @@ public class JobNode extends QueueBrowserNode {
     }
     
     /*
-     * Delete this job.  It must be removed from the database and then removed from
+     * Delete this job.  It must be removed from the database, files associated with
+     * it should be removed from the DiFX host, and then it is removed from
      * its parent "pass".
      */
     public void deleteAction() {
         removeFromDatabase();
+        removeFromHost();
         ((BrowserNode)(this.getParent())).removeChild( this );
     }
     
@@ -444,38 +404,43 @@ public class JobNode extends QueueBrowserNode {
      * this job.
      */
     public void removeFromDatabase() {
-        //  Create a new database connection using the current system settings.
-        DBConnection dbConnection = new DBConnection( _settings.dbURL(), _settings.jdbcDriver(),
-                _settings.dbSID(), _settings.dbPWD() );
-        try {
-            dbConnection.connectToDB();
-            int deleteCount = dbConnection.updateData( "delete from " + _settings.dbName() + 
-                    ".Job where inputFile = \"" + this.inputFile() + "\"" );
-        } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+        if ( this.inDatabase() ) {
+            QueueDBConnection db = null;
+            if ( _settings.useDataBase() ) {
+                db = new QueueDBConnection( _settings );
+                if ( db.connected() ) {
+                    db.deleteJob( _id );
+                }
+            }
         }
     }
     
     /*
+     * Remove the files associated with this job from the DiFX host.  This is done
+     * by deleting files of all extensions that match the input file name.  This
+     * makes the assumption that this covers everything, which under normal operation
+     * is correct.
+     */
+    public void removeFromHost() {
+        String pathname = this.inputFile().substring( 0, this.inputFile().lastIndexOf( '.' ) ) + "*";
+        DiFXCommand_rm rm = new DiFXCommand_rm( pathname, "-rf", _settings );
+        try { rm.send(); } catch ( Exception e ) {}
+    }
+    
+    /*
      * This is a generic database update function for this object.  It will change
-     * a specific field to a specific value - both are strings.  
+     * a specific field to a specific value - both are strings.  This is only done if
+     * this job is in the database.
      */
     public void updateDatabase( String param, String setting ) {
-        QueueDBConnection db = null;
-        if ( _settings.useDataBase() ) {
-            db = new QueueDBConnection( _settings );
-            if ( db.connected() ) {
-                db.updateJob( _databaseJobId, param, setting );
+        if ( this.inDatabase() ) {
+            QueueDBConnection db = null;
+            if ( _settings.useDataBase() ) {
+                db = new QueueDBConnection( _settings );
+                if ( db.connected() ) {
+                    db.updateJob( _id, param, setting );
+                }
             }
-        }
-        DBConnection dbConnection = new DBConnection( _settings.dbURL(), _settings.jdbcDriver(),
-            _settings.dbSID(), _settings.dbPWD() );
-        try {
-            dbConnection.connectToDB();
-            int deleteCount = dbConnection.updateData( "update " + _settings.dbName() + 
-                    ".Job set " + param + " = \"" + setting + "\" where inputFile = \"" + this.inputFile() + "\"" );
-        } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
         }
     }
 
@@ -823,9 +788,6 @@ public class JobNode extends QueueBrowserNode {
     
     public JobEditorMonitor editorMonitor() { return _editorMonitor; }
     
-    public Integer databaseJobId() { return _databaseJobId; }
-    public void databaseJobId( Integer newVal ) { _databaseJobId = newVal; }
-    
     protected PassNode _passNode;
     
     protected JButton _startButton;
@@ -899,12 +861,10 @@ public class JobNode extends QueueBrowserNode {
     protected boolean _colorColumn;
     protected Color _columnColor;
 
-    protected JTextField _nameEditor;
-    
     protected String _directoryPath;
     protected String _calcFile;
     protected String _fullName;
     
     protected SystemSettings _settings;
-    protected Integer _databaseJobId;
+//    protected Integer _databaseJobId;
 }

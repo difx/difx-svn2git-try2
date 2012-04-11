@@ -1771,7 +1771,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 //  Set items that shouldn't change.
                 _thisExperiment.id( newExperimentId );
                 _thisExperiment.creationDate( creationDate );
-                _thisExperiment.inDataBase( inDataBase() );
+                _thisExperiment.inDatabase( inDataBase() );
                 _thisExperiment.number( number() );
                 _thisExperiment.status( status() );
                 _thisExperiment.directory( directory() );
@@ -1859,6 +1859,13 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     newPassName = "default";
                 else
                     _statusLabel.setText( "creating pass \"" + newPassName + "\"" );
+                //  This creates a "node" that will appear in the browser (or won't in the
+                //  case of the "default" pass).
+                _newPass = new PassNode( newPassName, _settings );
+                _newPass.type( (String)_passTypeList.getSelectedItem() );
+                if ( !createPass() )
+                    _newPass.setHeight( 0 );
+                _thisExperiment.addChild( _newPass );
                 _databasePassId = 0;
                 if ( db != null ) {
                     _statusLabel.setText( "adding pass information to database" );
@@ -1875,16 +1882,12 @@ public class ExperimentEditor extends JFrame { //JDialog {
                             if ( experimentId == _thisExperiment.id() && newId > _databasePassId )
                                 _databasePassId = newId;
                         }
+                        _newPass.id( _databasePassId );
+                        _newPass.inDatabase( true );
                     } catch ( Exception e ) {
                         java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
                     }
                 }
-                //  This creates a "node" that will appear in the browser (or won't in the
-                //  case of the "default" pass).
-                _newPass = new PassNode( newPassName, _settings );
-                if ( !createPass() )
-                    _newPass.setHeight( 0 );
-                _thisExperiment.addChild( _newPass );
                 //  Create the pass directory on the DiFX host if the user has requested a
                 //  pass directory.
                 if ( createPass() ) {
@@ -2001,8 +2004,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
             String extn = newFile.substring( newFile.lastIndexOf( '.' ) + 1 ).trim();
             String fullName = newFile.substring( 0, newFile.lastIndexOf( '.' ) ).trim();
             int databaseJobId = 0;
-            //  If its an .input or .calc file, create a new job based on it.
-            if ( extn.contentEquals( "input" ) || extn.contentEquals( "calc" ) ) {
+            //  If its an .input create a new job based on it.
+            if ( extn.contentEquals( "input" ) ) {
                 //  See if we've already created it by searching existing jobs for the
                 //  "full name".
                 JobNode newJob = null;
@@ -2047,20 +2050,20 @@ public class ExperimentEditor extends JFrame { //JDialog {
                         } catch ( Exception e ) {
                             java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
                         }
+                        newJob.inDatabase( true );
+                        newJob.id( databaseJobId );
                     }
-                    newJob.databaseJobId( databaseJobId );
+                    else {
+                        newJob.id( databaseJobId );
+                        newJob.inDatabase( false );
+                    }
                     
-                }
-                //  Apply this file to the job.
-                if ( extn.contentEquals( "input" ) ) {
+                    //  Apply the input file data to the job.
                     newJob.inputFile( newFile.trim() );
                     //  Add the input file path to the database if we are using it.
                     if ( db != null ) {
                         db.updateJob( databaseJobId, "inputFile", newFile.trim() );
                     }
-                }
-                else if ( extn.contentEquals( "calc" ) ) {
-                    newJob.calcFile( newFile.trim() );
                 }
             }
         }
@@ -2070,7 +2073,6 @@ public class ExperimentEditor extends JFrame { //JDialog {
          */
         synchronized public void endCallback( String newFile ) {
             _statusLabel.setText( "vex2difx process completed!" );
-            //BLATSystem.out.println( "vex2difx process completed!" );
         }
         
         PassNode _newPass;
