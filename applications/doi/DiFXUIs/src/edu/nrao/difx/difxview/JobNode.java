@@ -280,7 +280,7 @@ public class JobNode extends QueueBrowserNode {
                 _xOff += _widthWeights;
         }
         else {
-            if ( _weights != null ) {
+            if ( _antenna != null && _weight != null ) {
                 for ( int i = 0; i < _antenna.length && i < _weight.length; ++i ) {
                     if ( _antenna[i] != null )
                         _antenna[i].setVisible( false );
@@ -406,7 +406,7 @@ public class JobNode extends QueueBrowserNode {
     public void removeFromDatabase() {
         if ( this.inDatabase() ) {
             QueueDBConnection db = null;
-            if ( _settings.useDataBase() ) {
+            if ( _settings.useDatabase() ) {
                 db = new QueueDBConnection( _settings );
                 if ( db.connected() ) {
                     db.deleteJob( _id );
@@ -435,7 +435,7 @@ public class JobNode extends QueueBrowserNode {
     public void updateDatabase( String param, String setting ) {
         if ( this.inDatabase() ) {
             QueueDBConnection db = null;
-            if ( _settings.useDataBase() ) {
+            if ( _settings.useDatabase() ) {
                 db = new QueueDBConnection( _settings );
                 if ( db.connected() ) {
                     db.updateJob( _id, param, setting );

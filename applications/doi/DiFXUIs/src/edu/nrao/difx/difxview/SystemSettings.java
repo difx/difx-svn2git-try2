@@ -131,6 +131,21 @@ public class SystemSettings extends JFrame {
 		} );
         
 
+        //  Set up a repeating timeout that occurs every 10th of a second.
+        Action updateDatabaseAction = new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                databaseTimeoutEvent();
+            }
+        };
+        
+        //  This thread is used to update from the database (updates can hang if
+        //  the database can't be located).
+        _updateDatabaseLoop = new UpdateDatabaseLoop();
+        _updateDatabaseLoop.start();
+        
+        new Timer( 1000, updateDatabaseAction ).start();
+
     }
     
     /*
@@ -1174,7 +1189,7 @@ public class SystemSettings extends JFrame {
     public int timeout() { return _timeout.intValue(); }
     public void timeout( String newVal ) { timeout( Integer.parseInt( newVal ) ); }
     
-    public boolean useDataBase() { return _dbUseDataBase.isSelected(); }
+    public boolean useDatabase() { return _dbUseDataBase.isSelected(); }
     public String dbVersion() { return _dbVersion.getText(); }
     public void dbHost( String newVal ) { 
         _dbHost.setText( newVal );
@@ -1587,7 +1602,7 @@ public class SystemSettings extends JFrame {
         doiConfig.setDifxControlPWD( new String( this.difxControlPassword() ) );
         doiConfig.setDifxVersion( this.difxVersion() );
         doiConfig.setDifxPath( this.difxPath() );
-        doiConfig.setDbUseDataBase( this.useDataBase() );
+        doiConfig.setDbUseDataBase( this.useDatabase() );
         doiConfig.setDbVersion( this.dbVersion() );
         doiConfig.setDbName( this.dbName() );
         doiConfig.setReportLoc( _reportLoc );
@@ -1677,16 +1692,6 @@ public class SystemSettings extends JFrame {
      * (otherwise it is kind of a waste of time).
      */
     public void gotPacket( int newSize ) {
-//        if ( this.isVisible() ) {
-//            _broadcastPlot.limits( (double)(_broadcastTrackSize - _broadcastPlot.w()), (double)(_broadcastTrackSize), -.05, 1.0 );
-//            _broadcastTrack.add( (double)(_broadcastTrackSize), (double)(newSize)/(double)bufferSize() );
-//            _broadcastTrackSize += 1;
-//            _plotWindow.updateUI();
-//        }
-//        else {
-//            _broadcastTrack.clear();
-//            _broadcastTrackSize = 0;
-//        }
         if ( this.isVisible() )
             _broadcastPlot.limits( (double)(_broadcastTrackSize - _broadcastPlot.w()), (double)(_broadcastTrackSize), -.05, 1.0 );
         _broadcastTrack.add( (double)(_broadcastTrackSize), (double)(newSize)/(double)bufferSize() );
@@ -1789,25 +1794,15 @@ public class SystemSettings extends JFrame {
     public DefaultNames defaultNames() { return _defaultNames; }
     
     /*
-     * Return the current list of experiment status types, or try to create one
-     * from the database if it doesn't exist yet.
+     * Return the current list of experiment status types.  If the list is empty and
+     * the database is being employed, try to create a list from the database.
      */
     public Map<Integer, ExperimentStatusEntry> experimentStatusList() {
         if ( _experimentStatusList == null )
             _experimentStatusList = new HashMap<Integer, ExperimentStatusEntry>();
         if ( _experimentStatusList.isEmpty() ) {            
-            QueueDBConnection db = new QueueDBConnection( this );
-            if ( db.connected() ) {
-                ResultSet dbExperimentStatusList = db.experimentStatusList();
-                try {
-                    while ( dbExperimentStatusList.next() ) {
-                        _experimentStatusList.put( dbExperimentStatusList.getInt( "id" ),
-                                new ExperimentStatusEntry( dbExperimentStatusList.getInt( "statuscode" ),
-                                        dbExperimentStatusList.getString( "experimentstatus" ) ) );
-                    }
-                } catch ( Exception e ) {
-                    java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
-                }
+            if ( useDatabase() ) {
+                updateFromDatabase();
             }
         }
         return _experimentStatusList;
@@ -1851,18 +1846,8 @@ public class SystemSettings extends JFrame {
         if ( _jobStatusList == null )
             _jobStatusList = new HashMap<Integer, JobStatusEntry>();
         if ( _jobStatusList.isEmpty() ) {            
-            QueueDBConnection db = new QueueDBConnection( this );
-            if ( db.connected() ) {
-                ResultSet dbJobStatusList = db.jobStatusList();
-                try {
-                    while ( dbJobStatusList.next() ) {
-                        _jobStatusList.put( dbJobStatusList.getInt( "id" ),
-                                new JobStatusEntry( dbJobStatusList.getInt( "active" ),
-                                        dbJobStatusList.getString( "status" ) ) );
-                    }
-                } catch ( Exception e ) {
-                    java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
-                }
+            if ( useDatabase() ) {
+                updateFromDatabase();
             }
         }
         return _jobStatusList;
@@ -1907,18 +1892,9 @@ public class SystemSettings extends JFrame {
     public Map<Integer, String> passTypeList() {
         if ( _passTypeList == null )
             _passTypeList = new HashMap<Integer, String>();
-        if ( _passTypeList.isEmpty() ) {            
-            QueueDBConnection db = new QueueDBConnection( this );
-            if ( db.connected() ) {
-                ResultSet dbPassTypeList = db.passTypeList();
-                try {
-                    while ( dbPassTypeList.next() ) {
-                        _passTypeList.put( dbPassTypeList.getInt( "id" ),
-                                dbPassTypeList.getString( "Type" ) );
-                    }
-                } catch ( Exception e ) {
-                    java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
-                }
+        if ( _passTypeList.isEmpty() ) {
+            if ( useDatabase() ) {
+                updateFromDatabase();
             }
         }
         return _passTypeList;
@@ -2002,6 +1978,158 @@ public class SystemSettings extends JFrame {
             }
         }
         return false;
+    }
+    
+    /*
+     * Timeout event for reading the database.  This is called every second to trigger
+     * an update event at the "auto update interval".
+     */
+    public void databaseTimeoutEvent() {
+        //  See if we are doing "auto" updates of the database information.
+        if ( this.dbAutoUpdate() ) {
+            //  Auto updates will be performed at the interval specified unless they
+            //  have just been turned on (in which case an immediate update will be
+            //  performed).
+            if ( _dbTimeoutCounter == 0 )
+                updateDatabaseNow( true );
+            ++_dbTimeoutCounter;
+            if ( _dbTimeoutCounter >= this.dbAutoUpdateInterval() )
+                _dbTimeoutCounter = 0;
+        }
+        else
+            _dbTimeoutCounter = 0;
+    }
+    
+    /*
+     * Setting this value to "true" will trigger a single update of the database
+     * information.  This is the function that should be called to trigger this
+     * activity from outside of this class.
+     */
+    public synchronized void updateDatabaseNow( boolean newVal ) { _updateDatabaseNow = newVal; }
+    
+    /*
+     * Internal thread used to keep the database queries from tying up the graphics
+     * update.  This function triggers the update in this class, which is limited to
+     * status lists and other minor things.  It also generates a callback that other
+     * classes (such as the queue browser) can watch to update larger data sets
+     * (experiment lists, etc).
+     */
+    class UpdateDatabaseLoop extends Thread {
+        
+        public void run() {
+            
+            while ( true ) {
+                try {
+                    Thread.sleep( 100 );
+                    if ( _updateDatabaseNow ) {
+                        //  Empty the experiment, job, and pass type lists.  This will
+                        //  force them to update the next time they are consulted.
+                        if ( _jobStatusList != null )
+                            _jobStatusList.clear();
+                        if ( _experimentStatusList != null )
+                            _experimentStatusList.clear();
+                        if ( _passTypeList != null )
+                            _passTypeList.clear();
+                        updateFromDatabase();
+                        //  Trigger callbacks to other classes that want to watch this periodic
+                        //  update.
+                        dispatchDatabaseUpdateEvent();
+                        updateDatabaseNow( false );
+                    }
+                } catch( java.lang.InterruptedException e ) {
+                }
+            }
+            
+        }
+        
+    }
+    
+    /*
+     * Collect current database information for the "status" lists.  An error is triggered if the
+     * connection to the database fails.
+     */
+    protected void updateFromDatabase() {
+
+        //  Don't do this if the user isn't using the database.
+        if ( !this.useDatabase() )
+            return;
+        
+        //  Get a new connection to the database.  Bail out if this doesn't work.
+        QueueDBConnection db = new QueueDBConnection( this );
+        if ( !db.connected() ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                "Automatic update from database failed - no connection established." );
+            return;
+        }
+        
+        //  Get the database information we are interested in.
+        _dbPassTypeList = db.passTypeList();
+        _dbJobStatusList = db.jobStatusList();
+        _dbExperimentStatusList = db.experimentStatusList();
+        _dbVersionHistoryList = db.versionHistoryList();
+        
+        //  Use the latest version number to update the version field.
+        try { 
+            _dbVersionHistoryList.last();
+            _dbVersion.setText( _dbVersionHistoryList.getString( "major" ) + "." + _dbVersionHistoryList.getString( "minor" ) );
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                "Exception updating database version: " + e );
+        }
+        
+        //  Update pass type.
+        if ( _passTypeList == null )
+            _passTypeList = new HashMap<Integer, String>();
+        try {
+            while ( _dbPassTypeList.next() ) {
+                _passTypeList.put( _dbPassTypeList.getInt( "id" ), _dbPassTypeList.getString( "Type" ) );
+            }
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+        }
+        //  Update job status.
+        if ( _jobStatusList == null )
+            _jobStatusList = new HashMap<Integer, JobStatusEntry>();
+        try {
+            while ( _dbJobStatusList.next() ) {
+                _jobStatusList.put( _dbJobStatusList.getInt( "id" ),
+                        new JobStatusEntry( _dbJobStatusList.getInt( "active" ),
+                                _dbJobStatusList.getString( "status" ) ) );
+            }
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+        }
+        //  Update experiment status.
+        if ( _experimentStatusList == null )
+            _experimentStatusList = new HashMap<Integer, ExperimentStatusEntry>();
+        try {
+            while ( _dbExperimentStatusList.next() ) {
+                _experimentStatusList.put( _dbExperimentStatusList.getInt( "id" ),
+                        new ExperimentStatusEntry( _dbExperimentStatusList.getInt( "statuscode" ),
+                                _dbExperimentStatusList.getString( "experimentstatus" ) ) );
+            }
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+        }
+        
+    }
+
+    public void addDatabaseUpdateListener( ActionListener a ) {
+        if ( _databaseUpdateListeners == null )
+            _databaseUpdateListeners = new EventListenerList();
+        _databaseUpdateListeners.add( ActionListener.class, a );
+    }
+
+    protected void dispatchDatabaseUpdateEvent() {
+        if ( _databaseUpdateListeners != null ) {
+            Object[] listeners = _databaseUpdateListeners.getListenerList();
+            // loop through each listener and pass on the event if needed
+            int numListeners = listeners.length;
+            for ( int i = 0; i < numListeners; i+=2 ) {
+                if ( listeners[i] == ActionListener.class )
+                    ((ActionListener)listeners[i+1]).actionPerformed( new ActionEvent( this, ActionEvent.ACTION_PERFORMED, "" ) );
+            }
+        }
     }
     
     protected SystemSettings _this;
@@ -2196,6 +2324,18 @@ public class SystemSettings extends JFrame {
     //  Our list of the above class types.
     protected ArrayList<DataSource> _dataSourceList;
     
+    //  Lists containing most recent database data.
+    protected ResultSet _dbPassTypeList;
+    protected ResultSet _dbJobStatusList;
+    protected ResultSet _dbExperimentStatusList;
+    protected ResultSet _dbVersionHistoryList;
+    
+    //  This stuff is used to run automatic updates of the database information.
+    protected int _dbTimeoutCounter;
+    protected boolean _updateDatabaseNow;
+    protected UpdateDatabaseLoop _updateDatabaseLoop;
+    EventListenerList _databaseUpdateListeners;
+
     
     
 }

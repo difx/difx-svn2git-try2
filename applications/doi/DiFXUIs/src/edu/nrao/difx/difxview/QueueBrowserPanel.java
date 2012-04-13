@@ -57,6 +57,9 @@ public class QueueBrowserPanel extends TearOffPanel {
         setLayout( null );
         _browserPane = new NodeBrowserScrollPane( 20 );
         this.add( _browserPane );
+        _headerPane = new NodeBrowserScrollPane( 20 );
+        _headerPane.noScrollbar( true );
+        this.add( _headerPane );
         addKeyListener( new KeyEventListener() );
         _browserPane.setBackground( Color.WHITE );
         _mainLabel = new JLabel( "Queue Browser" );
@@ -170,7 +173,7 @@ public class QueueBrowserPanel extends TearOffPanel {
         _updateButton.setToolTipText( "Update queue data from the DiFX database." );
         _updateButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateNow( true );
+                _systemSettings.updateDatabaseNow( true );
             }
         });
         this.add( _updateButton );
@@ -188,26 +191,18 @@ public class QueueBrowserPanel extends TearOffPanel {
             }
         });
         
-
-        //  Set up a repeating timeout that occurs every 10th of a second.
-        Action updateDatabaseAction = new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                databaseTimeoutEvent();
-            }
-        };
-        
         //  Create a header line of all jobs.
         _header = new JobNodesHeader();
-        _browserPane.addNode( _header );
+        _headerPane.addNode( _header );
 
-        //  This thread is used to update from the database (updates can hang if
-        //  the database can't be located).
-        _updateLoop = new UpdateLoop();
-        _updateLoop.start();
+        //  Add a listener for automatic database updates.  When these occur,
+        //  we want to update the data for this browser.
+        _systemSettings.addDatabaseUpdateListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                updateQueueFromDatabase();
+            }
+        });
         
-        new Timer( 1000, updateDatabaseAction ).start();
-
     }
     
     /*
@@ -216,7 +211,8 @@ public class QueueBrowserPanel extends TearOffPanel {
      */
     @Override
     public void setBounds(int x, int y, int width, int height) {
-        _browserPane.setBounds( 0, 60, width, height - 60 );
+        _browserPane.setBounds( 0, 79, width, height - 79 );
+        _headerPane.setBounds( 0, 60, width, 20 );
         super.setBounds( x, y, width, height );
         _newButton.setBounds( 5, 30, 100, 25 );
         _selectButton.setBounds( 110, 30, 100, 25 );
@@ -271,7 +267,7 @@ public class QueueBrowserPanel extends TearOffPanel {
         //  Failure, or no attept to connect, will leave "db" as null, indicating
         //  we should try creating an experiment without using the data base.
         QueueDBConnection db = null;
-        if ( _systemSettings.useDataBase() ) {
+        if ( _systemSettings.useDatabase() ) {
             db = new QueueDBConnection( _systemSettings );
             if ( !db.connected() )
                 db = null;
@@ -361,54 +357,6 @@ public class QueueBrowserPanel extends TearOffPanel {
     }
     
     /*
-     * Timeout event for reading the database.
-     */
-    public void databaseTimeoutEvent() {
-        //  See if we are doing "auto" updates of the queue.
-        if ( _systemSettings.dbAutoUpdate() ) {
-            //  Auto updates will be performed at the interval specified unless they
-            //  have just been turned on (in which case an immediate update will be
-            //  performed).
-            if ( _timeoutCounter == 0 )
-                updateNow( true );
-            //  Otherwise we just check the status of each job that we know about.  If
-            //  a job has been removed we will detect that, too.
-            else
-                checkQueueStatusFromDatabase();
-            ++_timeoutCounter;
-            if ( _timeoutCounter >= _systemSettings.dbAutoUpdateInterval() )
-                _timeoutCounter = 0;
-        }
-        else
-            _timeoutCounter = 0;
-    }
-    
-    protected synchronized void updateNow( boolean newVal ) { _updateNow = newVal; }
-    
-    /*
-     * Internal thread used to keep the database queries from tying up the graphics
-     * update.
-     */
-    class UpdateLoop extends Thread {
-        
-        public void run() {
-            
-            while ( true ) {
-                try {
-                    Thread.sleep( 100 );
-                    if ( _updateNow ) {
-                       updateQueueFromDatabase();
-                       updateNow( false );
-                    }
-                } catch( java.lang.InterruptedException e ) {
-                }
-            }
-            
-        }
-        
-    }
-
-    /*
      * Update our list of experiments, passes, and nodes from the database.  This
      * pulls everything off the database and uses it to change our current list.  Things
      * which are in the current list that are NOT found in the database are eliminated.
@@ -416,7 +364,7 @@ public class QueueBrowserPanel extends TearOffPanel {
     void updateQueueFromDatabase() {
         
         //  Don't do this if the user isn't using the database.
-        if ( !_systemSettings.useDataBase() )
+        if ( !_systemSettings.useDatabase() )
             return;
         
         //  Get a new connection to the database.  Bail out if this doesn't work.
@@ -552,6 +500,7 @@ public class QueueBrowserPanel extends TearOffPanel {
                         thisPass.inDatabase( true );
                         thisPass.experimentNode( thisExperiment );
                         thisExperiment.addChild( thisPass );                        
+                        thisPass.found( true );
                     }
                     else {
                         //  TODO:  accomodate passes outside of the experiment structure
@@ -562,7 +511,6 @@ public class QueueBrowserPanel extends TearOffPanel {
                         //  It wasn't found, so add it.
                     }
                 }
-                thisPass.found( true );
             }
             //
             //  ======== JOBS =========
@@ -768,6 +716,7 @@ public class QueueBrowserPanel extends TearOffPanel {
     }  
     
     protected NodeBrowserScrollPane _browserPane;
+    protected NodeBrowserScrollPane _headerPane;
     protected JLabel _mainLabel;
     protected JButton _updateButton;
     DiFXDataModel  _dataModel;
@@ -782,7 +731,6 @@ public class QueueBrowserPanel extends TearOffPanel {
     protected ActivityMonitorLight _autoActiveLight;
     protected JobNodesHeader _header;
     protected boolean _updateNow;
-    protected UpdateLoop _updateLoop;
     protected JButton _newButton;
     protected JButton _selectButton;
     protected JPopupMenu _selectMenu;

@@ -214,7 +214,7 @@ public class PassNode extends QueueBrowserNode {
         //  Remove the pass from the database (if we are using it).
         if ( this.inDatabase() ) {
             QueueDBConnection db = null;
-            if ( _settings.useDataBase() ) {
+            if ( _settings.useDatabase() ) {
                 db = new QueueDBConnection( _settings );
                 if ( db.connected() ) {
                     db.deletePass( _id );
@@ -294,7 +294,7 @@ public class PassNode extends QueueBrowserNode {
     public void changeTypeInDatabase() {
         if ( this.inDatabase() ) {
             QueueDBConnection db = null;
-            if ( _settings.useDataBase() ) {
+            if ( _settings.useDatabase() ) {
                 db = new QueueDBConnection( _settings );
                 if ( db.connected() ) {
                     Integer passId = _settings.passTypeID( _type );
@@ -311,7 +311,7 @@ public class PassNode extends QueueBrowserNode {
     public void updateDatabase( String param, String setting ) {
         if ( this.inDatabase() ) {
             QueueDBConnection db = null;
-            if ( _settings.useDataBase() ) {
+            if ( _settings.useDatabase() ) {
                 db = new QueueDBConnection( _settings );
                 if ( db.connected() ) {
                     db.updatePass( _id, param, setting );

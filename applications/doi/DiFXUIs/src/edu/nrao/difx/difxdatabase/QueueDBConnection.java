@@ -20,7 +20,7 @@ public class QueueDBConnection {
     public QueueDBConnection( SystemSettings settings ) {
         _settings = settings;
         //  Don't connect to the database if the user is not using it!
-        if ( !_settings.useDataBase() ) {
+        if ( !_settings.useDatabase() ) {
             _db = null;
             return;
         }
@@ -123,6 +123,14 @@ public class QueueDBConnection {
     public ResultSet experimentStatusList() {
         try {
             return _db.selectData( "select * from " + _settings.dbName() + ".ExperimentStatus" );
+        } catch ( Exception e ) {
+            return null;
+        }
+    }
+    
+    public ResultSet versionHistoryList() {
+        try {
+            return _db.selectData( "select * from " + _settings.dbName() + ".VersionHistory" );
         } catch ( Exception e ) {
             return null;
         }

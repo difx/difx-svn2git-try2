@@ -189,7 +189,7 @@ public class ExperimentNode extends QueueBrowserNode {
         //  Remove this experiment from the database.
         if ( this.inDatabase() ) {
             QueueDBConnection db = null;
-            if ( _settings.useDataBase() ) {
+            if ( _settings.useDatabase() ) {
                 db = new QueueDBConnection( _settings );
                 if ( db.connected() ) {
                     db.deleteExperiment( _id );
@@ -198,8 +198,6 @@ public class ExperimentNode extends QueueBrowserNode {
         }
         //  Remove this experiment from its parent - the queue browser.
         ((BrowserNode)(this.getParent())).removeChild( this );
-        System.out.println( "delete does not currently remove the entire experiement on the DiFX host!" );
-        //  BLAT fix the above problem.
     }
     
     /*

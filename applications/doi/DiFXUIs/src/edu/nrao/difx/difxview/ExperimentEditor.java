@@ -1722,7 +1722,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
             //  hit so we can respond to changed circumstances (database is suddenly there,
             //  or suddenly not available).
             QueueDBConnection db = null;
-            if ( _settings.useDataBase() ) {
+            if ( _settings.useDatabase() ) {
                 db = new QueueDBConnection( _settings );
                 if ( !db.connected() )
                     db = null;
@@ -1995,7 +1995,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         synchronized public void newFileCallback( String newFile ) {
             //  Get a connection to the database if we are using it.
             QueueDBConnection db = null;
-            if ( _settings.useDataBase() ) {
+            if ( _settings.useDatabase() ) {
                 db = new QueueDBConnection( _settings );
                 if ( !db.connected() )
                     db = null;
