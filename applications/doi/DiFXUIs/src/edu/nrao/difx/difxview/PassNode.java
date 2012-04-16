@@ -15,6 +15,10 @@ import javax.swing.JSeparator;
 import javax.swing.JOptionPane;
 
 import java.util.Iterator;
+import java.util.Map;
+import java.util.ArrayList;
+import java.awt.Container;
+import java.awt.event.MouseEvent;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -73,29 +77,8 @@ public class PassNode extends QueueBrowserNode {
             }
         });
         _popup.add( menuItem4 );
-        JMenu typeMenu = new JMenu( "Set Type" );
-        _popup.add( typeMenu );
-        _productionItem = new JCheckBoxMenuItem( "Production" );
-        typeMenu.add( _productionItem );
-        _productionItem.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                productionItemAction();
-            }
-        });
-        _clockItem = new JCheckBoxMenuItem( "Clock" );
-        typeMenu.add( _clockItem );
-        _clockItem.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                clockItemAction();
-            }
-        });
-        _testItem = new JCheckBoxMenuItem( "Test" );
-        typeMenu.add( _testItem );
-        _testItem.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                testItemAction();
-            }
-        });
+        _typeMenu = new JMenu( "Set Type" );
+        _popup.add( _typeMenu );
         JMenuItem copyItem = new JMenuItem( "Copy" );
         copyItem.setToolTipText( "Make a copy of this Pass, its properties, and all contained Jobs." );
         copyItem.addActionListener(new ActionListener() {
@@ -121,6 +104,69 @@ public class PassNode extends QueueBrowserNode {
             }
         });
         _popup.add( deletePassItem );
+    }
+    
+    /*
+     * Dynamically build the type components before making the popup menu visible.
+     */
+    @Override
+    public void mousePressed( MouseEvent e ) {
+        if ( e.getButton() == MouseEvent.BUTTON3 && _popup != null ) {
+            _typeMenu.removeAll();
+            if ( _checkList == null )
+                _checkList = new ArrayList<JCheckBoxMenuItem>();
+            _checkList.clear();
+            Map<Integer, String> passTypeList = _settings.passTypeList();
+            if ( passTypeList != null ) {
+                Iterator iter = passTypeList.entrySet().iterator();
+                for ( ; iter.hasNext(); ) {
+                    Map.Entry m = (Map.Entry)iter.next();
+                    JCheckBoxMenuItem newStatus = new JCheckBoxMenuItem( (String)m.getValue() );
+                    final int id = (Integer)m.getKey();
+                    newStatus.addActionListener(new ActionListener() {
+                        public void actionPerformed( ActionEvent e ) {
+                            newTypeChoice( id );
+                        }
+                    });
+                    _typeMenu.add( newStatus );
+                    _checkList.add( newStatus );
+                    if ( type().equalsIgnoreCase( newStatus.getText() ) )
+                        newStatus.setSelected( true );
+                }
+            }
+            JMenuItem addItem = new JMenuItem( "Add Type" );
+            addItem.addActionListener(new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    System.out.println( "Add a new type" );
+                }
+            });
+            _typeMenu.add( addItem );
+            _popup.show( e.getComponent(), e.getX(), e.getY() );
+        }
+        else {
+            Container foo = this.getParent();
+            foo.dispatchEvent( e );
+        }
+    }
+    
+    /*
+     * Function called when the user picks a new status from the popup menu
+     * we built in the "mousePressed()" function.
+     */
+    public void newTypeChoice( int id ) {
+        String thisType = _settings.passTypeString( id );
+        //  Set the new type
+        type( thisType );
+        //  Then run through the check boxes and make sure the chosen one is checked
+        //  (and the others aren't).
+        for ( Iterator<JCheckBoxMenuItem> iter = _checkList.iterator(); iter.hasNext(); ) {
+            JCheckBoxMenuItem item = iter.next();
+            if ( item.getText().equalsIgnoreCase( thisType ) )
+                item.setSelected( true );
+            else
+                item.setSelected( false );
+        }
+        changeTypeInDatabase();
     }
     
     /*
@@ -241,15 +287,10 @@ public class PassNode extends QueueBrowserNode {
     public void type( String newVal ) {
         _type = newVal;
         setLabelText();
-        _productionItem.setSelected( false );
-        _clockItem.setSelected( false );
-        _testItem.setSelected( false );
-        if ( newVal.equalsIgnoreCase( "production" ) )
-            _productionItem.setSelected( true );
-        if ( newVal.equalsIgnoreCase( "clock" ) )
-            _clockItem.setSelected( true );
-        if ( newVal.equalsIgnoreCase( "test" ) )
-            _testItem.setSelected( true );
+    }
+    
+    public String type() {
+        return _type;
     }
     
     protected void setLabelText() {
@@ -335,6 +376,7 @@ public class PassNode extends QueueBrowserNode {
     protected JCheckBoxMenuItem _testItem;
     protected JTextField _nameEditor;
     protected SystemSettings _settings;
-    
+    protected JMenu _typeMenu;
+    protected ArrayList<JCheckBoxMenuItem> _checkList;
 
 }
