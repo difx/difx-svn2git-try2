@@ -14,6 +14,7 @@ __author__="Helge Rottmann"
 import os
 import sys
 import tkMessageBox
+import datetime
 from Tkinter import *
 from tkinter.multilistbox import *
 from string import  upper
@@ -80,12 +81,13 @@ class MainWindow(GenericWindow):
         frmDetail.columnconfigure(0,weight=1)
         
         #frmExps
-        col1 = ListboxColumn("experiment", 10)
-        col2 = ListboxColumn("number", 5)
+        col1 = ListboxColumn("experiment", 9)
+        col2 = ListboxColumn("number", 4)
         col3 = ListboxColumn("status", 15)
-        col4 = ListboxColumn("archived", 15) 
-        col5 = ListboxColumn("by", 10) 
-        self.grdExps = MultiListbox(frmExps, col1, col2, col3, col4, col5)
+        col4 = ListboxColumn("created", 14) 
+        col5 = ListboxColumn("archived", 14)
+        col6 = ListboxColumn("released", 14) 
+        self.grdExps = MultiListbox(frmExps, col1, col2, col3, col4, col5, col6)
         self.grdExps.bindEvent("<ButtonRelease-1>", self.selectExpEvent)
         
         btnAddExp = Button(frmExps, text="Add experiment", command=self.addExperimentDlg.show)
@@ -180,13 +182,14 @@ class MainWindow(GenericWindow):
         return isChange
     
     def updateExpListbox(self):
+        session.expire_all()
          
         exps = session.query(model.Experiment).order_by(desc(model.Experiment.number)).all()
 
         self.grdExps.clearData()
         
         for exp in exps: 
-            self.grdExps.appendData((exp.code, "%04d" % exp.number, exp.status.experimentstatus, exp.dateArchived, exp.archivedBy))
+            self.grdExps.appendData((exp.code, "%04d" % exp.number, exp.status.experimentstatus, exp.dateCreated,  exp.dateArchived, exp.dateReleased))
             
         self.grdExps.update()
         self.grdExps.selection_set(self.selectedExpIndex)
@@ -203,6 +206,7 @@ class MainWindow(GenericWindow):
         self.txtCode["state"] = NORMAL
         self.txtNumber["state"] = NORMAL
         self.txtDateArchived["state"] = NORMAL
+        self.txtReleasedBy["state"] = NORMAL
         self.txtArchivedBy["state"] = NORMAL
         self.txtComment["state"] = NORMAL
         
@@ -251,6 +255,7 @@ class MainWindow(GenericWindow):
         self.txtCode["state"] = DISABLED
         self.txtDateArchived["state"] = DISABLED
         self.txtArchivedBy["state"] = DISABLED
+        self.txtReleasedBy["state"] = DISABLED
         
     def selectExpEvent(self, Event):
         
@@ -284,11 +289,15 @@ class MainWindow(GenericWindow):
             if not isExperimentArchived(session, selectedCode):
                 tkMessageBox.showerror("Error", "Experiments must be archived before they can be released.")
                 return
+            
+            # insert dateReleased
+            exp.dateReleased = datetime.datetime.now()
         
         exp.status = status
         exp.number = self.txtNumber.get()
         exp.releasedBy = self.txtReleasedBy.get()
         exp.comment = strip(self.txtComment.get(1.0, END))
+        
         
         session.commit()
         session.flush()
