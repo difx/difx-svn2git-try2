@@ -12,8 +12,8 @@
 #
 #============================================================================
 
-#from difxdb import getIncompleteJobs
 from optparse import OptionParser
+from difxdb.business.versionhistoryaction import *
 from difxdb.difxdbconfig import DifxDbConfig
 from difxdb.model.dbConnection import Schema, Connection
 from difxdb.business.queueaction import *
@@ -30,9 +30,9 @@ import sys
 # "main" starts here
 
 program = 'difxqueue'
-version = "0.3"
+version = "0.5"
 author  = 'Helge Rottmann'
-verdate = '2011-12-07'
+verdate = '2012-05-02'
 
 queueBaseDir = ""
 passName = ""
@@ -40,6 +40,9 @@ options = None
 
 clusterHorsepower = 0.24
 
+# minimum database schema version required by difxqueue
+minSchemaMajor = 1
+minSchemaMinor = 0
 
 def readDBOptionsFile():
 	"""
@@ -685,6 +688,10 @@ try:
     session = dbConn.session()
 except Exception as e:
     exitOnError(e)
+
+if not isSchemaVersion(session, minSchemaMajor, minSchemaMinor):
+	major, minor = getCurrentSchemaVersionNumber(session)
+        exitOnError("Current difxdb database schema is %s.%s but %s.%s is minimum requirement" % (major, minor, minSchemaMajor, minSchemaMinor))
 
 action = lower(args[0])
 
