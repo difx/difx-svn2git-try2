@@ -37,6 +37,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
 import java.io.DataInputStream;
+import java.util.Arrays;
 
 import javax.swing.event.EventListenerList;
 
@@ -144,7 +145,13 @@ public class DiFXCommand_getFile extends DiFXCommand {
                     _inString = "";
                     incrementalCallback();
                     while ( _inString.length() < _fileSize ) {
-                        _inString += in.readUTF();
+                        int sz = _fileSize - _inString.length();
+                        if ( sz > 1024 )
+                            sz = 1024;
+                        byte [] data = new byte[sz];
+                        int n = in.read( data, 0, sz );
+                        //_inString += in.readUTF();
+                        _inString += new String( Arrays.copyOfRange( data, 0, n ) );
                         incrementalCallback();
                     }
                     sock.close();
@@ -152,8 +159,9 @@ public class DiFXCommand_getFile extends DiFXCommand {
                     _fileSize = -10;
                 }
                 ssock.close();
-            } catch ( Exception e ) {
-                _error = e.toString();
+            } catch ( java.io.IOException e ) {
+                e.printStackTrace();
+                _error = "IOException : " + e.toString();
                 _fileSize = -11;
             }
             endCallback();

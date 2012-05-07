@@ -27,14 +27,14 @@ public class ReadMessageThread implements Runnable {
     private boolean _settingsChange = true;
     // -- always start the process message thread before this thread.
     private ProcessMessageThread mMessageQueue;
-    SystemSettings _systemSettings;
+    SystemSettings _settings;
 
     // Constructor, give the thread a name and a link to the system settings.
     public ReadMessageThread( String name, SystemSettings systemSettings ) {
         mThreadName = name;
-        _systemSettings = systemSettings;
+        _settings = systemSettings;
         //  Set up a callback for changes to broadcast items in the system settings.
-        _systemSettings.broadcastChangeListener( new ActionListener() {
+        _settings.broadcastChangeListener( new ActionListener() {
 
             public void actionPerformed( ActionEvent e ) {
                 updateBroadcastSettings();
@@ -86,56 +86,78 @@ public class ReadMessageThread implements Runnable {
                 while ( !mDone ) {
                     
                     try {
-
-                        //  Check for changes to the broadcast settings on each cycle.
-                        if ( _settingsChange || socket == null ) {
-                            socket = new MulticastSocket( _systemSettings.port() );
-                            socket.setSoTimeout( _systemSettings.timeout() );              // timeout 100ms
-                            socket.setReceiveBufferSize( 512000 );   // max buffer size 512k Bytes
-                            socket.joinGroup( InetAddress.getByName( _systemSettings.ipAddress() ) );
-                            _settingsChange = false;
-                        }
-
-                        // create buffer and datagram packet
-                        byte[] buffer = new byte[_systemSettings.bufferSize()];    //1050
-                        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-
-                        // Wait for datagram packet
-                        if (packet != null) {
-                            // do not process empty packets.
+                        
+                        //  We can get packets from either UDP or TCP.  
+                        //  TCP relay...
+                        if ( _settings.useTCPRelay() ) {
                             try {
-                                // Insert raw packet into the queue
-                                socket.receive(packet);
-                                //  This allows the systems settings to show the packets as we receive them...very exciting.
-                                _systemSettings.gotPacket( packet.getLength() );
-                                if (!mMessageQueue.add(packet)) {
-                                    System.out.printf("******** Read message thread packet FAILED to add into queue. \n");
+                                byte [] buffer = _settings.guiServerConnection().getRelay();
+                                if ( buffer != null ) {
+                                    //  Feedback for the plot in the settings window
+                                    _settings.gotPacket( buffer.length );
+                                    if ( !mMessageQueue.add( new ByteArrayInputStream( buffer, 0, buffer.length ) ) ) {
+                                        System.out.printf("******** Read message thread packet FAILED to add into queue. \n");
+                                    }
+                                    buffer = null;
                                 }
-                            } catch (SocketTimeoutException exception) {
-                                _systemSettings.gotPacket( 0 );
-                                // socket did not receive message within 100ms, clean up
-                                buffer = null;
-                                packet = null;
-                                Thread.yield();
+                            } catch ( SocketTimeoutException e ) {
+                                _settings.gotPacket( 0 );
+                            }
+                        }
+                        
+                        //  UDP multicast receive (the "original" way)...
+                        else {
+
+                            //  Check for changes to the broadcast settings on each cycle.
+                            if ( _settingsChange || socket == null ) {
+                                socket = new MulticastSocket( _settings.port() );
+                                socket.setSoTimeout( _settings.timeout() );              // timeout 100ms
+                                socket.setReceiveBufferSize( 512000 );   // max buffer size 512k Bytes
+                                socket.joinGroup( InetAddress.getByName( _settings.ipAddress() ) );
+                                _settingsChange = false;
                             }
 
-                        } else {
-                            System.out.printf("******** Read message empty null packet - continue. \n", mThreadName);
+                            // create buffer and datagram packet
+                            byte[] buffer = new byte[_settings.bufferSize()];    //1050
+                            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+                            // Wait for datagram packet
+                            if ( packet != null ) {
+                                // do not process empty packets.
+                                try {
+                                    // Insert raw packet into the queue
+                                    socket.receive(packet);
+                                    //  This allows the systems settings to show the packets as we receive them...very exciting.
+                                    _settings.gotPacket( packet.getLength() );
+//                                    if (!mMessageQueue.add(packet)) {
+                                    if ( !mMessageQueue.add( new ByteArrayInputStream( packet.getData(), 0, packet.getLength() ) ) ) {
+                                        System.out.printf("******** Read message thread packet FAILED to add into queue. \n");
+                                    }
+                                } catch ( SocketTimeoutException exception ) {
+                                    _settings.gotPacket( 0 );
+                                    // socket did not receive message within 100ms, clean up
+                                    buffer = null;
+                                    packet = null;
+                                    Thread.yield();  //  BLAT This should not be necessary
+                                }
+
+                            } else {
+                                System.out.printf("******** Read message empty null packet - continue. \n", mThreadName);
+                            }
+
+                            // clean up  BLAT - recreating these each time is really strange...I guess the buffer
+                            //  size can change, but enough to justify this constant memory allocation??
+                            buffer = null;
+                            packet = null;
+                        
                         }
-
-                        // No need to throttle packet read
-
-                        // Do not leave group and do not close socket
-
-                        // clean up
-                        buffer = null;
-                        packet = null;
 
                         // catch an interrupt, stop thread
                         if (Thread.currentThread().isInterrupted() == true) {
                             System.out.printf("******** Read message thread %s interrupted. \n", mThreadName);
                             mDone = true;
                         }
+                        
                     } catch (OutOfMemoryError exception) {
                         System.out.printf("******** Read message %s caught OutOfMemoryError(%s  %s) - done. \n",
                                 mThreadName, startDate, Calendar.getInstance().getTime().toString());

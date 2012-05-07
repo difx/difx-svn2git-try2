@@ -101,6 +101,8 @@
                 
                 <xsd:element ref="jaxbPackage"/>
                 <xsd:element ref="timeout"/>
+                <xsd:element ref="difxTCPConnection"/>
+                <xsd:element ref="difxRelayBroadcastViaTCPConnection"/>
                 <xsd:element ref="difxControlAddress"/>
                 <xsd:element ref="difxControlPort"/>
                 <xsd:element ref="difxTransferPort"/>
@@ -190,6 +192,8 @@
                 
     <xsd:element name="jaxbPackage" type="xsd:string"></xsd:element>
     <xsd:element name="timeout" type="xsd:int"></xsd:element>
+    <xsd:element name="difxTCPConnection" type="xsd:boolean"></xsd:element>
+    <xsd:element name="difxRelayBroadcastViaTCPConnection" type="xsd:boolean"></xsd:element>
     <xsd:element name="difxControlAddress" type="xsd:string"></xsd:element>
     <xsd:element name="difxControlPort" type="xsd:int"></xsd:element>
     <xsd:element name="difxTransferPort" type="xsd:int"></xsd:element>

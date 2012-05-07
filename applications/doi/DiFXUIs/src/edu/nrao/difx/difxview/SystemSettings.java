@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.io.FileWriter;
 
 import java.net.URL;
+import java.net.Socket;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.io.IOException;
@@ -75,6 +76,7 @@ import mil.navy.usno.widgetlib.SimpleTextEditor;
 import javax.swing.JFrame;
 
 import edu.nrao.difx.difxdatabase.QueueDBConnection;
+import edu.nrao.difx.difxutilities.GuiServerConnection;
 
 import java.sql.ResultSet;
 
@@ -250,9 +252,31 @@ public class SystemSettings extends JFrame {
         settingsFilePanel.add( defaultsButton );
         
         IndexedPanel difxControlPanel = new IndexedPanel( "DiFX Control Connection" );
-        difxControlPanel.openHeight( 210 );
+        difxControlPanel.openHeight( 240 );
         difxControlPanel.closedHeight( 20 );
         _scrollPane.addNode( difxControlPanel );
+        _difxUDPCheck = new JCheckBox( "Multicast" );
+        _difxUDPCheck.setBounds( 160, 25, 100, 25 );
+        _difxUDPCheck.setToolTipText( "Use UDP multicast messages to control DiFX directly via mk5daemon." );
+        _difxUDPCheck.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _difxUDPCheck.setSelected( true );
+                _difxTCPCheck.setSelected( false );
+                changeDifxControlConnection();
+            }
+        } );
+        difxControlPanel.add( _difxUDPCheck );        
+        _difxTCPCheck = new JCheckBox( "guiServer" );
+        _difxTCPCheck.setBounds( 260, 25, 100, 25 );
+        _difxTCPCheck.setToolTipText( "Use a TCP connection with guiServer to route control commands to DiFX." );
+        _difxTCPCheck.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _difxUDPCheck.setSelected( false );
+                _difxTCPCheck.setSelected( true );
+                changeDifxControlConnection();
+            }
+        } );
+        difxControlPanel.add( _difxTCPCheck );        
         _difxControlAddress = new JFormattedTextField();
         _difxControlAddress.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _difxControlAddress.addActionListener( new ActionListener() {
@@ -262,7 +286,7 @@ public class SystemSettings extends JFrame {
         } );
         difxControlPanel.add( _difxControlAddress );
         JLabel ipAddressLabel = new JLabel( "Host:" );
-        ipAddressLabel.setBounds( 10, 25, 150, 25 );
+        ipAddressLabel.setBounds( 10, 55, 150, 25 );
         ipAddressLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( ipAddressLabel );
         _difxControlPort = new NumberBox();
@@ -275,7 +299,7 @@ public class SystemSettings extends JFrame {
         } );
         difxControlPanel.add( _difxControlPort );
         JLabel portLabel = new JLabel( "Control Port:" );
-        portLabel.setBounds( 10, 55, 150, 25 );
+        portLabel.setBounds( 10, 85, 150, 25 );
         portLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( portLabel );
         _difxTransferPort = new NumberBox();
@@ -283,7 +307,7 @@ public class SystemSettings extends JFrame {
         _difxTransferPort.minimum( 0 );
         difxControlPanel.add( _difxTransferPort );
         JLabel transferPortLabel = new JLabel( "Transfer Port:" );
-        transferPortLabel.setBounds( 210, 55, 150, 25 );
+        transferPortLabel.setBounds( 210, 85, 150, 25 );
         transferPortLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( transferPortLabel );
         _difxControlUser = new JFormattedTextField();
@@ -295,7 +319,7 @@ public class SystemSettings extends JFrame {
         } );
         difxControlPanel.add( _difxControlUser );
         JLabel userAddressLabel = new JLabel( "Username:" );
-        userAddressLabel.setBounds( 10, 85, 150, 25 );
+        userAddressLabel.setBounds( 10, 115, 150, 25 );
         userAddressLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( userAddressLabel );
         _difxControlPWD = new JPasswordField();
@@ -307,7 +331,7 @@ public class SystemSettings extends JFrame {
         } );
         difxControlPanel.add( _difxControlPWD );
         JLabel pwdLabel = new JLabel( "Password:" );
-        pwdLabel.setBounds( 10, 115, 150, 25 );
+        pwdLabel.setBounds( 10, 145, 150, 25 );
         pwdLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( pwdLabel );
         _difxVersion = new JFormattedTextField();
@@ -319,21 +343,30 @@ public class SystemSettings extends JFrame {
         } );
         difxControlPanel.add( _difxVersion );
         JLabel versionAddressLabel = new JLabel( "DiFX Version:" );
-        versionAddressLabel.setBounds( 10, 145, 150, 25 );
+        versionAddressLabel.setBounds( 10, 175, 150, 25 );
         versionAddressLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( versionAddressLabel );
         _difxPath = new SaneTextField();
         _difxPath.setToolTipText( "Path to DiFX directory tree on the DiFX host (\"bin\" and \"setup\" should be below this)." );
         difxControlPanel.add( _difxPath );
         JLabel difxPathLabel = new JLabel( "DiFX Path:" );
-        difxPathLabel.setBounds( 10, 175, 150, 25 );
+        difxPathLabel.setBounds( 10, 205, 150, 25 );
         difxPathLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( difxPathLabel );
         
-        IndexedPanel networkPanel = new IndexedPanel( "Broadcast Network" );
-        networkPanel.openHeight( 180 );
+        IndexedPanel networkPanel = new IndexedPanel( "DiFX Multicast Messages" );
+        networkPanel.openHeight( 210 );
         networkPanel.closedHeight( 20 );
         _scrollPane.addNode( networkPanel );
+        _useTCPRelayCheck = new JCheckBox( "Relay Using guiServer Connection" );
+        _useTCPRelayCheck.setBounds( 160, 25, 300, 25 );
+        _useTCPRelayCheck.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                changeDifxControlConnection();
+            }
+        } );
+        networkPanel.add( _useTCPRelayCheck );
+        _useTCPRelayCheck.setToolTipText( "Instruct guiServer to collect all multicasts and relay them using its TCP connection." );
         _ipAddress = new JFormattedTextField();
         _ipAddress.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _ipAddress.addActionListener( new ActionListener() {
@@ -342,8 +375,8 @@ public class SystemSettings extends JFrame {
             }
         } );
         networkPanel.add( _ipAddress );
-        JLabel difxControlAddressLabel = new JLabel( "Group IP Address:" );
-        difxControlAddressLabel.setBounds( 10, 25, 150, 25 );
+        JLabel difxControlAddressLabel = new JLabel( "Group Address:" );
+        difxControlAddressLabel.setBounds( 10, 55, 150, 25 );
         difxControlAddressLabel.setHorizontalAlignment( JLabel.RIGHT );
         networkPanel.add( difxControlAddressLabel );
         _port = new NumberBox();
@@ -356,7 +389,7 @@ public class SystemSettings extends JFrame {
         } );
         networkPanel.add( _port );
         JLabel controlPortLabel = new JLabel( "Port:" );
-        controlPortLabel.setBounds( 10, 55, 150, 25 );
+        controlPortLabel.setBounds( 10, 85, 150, 25 );
         controlPortLabel.setHorizontalAlignment( JLabel.RIGHT );
         networkPanel.add( controlPortLabel );
         _bufferSize = new NumberBox();
@@ -369,7 +402,7 @@ public class SystemSettings extends JFrame {
         } );
         networkPanel.add( _bufferSize );
         JLabel bufferSizeLabel = new JLabel( "Buffer Size:" );
-        bufferSizeLabel.setBounds( 10, 85, 150, 25 );
+        bufferSizeLabel.setBounds( 10, 115, 150, 25 );
         bufferSizeLabel.setHorizontalAlignment( JLabel.RIGHT );
         networkPanel.add( bufferSizeLabel );
         _timeout = new NumberBox();
@@ -382,7 +415,7 @@ public class SystemSettings extends JFrame {
         } );
         networkPanel.add( _timeout );
         JLabel timeoutLabel = new JLabel( "Timeout (ms):" );
-        timeoutLabel.setBounds( 10, 115, 150, 25 );
+        timeoutLabel.setBounds( 10, 145, 150, 25 );
         timeoutLabel.setHorizontalAlignment( JLabel.RIGHT );
         networkPanel.add( timeoutLabel );
         _plotWindow = new PlotWindow();
@@ -395,11 +428,12 @@ public class SystemSettings extends JFrame {
         _broadcastPlot.addTrack( _broadcastTrack );
         _broadcastTrack.color( Color.GREEN );
         _broadcastTrack.sizeLimit( 1000 );
-        _broadcastPlot.frame( 10, 23, 0.95, 90 );
+        //_broadcastPlot.frame( 10, 23, 0.95, 90 );
+        _broadcastPlot.frame( 10, 23, 0.95, 110 );
         _broadcastPlot.backgroundColor( Color.BLACK );
         _plotWindow.add2DPlot( _broadcastPlot );
         _suppressWarningsCheck = new JCheckBox( "Suppress \"Unknown Message\" Warnings" );
-        _suppressWarningsCheck.setBounds( 165, 145, 450, 25 );
+        _suppressWarningsCheck.setBounds( 165, 175, 450, 25 );
         networkPanel.add( _suppressWarningsCheck );
         
         IndexedPanel databasePanel = new IndexedPanel( "Database Configuration" );
@@ -770,19 +804,19 @@ public class SystemSettings extends JFrame {
             _scrollPane.setBounds( 0, 25, w, h - 47 );
             _settingsFileName.setBounds( 115, 25, w - 135, 25 );
             //  DiFX Controll Connection settings
-            _difxControlAddress.setBounds( 165, 25, 300, 25 );
-            _difxControlPort.setBounds( 165, 55, 100, 25 );
-            _difxTransferPort.setBounds( 365, 55, 100, 25 );
-            _difxControlUser.setBounds( 165, 85, 300, 25 );
-            _difxControlPWD.setBounds( 165, 115, 300, 25 );
-            _difxVersion.setBounds( 165, 145, 300, 25 );
-            _difxPath.setBounds( 165, 175, w - 195, 25 );
+            _difxControlAddress.setBounds( 165, 55, 300, 25 );
+            _difxControlPort.setBounds( 165, 85, 100, 25 );
+            _difxTransferPort.setBounds( 365, 85, 100, 25 );
+            _difxControlUser.setBounds( 165, 115, 300, 25 );
+            _difxControlPWD.setBounds( 165, 145, 300, 25 );
+            _difxVersion.setBounds( 165, 175, 300, 25 );
+            _difxPath.setBounds( 165, 205, w - 195, 25 );
             //  Broadcast network settings
-            _ipAddress.setBounds( 165, 25, 300, 25 );
-            _port.setBounds( 165, 55, 300, 25 );
-            _bufferSize.setBounds( 165, 85, 300, 25 );
-            _timeout.setBounds( 165, 115, 300, 25 );
-            _plotWindow.setBounds( 470, 25, w - 495, 120 );
+            _ipAddress.setBounds( 165, 55, 300, 25 );
+            _port.setBounds( 165, 85, 300, 25 );
+            _bufferSize.setBounds( 165, 115, 300, 25 );
+            _timeout.setBounds( 165, 145, 300, 25 );
+            _plotWindow.setBounds( 470, 33, w - 495, 140 );
             //  Database Configuration
             _dbHost.setBounds( 165, 55, 300, 25 );
             _dbSID.setBounds( 165, 85, 300, 25 );
@@ -808,6 +842,60 @@ public class SystemSettings extends JFrame {
             _viewLeapSecondsFile.setBounds( w - 125, 55, 100, 25 );
             _updateEOPNow.setBounds( w - 250, 115, 120, 25 );
         }
+    }
+    
+    /*
+     * Called when a change has been made in how commands are sent to DiFX - UDP
+     * multicast or TCP.
+     */
+    public void changeDifxControlConnection() {
+        if ( _difxUDPCheck.isSelected() ) {
+            _useTCPRelayCheck.setEnabled( false );
+            //  Close the current client to the guiServer if one is open.
+            if ( _guiServerConnection != null ) {
+                _guiServerConnection.close();
+            }
+        }
+        else {
+            _useTCPRelayCheck.setEnabled( true );
+            //  Open a new client socket to the guiServer if we need to.
+            if ( _guiServerConnection == null ) {
+                _guiServerConnection = new GuiServerConnection( difxControlAddress(), 
+                        difxControlPort(), timeout(), this );
+            }
+            //  Turn on/off the relay based on the checkbox (and the quality of the connection).
+            if ( _guiServerConnection.connected() ) {
+                _guiServerConnection.relayBroadcast( _useTCPRelayCheck.isSelected() );
+            }
+        }
+        generateBroadcastChangeEvent();
+    }
+    
+    /*
+     * Return the socket connection...
+     */
+    public GuiServerConnection guiServerConnection() { return _guiServerConnection; }
+
+    /*
+     * Lets us know when we are using the TCP relay or regular UDP to collect packets.
+     * I think this is only used by the ReadMessageThread function, so possibly the
+     * whole operation should be in here.
+     */
+    public boolean useTCPRelay() {
+        if ( _guiServerConnection == null )
+            return false;
+        //  All of these things have to be true!!
+        return ( _useTCPRelayCheck.isSelected() && _difxTCPCheck.isSelected() &&
+                 _guiServerConnection.connected() );
+    }
+    
+    /*
+     * Send commands via TCP instead of UDP.
+     */
+    public boolean sendCommandsViaTCP() {
+        if ( _guiServerConnection == null )
+            return false;
+        return ( _difxTCPCheck.isSelected() && _guiServerConnection.connected() );
     }
     
     /*
@@ -1035,10 +1123,13 @@ public class SystemSettings extends JFrame {
         //_resourcesFile = "/cluster/difx/DiFX_trunk_64/conf/resources.difx";
         _loggingEnabled = false;
         _statusValidDuration = 2000l;
+        _useTCPRelayCheck.setSelected( false );
         _ipAddress.setText( "224.2.2.1" );
         _port.intValue( 52525 );
         _bufferSize.intValue( 1500 );
         _timeout.intValue( 100 );
+        _difxUDPCheck.setSelected( true );
+        _difxTCPCheck.setSelected( false );
         _difxControlAddress.setText( "swc01.usno.navy.mil" );
         _difxControlPort.intValue( 50200 );
         _difxTransferPort.intValue( 50300 );
@@ -1109,6 +1200,8 @@ public class SystemSettings extends JFrame {
         leapSecondChoice( _useLeapSecondsURL );
         _autoUpdateEOP.setSelected( true );
         _eopTimer.start();
+        //  Set up the communications based on current settings.
+        changeDifxControlConnection();
     }
     
     /*
@@ -1447,6 +1540,9 @@ public class SystemSettings extends JFrame {
                 this.jaxbPackage( doiConfig.getJaxbPackage() );
             if ( doiConfig.getTimeout() != 0 )
                 this.timeout( doiConfig.getTimeout() );
+            _difxTCPCheck.setSelected( doiConfig.isDifxTCPConnection() );
+            _difxUDPCheck.setSelected( !_difxTCPCheck.isSelected() );
+            _useTCPRelayCheck.setSelected( doiConfig.isDifxRelayBroadcastViaTCPConnection() );
             if ( doiConfig.getDifxControlAddress() != null )
                 this.difxControlAddress( doiConfig.getDifxControlAddress() );
             if ( doiConfig.getDifxControlPort() != 0 )
@@ -1561,7 +1657,7 @@ public class SystemSettings extends JFrame {
             if ( doiConfig.getAutoUpdateSeconds() != 0 )
                 _autoUpdateSeconds.value( doiConfig.getAutoUpdateSeconds() );
             updateEOPNow();
-            generateBroadcastChangeEvent();
+            changeDifxControlConnection();
             generateDatabaseChangeEvent();
             
         } catch (javax.xml.bind.JAXBException ex) {
@@ -1595,6 +1691,8 @@ public class SystemSettings extends JFrame {
         
         doiConfig.setJaxbPackage( this.jaxbPackage() );
         doiConfig.setTimeout( this.timeout() );
+        doiConfig.setDifxTCPConnection( _difxTCPCheck.isSelected() );
+        doiConfig.setDifxRelayBroadcastViaTCPConnection( _useTCPRelayCheck.isSelected() );
         doiConfig.setDifxControlAddress( this.difxControlAddress() );
         doiConfig.setDifxControlPort( this.difxControlPort() );
         doiConfig.setDifxTransferPort( this.difxTransferPort() );
@@ -2146,6 +2244,8 @@ public class SystemSettings extends JFrame {
     protected boolean _loggingEnabled;
     protected long _statusValidDuration;
     //  DiFX Control Connection
+    protected JCheckBox _difxUDPCheck;
+    protected JCheckBox _difxTCPCheck;
     protected JFormattedTextField _difxControlAddress;
     protected NumberBox _difxControlPort;
     protected NumberBox _difxTransferPort;
@@ -2154,7 +2254,9 @@ public class SystemSettings extends JFrame {
     protected JPasswordField _difxControlPWD;
     protected JFormattedTextField _difxVersion;
     protected SaneTextField _difxPath;
+    protected GuiServerConnection _guiServerConnection;
     //  Broadcast network
+    protected JCheckBox _useTCPRelayCheck;
     protected JFormattedTextField _ipAddress;
     protected NumberBox _port;
     protected NumberBox _bufferSize;

@@ -484,7 +484,7 @@ public class DiFXDataModel {
         //BLAT
         Header header = difxMsg.getHeader();
         //System.out.println( header.getFrom() );
-        //System.out.println( "         " + header.getType() );
+        System.out.println( "         " + header.getType() );
 
         if (header.getType().equalsIgnoreCase("DifxStatusMessage")) {
             //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DifxStatusMessage");

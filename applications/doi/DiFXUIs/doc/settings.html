@@ -105,20 +105,32 @@
       will use the environment variable <span style="font-family:
         monospace;">DIFX_PREFIX</span> to determine the path.<br>
     </p>
-    <h2><a name="Broadcast_Network"></a>Broadcast Network</h2>
-    The broadcast network is used by DiFX processes to communicate with
-    each other.&nbsp; It is used by the user interface <span
+    <h2><a name="Broadcast_Network"></a>DiFX Multicast Messages<br>
+    </h2>
+    DiFX processes use UDP multicast messages to communicate with one
+    another and periodically broadcast their status and the state of
+    running jobs - information the user interface displays.&nbsp; This
+    same system can be used by the user interface <span
       style="font-style: italic;"></span>to communicate with <span
-      style="font-style: italic;">mk5daemon</span> and thus control the
-    software correlator.&nbsp; It is also used by <span
-      style="font-style: italic;">mk5daemon</span> instances running on
-    all processing and data source nodes to communicate their status and
-    the state of running jobs.&nbsp; The broadcast network is based on
-    UDP, and will only work within a local area network.<br>
-    <h4>Group IP Address</h4>
-    This address is used to identify the "group" of UDP broadcasts that
-    <span style="font-style: italic;">mk5daemon</span> is using.&nbsp;
-    It should match the DIFX_MESSAGE_GROUP environment variable setting
+      style="font-style: italic;">mk5daemon</span> and control the
+    software correlator.&nbsp; <br>
+    <h4>Relay Using guiServer Connection<br>
+    </h4>
+    Being based on UDP, the multicasts will only work within a local
+    area network.&nbsp; However, if you are connecting to the <span
+      style="font-style: italic;">guiServer</span> to control DiFX you
+    can elect this option to "relay" all multicast messages through the
+    TCP connection between the user interface and <span
+      style="font-style: italic;">guiServer</span>.&nbsp; All messages
+    on the DiFX subnet are collected by <span style="font-style:
+      italic;">guiServer</span> and retransmitted to the user interface
+    where they are parsed and displayed exactly as if the user interface
+    were on the subnet.&nbsp; This option is only available if the DiFX
+    Control Connection is set to "guiServer" (see above).<br>
+    <h4>Group Address</h4>
+    This address is used to identify the UDP multicast "group" that <span
+      style="font-style: italic;">mk5daemon</span> is using.&nbsp; It
+    should match the DIFX_MESSAGE_GROUP environment variable setting
     used when starting <span style="font-style: italic;">mk5daemon</span>
     on all processing and data source nodes (run <span
       style="font-style: italic;">mk5daemon</span> with the "-h" option
@@ -126,7 +138,7 @@
     environment variable, and thus the setting you should probably use
     here, is "224.2.2.1".<br>
     <h4>Port</h4>
-    The port is used for UDP broadcasts.&nbsp; This should match the
+    The port is used for UDP multicasts.&nbsp; This should match the
     value of the DIFX_MESSAGE_PORT environment variable in place when <span
       style="font-style: italic;">mk5daemon</span> was started.&nbsp; At
     the moment the default value for the environment variable, and thus
@@ -221,6 +233,7 @@
 
 
 
+
     See <a href="#Database_Remote_Access">Problems with Database Remote
       Access</a> in the trouble-shooting section for details.<br>
     <h4>Password</h4>
@@ -260,6 +273,7 @@
     does it involve much network traffic, however the database probably
     doesn't change much so an interval of a few seconds should be fine.<br>
     <h2><a name="Testing_the_Database_Configuration"></a>Trouble-shooting
+
 
 
 
@@ -369,6 +383,7 @@
 
 
 
+
     Then remote log into that host and see if the mySQL server is
     runing:<br>
     <ul style="margin-left: 40px;">
@@ -427,6 +442,7 @@
     <br>
     <br>
     <h6> <span style="font-weight: bold; font-family: monospace;">&nbsp;&nbsp;&nbsp;
+
         Database contains 0 jobs.</span></h6>
     <br>
     This is not an error, however you may encounter this message.&nbsp;

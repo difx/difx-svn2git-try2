@@ -48,26 +48,22 @@ public class JAXBPacketProcessor
    }
 
    /**
-    * This is where the contents of the packet are read and converted
-    * to a JAXB object.
+    * Convert a data buffer directly into a JAXB object (i.e. avoid that DatagramPacket
+    * stuff).
     */
-   public DifxMessage ConvertToJAXB(DatagramPacket packet)
+   public DifxMessage ConvertToJAXB( ByteArrayInputStream is )
    {
       // message to return to client
       DifxMessage difxMsg = mFactory.createDifxMessage();
 
       try
       {
-         //byte[] bytes = packet.getData();
-         //String xml = new String(bytes);
-         //xml = xml.trim();
-         //System.out.println("**" + xml + "**");
-         ByteArrayInputStream is = new ByteArrayInputStream(packet.getData(), 0, packet.getLength());
          difxMsg = (DifxMessage) mUnmarshaller.unmarshal(is);
          is = null;
       }
       catch (javax.xml.bind.JAXBException ex)
       {
+          System.out.println( is );
          // XXXTODO Handle exception
          java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex); //NOI18N
       }

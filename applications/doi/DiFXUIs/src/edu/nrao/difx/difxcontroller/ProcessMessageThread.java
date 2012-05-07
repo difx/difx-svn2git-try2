@@ -9,6 +9,7 @@ import java.net.*;
 import java.util.*;
 
 import edu.nrao.difx.xmllib.difxmessage.*;
+import java.io.ByteArrayInputStream;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
@@ -24,7 +25,7 @@ public class ProcessMessageThread implements Runnable
    private String  mThreadName;
    private boolean mDone = false;
 
-   private BlockingQueue<DatagramPacket> mBlockQueue;
+   private BlockingQueue<ByteArrayInputStream> mBlockQueue;
 
    private DiFXController      mTheController;
    private JAXBPacketProcessor mThePacketProcessor;
@@ -33,7 +34,7 @@ public class ProcessMessageThread implements Runnable
    public ProcessMessageThread(String name, SystemSettings systemSettings )
    {
       mThreadName         = name;
-      mBlockQueue         = new LinkedBlockingQueue<DatagramPacket>();
+      mBlockQueue         = new LinkedBlockingQueue<ByteArrayInputStream>();
       mThePacketProcessor = new JAXBPacketProcessor( systemSettings.jaxbPackage() );
    }
 
@@ -44,12 +45,12 @@ public class ProcessMessageThread implements Runnable
    }
 
    // Methods specific to Queue
-   public boolean add(DatagramPacket pack)
+   public boolean add( ByteArrayInputStream pack )
    {
       // no null entries allowed
       try
       {
-         return ( mBlockQueue.offer(pack) );
+         return ( mBlockQueue.offer( pack ) );
       }
       catch (NullPointerException e)
       {
@@ -57,7 +58,8 @@ public class ProcessMessageThread implements Runnable
       }
    }
 
-   public DatagramPacket remove() throws InterruptedException
+//   public DatagramPacket remove() throws InterruptedException
+   public ByteArrayInputStream remove() throws InterruptedException
    {
       return ( mBlockQueue.take() );
    }
@@ -70,13 +72,12 @@ public class ProcessMessageThread implements Runnable
 
    // Process a datagram - unmarshall into DifxMessage and send to controller.
    // The controller is responsible for updating the data model.
-   public synchronized void processMessage(DatagramPacket packet)
+   public synchronized void processMessage( ByteArrayInputStream packet)
    {
       //System.out.printf("**************** Process message queue process message packet. \n");
       //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "got a packet" );
       
       // Process message into DiFXMessage
-      // printPacket(packet);
       DifxMessage difxMsg = mThePacketProcessor.ConvertToJAXB(packet);
       if (difxMsg != null)
       {
@@ -133,7 +134,7 @@ public class ProcessMessageThread implements Runnable
       synchronized (this)
       {
          // Element to take from queue
-         DatagramPacket packet = null;
+         ByteArrayInputStream packet = null;
 
          // Loop forever, dequeue and process datagram packets
          while (!mDone)
@@ -178,20 +179,20 @@ public class ProcessMessageThread implements Runnable
                System.out.printf("**************** Process message %s caught interrupt - done. \n", mThreadName);
                mDone = true;
             }
-            catch ( NoSuchElementException exception )
-            {
-               System.out.printf("**************** Process message queue empty exception - continue. \n", mThreadName);
-               mDone = false;
-               try
-               {
-                  Thread.sleep(3);
-                  System.gc();
-               }
-               catch (InterruptedException ex)
-               {
-                  Logger.getLogger(ProcessMessageThread.class.getName()).log(Level.SEVERE, null, ex);
-               }
-            }
+//            catch ( NoSuchElementException exception )
+//            {
+//               System.out.printf("**************** Process message queue empty exception - continue. \n", mThreadName);
+//               mDone = false;
+//               try
+//               {
+//                  Thread.sleep(3);
+//                  System.gc();
+//               }
+//               catch (InterruptedException ex)
+//               {
+//                  Logger.getLogger(ProcessMessageThread.class.getName()).log(Level.SEVERE, null, ex);
+//               }
+//            }
 
          } // -- while (!mDone)
 
