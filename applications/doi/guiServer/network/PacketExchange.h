@@ -36,7 +36,7 @@ namespace network {
         //!  responsibility).  This function returns the number of bytes sent,
         //!  or a -1 if there is a failure.
         //----------------------------------------------------------------------------
-        int sendPacket( const int packetId, char* data, const int nBytes ) {
+        virtual int sendPacket( const int packetId, char* data, const int nBytes ) {
             int swapped;
 
             //  Our trivial packet protocol is to send the packetId first (network byte

@@ -22,19 +22,19 @@ ServerSideConnection::diagnostic( const int severity, const char *fmt, ... ) {
     vsnprintf( message, MAX_MESSAGE_LENGTH, fmt, ap );
     va_end( ap );
     switch ( severity ) {
-    case ServerSideConnection::INFORMATION:
+    case INFORMATION:
         if ( _difxAlertsOn )
             difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_INFO );
         if ( _diagnosticPacketsOn )
             sendPacket( INFORMATION_PACKET, message, strlen( message ) );
         break;
-    case ServerSideConnection::WARNING:
+    case WARNING:
         if ( _difxAlertsOn )
             difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_WARNING );
         if ( _diagnosticPacketsOn )
             sendPacket( WARNING_PACKET, message, strlen( message ) );
         break;
-    case ServerSideConnection::ERROR:
+    case ERROR:
         if ( _difxAlertsOn )
             difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_ERROR );
         if ( _diagnosticPacketsOn )

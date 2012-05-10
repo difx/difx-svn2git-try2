@@ -11,6 +11,7 @@
 //=============================================================================
 #include <stdlib.h>
 #include <pthread.h>
+#include <string>
 #include <network/UDPSocket.h>
 #include <PacketExchange.h>
 #include <difxmessage.h>
@@ -182,9 +183,33 @@ namespace guiServer {
         void diagnosticPacketsOn( const bool newVal ) { _diagnosticPacketsOn = newVal; }
         
         //---------------------------------------------------------------------
-        //   Function prototypes - guts contained in [FUNCTON_NAME].cpp files.
+        //!  Structure used to pass information to the thread that starts and
+        //!  monitors DiFX.
+        //---------------------------------------------------------------------
+        struct DifxStartInfo {
+            ServerSideConnection* ssc;
+            int force;
+            char removeCommand[MAX_COMMAND_SIZE];
+            char startCommand[MAX_COMMAND_SIZE];
+            char jobName[MAX_COMMAND_SIZE];
+        };
+
+        //-----------------------------------------------------------------------------
+        //!  Static function called to start the DiFX run thread.
+        //-----------------------------------------------------------------------------	
+        static void* staticRunDifxThread( void* a ) {
+            DifxStartInfo* startInfo = (DifxStartInfo*)a;
+            startInfo->ssc->runDifxThread( startInfo );
+            printf( "thread is done - delete the startInfo structure\n" );
+            delete startInfo;
+        }
+
+        //---------------------------------------------------------------------
+        //!  Function prototypes - guts contained in [FUNCTON_NAME].cpp files
+        //!  unless otherwise noted.
         //---------------------------------------------------------------------
         void startDifx( DifxMessageGeneric* G );
+        void runDifxThread( DifxStartInfo* startInfo );  //  in startDifx.cpp
         void diagnostic( const int severity, const char *fmt, ... );
 
     protected:
@@ -196,7 +221,7 @@ namespace guiServer {
         bool _relayDifx;
         bool _difxAlertsOn;
         bool _diagnosticPacketsOn;
-
+        
     };
 
 }

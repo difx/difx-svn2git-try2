@@ -1,6 +1,6 @@
 //=============================================================================
 //
-//   ServerSideConnection::startDifx Function
+//   ServerSideConnection::startDifx Function (and associated functions)
 //
 //!  Called when an instruction to start a DiFX job is received.  This function
 //!  is a member of the ServerSideConnection class.
@@ -14,8 +14,14 @@
 
 using namespace guiServer;
 
-void
-ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
+//-----------------------------------------------------------------------------
+//!  Called in response to a user request to start a DiFX session.  This function
+//!  does all of the necessary checking to assure (or at least increase the chances)
+//!  that DiFX will run.  It also creates .thread and .machine files.  The actual
+//!  running of DiFX is performed in a thread that this function, as its last act,
+//!  spawns.
+//-----------------------------------------------------------------------------
+void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	const int RestartOptionLength = 16;
 	int l, n;
 	int childPid;
@@ -43,31 +49,31 @@ ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	
 	//  Make sure all needed parameters are included in the message.
 	if ( S->headNode[0] == 0 ) {
-        ServerSideConnection::diagnostic( ServerSideConnection::ERROR, "DiFX start failed - no headnode specified." );
+        diagnostic( ERROR, "DiFX start failed - no headnode specified." );
 		return;
 	}
 	if ( S->nDatastream <= 0 ) {
-        ServerSideConnection::diagnostic( ServerSideConnection::ERROR, "DiFX start failed - no data sources specified." );
+        diagnostic( ERROR, "DiFX start failed - no data sources specified." );
 		return;
 	}
 	if ( S->nProcess <= 0 ) {
-        ServerSideConnection::diagnostic( ServerSideConnection::ERROR, "DiFX start failed - no processing nodes  specified." );
+        diagnostic( ERROR, "DiFX start failed - no processing nodes  specified." );
 		return;
 	}
 	if ( S->inputFilename[0] == 0 ) {
-        ServerSideConnection::diagnostic( ServerSideConnection::ERROR, "DiFX start failed - no input file specified" );
+        diagnostic( ERROR, "DiFX start failed - no input file specified" );
 		return;
 	}
 
 	//  Check to make sure the input file exists
 	if( access(S->inputFilename, R_OK) != 0 ) {
-		ServerSideConnection::diagnostic( ServerSideConnection::ERROR, "DiFX start failed - input file %s not found.", S->inputFilename );
+		diagnostic( ERROR, "DiFX start failed - input file %s not found.", S->inputFilename );
 		return;
 	}
 
     //  Make sure the filename can fit in our allocated space for such things.
 	if( strlen( S->inputFilename ) + 12 > DIFX_MESSAGE_FILENAME_LENGTH ) {
-		ServerSideConnection::diagnostic( ServerSideConnection::ERROR, "Filename %s is too long.", S->inputFilename );
+		diagnostic( ERROR, "Filename %s is too long.", S->inputFilename );
 		return;
 	}
 	
@@ -104,18 +110,18 @@ ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 		long long freeSpace;
 		freeSpace = fiData.f_bsize * fiData.f_bavail;
 		if( freeSpace < 100000000 ) {
-			ServerSideConnection::diagnostic( ServerSideConnection::WARNING, 
+			diagnostic( WARNING, 
 			    "Working directory %s has only %lld bytes free - mpifxcorr will likely crash!", 
 				workingDir, freeSpace );
 		}
 		else if( fiData.f_ffree < 3 )
 		{
-			ServerSideConnection::diagnostic( ServerSideConnection::WARNING, "%s has no free inodes - mpifxcorr will likely crash!", 
+			diagnostic( WARNING, "%s has no free inodes - mpifxcorr will likely crash!", 
 				workingDir );
 		}
 	}
 	else {
-		ServerSideConnection::diagnostic( ServerSideConnection::ERROR, 
+		diagnostic( ERROR, 
 		    "statvfs failed when accessing directory %s : it seems not to exist!", 
 			workingDir );
 		return;
@@ -127,27 +133,16 @@ ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	    outputExists = true;
     //  Should we be over writing it?  If not, we need to bail out.
 	if( outputExists && !S->force ) {
-		ServerSideConnection::diagnostic( ServerSideConnection::ERROR, 
-		    "Output file %s exists.  Aborting correlation.", 
+		diagnostic( ERROR, "Output file %s exists.  Aborting correlation.", 
 			filename );
 		return;
 	}
 
-    //  Enough checking - let's go.  
-	fprintf( stdout, "headnode is %s\n", S->headNode );
-	for( int i = 0; i < S->nDatastream; ++i ) {
-		fprintf( stdout, "data stream node %s\n", S->datastreamNode[i] );
-	}
-	for( int i = 0; i < S->nProcess; ++i ) {
-		fprintf( stdout, "process node %s\n", S->processNode[i] );
-	}
-
-    //  Write the machines file.
+    //  Enough checking - write the machines file.
 	snprintf(filename, DIFX_MESSAGE_FILENAME_LENGTH, "%s.machines", filebase);
     out = fopen( filename, "w" );
 	if( !out ) {
-		ServerSideConnection::diagnostic( ServerSideConnection::ERROR, 
-		    "Cannot open machines file \"%s\" for writing", filename );
+		diagnostic( ERROR, "Cannot open machines file \"%s\" for writing", filename );
 		return;
 	}
 	//  The "head" or "manager" node is always first.
@@ -172,8 +167,7 @@ ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	snprintf(filename, DIFX_MESSAGE_FILENAME_LENGTH, "%s.threads", filebase);
 	out = fopen( filename, "w" );
 	if( !out ) {
-		ServerSideConnection::diagnostic( ServerSideConnection::ERROR, 
-		    "Cannot open threads file \"%s\" for writing", filename );
+	    diagnostic( ERROR, "Cannot open threads file \"%s\" for writing", filename );
 		return;
 	}
 	fprintf(out, "NUMBER OF CORES:    %d\n", S->nProcess );
@@ -199,11 +193,119 @@ ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	
 	//  There must be at least one thread to run!
 	if ( !threadCount ) {
-	    ServerSideConnection::diagnostic( ServerSideConnection::ERROR,
-	        "No threads available for processing this job." );
+	    diagnostic( ERROR, "No threads available for processing this job." );
 	    return;
 	}
 	
+	//  Create a structure to hold all information about this job.
+	DifxStartInfo* startInfo = new DifxStartInfo;
+	startInfo->ssc = this;
+	snprintf( startInfo->jobName, MAX_COMMAND_SIZE, "%s", filebase );
+	for ( int i = 0; filebase[i]; ++i ) {
+	    if ( filebase[i] == '/' )
+	        snprintf( startInfo->jobName, MAX_COMMAND_SIZE, "%s", filebase + i + 1 );
+	}
 	
+	//  Build the "remove" command - this removes existing data if the force option is picked.
+	if( S->force && outputExists ) {
+		snprintf( startInfo->removeCommand, MAX_COMMAND_SIZE, "/bin/rm -rf %s.difx/", filebase );
+		startInfo->force = 1;
+	}
+	else
+	    startInfo->force = 0;
+	    
+	//  Include any options specified by the user - or use the defaults.
+	if( S->mpiOptions[0] )
+	    mpiOptions = S->mpiOptions;
+ 	else
+ 	    mpiOptions = "--mca mpi_yield_when_idle 1 --mca rmaps seq";
+
+    //  Option to run a different version of mpirun.
+	if( S->mpiWrapper[0] )
+	    mpiWrapper = S->mpiWrapper;
+	else
+		mpiWrapper = "mpirun";
+
+    //  Option to run different DiFX commands.
+	if( S->difxProgram[0] )
+		difxProgram = S->difxProgram;
+	else if ( strcmp( S->difxVersion, "unknown" ) != 0 ) {
+		snprintf( altDifxProgram, 63, "runmpifxcorr.%s", S->difxVersion );
+		difxProgram = altDifxProgram;
+	}
+	else
+	    difxProgram = "mpifxcorr";
+	    
+	//  Build the "restart" instruction.  This becomes part of the start command.
+	if ( S->restartSeconds > 0.0 )
+	    snprintf( restartOption, RestartOptionLength, "-r %f", S->restartSeconds );
+	else
+	    restartOption[0] = 0;
+	    
+	//  Build the actual start command.
+	snprintf( startInfo->startCommand, MAX_COMMAND_SIZE, 
+	          "source %s/setup.bash; %s -np %d --bynode --hostfile %s.machines %s %s %s %s 2>&1", 
+              workingDir,
+              mpiWrapper,
+              1 + S->nDatastream + S->nProcess,
+              filebase,
+              mpiOptions,
+              difxProgram,
+              restartOption,
+              S->inputFilename );
+	
+	//  Start an independent thread to run it.
+	pthread_attr_t threadAttr;
+	pthread_t threadId;
+    pthread_attr_init( &threadAttr );
+    pthread_create( &threadId, &threadAttr, staticRunDifxThread, (void*)startInfo );               	
+	
+}
+
+//-----------------------------------------------------------------------------
+//!  Thread to run and monitor DiFX.  All of the necessary setup should be
+//!  done already - the "startInfo" structure contains all information needed
+//!  to run.  
+//-----------------------------------------------------------------------------	
+void ServerSideConnection::runDifxThread( DifxStartInfo* startInfo ) {
+    
+    //  Delete data directories if "force" is in effect.
+    if ( startInfo->force )
+        diagnostic( INFORMATION, "execute \"%s\"\n", startInfo->removeCommand );
+        
+    //  Run the DiFX process!
+    diagnostic( INFORMATION, "execute \"%s\"\n", startInfo->startCommand );
+    
+    FILE* difxPipe = popen( startInfo->startCommand, "r" );
+    if( !difxPipe ) {
+	    diagnostic( ERROR, "mpifxcorr process not started for job %s; popen returned NULL", startInfo->jobName );
+        return;
+    }
+
+    char line[DIFX_MESSAGE_LENGTH];
+
+    for (;;) {
+
+	    const char* rv = fgets( line, DIFX_MESSAGE_LENGTH, difxPipe );
+	    if ( !rv )	/* eof, probably */
+		    break;
+
+	    for ( int i = 0; line[i]; ++i ) {
+		    if(line[i] == '\n')
+			    line[i] = ' ';
+	    }
+
+	    if ( strstr( line, "ERROR" ) != NULL )
+		    diagnostic( ERROR, "MPI: %s", line );
+	    else if ( strstr( line, "WARNING" ) != NULL )
+		    diagnostic( WARNING, "MPI: %s", line );
+	    else
+		    diagnostic( INFORMATION, "MPI: %s", line );
+
+    }
+    pclose( difxPipe );
+
+    difxMessageSendDifxStatus2( startInfo->jobName, DIFX_STATE_MPIDONE, "" );
 
 }
+

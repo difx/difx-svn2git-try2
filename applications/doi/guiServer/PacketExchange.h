@@ -33,12 +33,23 @@ namespace guiServer {
         PacketExchange( network::GenericSocket* sock ) : network::PacketExchange( sock ) {
             _sock = sock;
             _receiveActive = false;
+            pthread_mutex_init( &_writeMutex, NULL );
             pthread_attr_init( &_receiveAttr );
             pthread_create( &_receiveId, &_receiveAttr, staticReceiveThread, this );               
         }
         
         ~PacketExchange() {
             _receiveActive = false;
+        }
+        
+        //---------------------------------------------------------------------
+        //!  Override the sendPacket function to make it mutex locked - to make
+        //!  the operation thread safe.
+        //---------------------------------------------------------------------
+        virtual int sendPacket( const int packetId, char* data, const int nBytes ) {
+            pthread_mutex_lock( &_writeMutex );
+            network::PacketExchange::sendPacket( packetId, data, nBytes );
+            pthread_mutex_unlock( &_writeMutex );
         }
         
         //---------------------------------------------------------------------
@@ -96,6 +107,7 @@ namespace guiServer {
         pthread_attr_t _receiveAttr;
         pthread_t _receiveId;
         bool _receiveActive;
+        pthread_mutex_t _writeMutex;
 
     };
 
