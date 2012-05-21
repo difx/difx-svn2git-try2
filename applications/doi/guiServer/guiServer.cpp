@@ -2,8 +2,10 @@
 //
 //   guiServer (main)
 //
-//!  Collect and monitor connections from clients (presumably the GUI).  The
-//!  ServerSideConnection class does most of the work.
+//!  Collect and monitor connections from clients (presumably the GUI), as
+//!  well as monitor DiFX multicast traffic.  The ServerSideConnection class
+//!  handles all of the specifics of each client connection (such as what to
+//!  do with multicast messages).
 //
 //=============================================================================
 #include <stdio.h>
@@ -43,6 +45,8 @@ void* connectionMonitor( void* arg ) {
             if ( !thisConnection->clientSocket->connected() ) {
                 printf( "%s disconnected\n", thisConnection->IP );
                 it = _clientConnections.erase( it );
+                delete thisConnection->clientSocket;
+                delete thisConnection->client;
                 delete thisConnection;
             }
             else
@@ -52,7 +56,7 @@ void* connectionMonitor( void* arg ) {
         sleep( 1 );
     }
 }
-    
+
 //-----------------------------------------------------------------------------
 //!  main
 //-----------------------------------------------------------------------------
@@ -61,22 +65,32 @@ main( int argc, char **argv ) {
     char* endptr;
     
     //  Configurables, with some sensible defaults.
-    int serverPort = 50200;         //  Port for TCP connections
-    bool relayDifx = false;         //  Act as a "relay" for DiFX broadcast messages
+    int serverPort = 50200;            //  Port for TCP connections
+    int multicastPort = 50200;         //  Port for receiving DiFX multicasts
+    char multicastGroup[16];           //  Group ID for DIFX multicasts.
+    snprintf( multicastGroup, 16, "224.2.2.1" );
     
-    //  Grab values from environment variables, since everyone seems to like environment
-    //  variables.
+    //  Check values from environment variables.
     char* newPort = getenv( "DIFX_MESSAGE_PORT" );
-    if ( newPort != NULL )
+    if ( newPort != NULL ) {
         serverPort = atoi( newPort );
+        multicastPort = atoi( newPort );
+    }
+    if ( getenv( "DIFX_MESSAGE_GROUP" ) != NULL )
+        snprintf( multicastGroup, 16, "%s", getenv( "DIFX_MESSAGE_GROUP" ) );
     
-    //  Command line arguments
+    //  Command line arguments -- error checking should perhaps be more thorough here.
     for ( int i = 1; i < argc; ++i ) {
         //  Command line args are null terminated so I can use strcmp...
         if ( !strcmp( argv[i], "-help" ) || !strcmp( argv[i], "-h" ) ) {
         }
-        else if ( !strcmp( argv[i], "--relay" ) || !strcmp( argv[i], "-r" ) ) {
-            relayDifx = !relayDifx;
+        else if ( !strcmp( argv[i], "--multicastGroup" ) || !strcmp( argv[i], "-mg" ) ) {
+            snprintf( multicastGroup, 16, "%s", argv[i+1] );
+            ++i;
+        }
+        else if ( !strcmp( argv[i], "--multicastPort" ) || !strcmp( argv[i], "-mp" ) ) {
+            multicastPort = atoi( argv[i+1] );
+            ++i;
         }
         else {
             //  Try to interpret the final argument as the server port number
@@ -115,7 +129,10 @@ main( int argc, char **argv ) {
         printf( "client connection from address %s\n", server->lastClientIP() );
 
         //  Open a packet exchange mechanism to deal with this connection as a server.
-        guiServer::ServerSideConnection* newClient = new guiServer::ServerSideConnection( newClientSocket, relayDifx );
+        guiServer::ServerSideConnection* newClient = new guiServer::ServerSideConnection( newClientSocket );
+        
+        //  Set the (default) multicast information for this client to match our defaults.
+        newClient->multicast( multicastGroup, multicastPort );
         
         //  Save information about the new client.
         ClientConnection* newClientConnection = new ClientConnection;

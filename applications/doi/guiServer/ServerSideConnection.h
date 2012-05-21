@@ -7,6 +7,11 @@
 //!  Handles a single connection to the GUI server.  The connection is
 //!  bi-directional, so there is a receive thread that monitors incoming data
 //!  and write functions.  The PacketExchange class is inherited.
+//!
+//!  Much of the DiFX interprocess communication occurs by multicasts.  This
+//!  class can monitor that traffic and be set to "relay" it to the GUI client.
+//!  It can also send commands and other communications to other DiFX processes
+//!  using the multicast network.  
 //
 //=============================================================================
 #include <stdlib.h>
@@ -24,70 +29,72 @@ namespace guiServer {
     
     public:
 
-        ServerSideConnection( network::GenericSocket* sock, const bool relayDifx ) : PacketExchange( sock ) {
-            _relayDifx = false;
+        ServerSideConnection( network::GenericSocket* sock ) : PacketExchange( sock ) {
             _commandSocket = NULL;
+            _monitorSocket = NULL;
+            _multicastGroup[0] = 0;
+            _multicastPort = 0;
+            _newMulticastSettings = true;            
             _difxAlertsOn = true;
-            //  If we are relaying DiFX broadcasts, set up a thread to receive (and relay) them.
-            if ( relayDifx )
-                startDifxRelay();
+            _relayDifxMulticasts = false;
         }
         
         ~ServerSideConnection() {
-            _relaySocket = 0;
-        }
-        
-        //---------------------------------------------------------------------
-        //!  Start a thread to collect DiFX broadcast messages and relay them.
-        //---------------------------------------------------------------------
-        void startDifxRelay() {
-            //  Open a UDP client at the DiFX broadcast port.
-            char* portStr = getenv( "DIFX_MESSAGE_PORT" );
-            if ( portStr == NULL ) {
-                fprintf( stderr, "Cannot start socket relay - environment variable DIFX_MESSAGE_PORT is not defined\n" );
-                return;
+            if ( _monitorSocket != NULL ) {
+                _monitorSocket->closeFd();
+                delete _monitorSocket;
             }
-            int port = atoi( portStr );
-            _relaySocket = new network::UDPSocket( network::UDPSocket::RECEIVE, getenv( "DIFX_MESSAGE_GROUP" ), port );
-            _relaySocket->ignoreOwn( false );
-            //  Start the thread that reads the broadcast messages.
-            pthread_attr_init( &_relayMonAttr );
-            pthread_create( &_relayMonId, &_relayMonAttr, staticRelayMonitor, this );      
-            _relayDifx = true;         
+            if ( _commandSocket != NULL ) {
+                _commandSocket->closeFd();
+                delete _commandSocket;
+            }
+            _monitorSocket = NULL;
+            _commandSocket = NULL;
         }
         
         //---------------------------------------------------------------------
-        //!  This turns the relay off.
+        //!  Start a thread to collect DiFX multicast messages using the current
+        //!  multicast group and port settings.
         //---------------------------------------------------------------------
-        void stopDifxRelay() {
-            _relayDifx = false;
-            _relaySocket->closeFd();
-            //sleep( 1 );
-            delete _relaySocket;
+        void startMulticastMonitor() {
+            //  Shut down the existing monitor if there is one.
+            if ( _monitorSocket != NULL ) {
+                _monitorSocket->closeFd();
+                sleep( 1 );  //  this seems a bit long!
+            }
+            _monitorSocket = new network::UDPSocket( network::UDPSocket::RECEIVE, _multicastGroup, _multicastPort );
+            _monitorSocket->ignoreOwn( false );
+            //  Start the thread that reads the multicast messages.
+            pthread_attr_init( &_monitorAttr );
+            pthread_create( &_monitorId, &_monitorAttr, staticDifxMonitor, this );      
         }
         
         //---------------------------------------------------------------------
-        //!  Static thread start function (for relay).
+        //!  Static thread start function (for the multicast monitor).
         //---------------------------------------------------------------------
-        static void* staticRelayMonitor( void* a ) {
-            ( (ServerSideConnection*)a )->relayMonitor();
+        static void* staticDifxMonitor( void* a ) {
+            ( (ServerSideConnection*)a )->difxMonitor();
         }
         
         static const int MAX_MESSAGE_LENGTH = 10 * 1024;
         
         //---------------------------------------------------------------------
-        //!  This is the function that actually monitors DiFX broadcasts for
-        //!  relay.
+        //!  This is the function that actually monitors DiFX multicasts - it
+        //!  runs as a continuous thread until the socket it closed or returns
+        //!  an error.
         //---------------------------------------------------------------------
-        void relayMonitor() {
-            while ( _relaySocket ) {
+        void difxMonitor() {
+            while ( _monitorSocket != NULL ) {
                 char message[MAX_MESSAGE_LENGTH + 1];
-                int ret = _relaySocket->reader( message, MAX_MESSAGE_LENGTH );
+                int ret = _monitorSocket->reader( message, MAX_MESSAGE_LENGTH );
                 if ( ret == -1 ) {
-                    _relaySocket = false;
+                    delete _monitorSocket;
+                    _monitorSocket = NULL;
                 }
                 else {
-                    sendPacket( RELAY_PACKET, message, ret );
+                    //  Decide what to do with this packet.
+                    if ( _relayDifxMulticasts )
+                        sendPacket( RELAY_PACKET, message, ret );
                 }
             }
         }
@@ -95,23 +102,10 @@ namespace guiServer {
         //---------------------------------------------------------------------
         //!  Override the relay function.  The relay command starts with a
         //!  single integer of data telling us to turn on (1) or off (0) the
-        //!  relaying of DiFX broadcast messages to the client, followed by
-        //!  an integer containing a multicast group address and then the port
-        //!  that should be used.  The latter two items can obviously be 
-        //!  ignored if relay is being turned off.
+        //!  relaying of DiFX multicast messages to the client.
         //---------------------------------------------------------------------
         virtual void relay( char* data, const int nBytes ) {
-            int relayOn = ntohl( *(int*)data );
-            if ( relayOn ) {
-                //  Turn relay on if it isn't already.
-                if ( !_relayDifx )
-                    startDifxRelay();
-            }
-            else {
-                //  Turn off relay if it is on.
-                if ( _relayDifx )
-                    stopDifxRelay();
-            }
+            relayDifxMulticasts( ntohl( *(int*)data ) );
         }
         
         //---------------------------------------------------------------------
@@ -119,15 +113,25 @@ namespace guiServer {
         //!  messages that the DiFX processes (mk5daemon, etc) can pick up.
         //---------------------------------------------------------------------
         virtual void relayCommand( char* data, const int nBytes ) {
+            //  Close the old command socket if we have new settings for the multicast network.
+            if ( _newMulticastSettings ) {
+                if ( _commandSocket != NULL ) {
+                    _commandSocket->closeFd();
+                    _commandSocket = NULL;
+                }
+                _newMulticastSettings = false;
+            }
             //  Create a new command socket if we don't have one.
             if ( _commandSocket == NULL ) {
-                char* portStr = getenv( "DIFX_MESSAGE_PORT" );
-                if ( portStr == NULL ) {
-                    fprintf( stderr, "Cannot start command socket - environment variable DIFX_MESSAGE_PORT is not defined\n" );
+                if ( _multicastPort == 0 ) {
+                    fprintf( stderr, "Cannot start command socket - multicast port is not defined\n" );
                     return;
                 }
-                int port = atoi( portStr );
-                _commandSocket = new network::UDPSocket( network::UDPSocket::MULTICAST, getenv( "DIFX_MESSAGE_GROUP" ), port );
+                if ( _multicastGroup == NULL ) {
+                    fprintf( stderr, "Cannot start command socket - multicast group is not defined\n" );
+                    return;
+                }
+                _commandSocket = new network::UDPSocket( network::UDPSocket::MULTICAST, _multicastGroup, _multicastPort );
             }
             //  Send this message to the socket (assuming its good)
             if ( _commandSocket != NULL ) {
@@ -163,6 +167,38 @@ namespace guiServer {
         }
         
         //---------------------------------------------------------------------
+        //!  This is a packet from the client containing the port number and
+        //!  group IP of the DiFX multicasts.  It will trigger a change in the
+        //!  multicast monitor as well as where relayed commands go.
+        //---------------------------------------------------------------------
+        virtual void multicastSettings( char* data, const int nBytes ) {
+            //  The first line of the string contains the group IP.  Look for the
+            //  terminating newline character.
+            int i = 0;
+            char group[16];
+            while ( data[i] != '\n' ) {
+                group[i] = data[i];
+                ++i;
+            }
+            group[i] = 0;
+            //  The next line contains the new port setting as a string.
+            int port = atoi( data + i + 1 );
+            multicast( group, port );
+        }
+        
+        //---------------------------------------------------------------------
+        //!  Sets the group IP and port number for DiFX multicasts.  This
+        //!  changes the destination for any message this class sends on the
+        //!  network and restarts the monitor.
+        //---------------------------------------------------------------------
+        void multicast( char* group, const int port ) {
+            snprintf( _multicastGroup, 16, "%s", group );
+            _multicastPort = port;
+            _newMulticastSettings = true;
+            startMulticastMonitor();
+        }
+        
+        //---------------------------------------------------------------------
         //!  Types of messages - used as the "severity" in calls to the diagnostic()
         //!  function.
         //---------------------------------------------------------------------
@@ -181,6 +217,12 @@ namespace guiServer {
         //!  directly to the GUI.
         //---------------------------------------------------------------------
         void diagnosticPacketsOn( const bool newVal ) { _diagnosticPacketsOn = newVal; }
+        
+        //---------------------------------------------------------------------
+        //!  Relay all collected DiFX multicast messages back to the GUI via
+        //!  the TCP connection.
+        //---------------------------------------------------------------------
+        void relayDifxMulticasts( const bool newVal ) { _relayDifxMulticasts = newVal; }
         
         //---------------------------------------------------------------------
         //!  Structure used to pass information to the thread that starts and
@@ -214,13 +256,16 @@ namespace guiServer {
 
     protected:
     
-        network::UDPSocket* _relaySocket;
+        network::UDPSocket* _monitorSocket;
         network::UDPSocket* _commandSocket;
-        pthread_attr_t _relayMonAttr;
-        pthread_t _relayMonId;
-        bool _relayDifx;
+        pthread_attr_t _monitorAttr;
+        pthread_t _monitorId;
+        bool _relayDifxMulticasts;
         bool _difxAlertsOn;
         bool _diagnosticPacketsOn;
+        bool _newMulticastSettings;
+        char _multicastGroup[16];
+        int _multicastPort;
         
     };
 

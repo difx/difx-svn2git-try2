@@ -29,6 +29,7 @@ namespace guiServer {
         static const int INFORMATION_PACKET            = 4;
         static const int WARNING_PACKET                = 5;
         static const int ERROR_PACKET                  = 6;
+        static const int MULTICAST_SETTINGS_PACKET     = 7;
 
         PacketExchange( network::GenericSocket* sock ) : network::PacketExchange( sock ) {
             _sock = sock;
@@ -87,6 +88,9 @@ namespace guiServer {
                     case COMMAND_PACKET:
                         command( data, nBytes );
                         break;
+                    case MULTICAST_SETTINGS_PACKET:
+                        multicastSettings( data, nBytes );
+                        break;
                     //  Any packet we don't recognize we ignore.
                     default:
                         break;
@@ -100,6 +104,7 @@ namespace guiServer {
         virtual void relay( char* data, const int nBytes ) {}
         virtual void relayCommand( char* data, const int nBytes ) {}
         virtual void command( char* data, const int nBytes ) {}
+        virtual void multicastSettings( char* data, const int nBytes ) {}
 
     protected:
     
