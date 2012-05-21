@@ -29,6 +29,7 @@ public class GuiServerConnection {
     public final int INFORMATION_PACKET          = 4;
     public final int WARNING_PACKET              = 5;
     public final int ERROR_PACKET                = 6;
+    public final int MULTICAST_SETTINGS_PACKET   = 7;
     
     public GuiServerConnection( String IP, int port, int timeout, Component component ) {
         _component = component;

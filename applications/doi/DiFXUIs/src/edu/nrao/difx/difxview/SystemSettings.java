@@ -371,7 +371,7 @@ public class SystemSettings extends JFrame {
         _ipAddress.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _ipAddress.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                generateBroadcastChangeEvent();
+                multicastSettingsChange();
             }
         } );
         networkPanel.add( _ipAddress );
@@ -384,7 +384,7 @@ public class SystemSettings extends JFrame {
         _port.minimum( 0 );
         _port.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                generateBroadcastChangeEvent();
+                multicastSettingsChange();
             }
         } );
         networkPanel.add( _port );
@@ -1406,6 +1406,19 @@ public class SystemSettings extends JFrame {
     
     public void launchDiFXSVN() {
         BareBonesBrowserLaunch.openURL( _difxSVN.getText() );
+    }
+    
+    /*
+     * Called when a change is made to the multicast settings - either the port
+     * or group IP.
+     */
+    public void multicastSettingsChange() {
+        //  Build a string out of the new group and port settings, with a newline
+        //  inbetween.
+        String dataStr = _ipAddress.getText() + "\n" + _port.getText();
+        byte [] data = dataStr.getBytes();
+        guiServerConnection().sendPacket( guiServerConnection().MULTICAST_SETTINGS_PACKET, data.length, data );
+        generateBroadcastChangeEvent();
     }
     
     /*

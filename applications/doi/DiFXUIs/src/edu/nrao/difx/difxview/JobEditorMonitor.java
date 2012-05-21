@@ -396,21 +396,11 @@ public class JobEditorMonitor extends JFrame {
     
     synchronized public void startJob() {
         DiFXCommand command = new DiFXCommand( _settings );
-        ///ObjectFactory factory = new ObjectFactory();
-
-        // Create header
-        ///Header header = factory.createHeader();
-        ///header.setFrom( "doi" );
-        ///header.setTo( _settings.difxControlAddress() );
-        ///header.setMpiProcessId( "-1" );
-        ///header.setIdentifier( _jobNode.name() );
-        ///header.setType( "DifxStart" );
         command.header().setType( "DifxStart" );
         command.mpiProcessId( "-1" );
         command.identifier( _jobNode.name() );
 
         // Create start job command
-        ///DifxStart jobStart = factory.createDifxStart();
         DifxStart jobStart = command.factory().createDifxStart();
         jobStart.setInput( _jobNode.inputFile() );
 
@@ -418,7 +408,6 @@ public class JobEditorMonitor extends JFrame {
         jobStart.setFunction( "USNO" );
 
         // -- manager, enabled only
-///        DifxStart.Manager manager = factory.createDifxStartManager();
         DifxStart.Manager manager = command.factory().createDifxStartManager();
         manager.setNode( _headNode.getText() );
         jobStart.setManager( manager );
@@ -432,7 +421,6 @@ public class JobEditorMonitor extends JFrame {
             jobStart.setRestartSeconds( _restartSeconds.value() );
 
         // -- datastreams, enabled only
-///        DifxStart.Datastream dataStream = factory.createDifxStartDatastream();
         DifxStart.Datastream dataStream = command.factory().createDifxStartDatastream();
 
         //  Include all of the "checked" data stream node names...
@@ -452,7 +440,6 @@ public class JobEditorMonitor extends JFrame {
                 iter.hasNext(); ) {
             ProcessorNode thisNode = (ProcessorNode)(iter.next());
             if ( thisNode.selected() ) {
-////                DifxStart.Process process = factory.createDifxStartProcess();
                 DifxStart.Process process = command.factory().createDifxStartProcess();
                 process.setNodes( thisNode.name() );
                 process.setThreads( thisNode.threadsText() );
@@ -467,26 +454,7 @@ public class JobEditorMonitor extends JFrame {
             jobStart.setForce( 0 ); 
 
         // -- Create the XML defined messages and process through the system
-        ///Body body = factory.createBody();
-        ///body.setDifxStart(jobStart);
         command.body().setDifxStart(jobStart);
-
-////        DifxMessage difxMsg = factory.createDifxMessage();
-////        difxMsg.setHeader(header);
-////        difxMsg.setBody(body);
-////        
-////        JAXBDiFXProcessor xmlProc = new JAXBDiFXProcessor(difxMsg);
-////        String xmlString = xmlProc.ConvertToXML();
-////        
-////        if ( xmlString != null ) {
-////            try {
-////            SendMessage.writeToSocket( xmlString, _settings );
-////            }
-////            catch ( Exception e ) {
-////               java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
-////                       e.getMessage() );  //BLAT should be a pop-up
-////            }
-////        }
         try {
             command.sendPacket( _settings.guiServerConnection().COMMAND_PACKET );
         } catch ( java.net.UnknownHostException e ) {

@@ -62,7 +62,7 @@ public class DiFXCommand {
 
     /*
      * Send a command as a relay command packet - if TCP relay is being used these
-     * are send to the guiServer and then relayed via UDP to mk5daemon (if guiServer
+     * are sent to the guiServer and then relayed via UDP to mk5daemon (if guiServer
      * isn't being used they are sent to mk5daemon directly using UDP).
      */
     public void send() throws java.net.UnknownHostException {
