@@ -584,7 +584,8 @@ public class VexFileParser {
                 if ( !inEOP && inStr.substring( pos, endPos ).trim().regionMatches( true, 0, "$EOP;", 0, 5 ) ) {
                     inEOP = true;
                 }
-                else if ( inStr.substring( pos, endPos ).trim().charAt( 0 ) == '$' ) {
+                else if ( inStr.substring( pos, endPos ).trim().length() > 0 && 
+                          inStr.substring( pos, endPos ).trim().charAt( 0 ) == '$' ) {
                     inEOP = false;
                 }
                 if ( !inEOP )
