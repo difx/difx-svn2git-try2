@@ -2,6 +2,7 @@ Version 1.16
 ~~~~~~~~~~~~
 * Post DiFX-2.1
 * Moving into NRAO sites directory
+* difxarch: David Gordon added Mark4 support
 
 Version 1.15
 ~~~~~~~~~~~~

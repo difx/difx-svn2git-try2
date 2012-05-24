@@ -8,9 +8,10 @@ from os.path import isfile, isdir
 from time import gmtime
 
 program = 'difxarch'
-version = '0.3'
-author  = 'Walter Brisken'
-verdate = '20090917'
+version = '0.4'
+author  = 'Walter Brisken and David Gordon'
+verdate = '20120523'
+# Modified by David Gordon to archive Mark4 files from makemark4.
 
 def usage(prog):
 	print '%s ver %s  %s  %s' % (program, version, author, verdate)
@@ -24,6 +25,10 @@ def usage(prog):
 	print '             To force operation with mixed DiFX versions\n'
 	print '  --pretend'
 	print '  -p         Pretend mode: don\'t actually do anything\n'
+	print '  --fits '
+	print '  -f         Process only fits files\n'
+	print '  --mark4'
+	print '  -m         Process only mark4 files\n'
 	exit(0)
 
 def teste2ecopy(pretend):
@@ -72,19 +77,36 @@ class FitsList:
 		self.filename = filename
 		self.files = []
 		data = open(filename).readlines()
-		if len(data) < 2:
-			print 'Malformed .fitslist file %s' % filename
-			exit(0)
+#		if len(data) < 2:
+#			print 'Malformed .fitslist file %s' % filename
+#			exit(0) 
 		self.kv = parsekv(data[0])
-		if len(self.kv) < 1:
-			print 'Malformed .fitslist file %s line 1' % filename
-			exit(0)
+#		print '\n kv = %s ' % self.kv
+#		if len(self.kv) < 1:
+#			print 'Malformed .fitslist file %s line 1' % filename
+#			exit(0)
 		for d in data[1:]:
 			s = split(d)
 			if s < 2:
 				continue;
 			self.files.append(s[0])
 		
+	def testdata(self):
+		if len(self.files) < 1:
+			print 'Malformed .fitslist file %s' % self.filename
+			fitsstop = True
+			return fitsstop
+		else:
+			fitsstop = False
+
+		if len(self.kv) < 1:
+			print 'Malformed .fitslist file %s line 1' % self.filename
+			fitsstop = True
+			return fitsstop
+		else:
+			fitsstop = False
+		return fitsstop
+
 	def testversion(self, override):
 		difxVersion = getenv('DIFX_VERSION')
 		if difxVersion == None:
@@ -98,15 +120,17 @@ class FitsList:
 				print 'Overriding version mismatch: %s != %s' % \
 					(difxVersion, self.kv['DiFX'])
 				difxVersion = 'unknwown'
+				fitsstop = False
 			else:
-				print 'Error: file DiFX version = %s' % self.kv['DiFX']
+				print 'Error: FITS file DiFX version = %s' % self.kv['DiFX']
 				print 'and current DiFX version = %s' % difxVersion
-				exit(0)
+				fitsstop = True
 
 		self.kv['DiFX'] = difxVersion
+                return fitsstop
 
 	def verify(self, queuedir):
-		dir = queuedir + '/' + self.kv['exper']
+ 		dir = queuedir + '/' + self.kv['exper']
 		if not isdir(dir):
 			print 'Purported project queue directory %s not found' % dir
 			return False
@@ -114,8 +138,9 @@ class FitsList:
 		for f in self.files:
 			fn = dir + '/' + f
 			if not isfile(fn):
-				print 'FITS file %s not found' % fn
-				r = False
+			        r = False
+			        if verbose: 
+		     	        	print 'FITS file %s not found' % fn
 		return r
 				
 
@@ -131,21 +156,17 @@ class FitsList:
 	def archive(self, queuedir, archdir, verbose, pretend):
 		cwd = getcwd()
 
-		indir = queuedir + '/' + self.kv['exper']
-		mvdir = archdir + '/.' + self.kv['exper'] + '.' + self.kv['pass']
+ 		indir = queuedir + '/' + self.kv['exper']
 		outdir = archdir + '/' + self.kv['exper'] + '.' + self.kv['pass']
 
-		if isdir(mvdir):
-			print 'Error: temporary directory %s already exists.' % mvdir
-			print 'Please clean up before retrying.'
-			if not pretend:
-				exit(0)
+                if verbose:
+                        print '\n Fits outdir: %s \n' % outdir
 
 		if isdir(outdir):
-			print 'Error: archive staging directory %s already exists.' % outdir
+			print 'Error: FITS archive staging directory %s already exists.' % outdir
 			print 'Please try again later after previous arching completes.'
 			if not pretend:
-				exit(0)
+				return
 
 		if verbose:
 			options = '-v'
@@ -168,13 +189,15 @@ class FitsList:
 		elif verbose:
 			print 'Cannot find %s so won\'t archive it.' % difxlogFile
 
+                print '\n Now archiving FITS files.\n '
+
 		if verbose:
 			print 'Executing: %s' % cmd
 
 		if pretend:
-			print '\n**************************************************\n'
+			print '\n**************************************************'
 			print 'Pretend mode activated; not actually doing anything!'
-			print '\n**************************************************\n'
+			print '**************************************************\n'
 			return
 
 		system(cmd)
@@ -202,6 +225,138 @@ class FitsList:
 			system(cmd)
 
 
+class Mark4List:
+	def __init__(self, filename):
+		self.filename = filename
+		self.files = []
+		data = open(filename).readlines()
+		if len(data) < 2:
+			print 'Malformed .mark4list file %s' % filename
+			exit(0)
+		self.kv = parsekv(data[0])
+		if len(self.kv) < 1:
+			print 'Malformed .mark4list file %s line 1' % filename
+			exit(0)
+		for d in data[1:]:
+			s = split(d)
+			if s < 2:
+				continue;
+			self.files.append(s[0])
+		
+	def testversion(self, override):
+		difxVersion = getenv('DIFX_VERSION')
+		if difxVersion == None:
+			print 'Warning: env var DIFX_VERSION is not set!'
+			if override:
+				difxVersion = 'unknown'
+			else:
+				exit(0)
+		elif difxVersion != self.kv['DiFX']:
+			if override:
+				print 'Overriding version mismatch: %s != %s' % \
+					(difxVersion, self.kv['DiFX'])
+				difxVersion = 'unknwown'
+			else:
+				print 'Error: mark4 file DiFX version = %s' % self.kv['DiFX']
+				print 'and current DiFX version = %s' % difxVersion
+				exit(0)
+
+		self.kv['DiFX'] = difxVersion
+
+	def verify(self, queuedir):
+ 		dir = queuedir + '/' + self.kv['exper']
+
+		if not isdir(dir):
+			print 'Purported project queue directory %s not found' % dir
+			return False
+		r = True
+		for f in self.files:
+			fn = dir + '/' + f
+			if not isfile(fn):
+				print 'Mark4 file %s not found' % fn
+				r = False
+		return r
+				
+
+	def show(self, indent=0):
+		id = ' '*indent
+		print '%sMark4List: %s' % (id, self.filename)
+		id = ' '*(indent+2)
+		for key in self.kv.keys():
+			print '%sKV: %s = %s' % (id, key, self.kv[key])
+		for j in self.files:
+			print '%sFILE: %s' % (id, j)
+
+	def archive(self, queuedir, archdir, verbose, pretend):
+		cwd = getcwd()
+
+ 		indir = queuedir + '/' + self.kv['exper']
+
+		outdir = archdir + '/' + self.kv['exper'] + '.' + self.kv['pass'] \
+		        + 'mark4'
+
+                if verbose: 
+                        print '\n outdir: %s \n' % outdir
+
+		if isdir(outdir):
+			print 'Error: archive staging directory %s already exists.' % outdir
+			print 'Please try again later after previous arching completes.'
+			if not pretend:
+				exit(0)
+
+		if verbose:
+			options = '-v'
+		else:
+			options = ''
+
+		cmd = 'e2ecopy %s %s %s' % (options, indir, outdir)
+		for fn in self.files:
+			cmd += ' %s' % fn
+
+# Add mark4 metadata file
+		metadatafile = self.kv['exper'] + '.mark4.metadata'
+		if isfile(metadatafile):
+		        cmd += ' %s' % metadatafile
+		else: 
+		        print '\n Cannot find metadata file %s !!!!! \n' % metadatafile
+
+
+                print '\n Now archiving mark4 files.\n '
+
+		if verbose:
+			print 'Executing: %s' % cmd
+
+		if pretend:
+			print '\n**************************************************'
+			print 'Pretend mode activated; not actually doing anything!'
+			print '**************************************************\n'
+			return
+
+		system(cmd)
+
+		nErr = 0
+		for fn in self.files:
+			if not isfile('%s/%s' % (outdir, fn)):
+				print 'Error: File %s did not copy!' % fn
+				nErr += 1
+			elif stat('%s/%s' % (indir, fn)).st_size != \
+			     stat('%s/%s' % (outdir, fn)).st_size:
+				print 'Error: Incomplete copy of %s!' % fn
+
+		if nErr > 0:
+			print '\n*************************************\n'
+			print '%d of %d mark4 files had copy errors' % (nErr, len(fn))
+			print 'Original files are not being removed!'
+			print '\n*************************************\n'
+		else:
+			cmd = 'rm -f'
+			for fn in self.files:
+				cmd += ' %s/%s' % (indir, fn)
+			if verbose:
+				print 'Executing: %s' % cmd
+			system(cmd)
+
+
 # main below here
 
 print ''
@@ -213,19 +368,25 @@ if archroot == None:
 	exit(0)
 
 queueroot = getenv('DIFX_QUEUE_BASE')
+
+
 if queueroot == None:
 	print 'Error: Environment variable DIFX_QUEUE_BASE not set.'
 	print 'Cannot proceed.\n'
 	exit(0)
 
-optlist, args = getopt(argv[1:], 'hvp', ['help', 'verbose', 'pretend', 'override-version'])
+optlist, args = getopt(argv[1:], 'hvpfm', ['help', 'verbose', 'pretend', 'fits', 'mark4', 'override-version'])
 
 overrideVersion = False
 verbose = False
 pretend = False
 stop = False
+domark4 = True
+dofits = True
+doofits = True
+
 for o, a in optlist:
-	if o == 'override-version':
+	if o == '--override-version':
 		overrideVersion = True
 	elif o in ('-v', '--verbose'):
 		verbose = True
@@ -233,9 +394,17 @@ for o, a in optlist:
 		pretend = True
 	elif o in ('-h', '--help'):
 		usage(argv[0])
+	elif o in ('-f', '--fits'):
+		domark4 = False
+	elif o in ('-m', '--mark4'):
+		doofits = False
 	else:
-		print 'Error: unknown command line option: %s' % a
+		print 'Error: unknown command line option: %s' % o
 		stop = True
+
+if not doofits and not domark4:
+        print '\n Both doofits and domark4 are False, therfore I am quitting!\n'
+        stop = True
 
 if len(args) < 1:
 	print 'Error: no input files provided'
@@ -247,29 +416,82 @@ if stop:
 
 teste2ecopy(pretend)
 
-for arg in args:
+if doofits:
+   for arg in args:
 	if arg[-9:] == '.fitslist':
 		fitslistfile = arg
+	elif arg[-10:] == '.mark4list':
+	        sfits = split(arg,'.')
+		fitslistfile = sfits[0] + '.fitslist'
 	else:
 		fitslistfile = arg + '.fitslist'
 
 	if not isfile(fitslistfile):
-		print 'Error: file %s not found' % fitslistfile
+		print '\n File %s not found, no FITS archiving. \n' % fitslistfile
+		dofits = False
+		if not domark4:
+                       exit(0)
+        if dofits:
+	        fl = FitsList(fitslistfile)
+
+        if dofits:
+	        fitsstop = fl.testdata()
+		if fitsstop:
+		       dofits = False
+
+        if dofits:
+	        fitsstop = fl.testversion(overrideVersion)
+		if fitsstop:
+		       dofits = False
+
+        if dofits:
+	        if verbose:
+		        fl.show()
+	
+        if dofits:
+	        OK = fl.verify(queueroot)
+
+        if dofits:
+	        if not OK:
+		        print '\n fits list verification failed! Will not archive FITS files.'
+			dofits = False
+			if not domark4:
+                           exit(0)
+	
+        if dofits:
+	        OK = fl.archive(queueroot, archroot, verbose, pretend)
+	else:
+	        print '\n Not archiving any FITS files. \n'
+
+
+
+if domark4:
+   for arg in args:
+	if arg[-9:] == '.fitslist':
+	        smark4 = split(arg,'.')
+		mark4listfile = smark4[0] + '.mark4list'
+	elif arg[-10:] == '.mark4list':
+		mark4listfile = arg
+	else:
+		mark4listfile = arg + '.mark4list'
+
+	if not isfile(mark4listfile):
+		print '\n File %s not found, no mark4 archiving. \n' % mark4listfile
 		exit(0)
 
-	fl = FitsList(fitslistfile)
+	ml = Mark4List(mark4listfile)
 
-	fl.testversion(overrideVersion)
+	ml.testversion(overrideVersion)
 
 	if verbose:
-		fl.show()
+		ml.show()
 	
-	OK = fl.verify(queueroot)
+	OK = ml.verify(queueroot)
 
 	if not OK:
-		print 'fits list verification failed!'
+		print '\n mark4 list verification failed! Will not archive mark4 files. \n'
 		exit(0)
 	
-	OK = fl.archive(queueroot, archroot, verbose, pretend)
+	OK = ml.archive(queueroot, archroot, verbose, pretend)
 
 print ''

@@ -17,8 +17,8 @@ except:
 
 program = 'db2vex'
 author = 'Walter Brisken'
-version = '0.10'
-verdate = '20120227'
+version = '0.11'
+verdate = '20120515'
 
 tsysFile = 'tsys'
 
@@ -53,9 +53,9 @@ def usage(pgm):
 	print '  -u         force to run in USNO Mark5C mode'
 	print '  --vsnProjectCode  <project code>'
 	print '             use provided project code in VSN DB queries\n'
-	print '<vex file> is a vex file produced by sched (usually ending in .skd)\n'
+	print '<vex file> is a vex file produced by sched (usually ending in .vex)\n'
 	print '<fslog> is a field system log file\n'
-	print 'Example:  db2vex bj061h.skd\n'
+	print 'Example:  db2vex bj061h.vex\n'
 	exit(0)
 
 def getIsMark5C():

@@ -7,8 +7,8 @@
 
 const char program[] = "e2ecopy";
 const char author[]  = "Walter Brisken";
-const char version[] = "0.2";
-const char verdate[] = "20090507";
+const char version[] = "0.3";
+const char verdate[] = "20120523";
 
 const char defaultUser[] = "e2emgr";
 
@@ -51,14 +51,14 @@ int maketempdir(char *dest, const char *src)
 		return -1;
 	}
 
-	for(i = 0; i < src[i]; i++)
+	for(i = 0; i < src[i]; ++i)
 	{
 		*dest = src[i];
-		dest++;
+		++dest;
 		if(i == last)
 		{
 			*dest = '.';
-			dest++;
+			++dest;
 		}
 	}
 
@@ -80,31 +80,30 @@ int setperms(int verbose)
 	pw = getpwnam(archiveUsername);
 	if(!pw)
 	{
-		fprintf(stderr, "e2ecopy: Error: cannot determine uid/gid of user %s.\n",
-			archiveUsername);
+		fprintf(stderr, "e2ecopy: Error: cannot determine uid/gid of user %s.\n", archiveUsername);
+
 		return -1;
 	}
 	userId = pw->pw_uid;
 	groupId = pw->pw_gid;
 	if(verbose)
 	{
-		printf("Archive User = %s  uid = %d  gid = %d\n", 
-			archiveUsername, userId, groupId);
+		printf("Archive User = %s  uid = %d  gid = %d\n", archiveUsername, userId, groupId);
 	}
 
 	if(setgid(groupId) != 0)
 	{
 		fprintf(stderr, "e2ecopy: Cannot set group id to %d\n", groupId);
-		fprintf(stderr, 
-			"Make sure the e2ecopy executable is owned by root and is chmod +s\n");
+		fprintf(stderr, "Make sure the e2ecopy executable is owned by root and is chmod +s\n");
+
 		return -1;
 	}
 
 	if(setuid(userId) != 0)
 	{
 		fprintf(stderr, "e2ecopy: Cannot set user id to %d\n", userId);
-		fprintf(stderr, 
-			"Make sure the e2ecopy executable is owned by root and is chmod +s\n");
+		fprintf(stderr, "Make sure the e2ecopy executable is owned by root and is chmod +s\n");
+
 		return -1;
 	}
 
@@ -113,23 +112,27 @@ int setperms(int verbose)
 
 int main(int argc, char **argv)
 {
+	const int CommandLength = 1024;
+	const int PathLength = 256;
 	char *fromDir=0, *toDir=0;
-	char tmpDir[256], cmd[1024];
-	char inFile[256], outPath[256];
+	char cmd[CommandLength];
+	char tmpDir[PathLength];
+	char inFile[PathLength];
+	char outPath[PathLength];
 	int start=0;
 	int verbose = 0;
-	int i, j;
+	int i;
 	const char *fromFile;
 	const char *toFile;
 
-	for(i = 1; i < argc; i++)
+	for(i = 1; i < argc; ++i)
 	{
 		if(argv[i][0] == '-')
 		{
 			if(strcmp(argv[i], "-v") == 0||
 			   strcmp(argv[i], "--verbose") == 0)
 			{
-				verbose++;
+				++verbose;
 			}
 			else if(strcmp(argv[i], "-h") == 0 ||
 			   strcmp(argv[i], "--help") == 0)
@@ -139,7 +142,8 @@ int main(int argc, char **argv)
 			else
 			{
 				fprintf(stderr, "Unknown option: %s\n", argv[i]);
-				exit(0);
+
+				exit(EXIT_FAILURE);
 			}
 		}
 		else if(fromDir == 0)
@@ -176,7 +180,8 @@ int main(int argc, char **argv)
 	if(maketempdir(tmpDir, toDir) < 0)
 	{
 		fprintf(stderr, "e2ecopy: Error: need fully qualified destination dir\n");
-		exit(0);
+
+		exit(EXIT_FAILURE);
 	}
 
 	sprintf(cmd, "mkdir -p %s", tmpDir);
@@ -186,15 +191,17 @@ int main(int argc, char **argv)
 	}
 	system(cmd);
 
-	for(i = start; i < argc; i++)
+	for(i = start; i < argc; ++i)
 	{
+		int j;
+
 		if(argv[i][0] == '-')
 		{
 			continue;
 		}
 		fromFile = argv[i];
 		toFile = 0;
-		for(j = 0; argv[i][j]; j++)
+		for(j = 0; argv[i][j]; ++j)
 		{
 			if(argv[i][j] == ':')
 			{
@@ -204,22 +211,22 @@ int main(int argc, char **argv)
 		}
 		if(fromFile[0] == '/')
 		{
-			sprintf(inFile, "%s", fromFile);
+			snprintf(inFile, PathLength, "%s", fromFile);
 		}
 		else
 		{
-			sprintf(inFile, "%s/%s", fromDir, fromFile);
+			snprintf(inFile, PathLength, "%s/%s", fromDir, fromFile);
 		}
 		if(toFile)
 		{
-			sprintf(outPath, "%s/%s", tmpDir, toFile);
+			snprintf(outPath, PathLength, "%s/%s", tmpDir, toFile);
 		}
 		else
 		{
-			sprintf(outPath, "%s", tmpDir);
+			snprintf(outPath, PathLength, "%s", tmpDir);
 		}
 
-		sprintf(cmd, "cp %s %s", inFile, outPath);
+		snprintf(cmd, CommandLength, "cp %s %s", inFile, outPath);
 
 		if(verbose)
 		{
@@ -242,5 +249,5 @@ int main(int argc, char **argv)
 	}
 	system(cmd);
 
-	return 0;
+	return EXIT_SUCCESS;
 }
