@@ -27,7 +27,7 @@ databaseName = getenv("VLBA_DB")
 
 # Name of the Postgres VLBA database based on EVLA
 newDatabaseName = getenv("VLBAMPTS_DB")
-if(newDatabaseName == None):
+if newDatabaseName == None:
 	newDB = False
 
 mjd0 = datetime.datetime(1858, 11, 17, 0, 0)

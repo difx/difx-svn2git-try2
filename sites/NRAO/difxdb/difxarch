@@ -10,7 +10,7 @@ from time import gmtime
 program = 'difxarch'
 version = '0.4'
 author  = 'Walter Brisken and David Gordon'
-verdate = '20120523'
+verdate = '20120527'
 # Modified by David Gordon to archive Mark4 files from makemark4.
 
 def usage(prog):
@@ -109,11 +109,14 @@ class FitsList:
 
 	def testversion(self, override):
 		difxVersion = getenv('DIFX_VERSION')
+		fitsstop = False
 		if difxVersion == None:
 			print 'Warning: env var DIFX_VERSION is not set!'
 			if override:
 				difxVersion = 'unknown'
+				fitsstop = False
 			else:
+				fitsstop = True
 				exit(0)
 		elif difxVersion != self.kv['DiFX']:
 			if override:
@@ -314,7 +317,7 @@ class Mark4List:
 			cmd += ' %s' % fn
 
 # Add mark4 metadata file
-		metadatafile = self.kv['exper'] + '.mark4.metadata'
+		metadatafile = self.kv['exper'] + '.mark4.metadata.txt'
 		if isfile(metadatafile):
 		        cmd += ' %s' % metadatafile
 		else: 
