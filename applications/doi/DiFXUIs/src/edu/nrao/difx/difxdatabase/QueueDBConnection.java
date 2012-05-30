@@ -70,6 +70,7 @@ public class QueueDBConnection {
         try {
             return _db.selectData( "select * from " + _settings.dbName() + ".Job" );
         } catch ( Exception e ) {
+            System.out.println( e.getMessage() );
             return null;
         }
     }

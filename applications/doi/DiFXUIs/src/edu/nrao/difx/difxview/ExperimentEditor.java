@@ -1659,7 +1659,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         }
         
         //  Add EOP data if the user has requested it (this will normally be the case).
-        if ( _newEOPUseCheck.isSelected() && _newEOP.size() > 0 ) {
+        if ( _newEOPUseCheck != null && _newEOPUseCheck.isSelected() && _newEOP.size() > 0 ) {
             for ( Iterator<SystemSettings.EOPStructure> iter = _newEOP.iterator(); iter.hasNext(); ) {
                 SystemSettings.EOPStructure eop = iter.next();
                 JulianCalendar theDate = new JulianCalendar();

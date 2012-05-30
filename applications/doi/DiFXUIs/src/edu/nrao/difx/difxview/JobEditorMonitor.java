@@ -32,12 +32,13 @@ import javax.swing.Action;
 import javax.swing.AbstractAction;
 import javax.swing.Timer;
 import java.awt.Color;
+import java.io.DataInputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 
-import java.util.Iterator;
-import java.util.Scanner;
-import java.util.HashMap;
-import java.util.ArrayList;
+import java.util.*;
 
 import javax.swing.event.EventListenerList;
 
@@ -46,6 +47,7 @@ import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.NumberBox;
 import mil.navy.usno.widgetlib.BrowserNode;
 import mil.navy.usno.widgetlib.SimpleTextEditor;
+import mil.navy.usno.widgetlib.MessageDisplayPanel;
 
 public class JobEditorMonitor extends JFrame {
     
@@ -231,6 +233,21 @@ public class JobEditorMonitor extends JFrame {
         restartSecondsLabel.setBounds( 335, 30, 90, 25 );
         restartSecondsLabel.setHorizontalAlignment( JLabel.LEFT );
         runControlPanel.add( restartSecondsLabel );
+        
+        //  The Status Panel shows the current state of the job.
+        IndexedPanel statusPanel = new IndexedPanel( "" );
+        _scrollPane.addNode( statusPanel );
+        statusPanel.openHeight( 50 );
+        statusPanel.alwaysOpen( true );
+        statusPanel.noArrow( true );
+        
+        //  The message panel shows raw message data pertaining to the job.
+        IndexedPanel messagePanel = new IndexedPanel( "Messages" );
+        _scrollPane.addNode( messagePanel );
+        messagePanel.openHeight( 200 );
+        messagePanel.closedHeight( 25 );
+        _messageDisplayPanel = new MessageDisplayPanel();
+        messagePanel.add( _messageDisplayPanel );
  
         _allObjectsBuilt = true;
         
@@ -280,6 +297,7 @@ public class JobEditorMonitor extends JFrame {
             _calcFileEditor.setBounds( 10, 30, w - 35, 360 );
             _refreshInputButton.setBounds( w - 185, 2, 150, 20 );
             _refreshCalcButton.setBounds( w - 185, 2, 150, 20 );
+            _messageDisplayPanel.setBounds( 2, 25, w - 23, 173 );
         }
     }
     
@@ -394,17 +412,35 @@ public class JobEditorMonitor extends JFrame {
     public String headNode() { return _headNode.getText(); }
     public void headNode( String newVal ) { _headNode.setText( newVal ); }
     
+    /*
+     * This function runs the job based on all current settings.  Jobs can be
+     * run using a TCP connection to guiServer, or through mk5daemon via UDP.  If
+     * using the former, a thread is started to monitor the job progress via a
+     * dedicated socket and report any errors.  In the latter case the job start
+     * instruction is more of a "set and forget" kind of operation.
+     */
     synchronized public void startJob() {
         DiFXCommand command = new DiFXCommand( _settings );
         command.header().setType( "DifxStart" );
         command.mpiProcessId( "-1" );
         command.identifier( _jobNode.name() );
+        int monitorPort = 0;
 
         // Create start job command
         DifxStart jobStart = command.factory().createDifxStart();
         jobStart.setInput( _jobNode.inputFile() );
 
-        // Use the "USNO" version of the start function in mk5daemon
+        // If we are using the TCP connection, set the address and port for diagnostic
+        // reporting.
+        if ( _settings.sendCommandsViaTCP() ) {
+            try {
+                jobStart.setAddress( java.net.InetAddress.getLocalHost().getHostAddress() );
+            } catch ( java.net.UnknownHostException e ) {
+            }
+            monitorPort = _settings.newDifxTransferPort();
+            jobStart.setPort( monitorPort );
+        }
+        
         jobStart.setFunction( "USNO" );
 
         // -- manager, enabled only
@@ -452,6 +488,15 @@ public class JobEditorMonitor extends JFrame {
             jobStart.setForce( 1 );
         else
             jobStart.setForce( 0 ); 
+        
+        //  Set up a monitor thread if this job is being run using guiServer.  This
+        //  thread will collect and interpret diagnostic messages directly from
+        //  guiServer as it sets up and runs the job.  If the job is being run by
+        //  mk5daemon, it is simply started and forgotten.
+        if ( _settings.sendCommandsViaTCP() ) {
+            RunningJobMonitor runMonitor = new RunningJobMonitor( monitorPort );
+            runMonitor.start();
+        }
 
         // -- Create the XML defined messages and process through the system
         command.body().setDifxStart(jobStart);
@@ -461,6 +506,134 @@ public class JobEditorMonitor extends JFrame {
             java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
                     e.getMessage() );  //BLAT should be a pop-up
         }
+    }
+    
+    /*
+     * This thread opens and monitors a TCP socket for diagnostic reports from the
+     * guiServer as it runs a job.
+     */
+    protected class RunningJobMonitor extends Thread {
+        
+        public RunningJobMonitor( int port ) {
+            _port = port;
+        }
+        
+        /*
+         * These packet types are sent by the "JobMonitorConnection" class in the
+         * guiServer application on the DiFX host.
+         */
+        protected final int JOB_TERMINATED                   = 100;
+        protected final int JOB_ENDED_GRACEFULLY             = 101;
+        protected final int JOB_STARTED                      = 102;
+        protected final int PARAMETER_CHECK_IN_PROGRESS      = 103;
+        protected final int PARAMETER_CHECK_SUCCESS          = 104;
+        protected final int FAILURE_NO_HEADNODE              = 105;
+        protected final int FAILURE_NO_DATASOURCES           = 106;
+        protected final int FAILURE_NO_PROCESSORS            = 107;
+        protected final int FAILURE_NO_INPUTFILE_SPECIFIED   = 108;
+        protected final int FAILURE_INPUTFILE_NOT_FOUND      = 109;
+        protected final int FAILURE_INPUTFILE_NAME_TOO_LONG  = 110;
+        
+        @Override
+        public void run() {
+            //  Open a new server socket and await a connection.  The connection
+            //  will timeout after a given number of seconds (nominally 10).
+            try {
+                ServerSocket ssock = new ServerSocket( _port );
+                ssock.setSoTimeout( 10000 );  //  timeout is in millisec
+                try {
+                    Socket sock = ssock.accept();
+                    System.out.println( "got socket connection" );
+//                    acceptCallback();
+                    //  Turn the socket into a "data stream", which has useful
+                    //  functions.
+                    DataInputStream in = new DataInputStream( sock.getInputStream() );
+                    
+                    //  Loop collecting diagnostic packets from the guiServer.  These
+                    //  are identified by an initial integer, and then are followed
+                    //  by a data length, then data.
+                    boolean connected = true;
+                    while ( connected ) {
+                        System.out.println( "getting next packet" );
+                        //  Read the packet type as an integer.  The packet types
+                        //  are defined above (within this class).
+                        int packetType = in.readInt();
+                        //  Read the size of the incoming data (bytes).
+                        int packetSize = in.readInt();
+                        //  Read the data (as raw bytes)
+                        byte [] data = null;
+                        if ( packetSize > 0 ) {
+                            data = new byte[packetSize];
+                            in.readFully( data );
+                        }
+//                    _inString = "";
+//                    incrementalCallback();
+//                    while ( _inString.length() < _fileSize ) {
+//                        int sz = _fileSize - _inString.length();
+//                        if ( sz > 1024 )
+//                            sz = 1024;
+//                        byte [] data = new byte[sz];
+//                        int n = in.read( data, 0, sz );
+//                        //_inString += in.readUTF();
+//                        _inString += new String( Arrays.copyOfRange( data, 0, n ) );
+//                        incrementalCallback();
+                        System.out.println( "packet type is " + packetType );
+                        System.out.println( "packet size is " + packetSize );
+                        //  Interpret the packet type.
+                        if ( packetType == JOB_TERMINATED ) {
+                            _messageDisplayPanel.warning( 0, "job monitor", "Job terminated prematurely." );
+                            connected = false;
+                        }
+                        else if ( packetType == JOB_ENDED_GRACEFULLY ) {
+                            _messageDisplayPanel.warning( 0, "job monitor", "Job finished gracefully." );
+                            connected = false;
+                        }
+                        else if ( packetType == JOB_STARTED ) {
+                            _messageDisplayPanel.message( 0, "job monitor", "Job started by guiServer." );
+                        }
+                        else if ( packetType == PARAMETER_CHECK_IN_PROGRESS ) {
+                            _messageDisplayPanel.message( 0, "job monitor", "Checking parameters." );
+                        }
+                        else if ( packetType == PARAMETER_CHECK_SUCCESS ) {
+                            _messageDisplayPanel.message( 0, "job monitor", "Parameter check successful." );
+                        }
+                        else if ( packetType == FAILURE_NO_HEADNODE ) {
+                            _messageDisplayPanel.error( 0, "job monitor", "No headnone was specified." );
+                        }
+                        else if ( packetType == FAILURE_NO_DATASOURCES ) {
+                            _messageDisplayPanel.error( 0, "job monitor", "No valid data sources were specified." );
+                        }
+                        else if ( packetType == FAILURE_NO_PROCESSORS ) {
+                            _messageDisplayPanel.error( 0, "job monitor", "No valid processors were specified." );
+                        }
+                        else if ( packetType == FAILURE_NO_INPUTFILE_SPECIFIED ) {
+                            _messageDisplayPanel.error( 0, "job monitor", "No input file was specified." );
+                        }
+                        else if ( packetType == FAILURE_INPUTFILE_NOT_FOUND ) {
+                            _messageDisplayPanel.error( 0, "job monitor", "Input file " + _jobNode.inputFile() + " was not found on DiFX host." );
+                        }
+                        else if ( packetType == FAILURE_INPUTFILE_NAME_TOO_LONG ) {
+                            _messageDisplayPanel.message( 0, "job monitor", "Input file name \"" + _jobNode.inputFile() + "\" is too long for DiFX." );
+                        }
+                        else {
+                            _messageDisplayPanel.warning( 0, "GUI", "Ignoring unrecongized job monitor packet type (" + packetType + ")." );
+                        }
+                    }
+                    sock.close();
+                } catch ( SocketTimeoutException e ) {
+//                    _fileSize = -10;
+                }
+                ssock.close();
+            } catch ( java.io.IOException e ) {
+                e.printStackTrace();
+//                _error = "IOException : " + e.toString();
+//                _fileSize = -11;
+            }
+//            endCallback();
+        }
+        
+        protected int _port;
+        
     }
     
     public void pauseJob() {}
@@ -971,5 +1144,7 @@ public class JobEditorMonitor extends JFrame {
     protected Integer _executeTime;
     protected Integer _startMJD;
     protected Integer _startSeconds;
+    
+    protected MessageDisplayPanel _messageDisplayPanel;
     
 }

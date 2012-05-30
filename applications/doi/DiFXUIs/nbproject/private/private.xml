@@ -85,13 +85,13 @@
             <line>70</line>
         </file>
         <file>
-            <url>src/edu/nrao/difx/difxview/SystemSettings.java</url>
-            <line>851</line>
-            <line>1542</line>
-        </file>
-        <file>
             <url>src/edu/nrao/vlba/difxdatamodel/DiFXSystemStatus.java</url>
             <line>480</line>
+        </file>
+        <file>
+            <url>src/edu/nrao/difx/difxview/SystemSettings.java</url>
+            <line>851</line>
+            <line>1555</line>
         </file>
         <file>
             <url>src/edu/nrao/vlba/difxcontroller/ProcessMessageThread.java</url>

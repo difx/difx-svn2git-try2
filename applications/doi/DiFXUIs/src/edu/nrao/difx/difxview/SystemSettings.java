@@ -921,6 +921,12 @@ public class SystemSettings extends JFrame {
      * Called whenever an update is required for the EOP and leap second data.
      */
     protected void updateEOPNow() {
+        boolean dontDo = true;
+        if ( dontDo ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.WARNING,
+                "remote EOP updates are currently DISABLED" );
+            return;
+        }
         //  Read the specified EOP data.
         try {
             URL url = new URL( _eopURL.getText() );
