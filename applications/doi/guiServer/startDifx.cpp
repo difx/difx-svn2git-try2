@@ -11,6 +11,8 @@
 //=============================================================================
 #include <ServerSideConnection.h>
 #include <sys/statvfs.h>
+#include <network/TCPClient.h>
+#include <JobMonitorConnection.h>
 
 using namespace guiServer;
 
@@ -30,7 +32,7 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	char workingDir[DIFX_MESSAGE_FILENAME_LENGTH];
 	char destdir[DIFX_MESSAGE_FILENAME_LENGTH];
 	char message[DIFX_MESSAGE_LENGTH];
-  	char restartOption[RestartOptionLength];
+	char restartOption[RestartOptionLength];
 	char command[MAX_COMMAND_SIZE];
 	char chmodCommand[MAX_COMMAND_SIZE];
 	FILE *out;
@@ -43,40 +45,83 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	int returnValue;
 	char altDifxProgram[64];
 	const char *user;
+	JobMonitorConnection* jobMonitor;
 
-    //  Cast the body of this message to a DifxMessageStart structure.
+	//  Cast the body of this message to a DifxMessageStart structure.
 	S = &G->body.start;
-	
+
+	//  Open a TCP socket connection to the server that should be running for us on the
+    //  host that requested this job start (the GUI, presumably).  This socket is used
+    //  for diagnostic messages and to show progress on this specific job.  It can
+    //  also be used for some rudimentary control of the job.
+    network::TCPClient* guiSocket = new network::TCPClient( S->address, S->port );
+    guiSocket->waitForConnect();
+    //  Create a Job Monitor Connection out of this new socket if it connected properly.
+    //  If it did not connect, we need to bail out now.
+    if ( guiSocket->connected() ) {
+        jobMonitor = new JobMonitorConnection( guiSocket );
+        jobMonitor->sendPacket( JobMonitorConnection::JOB_STARTED, NULL, 0 );
+    }
+    else {
+        diagnostic( ERROR, "client socket connection from guiServer to GUI failed - unable to start job" );
+        return;
+    }
+    
+    //=========================================================================
+    //  Checks below are run BEFORE we start the thread that actually runs
+    //  the job.  Why?  Because we can only count on the viability of the
+    //  DifxMessageGeneric structure in this function call.  The thread can't
+    //  use it.
+    //=========================================================================
+    jobMonitor->sendPacket( JobMonitorConnection::PARAMETER_CHECK_IN_PROGRESS, NULL, 0 );
+
 	//  Make sure all needed parameters are included in the message.
 	if ( S->headNode[0] == 0 ) {
-        diagnostic( ERROR, "DiFX start failed - no headnode specified." );
+    	diagnostic( ERROR, "DiFX start failed - no headnode specified." );
+    	jobMonitor->sendPacket( JobMonitorConnection::FAILURE_NO_HEADNODE, NULL, 0 );
+        jobMonitor->sendPacket( JobMonitorConnection::JOB_TERMINATED, NULL, 0 );
 		return;
 	}
 	if ( S->nDatastream <= 0 ) {
-        diagnostic( ERROR, "DiFX start failed - no data sources specified." );
+    	diagnostic( ERROR, "DiFX start failed - no data sources specified." );
+    	jobMonitor->sendPacket( JobMonitorConnection::FAILURE_NO_DATASOURCES, NULL, 0 );
+        jobMonitor->sendPacket( JobMonitorConnection::JOB_TERMINATED, NULL, 0 );
 		return;
 	}
 	if ( S->nProcess <= 0 ) {
-        diagnostic( ERROR, "DiFX start failed - no processing nodes  specified." );
+    	diagnostic( ERROR, "DiFX start failed - no processing nodes  specified." );
+    	jobMonitor->sendPacket( JobMonitorConnection::FAILURE_NO_PROCESSORS, NULL, 0 );
+        jobMonitor->sendPacket( JobMonitorConnection::JOB_TERMINATED, NULL, 0 );
 		return;
 	}
 	if ( S->inputFilename[0] == 0 ) {
-        diagnostic( ERROR, "DiFX start failed - no input file specified" );
+    	diagnostic( ERROR, "DiFX start failed - no input file specified" );
+    	jobMonitor->sendPacket( JobMonitorConnection::FAILURE_NO_INPUTFILE_SPECIFIED, NULL, 0 );
+        jobMonitor->sendPacket( JobMonitorConnection::JOB_TERMINATED, NULL, 0 );
 		return;
 	}
 
 	//  Check to make sure the input file exists
 	if( access(S->inputFilename, R_OK) != 0 ) {
 		diagnostic( ERROR, "DiFX start failed - input file %s not found.", S->inputFilename );
+    	jobMonitor->sendPacket( JobMonitorConnection::FAILURE_INPUTFILE_NOT_FOUND, NULL, 0 );
+        jobMonitor->sendPacket( JobMonitorConnection::JOB_TERMINATED, NULL, 0 );
 		return;
 	}
 
     //  Make sure the filename can fit in our allocated space for such things.
 	if( strlen( S->inputFilename ) + 12 > DIFX_MESSAGE_FILENAME_LENGTH ) {
 		diagnostic( ERROR, "Filename %s is too long.", S->inputFilename );
+    	jobMonitor->sendPacket( JobMonitorConnection::FAILURE_INPUTFILE_NAME_TOO_LONG, NULL, 0 );
+        jobMonitor->sendPacket( JobMonitorConnection::JOB_TERMINATED, NULL, 0 );
 		return;
 	}
 	
+    jobMonitor->sendPacket( JobMonitorConnection::PARAMETER_CHECK_SUCCESS, NULL, 0 );
+
+//    jobMonitor->sendPacket( JobMonitorConnection::JOB_ENDED_GRACEFULLY, NULL, 0 );
+//    return;
+    
     //  Find the "working directory" (where the .input file resides and data will be put), the
     //  "filebase" (the path of the input file with ".input") and the "job name" (the name of
     //  the input file without .input or directory path).
@@ -138,6 +183,12 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 		return;
 	}
 
+	//  Create a structure to hold all information about this job for the thread that will
+	//  run it.
+	DifxStartInfo* startInfo = new DifxStartInfo;
+	startInfo->ssc = this;
+	startInfo->jmc = jobMonitor;
+	
     //  Enough checking - write the machines file.
 	snprintf(filename, DIFX_MESSAGE_FILENAME_LENGTH, "%s.machines", filebase);
     out = fopen( filename, "w" );
@@ -197,9 +248,6 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	    return;
 	}
 	
-	//  Create a structure to hold all information about this job.
-	DifxStartInfo* startInfo = new DifxStartInfo;
-	startInfo->ssc = this;
 	snprintf( startInfo->jobName, MAX_COMMAND_SIZE, "%s", filebase );
 	for ( int i = 0; filebase[i]; ++i ) {
 	    if ( filebase[i] == '/' )

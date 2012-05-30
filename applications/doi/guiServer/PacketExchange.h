@@ -21,15 +21,15 @@ namespace guiServer {
     public:
     
         //---------------------------------------------------------------------
-        //!  These are the packet types recognized by this protocol.
+        //!  These are the packet types recognized and/or sent by this protocol.
         //---------------------------------------------------------------------
-        static const int RELAY_PACKET                  = 1;
-        static const int RELAY_COMMAND_PACKET          = 2;
-        static const int COMMAND_PACKET                = 3;
-        static const int INFORMATION_PACKET            = 4;
-        static const int WARNING_PACKET                = 5;
-        static const int ERROR_PACKET                  = 6;
-        static const int MULTICAST_SETTINGS_PACKET     = 7;
+        static const int RELAY_PACKET                   = 1;
+        static const int RELAY_COMMAND_PACKET           = 2;
+        static const int COMMAND_PACKET                 = 3;
+        static const int INFORMATION_PACKET             = 4;
+        static const int WARNING_PACKET                 = 5;
+        static const int ERROR_PACKET                   = 6;
+        static const int MULTICAST_SETTINGS_PACKET      = 7;
 
         PacketExchange( network::GenericSocket* sock ) : network::PacketExchange( sock ) {
             _sock = sock;
@@ -63,7 +63,11 @@ namespace guiServer {
         //---------------------------------------------------------------------
         //!  Thread to receive all incoming data on the socket.  Each recognized
         //!  type spawns a do-nothing function that should be overridden by
-        //!  inheriting classes to actually accomplish something.
+        //!  inheriting classes to actually accomplish something.  Some of the
+        //!  packet types (defined above) are used only for SENDING information,
+        //!  and thus don't appear here.  If for some reason they ARE received,
+        //!  the "newPacket()" function will be called with the packet type,
+        //!  data, and size.  This can be overridden by inheriting functions.
         //---------------------------------------------------------------------
         void receiveThread() {
             _receiveActive = true;
@@ -91,8 +95,10 @@ namespace guiServer {
                     case MULTICAST_SETTINGS_PACKET:
                         multicastSettings( data, nBytes );
                         break;
-                    //  Any packet we don't recognize we ignore.
+                    //  Any packet we don't recognize we send to the "newPacket()" function,
+                    //  which might know what to do with it.
                     default:
+                        newPacket( packetId, data, nBytes );
                         break;
                     }
                     //  Free the space allocated to this incoming message.
@@ -100,6 +106,8 @@ namespace guiServer {
                 }
             }
         }
+        
+        virtual void newPacket( int packetId, char* data, const int nBytes ) {}
         
         virtual void relay( char* data, const int nBytes ) {}
         virtual void relayCommand( char* data, const int nBytes ) {}

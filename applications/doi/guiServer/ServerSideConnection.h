@@ -20,16 +20,17 @@
 #include <network/UDPSocket.h>
 #include <PacketExchange.h>
 #include <difxmessage.h>
+#include <JobMonitorConnection.h>
 
 namespace guiServer {
 
     class ServerSideConnection : public PacketExchange {
     
         static const int MAX_COMMAND_SIZE = 1024;
-    
+        
     public:
 
-        ServerSideConnection( network::GenericSocket* sock ) : PacketExchange( sock ) {
+        ServerSideConnection( network::GenericSocket* sock, const char* clientIP ) : PacketExchange( sock ) {
             _commandSocket = NULL;
             _monitorSocket = NULL;
             _multicastGroup[0] = 0;
@@ -37,6 +38,7 @@ namespace guiServer {
             _newMulticastSettings = true;            
             _difxAlertsOn = true;
             _relayDifxMulticasts = false;
+            snprintf( _clientIP, 16, "%s", clientIP );
         }
         
         ~ServerSideConnection() {
@@ -230,7 +232,9 @@ namespace guiServer {
         //---------------------------------------------------------------------
         struct DifxStartInfo {
             ServerSideConnection* ssc;
+            JobMonitorConnection* jmc;
             int force;
+            int sockFd;
             char removeCommand[MAX_COMMAND_SIZE];
             char startCommand[MAX_COMMAND_SIZE];
             char jobName[MAX_COMMAND_SIZE];
@@ -266,6 +270,7 @@ namespace guiServer {
         bool _newMulticastSettings;
         char _multicastGroup[16];
         int _multicastPort;
+        char _clientIP[16];
         
     };
 
