@@ -738,10 +738,6 @@ public class SystemSettings extends JFrame {
             public void actionPerformed( ActionEvent e ) {
                 if ( _autoUpdateEOP.isSelected() ) {
                     updateEOPNow();
-                    _eopTimer.start();
-                }
-                else {
-                    _eopTimer.stop();
                 }
             }
         } );
@@ -771,15 +767,12 @@ public class SystemSettings extends JFrame {
             }
         } );
         eopSettingsPanel.add( _updateEOPNow );
-        Action updateDrawingAction = new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                ++_eopTimerCount;
-                if ( _eopTimerCount >= _autoUpdateSeconds.intValue() )
-                    updateEOPNow();
-            }
-        };
-        _eopTimer = new Timer( 1000, updateDrawingAction );
+        
+        //  Start the EOP monitoring thread.  This is either set to automatically
+        //  update the EOP data periodically, or can be triggered to do so
+        //  immediately.
+        _eopMonitorThread = new EOPMonitorThread();
+        _eopMonitorThread.start();
 
         _allObjectsBuilt = true;
         
@@ -919,14 +912,51 @@ public class SystemSettings extends JFrame {
     
     /*
      * Called whenever an update is required for the EOP and leap second data.
+     * Because EOP data queries can hang, this triggers the activity in the
+     * independent thread.
      */
     protected void updateEOPNow() {
-        boolean dontDo = true;
-        if ( dontDo ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.WARNING,
-                "remote EOP updates are currently DISABLED" );
-            return;
+        _doEOPUpdate = true;
+    }
+    
+    /*
+     * Thread to search for EOP data remotely.  This runs every _EOPUpdateInterval
+     * seconds (when that capability is on).
+     */
+    protected class EOPMonitorThread extends Thread {
+        
+        public boolean cancelThis;
+        
+        public void run() {
+            while ( !cancelThis ) {
+                try {
+                    Thread.sleep( 1000 );
+                } catch ( Exception e ) { }
+                ++_eopTimerCount;
+                if ( _eopTimerCount >= _autoUpdateSeconds.intValue() )
+                    updateEOPNow();
+                //  Do an update if one has been requested (or the count above
+                //  was reached) and reset the timer.
+                if ( _doEOPUpdate ) {
+                    EOPUpdate();
+                    _eopTimerCount = 0;
+                    _doEOPUpdate = false;
+                }
+            }
         }
+        
+    }
+    
+    /*
+     * This function performs the EOP updates from remote servers.  It can hang.
+     */
+    protected void EOPUpdate() {
+//        boolean dontDo = true;
+//        if ( dontDo ) {
+//            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.WARNING,
+//                "remote EOP updates are currently DISABLED" );
+//            return;
+//        }
         //  Read the specified EOP data.
         try {
             URL url = new URL( _eopURL.getText() );
@@ -963,7 +993,7 @@ public class SystemSettings extends JFrame {
         //  In case anyone is out there listening, generate callbacks indicating
         //  new EOP data exist.
         generateEOPChangeEvent();
-        eopData( 2447302.0 - 3.0, 2447302.0 + 3.0 );
+        eopData( 2447302.0 - 3.0, 2447302.0 + 3.0 );       
     }
     
     public class EOPStructure {
@@ -1204,8 +1234,7 @@ public class SystemSettings extends JFrame {
         _leapSecondsValue.value( 34 );
         _autoUpdateSeconds.value( 3600 );
         leapSecondChoice( _useLeapSecondsURL );
-        _autoUpdateEOP.setSelected( true );
-        _eopTimer.start();
+        _autoUpdateEOP.setSelected( false );
         //  Set up the communications based on current settings.
         changeDifxControlConnection();
     }
@@ -2327,8 +2356,9 @@ public class SystemSettings extends JFrame {
     protected NumberBox _autoUpdateSeconds;
     protected JButton _updateEOPNow;
     
-    protected Timer _eopTimer;
+    protected EOPMonitorThread _eopMonitorThread;
     protected int _eopTimerCount;
+    protected boolean _doEOPUpdate;
     protected SimpleTextEditor _eopText;
     protected SimpleTextEditor _leapSecondText;
     protected JFrame _eopDisplay;

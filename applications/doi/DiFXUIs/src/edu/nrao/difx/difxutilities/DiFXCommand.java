@@ -67,7 +67,7 @@ public class DiFXCommand {
      */
     public void send() throws java.net.UnknownHostException {
         try {
-            sendPacket( _settings.guiServerConnection().RELAY_COMMAND_PACKET );
+            sendPacket( _settings.guiServerConnection().COMMAND_PACKET );
         } catch ( java.net.UnknownHostException e ) {
             throw( e );
         }

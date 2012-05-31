@@ -501,7 +501,8 @@ public class JobEditorMonitor extends JFrame {
         // -- Create the XML defined messages and process through the system
         command.body().setDifxStart(jobStart);
         try {
-            command.sendPacket( _settings.guiServerConnection().COMMAND_PACKET );
+            //command.sendPacket( _settings.guiServerConnection().COMMAND_PACKET );
+            command.send();
         } catch ( java.net.UnknownHostException e ) {
             java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
                     e.getMessage() );  //BLAT should be a pop-up
