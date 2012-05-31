@@ -5,7 +5,7 @@ CFLAGS += -g $(INCDIRS)
 
 HFILES = ServerSideConnection.h PacketExchange.h
 
-CFILES = guiServer.cpp startDifx.cpp diagnostic.cpp
+CFILES = guiServer.cpp startDifx.cpp diagnostic.cpp difxFileTransfer.cpp difxFileOperation.cpp vex2difxRun.cpp
 
 all:  guiServer testClient
 

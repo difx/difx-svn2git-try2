@@ -158,6 +158,15 @@ namespace guiServer {
                 case DIFX_MESSAGE_START:
                     startDifx( &G );
                     break;
+    			case DIFX_MESSAGE_FILETRANSFER:
+    				difxFileTransfer( &G );
+    				break;
+    			case DIFX_MESSAGE_FILEOPERATION:
+    				difxFileOperation( &G );
+    				break;
+    			case DIFX_MESSAGE_VEX2DIFXRUN:
+    				vex2difxRun( &G );
+    				break;
                 default:
                     diagnostic( WARNING, "Received command message type %d - don't know what this is....\n", G.type );
                 }
@@ -248,6 +257,7 @@ namespace guiServer {
             startInfo->ssc->runDifxThread( startInfo );
             printf( "thread is done - delete the startInfo structure\n" );
             delete startInfo;
+            return NULL;
         }
 
         //---------------------------------------------------------------------
@@ -256,6 +266,9 @@ namespace guiServer {
         //---------------------------------------------------------------------
         void startDifx( DifxMessageGeneric* G );
         void runDifxThread( DifxStartInfo* startInfo );  //  in startDifx.cpp
+        void difxFileTransfer( DifxMessageGeneric* G );
+        void difxFileOperation( DifxMessageGeneric* G );
+        void vex2difxRun( DifxMessageGeneric* G );
         void diagnostic( const int severity, const char *fmt, ... );
 
     protected:
