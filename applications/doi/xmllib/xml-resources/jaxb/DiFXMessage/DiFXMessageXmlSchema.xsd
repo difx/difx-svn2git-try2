@@ -89,8 +89,8 @@
                 <xsd:element ref="dbHost"/>
                 <xsd:element ref="dbSID"/>
                 <xsd:element ref="dbPassword"/>
-                <xsd:element ref="dbJdbcDriver"/>
-                <xsd:element ref="dbJdbcPort"/>
+                <xsd:element ref="dbDriver"/>
+                <xsd:element ref="dbPort"/>
                 <xsd:element ref="dbUrlComposer"/>
                 <xsd:element ref="dbUrl"/>
                 <xsd:element ref="ipAddress"/>
@@ -113,6 +113,7 @@
                 <xsd:element ref="dbUseDataBase"/>
                 <xsd:element ref="dbVersion"/>
                 <xsd:element ref="dbName"/>
+                <xsd:element ref="dbMS"/>
                 <xsd:element ref="reportLoc"/>
                 <xsd:element ref="guiDocPath"/>
                 <xsd:element ref="difxUsersGroupURL"/>
@@ -180,8 +181,8 @@
     <xsd:element name="dbHost" type="xsd:string"></xsd:element>
     <xsd:element name="dbSID" type="xsd:string"></xsd:element>
     <xsd:element name="dbPassword" type="xsd:string"></xsd:element>
-    <xsd:element name="dbJdbcDriver" type="xsd:string"></xsd:element>
-    <xsd:element name="dbJdbcPort" type="xsd:string"></xsd:element>
+    <xsd:element name="dbDriver" type="xsd:string"></xsd:element>
+    <xsd:element name="dbPort" type="xsd:string"></xsd:element>
     <xsd:element name="dbUrlComposer" type="xsd:string"></xsd:element>
     <xsd:element name="dbUrl" type="xsd:string"></xsd:element>
     <xsd:element name="ipAddress" type="xsd:string"></xsd:element>
@@ -204,6 +205,7 @@
     <xsd:element name="dbUseDataBase" type="xsd:boolean"></xsd:element>
     <xsd:element name="dbVersion" type="xsd:string"></xsd:element>
     <xsd:element name="dbName" type="xsd:string"></xsd:element>
+    <xsd:element name="dbMS" type="xsd:string"></xsd:element>
     <xsd:element name="reportLoc" type="xsd:string"></xsd:element>
     <xsd:element name="guiDocPath" type="xsd:string"></xsd:element>
     <xsd:element name="difxUsersGroupURL" type="xsd:string"></xsd:element>

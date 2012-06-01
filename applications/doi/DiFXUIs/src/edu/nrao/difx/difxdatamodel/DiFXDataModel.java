@@ -65,7 +65,7 @@ public class DiFXDataModel {
 
 //    public void setDBConnection() {
 //        mDBConnection = new edu.nrao.difx.difxdatabase.DBConnection( _systemSettings.dbURL(), _systemSettings.oracleJdbcDriver(),
-//                _systemSettings.dbSID(), _systemSettings.dbPWD() );
+//                _systemSettings.dbUser(), _systemSettings.dbPwd() );
 //    }
 
     /*
@@ -77,8 +77,8 @@ public class DiFXDataModel {
     }
     
     public void updataDatabaseFromSystemSettings() {
-        _dbConnection = new edu.nrao.difx.difxdatabase.DBConnection( _systemSettings.dbURL(), _systemSettings.jdbcDriver(),
-                _systemSettings.dbSID(), _systemSettings.dbPWD() );
+        _dbConnection = new edu.nrao.difx.difxdatabase.DBConnection( _systemSettings.dbURL(), _systemSettings.dbDriver(),
+                _systemSettings.dbUser(), _systemSettings.dbPwd() );
     }
 
     public void addHardwareMessageListener( AttributedMessageListener a ) {
@@ -1364,8 +1364,8 @@ public class DiFXDataModel {
 //        _systemSettings.home( (difxMsg.getBody().getDoiSystemConfig()).getDifxHome() );
 //        _systemSettings.resourcesFile( (difxMsg.getBody().getDoiSystemConfig()).getResourcesFile() );
 //        _systemSettings.dbHost( (difxMsg.getBody().getDoiSystemConfig()).getDbHost() );
-//        _systemSettings.dbSID( (difxMsg.getBody().getDoiSystemConfig()).getDbSID() );
-//        _systemSettings.dbPWD( (difxMsg.getBody().getDoiSystemConfig()).getDbPassword() );
+//        _systemSettings.dbUser( (difxMsg.getBody().getDoiSystemConfig()).getDbSID() );
+//        _systemSettings.dbPwd( (difxMsg.getBody().getDoiSystemConfig()).getDbPassword() );
 //        _systemSettings.oracleJdbcDriver( (difxMsg.getBody().getDoiSystemConfig()).getDbJdbcDriver() );
 //        _systemSettings.oracleJdbcPort( (difxMsg.getBody().getDoiSystemConfig()).getDbJdbcPort() );
 //        _systemSettings.dbURL( (difxMsg.getBody().getDoiSystemConfig()).getDbUrl() );

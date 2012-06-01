@@ -25,7 +25,6 @@ import java.awt.event.ActionListener;
 
 import edu.nrao.difx.difxdatabase.DBConnection;
 import edu.nrao.difx.difxdatabase.QueueDBConnection;
-import java.sql.ResultSet;
 
 /**
  *

@@ -1190,7 +1190,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
             newEOPPanel.closedHeight( 20 );
             _newEOPUseCheck = new JCheckBox( "" );
             _newEOPUseCheck.setBounds( 210, 2, 18, 16 );
-            _vexEOPUseCheck.setSelected( false );
+            if ( _vexEOPUseCheck != null )
+                _vexEOPUseCheck.setSelected( false );
             _newEOPUseCheck.setSelected( true );
             _newEOPUseCheck.setToolTipText( "Use updated EOP data from source." );
             _newEOPUseCheck.addActionListener( new ActionListener() {

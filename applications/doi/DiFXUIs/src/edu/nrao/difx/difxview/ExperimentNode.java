@@ -25,8 +25,6 @@ import edu.nrao.difx.difxdatabase.QueueDBConnection;
 import edu.nrao.difx.difxutilities.DiFXCommand_mv;
 import edu.nrao.difx.difxutilities.DiFXCommand_rm;
 
-import java.sql.ResultSet;
-
 /**
  *
  * @author jspitzak

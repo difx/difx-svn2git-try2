@@ -437,7 +437,7 @@ public class SystemSettings extends JFrame {
         networkPanel.add( _suppressWarningsCheck );
         
         IndexedPanel databasePanel = new IndexedPanel( "Database Configuration" );
-        databasePanel.openHeight( 275 );
+        databasePanel.openHeight( 305 );
         databasePanel.closedHeight( 20 );
         databasePanel.labelWidth( 300 );
         _scrollPane.addNode( databasePanel );
@@ -468,77 +468,90 @@ public class SystemSettings extends JFrame {
         dbHostLabel.setBounds( 10, 55, 150, 25 );
         dbHostLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( dbHostLabel );
-        _dbSID = new JFormattedTextField();
-        _dbSID.setFocusLostBehavior( JFormattedTextField.COMMIT );
-        databasePanel.add( _dbSID );
-        _dbSID.addActionListener( new ActionListener() {
+        _dbPort = new JFormattedTextField();
+        _dbPort.setFocusLostBehavior( JFormattedTextField.COMMIT );
+        _dbPort.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 setDbURL();
             }
         } );
-        JLabel dbSIDLabel = new JLabel( "User:" );
-        dbSIDLabel.setBounds( 10, 85, 150, 25 );
-        dbSIDLabel.setHorizontalAlignment( JLabel.RIGHT );
-        databasePanel.add( dbSIDLabel );
-        _dbPWD = new JPasswordField();
-        _dbPWD.addActionListener( new ActionListener() {
+        databasePanel.add( _dbPort );
+        JLabel dbPortLabel = new JLabel( "Port:" );
+        dbPortLabel.setBounds( 10, 85, 150, 25 );
+        dbPortLabel.setHorizontalAlignment( JLabel.RIGHT );
+        databasePanel.add( dbPortLabel );
+        _dbUser = new JFormattedTextField();
+        _dbUser.setFocusLostBehavior( JFormattedTextField.COMMIT );
+        databasePanel.add( _dbUser );
+        _dbUser.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                setDbURL();
+            }
+        } );
+        JLabel dbUserLabel = new JLabel( "User:" );
+        dbUserLabel.setBounds( 10, 115, 150, 25 );
+        dbUserLabel.setHorizontalAlignment( JLabel.RIGHT );
+        databasePanel.add( dbUserLabel );
+        _dbPwd = new JPasswordField();
+        _dbPwd.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 generateDatabaseChangeEvent();
             }
         } );
-        databasePanel.add( _dbPWD );
-        JLabel dbPWDLabel = new JLabel( "Password:" );
-        dbPWDLabel.setBounds( 10, 115, 150, 25 );
-        dbPWDLabel.setHorizontalAlignment( JLabel.RIGHT );
-        databasePanel.add( dbPWDLabel );
+        databasePanel.add( _dbPwd );
+        JLabel dbPwdLabel = new JLabel( "Password:" );
+        dbPwdLabel.setBounds( 10, 145, 150, 25 );
+        dbPwdLabel.setHorizontalAlignment( JLabel.RIGHT );
+        databasePanel.add( dbPwdLabel );
         _dbName = new JFormattedTextField();
         _dbName.setFocusLostBehavior( JFormattedTextField.COMMIT );
         databasePanel.add( _dbName );
         JLabel dbNameLabel = new JLabel( "DiFX Database:" );
-        dbNameLabel.setBounds( 10, 145, 150, 25 );
+        dbNameLabel.setBounds( 10, 175, 150, 25 );
         dbNameLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( dbNameLabel );
-        _jdbcDriver = new JFormattedTextField();
-        _jdbcDriver.setFocusLostBehavior( JFormattedTextField.COMMIT );
-        _jdbcDriver.addActionListener( new ActionListener() {
+        _dbMS = new JFormattedTextField();
+        _dbMS.setToolTipText( "Database Management System - mysql, postgres, etc." );
+        _dbMS.setFocusLostBehavior( JFormattedTextField.COMMIT );
+        _dbMS.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 generateDatabaseChangeEvent();
             }
         } );
-        databasePanel.add( _jdbcDriver );
-        JLabel oracleDriverLabel = new JLabel( "JDBC Driver:" );
-        oracleDriverLabel.setBounds( 10, 175, 150, 25 );
-        oracleDriverLabel.setHorizontalAlignment( JLabel.RIGHT );
-        databasePanel.add( oracleDriverLabel );
-        _jdbcPort = new JFormattedTextField();
-        _jdbcPort.setFocusLostBehavior( JFormattedTextField.COMMIT );
-        _jdbcPort.addActionListener( new ActionListener() {
+        databasePanel.add( _dbMS );
+        JLabel dbMSLabel = new JLabel( "Management System:" );
+        dbMSLabel.setBounds( 10, 205, 150, 25 );
+        dbMSLabel.setHorizontalAlignment( JLabel.RIGHT );
+        databasePanel.add( dbMSLabel );
+        _dbDriver = new JFormattedTextField();
+        _dbDriver.setFocusLostBehavior( JFormattedTextField.COMMIT );
+        _dbDriver.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                setDbURL();
+                generateDatabaseChangeEvent();
             }
         } );
-        databasePanel.add( _jdbcPort );
-        JLabel oraclePortLabel = new JLabel( "JDBC Port:" );
-        oraclePortLabel.setBounds( 10, 205, 150, 25 );
-        oraclePortLabel.setHorizontalAlignment( JLabel.RIGHT );
-        databasePanel.add( oraclePortLabel );
+        databasePanel.add( _dbDriver );
+        JLabel dbDriverLabel = new JLabel( "JDBC Driver:" );
+        dbDriverLabel.setBounds( 10, 235, 150, 25 );
+        dbDriverLabel.setHorizontalAlignment( JLabel.RIGHT );
+        databasePanel.add( dbDriverLabel );
         _dbAutoUpdate = new JCheckBox();
-        _dbAutoUpdate.setBounds( 165, 235, 25, 25 );
+        _dbAutoUpdate.setBounds( 165, 275, 25, 25 );
         databasePanel.add( _dbAutoUpdate );
         JLabel dbAutoUpdateLabel = new JLabel( "Periodic Update:" );
-        dbAutoUpdateLabel.setBounds( 10, 235, 150, 25 );
+        dbAutoUpdateLabel.setBounds( 10, 275, 150, 25 );
         dbAutoUpdateLabel.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( dbAutoUpdateLabel );
         _dbAutoUpdateInterval = new NumberBox();
-        _dbAutoUpdateInterval.setBounds( 230, 235, 50, 25 );
+        _dbAutoUpdateInterval.setBounds( 230, 275, 50, 25 );
         _dbAutoUpdateInterval.minimum( 1.0 );
         databasePanel.add( _dbAutoUpdateInterval );
         JLabel dbAutoUpdateIntervalLabel1 = new JLabel( "every" );
-        dbAutoUpdateIntervalLabel1.setBounds( 130, 235, 95, 25 );
+        dbAutoUpdateIntervalLabel1.setBounds( 130, 275, 95, 25 );
         dbAutoUpdateIntervalLabel1.setHorizontalAlignment( JLabel.RIGHT );
         databasePanel.add( dbAutoUpdateIntervalLabel1 );
         JLabel dbAutoUpdateIntervalLabel2 = new JLabel( "seconds" );
-        dbAutoUpdateIntervalLabel2.setBounds( 285, 235, 65, 25 );
+        dbAutoUpdateIntervalLabel2.setBounds( 285, 275, 65, 25 );
         databasePanel.add( dbAutoUpdateIntervalLabel2 );
         _pingHostButton = new JButton( "Ping Host" );
         _pingHostButton.setToolTipText( "ping the database host" );
@@ -812,14 +825,15 @@ public class SystemSettings extends JFrame {
             _plotWindow.setBounds( 470, 33, w - 495, 140 );
             //  Database Configuration
             _dbHost.setBounds( 165, 55, 300, 25 );
-            _dbSID.setBounds( 165, 85, 300, 25 );
-            _dbPWD.setBounds( 165, 115, 300, 25 );
-            _dbName.setBounds( 165, 145, 300, 25 );
-            _jdbcDriver.setBounds( 165, 175, 300, 25 );
-            _jdbcPort.setBounds( 165, 205, 300, 25 );
+            _dbPort.setBounds( 165, 85, 300, 25 );
+            _dbUser.setBounds( 165, 115, 300, 25 );
+            _dbPwd.setBounds( 165, 145, 300, 25 );
+            _dbName.setBounds( 165, 175, 300, 25 );
+            _dbMS.setBounds( 165, 205, 300, 25 );
+            _dbDriver.setBounds( 165, 235, 300, 25 );
             _pingHostButton.setBounds( 480, 55, 125, 25 );
             _testDatabaseButton.setBounds( 610, 55, 125, 25 );
-            _databaseMessages.setBounds( 480, 85, w - 505, 145 );
+            _databaseMessages.setBounds( 480, 85, w - 505, 175 );
             //  Documentation Addresses
             _guiDocPath.setBounds( 115, 25, w - 240, 25 );
             _guiDocPathBrowseButton.setBounds( w - 120, 25, 100, 25 );
@@ -1176,11 +1190,12 @@ public class SystemSettings extends JFrame {
         _dbUseDataBase.setSelected( true );
         _dbVersion.setText( "unknown" );
         _dbHost.setText( "swc02.usno.navy.mil" );
-        _dbSID.setText( "difx" );
-        _dbPWD.setText( "difx2010" );
+        _dbUser.setText( "difx" );
+        _dbPwd.setText( "difx2010" );
         _dbName.setText( "difxdb" );
-        _jdbcDriver.setText( "com.mysql.jdbc.Driver" );
-        _jdbcPort.setText( "3306" );
+        _dbMS.setText( "mysql" );
+        _dbDriver.setText( "com.mysql.jdbc.Driver" );
+        _dbPort.setText( "3306" );
         this.setDbURL();
         _reportLoc = "/users/difx/Desktop";
         _guiDocPath.setText( "file://" + System.getProperty( "user.dir" ) + "/doc" );
@@ -1325,34 +1340,39 @@ public class SystemSettings extends JFrame {
     }
     public String dbHost() { return _dbHost.getText(); }
     
-    public void dbSID( String newVal ) { 
-        _dbSID.setText( newVal );
+    public void dbUser( String newVal ) { 
+        _dbUser.setText( newVal );
         setDbURL();
     }
-    public String dbSID() { return _dbSID.getText(); }
+    public String dbUser() { return _dbUser.getText(); }
     
-    public void dbPWD( String newVal ) { 
-        _dbPWD.setText( newVal );
+    public void dbPwd( String newVal ) { 
+        _dbPwd.setText( newVal );
         generateDatabaseChangeEvent();
     }
-    public String dbPWD() { return new String( _dbPWD.getPassword() ); }
+    public String dbPwd() { return new String( _dbPwd.getPassword() ); }
     
     public void dbName( String newVal ) { 
         _dbName.setText( newVal );
     }
     public String dbName() { return _dbName.getText(); }
     
-    public void jdbcDriver( String newVal ) { 
-        _jdbcDriver.setText( newVal );
+    public void dbMS( String newVal ) { 
+        _dbMS.setText( newVal );
+    }
+    public String dbMS() { return _dbMS.getText(); }
+    
+    public void dbDriver( String newVal ) { 
+        _dbDriver.setText( newVal );
         generateDatabaseChangeEvent();
     }
-    public String jdbcDriver() { return _jdbcDriver.getText(); }
+    public String dbDriver() { return _dbDriver.getText(); }
     
-    public void jdbcPort( String newVal ) { 
-        _jdbcPort.setText( newVal );
+    public void dbPort( String newVal ) { 
+        _dbPort.setText( newVal );
         setDbURL();
     }
-    public String jdbcPort() { return _jdbcPort.getText(); }
+    public String dbPort() { return _dbPort.getText(); }
     
     public String dbURL() { return _dbURL; }
     public void dbURL( String newVal ) { 
@@ -1362,7 +1382,7 @@ public class SystemSettings extends JFrame {
     protected void setDbURL() {
         //  Sets the dbURL using other items - this is not accessible to the outside.
         //_dbURL = "jdbc:oracle:thin:@" + _dbHost.getText() + ":" + _oracleJdbcPort.getText() + 
-        _dbURL = "jdbc:mysql://" + _dbHost.getText() + ":" + _jdbcPort.getText() + "/mysql";
+        _dbURL = "jdbc:mysql://" + _dbHost.getText() + ":" + _dbPort.getText() + "/mysql";
         generateDatabaseChangeEvent();
     }
     public boolean dbAutoUpdate() { return _dbAutoUpdate.isSelected(); }
@@ -1563,13 +1583,13 @@ public class SystemSettings extends JFrame {
             if ( doiConfig.getDbHost() != null )
                 this.dbHost( doiConfig.getDbHost() );
             if ( doiConfig.getDbSID() != null )
-                this.dbSID( doiConfig.getDbSID() );
+                this.dbUser( doiConfig.getDbSID() );
             if ( doiConfig.getDbPassword() != null )
-                this.dbPWD( doiConfig.getDbPassword() );
-            if ( doiConfig.getDbJdbcDriver() != null )
-                this.jdbcDriver( doiConfig.getDbJdbcDriver() );
-            if ( doiConfig.getDbJdbcPort() != null )
-                this.jdbcPort( doiConfig.getDbJdbcPort() );
+                this.dbPwd( doiConfig.getDbPassword() );
+            if ( doiConfig.getDbDriver() != null )
+                this.dbDriver( doiConfig.getDbDriver() );
+            if ( doiConfig.getDbPort() != null )
+                this.dbPort( doiConfig.getDbPort() );
             if ( doiConfig.getDbUrl() != null )
                 this.dbURL( doiConfig.getDbUrl() );
             setDbURL();  //  BLAT not sure we need to do this anymore
@@ -1610,6 +1630,8 @@ public class SystemSettings extends JFrame {
                 _dbVersion.setText( doiConfig.getDbVersion() );
             if ( doiConfig.getDbName() != null )
                 this.dbName( doiConfig.getDbName() );
+            if ( doiConfig.getDbMS() != null )
+                this.dbMS( doiConfig.getDbMS() );
             if ( doiConfig.getReportLoc() != null )
                 _reportLoc = doiConfig.getReportLoc();
             if ( doiConfig.getGuiDocPath() != null )
@@ -1725,10 +1747,10 @@ public class SystemSettings extends JFrame {
         doiConfig.setDifxHome( this.home() );
         //doiConfig.setResourcesFile( this.resourcesFile() );
         doiConfig.setDbHost( this.dbHost() );
-        doiConfig.setDbSID( this.dbSID() );
-        doiConfig.setDbPassword( this.dbPWD() );
-        doiConfig.setDbJdbcDriver( this.jdbcDriver() );
-        doiConfig.setDbJdbcPort( this.jdbcPort() );
+        doiConfig.setDbSID( this.dbUser() );
+        doiConfig.setDbPassword( this.dbPwd() );
+        doiConfig.setDbDriver( this.dbDriver() );
+        doiConfig.setDbPort( this.dbPort() );
         doiConfig.setDbUrl( this.dbURL() );
         doiConfig.setIpAddress( this.ipAddress() );
         doiConfig.setPort( this.port() );
@@ -1751,6 +1773,7 @@ public class SystemSettings extends JFrame {
         doiConfig.setDbUseDataBase( this.useDatabase() );
         doiConfig.setDbVersion( this.dbVersion() );
         doiConfig.setDbName( this.dbName() );
+        doiConfig.setDbMS( this.dbMS() );
         doiConfig.setReportLoc( _reportLoc );
         doiConfig.setGuiDocPath( _guiDocPath.getText() );
         doiConfig.setDifxUsersGroupURL( _difxUsersGroupURL.getText() );
@@ -2220,7 +2243,7 @@ public class SystemSettings extends JFrame {
             _dbVersion.setText( _dbVersionHistoryList.getString( "major" ) + "." + _dbVersionHistoryList.getString( "minor" ) );
         } catch ( Exception e ) {
             java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
-                "Exception updating database version: " + e );
+                "Exception updating database version: - is the version history table empty? (" + e + ")" );
         }
         
         //  Update pass type.
@@ -2318,11 +2341,12 @@ public class SystemSettings extends JFrame {
     protected JCheckBox _dbUseDataBase;
     protected JFormattedTextField _dbVersion;
     protected JFormattedTextField _dbHost;
-    protected JFormattedTextField _dbSID;
-    protected JPasswordField _dbPWD;
+    protected JFormattedTextField _dbUser;
+    protected JPasswordField _dbPwd;
     protected JFormattedTextField _dbName;
-    protected JFormattedTextField _jdbcDriver;
-    protected JFormattedTextField _jdbcPort;
+    protected JFormattedTextField _dbMS;
+    protected JFormattedTextField _dbDriver;
+    protected JFormattedTextField _dbPort;
     protected String _dbURL;
     protected JCheckBox _dbAutoUpdate;
     protected NumberBox _dbAutoUpdateInterval;

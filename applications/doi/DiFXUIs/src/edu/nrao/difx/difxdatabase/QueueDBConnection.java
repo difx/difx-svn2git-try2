@@ -24,8 +24,11 @@ public class QueueDBConnection {
             _db = null;
             return;
         }
-        _db = new DBConnection( "jdbc:mysql://" + _settings.dbHost() + ":" + _settings.jdbcPort() + "/mysql",
-                _settings.jdbcDriver(), settings.dbSID(), _settings.dbPWD() );
+        _db = new DBConnection( "jdbc:" + settings.dbMS() + 
+                                "://" + _settings.dbHost() + 
+                                ":" + _settings.dbPort() + 
+                                "/" + _settings.dbName(),
+                                _settings.dbDriver(), _settings.dbUser(), _settings.dbPwd() );
         try {
             _db.connectToDB();
         } catch ( Exception e ) {
@@ -46,7 +49,7 @@ public class QueueDBConnection {
      */
     public ResultSet experimentList() {
         try {
-            return _db.selectData( "select * from " + _settings.dbName() + ".Experiment" );
+            return _db.selectData( "select * from Experiment" );
         } catch ( Exception e ) {
             return null;
         }
@@ -57,7 +60,7 @@ public class QueueDBConnection {
      */
     public ResultSet passList() {
         try {
-            return _db.selectData( "select * from " + _settings.dbName() + ".Pass" );
+            return _db.selectData( "select * from Pass" );
         } catch ( Exception e ) {
             return null;
         }
@@ -68,7 +71,7 @@ public class QueueDBConnection {
      */
     public ResultSet jobList() {
         try {
-            return _db.selectData( "select * from " + _settings.dbName() + ".Job" );
+            return _db.selectData( "select * from Job" );
         } catch ( Exception e ) {
             System.out.println( e.getMessage() );
             return null;
@@ -80,7 +83,7 @@ public class QueueDBConnection {
      */
     public ResultSet passTypeList() {
         try {
-            return _db.selectData( "select * from " + _settings.dbName() + ".PassType" );
+            return _db.selectData( "select * from PassType" );
         } catch ( Exception e ) {
             return null;
         }
@@ -91,7 +94,7 @@ public class QueueDBConnection {
      */
     public ResultSet jobStatusList() {
         try {
-            return _db.selectData( "select * from " + _settings.dbName() + ".JobStatus" );
+            return _db.selectData( "select * from JobStatus" );
         } catch ( Exception e ) {
             return null;
         }
@@ -99,7 +102,7 @@ public class QueueDBConnection {
     
     public ResultSet slotList() {
         try {
-            return _db.selectData( "select * from " + _settings.dbName() + ".Slot" );
+            return _db.selectData( "select * from Slot" );
         } catch ( Exception e ) {
             return null;
         }
@@ -107,7 +110,7 @@ public class QueueDBConnection {
     
     public ResultSet moduleList() {
         try {
-            return _db.selectData( "select * from " + _settings.dbName() + ".Module" );
+            return _db.selectData( "select * from Module" );
         } catch ( Exception e ) {
             return null;
         }
@@ -115,7 +118,7 @@ public class QueueDBConnection {
     
     public ResultSet experimentAndModuleList() {
         try {
-            return _db.selectData( "select * from " + _settings.dbName() + ".ExperimentAndModule" );
+            return _db.selectData( "select * from ExperimentAndModule" );
         } catch ( Exception e ) {
             return null;
         }
@@ -123,7 +126,7 @@ public class QueueDBConnection {
     
     public ResultSet experimentStatusList() {
         try {
-            return _db.selectData( "select * from " + _settings.dbName() + ".ExperimentStatus" );
+            return _db.selectData( "select * from ExperimentStatus" );
         } catch ( Exception e ) {
             return null;
         }
@@ -131,7 +134,7 @@ public class QueueDBConnection {
     
     public ResultSet versionHistoryList() {
         try {
-            return _db.selectData( "select * from " + _settings.dbName() + ".VersionHistory" );
+            return _db.selectData( "select * from VersionHistory" );
         } catch ( Exception e ) {
             return null;
         }
@@ -142,7 +145,7 @@ public class QueueDBConnection {
      */
     public ResultSet jobListLimited( String limitation ) {
         try {
-            return _db.selectData( "select * from " + _settings.dbName() + ".Job where " + limitation );
+            return _db.selectData( "select * from Job where " + limitation );
         } catch ( Exception e ) {
             return null;
         }
@@ -169,13 +172,13 @@ public class QueueDBConnection {
         if ( !this.connected() )
             return false;
         try {
-        int updateCount = _db.updateData( "insert into " + _settings.dbName() + 
-                        ".Experiment (code, number, statusID, directory, vexfile) values("
-                + " \"" + name + "\","
-                + " \"" + number.toString() + "\","
-                + " \"" + statusId.toString() + "\","
-                + " \"" + directory + "\","
-                + " \"" + vexFileName + "\" )" );
+        int updateCount = _db.updateData( "insert into " + 
+                        "Experiment (code, number, statusID, directory, vexfile) values("
+                + " \'" + name + "\',"
+                + " \'" + number.toString() + "\',"
+                + " \'" + statusId.toString() + "\',"
+                + " \'" + directory + "\',"
+                + " \'" + vexFileName + "\' )" );
         if ( updateCount > 0 )
             return true;
         else
@@ -194,11 +197,11 @@ public class QueueDBConnection {
         if ( !this.connected() )
             return false;
         try {
-        int updateCount = _db.updateData( "insert into " + _settings.dbName() + 
-                        ".Pass (experimentID, passName, passTypeID) values("
-                + " \"" + experimentId.toString() + "\","
-                + " \"" + name + "\","
-                + " \"" + typeId.toString() + "\" )" );
+        int updateCount = _db.updateData( "insert into " + 
+                        "Pass (experimentID, passName, passTypeID) values("
+                + " \'" + experimentId.toString() + "\',"
+                + " \'" + name + "\',"
+                + " \'" + typeId.toString() + "\' )" );
         if ( updateCount > 0 )
             return true;
         else
@@ -218,17 +221,17 @@ public class QueueDBConnection {
         if ( !this.connected() )
             return false;
         try {
-        int updateCount = _db.updateData( "insert into " + _settings.dbName() + 
-                        ".Job (passID, jobNumber, jobStart, jobDuration, inputFile, difxVersion, numAntennas, numForeign, statusID) values("
-                + " \"" + passId.toString() + "\","
-                + " \"" + jobNumber.toString() + "\","
-                + " \"" + jobStart.toString() + "\","
-                + " \"" + jobDuration.toString() + "\","
-                + " \"" + inputFile + "\","
-                + " \"" + difxVersion + "\","
-                + " \"" + numAntennas.toString() + "\","
-                + " \"" + numForeign.toString() + "\","
-                + " \"" + statusId.toString() + "\" )" );
+        int updateCount = _db.updateData( "insert into " + 
+                        "Job (passID, jobNumber, jobStart, jobDuration, inputFile, difxVersion, numAntennas, numForeign, statusID) values("
+                + " \'" + passId.toString() + "\',"
+                + " \'" + jobNumber.toString() + "\',"
+                + " \'" + jobStart.toString() + "\',"
+                + " \'" + jobDuration.toString() + "\',"
+                + " \'" + inputFile + "\',"
+                + " \'" + difxVersion + "\',"
+                + " \'" + numAntennas.toString() + "\',"
+                + " \'" + numForeign.toString() + "\',"
+                + " \'" + statusId.toString() + "\' )" );
         if ( updateCount > 0 )
             return true;
         else
@@ -248,9 +251,9 @@ public class QueueDBConnection {
         if ( id == null )
             return;
         try {
-            _db.updateData( "delete from " + _settings.dbName() + 
-                    ".Experiment"
-                    + " where id = \"" + id.toString() + "\"" );
+            _db.updateData( "delete from " + 
+                    "Experiment"
+                    + " where id = \'" + id.toString() + "\'" );
         } catch ( Exception e ) {
             java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
         }
@@ -265,9 +268,9 @@ public class QueueDBConnection {
         if ( id == null )
             return;
         try {
-            _db.updateData( "delete from " + _settings.dbName() + 
-                    ".Pass"
-                    + " where id = \"" + id.toString() + "\"" );
+            _db.updateData( "delete from " + 
+                    "Pass"
+                    + " where id = \'" + id.toString() + "\'" );
         } catch ( Exception e ) {
             java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
         }
@@ -282,9 +285,9 @@ public class QueueDBConnection {
         if ( id == null )
             return;
         try {
-            _db.updateData( "delete from " + _settings.dbName() + 
-                    ".Job"
-                    + " where id = \"" + id.toString() + "\"" );
+            _db.updateData( "delete from " + 
+                    "Job"
+                    + " where id = \'" + id.toString() + "\'" );
         } catch ( Exception e ) {
             java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
         }
@@ -299,9 +302,9 @@ public class QueueDBConnection {
         if ( id == null )
             return 0;
         try {
-            return _db.updateData( "update " + _settings.dbName()
-                    +  ".Experiment set " + param + " = \"" + setting + "\""
-                    + " where id = \"" + id.toString() + "\"" );
+            return _db.updateData( "update "
+                    +  "Experiment set " + param + " = \'" + setting + "\'"
+                    + " where id = \'" + id.toString() + "\'" );
         } catch ( Exception e ) {
             java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
             return 0;
@@ -317,9 +320,9 @@ public class QueueDBConnection {
         if ( id == null )
             return 0;
         try {
-            return _db.updateData( "update " + _settings.dbName()
-                    +  ".Pass set " + param + " = \"" + setting + "\""
-                    + " where id = \"" + id.toString() + "\"" );
+            return _db.updateData( "update "
+                    +  "Pass set " + param + " = \'" + setting + "\'"
+                    + " where id = \'" + id.toString() + "\'" );
         } catch ( Exception e ) {
             java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
             return 0;
@@ -335,9 +338,9 @@ public class QueueDBConnection {
         if ( id == null )
             return 0;
         try {
-            return _db.updateData( "update " + _settings.dbName()
-                    +  ".Job set " + param + " = \"" + setting + "\""
-                    + " where id = \"" + id.toString() + "\"" );
+            return _db.updateData( "update "
+                    +  "Job set " + param + " = \'" + setting + "\'"
+                    + " where id = \'" + id.toString() + "\'" );
         } catch ( Exception e ) {
             java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
             return 0;

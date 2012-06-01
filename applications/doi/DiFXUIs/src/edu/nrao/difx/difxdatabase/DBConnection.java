@@ -171,7 +171,8 @@ public class DBConnection
     public ResultSet selectData(String query) throws Exception {
 
         try {
-            Statement stmt = mConnection.createStatement();
+            Statement stmt = mConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
             ResultSet rs = stmt.executeQuery(query);
             return rs;
         } catch (Exception e) {
@@ -191,7 +192,7 @@ public class DBConnection
     public int insertData(String statement) throws Exception {
         // Create and execute insert statement into jobsTable
         try {
-            Statement stmt = mConnection.createStatement();
+            Statement stmt = mConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE );
             int insertCount = stmt.executeUpdate(statement);
             return insertCount;
         } catch (Exception e) {
@@ -211,7 +212,7 @@ public class DBConnection
     public int updateData(String statement) throws Exception {
         // Create and execute update statement into jobsTable
         try {
-            Statement stmt = mConnection.createStatement();
+            Statement stmt = mConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE );
 
             // execute the insert statement
             int updateCount = stmt.executeUpdate(statement);
@@ -238,7 +239,7 @@ public class DBConnection
 
         try {
             if (mConnection != null) {
-                testStatement = mConnection.createStatement();
+                testStatement = mConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE );
                 testStatement.executeQuery(testQuery);
                 result = true;
             }
