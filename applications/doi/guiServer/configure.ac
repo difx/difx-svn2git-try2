@@ -10,7 +10,7 @@ AC_LANG(C++)
 AC_CHECK_LIB(pthread, pthread_create,,[AC_MSG_ERROR("need libpthread")])
 PKG_CHECK_MODULES(DIFXMESSAGE, [difxmessage >= 2.2.0])
 
-LIBS="${LIBS} ${DIFXMESSAGE_LIBS}"
+LIBS="${LIBS} `pkg-config --variable=StaticLibs difxmessage`"
 CXXFLAGS="${CXXFLAGS} ${DIFXMESSAGE_CFLAGS}"
 
 echo "CXXFLAGS= ${CXXFLAGS}"
