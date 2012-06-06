@@ -103,7 +103,7 @@ public class DiFXUI extends JFrame implements WindowListener {
         //  The data model needs to know when changes are made to database settings.
         _systemSettings.databaseChangeListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                _dataModel.updataDatabaseFromSystemSettings();
+//                _dataModel.updataDatabaseFromSystemSettings();
             }
         } );
         

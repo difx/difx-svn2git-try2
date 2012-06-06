@@ -7,9 +7,14 @@
  */
 package edu.nrao.difx.difxdatabase;
 
-import java.sql.ResultSet;
-
 import edu.nrao.difx.difxview.SystemSettings;
+
+import java.sql.ResultSet;
+import java.sql.DriverManager;
+import java.sql.Connection;
+import java.sql.Statement;
+import java.sql.Driver;
+import java.sql.PreparedStatement;
 
 /**
  *
@@ -21,27 +26,48 @@ public class QueueDBConnection {
         _settings = settings;
         //  Don't connect to the database if the user is not using it!
         if ( !_settings.useDatabase() ) {
-            _db = null;
+            _dbConnection = null;
             return;
         }
-        _db = new DBConnection( "jdbc:" + settings.dbMS() + 
-                                "://" + _settings.dbHost() + 
-                                ":" + _settings.dbPort() + 
-                                "/" + _settings.dbName(),
-                                _settings.dbDriver(), _settings.dbUser(), _settings.dbPwd() );
         try {
-            _db.connectToDB();
-        } catch ( Exception e ) {
+            Class driverClass = Class.forName( _settings.dbDriver() );
+
+            DriverManager.registerDriver( (Driver)driverClass.newInstance() );
+
+            _dbConnection = DriverManager.getConnection( _settings.dbURL(), _settings.dbUser(), _settings.dbPwd() );
+            _dbConnection.setAutoCommit( true );
+
+        } catch ( java.sql.SQLException e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "SQL Exception during connection to database [" + e.getMessage() + "]" );
+        } catch (ClassNotFoundException e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to find database driver [" + e.getMessage() + "]" );
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to connect to database [" + e.getMessage() + "]" );
         }
     }
     
+   /**
+    * Closes the database connection
+    */
+    public void close() {
+        try {
+            if (_dbConnection != null) {
+                _dbConnection.close();
+            }
+        } catch ( Exception e ) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    e.getMessage() );
+        }
+    }
+
     /*
      * Return whether we are actually connected to the database.
      */
     public boolean connected() {
-        if ( _db == null )
-            return false;
-        return _db.connected();
+        return _dbConnection != null;
     }
     
     /*
@@ -49,8 +75,12 @@ public class QueueDBConnection {
      */
     public ResultSet experimentList() {
         try {
-            return _db.selectData( "select * from Experiment" );
-        } catch ( Exception e ) {
+            Statement stmt = _dbConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            return stmt.executeQuery( "select * from Experiment" );
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to select data from Experiment database [ " + e.getMessage() + "]" );
             return null;
         }
     }
@@ -60,8 +90,12 @@ public class QueueDBConnection {
      */
     public ResultSet passList() {
         try {
-            return _db.selectData( "select * from Pass" );
-        } catch ( Exception e ) {
+            Statement stmt = _dbConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            return stmt.executeQuery( "select * from Pass" );
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to select data from Pass database [ " + e.getMessage() + "]" );
             return null;
         }
     }
@@ -71,9 +105,12 @@ public class QueueDBConnection {
      */
     public ResultSet jobList() {
         try {
-            return _db.selectData( "select * from Job" );
-        } catch ( Exception e ) {
-            System.out.println( e.getMessage() );
+            Statement stmt = _dbConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            return stmt.executeQuery( "select * from Job" );
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to select data from Job database [ " + e.getMessage() + "]" );
             return null;
         }
     }
@@ -83,8 +120,12 @@ public class QueueDBConnection {
      */
     public ResultSet passTypeList() {
         try {
-            return _db.selectData( "select * from PassType" );
-        } catch ( Exception e ) {
+            Statement stmt = _dbConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            return stmt.executeQuery( "select * from PassType" );
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to select data from PassType database [ " + e.getMessage() + "]" );
             return null;
         }
     }
@@ -94,59 +135,72 @@ public class QueueDBConnection {
      */
     public ResultSet jobStatusList() {
         try {
-            return _db.selectData( "select * from JobStatus" );
-        } catch ( Exception e ) {
+            Statement stmt = _dbConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            return stmt.executeQuery( "select * from JobStatus" );
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to select data from JobStatus database [ " + e.getMessage() + "]" );
             return null;
         }
     }
     
     public ResultSet slotList() {
         try {
-            return _db.selectData( "select * from Slot" );
-        } catch ( Exception e ) {
+            Statement stmt = _dbConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            return stmt.executeQuery( "select * from Slot" );
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to select data from Slot database [ " + e.getMessage() + "]" );
             return null;
         }
     }
     
     public ResultSet moduleList() {
         try {
-            return _db.selectData( "select * from Module" );
-        } catch ( Exception e ) {
+            Statement stmt = _dbConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            return stmt.executeQuery( "select * from Module" );
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to select data from Module database [ " + e.getMessage() + "]" );
             return null;
         }
     }
     
     public ResultSet experimentAndModuleList() {
         try {
-            return _db.selectData( "select * from ExperimentAndModule" );
-        } catch ( Exception e ) {
+            Statement stmt = _dbConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            return stmt.executeQuery( "select * from ExperimentAndModule" );
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to select data from ExperimentAndModule database [ " + e.getMessage() + "]" );
             return null;
         }
     }
     
     public ResultSet experimentStatusList() {
         try {
-            return _db.selectData( "select * from ExperimentStatus" );
-        } catch ( Exception e ) {
+            Statement stmt = _dbConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            return stmt.executeQuery( "select * from ExperimentStatus" );
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to select data from ExperimentStatus database [ " + e.getMessage() + "]" );
             return null;
         }
     }
     
     public ResultSet versionHistoryList() {
         try {
-            return _db.selectData( "select * from VersionHistory" );
-        } catch ( Exception e ) {
-            return null;
-        }
-    }
-    
-    /*
-     * Generate a list of all jobs in the data base with the given limitation.
-     */
-    public ResultSet jobListLimited( String limitation ) {
-        try {
-            return _db.selectData( "select * from Job where " + limitation );
-        } catch ( Exception e ) {
+            Statement stmt = _dbConnection.createStatement( ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            return stmt.executeQuery( "select * from VersionHistory" );
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to select data from VersionHistory database [ " + e.getMessage() + "]" );
             return null;
         }
     }
@@ -156,8 +210,15 @@ public class QueueDBConnection {
      */
     public ResultSet jobListByPassId( int passId ) {
         try {
-            return jobListLimited( "passID = " + passId );
-        } catch ( Exception e ) {
+            PreparedStatement stmt = _dbConnection.prepareStatement( 
+                    "SELECT * FROM Job where passID = ?",
+                    ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            stmt.setLong( 1, passId );
+            return stmt.executeQuery();
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to select data from database [ " + e.getMessage() + "]" );
             return null;
         }
     }
@@ -172,19 +233,22 @@ public class QueueDBConnection {
         if ( !this.connected() )
             return false;
         try {
-        int updateCount = _db.updateData( "insert into " + 
-                        "Experiment (code, number, statusID, directory, vexfile) values("
-                + " \'" + name + "\',"
-                + " \'" + number.toString() + "\',"
-                + " \'" + statusId.toString() + "\',"
-                + " \'" + directory + "\',"
-                + " \'" + vexFileName + "\' )" );
-        if ( updateCount > 0 )
-            return true;
-        else
-            return false;
-        } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            PreparedStatement stmt = _dbConnection.prepareStatement( 
+                    "INSERT INTO Experiment (code, number, statusID, directory, vexfile) VALUES(?, ?, ?, ?, ?)",
+                    ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            stmt.setString( 1, name );
+            stmt.setLong( 2, number );
+            stmt.setLong( 3, statusId );
+            stmt.setString( 4, directory );
+            stmt.setString( 5, vexFileName );
+            if ( stmt.executeUpdate() > 0 )
+                return true;
+            else
+                return false;
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to insert new experiment \"" + name + "\" in Experiment database [ " + e.getMessage() + "]" );
             return false;
         }
     }
@@ -197,17 +261,20 @@ public class QueueDBConnection {
         if ( !this.connected() )
             return false;
         try {
-        int updateCount = _db.updateData( "insert into " + 
-                        "Pass (experimentID, passName, passTypeID) values("
-                + " \'" + experimentId.toString() + "\',"
-                + " \'" + name + "\',"
-                + " \'" + typeId.toString() + "\' )" );
-        if ( updateCount > 0 )
-            return true;
-        else
-            return false;
-        } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            PreparedStatement stmt = _dbConnection.prepareStatement( 
+                    "INSERT INTO Pass (experimentID, passName, passTypeID) VALUES(?, ?, ?)",
+                    ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            stmt.setLong( 1, experimentId );
+            stmt.setString( 2, name );
+            stmt.setLong( 3, typeId );
+            if ( stmt.executeUpdate() > 0 )
+                return true;
+            else
+                return false;
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to insert new pass \"" + name + "\" in Pass database [" + e.getMessage() + "]" );
             return false;
         }
     }
@@ -221,23 +288,26 @@ public class QueueDBConnection {
         if ( !this.connected() )
             return false;
         try {
-        int updateCount = _db.updateData( "insert into " + 
-                        "Job (passID, jobNumber, jobStart, jobDuration, inputFile, difxVersion, numAntennas, numForeign, statusID) values("
-                + " \'" + passId.toString() + "\',"
-                + " \'" + jobNumber.toString() + "\',"
-                + " \'" + jobStart.toString() + "\',"
-                + " \'" + jobDuration.toString() + "\',"
-                + " \'" + inputFile + "\',"
-                + " \'" + difxVersion + "\',"
-                + " \'" + numAntennas.toString() + "\',"
-                + " \'" + numForeign.toString() + "\',"
-                + " \'" + statusId.toString() + "\' )" );
-        if ( updateCount > 0 )
-            return true;
-        else
-            return false;
-        } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            PreparedStatement stmt = _dbConnection.prepareStatement( 
+                    "INSERT INTO Job (passID, jobNumber, jobStart, jobDuration, inputFile, difxVersion, numAntennas, numForeign, statusID) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            stmt.setLong( 1, passId );
+            stmt.setLong( 2, jobNumber );
+            stmt.setDouble( 3, jobStart );
+            stmt.setDouble( 4, jobDuration );
+            stmt.setString( 5, inputFile );
+            stmt.setString( 6, difxVersion );
+            stmt.setLong( 7, numAntennas );
+            stmt.setLong( 8, numForeign );
+            stmt.setLong( 9, statusId );
+            if ( stmt.executeUpdate() > 0 )
+                return true;
+            else
+                return false;
+        } catch (Exception e) {
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to insert new Job \"" + name + "\" in Job database [" + e.getMessage() + "]" );
             return false;
         }
     }
@@ -251,11 +321,15 @@ public class QueueDBConnection {
         if ( id == null )
             return;
         try {
-            _db.updateData( "delete from " + 
-                    "Experiment"
-                    + " where id = \'" + id.toString() + "\'" );
+            PreparedStatement stmt = _dbConnection.prepareStatement(
+                    "DELETE FROM Experiment WHERE id = ?",
+                    ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            stmt.setLong( 1, id );
+            stmt.executeUpdate();
         } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to delete Experiment " + id.toString() + " from Experiment database [" + e.getMessage() + "]" );
         }
     }
     
@@ -268,11 +342,15 @@ public class QueueDBConnection {
         if ( id == null )
             return;
         try {
-            _db.updateData( "delete from " + 
-                    "Pass"
-                    + " where id = \'" + id.toString() + "\'" );
+            PreparedStatement stmt = _dbConnection.prepareStatement(
+                    "DELETE FROM Pass WHERE id = ?",
+                    ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            stmt.setLong( 1, id );
+            stmt.executeUpdate();
         } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to delete Pass " + id.toString() + " from Pass database [" + e.getMessage() + "]" );
         }
     }
     
@@ -285,11 +363,15 @@ public class QueueDBConnection {
         if ( id == null )
             return;
         try {
-            _db.updateData( "delete from " + 
-                    "Job"
-                    + " where id = \'" + id.toString() + "\'" );
+            PreparedStatement stmt = _dbConnection.prepareStatement(
+                    "DELETE FROM Job WHERE id = ?",
+                    ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            stmt.setLong( 1, id );
+            stmt.executeUpdate();
         } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to delete Job " + id.toString() + " from Job database [" + e.getMessage() + "]" );
         }
     }
     
@@ -302,11 +384,16 @@ public class QueueDBConnection {
         if ( id == null )
             return 0;
         try {
-            return _db.updateData( "update "
-                    +  "Experiment set " + param + " = \'" + setting + "\'"
-                    + " where id = \'" + id.toString() + "\'" );
+            PreparedStatement stmt = _dbConnection.prepareStatement(
+                    "UPDATE Experiment SET " + param + " = ? WHERE id = ?",
+                    ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            stmt.setString( 1, setting );
+            stmt.setLong( 2, id );
+            return stmt.executeUpdate();
         } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to update Experiment " + id.toString() + " with " + param + " = " + setting + " [" + e.getMessage() + "]" );
             return 0;
         }
     }
@@ -320,11 +407,16 @@ public class QueueDBConnection {
         if ( id == null )
             return 0;
         try {
-            return _db.updateData( "update "
-                    +  "Pass set " + param + " = \'" + setting + "\'"
-                    + " where id = \'" + id.toString() + "\'" );
+            PreparedStatement stmt = _dbConnection.prepareStatement(
+                    "UPDATE Pass SET " + param + " = ? WHERE id = ?",
+                    ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            stmt.setString( 1, setting );
+            stmt.setLong( 2, id );
+            return stmt.executeUpdate();
         } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE,
+                    "Failed to update Pass " + id.toString() + " with " + param + " = " + setting + " [" + e.getMessage() + "]" );
             return 0;
         }
     }
@@ -338,16 +430,21 @@ public class QueueDBConnection {
         if ( id == null )
             return 0;
         try {
-            return _db.updateData( "update "
-                    +  "Job set " + param + " = \'" + setting + "\'"
-                    + " where id = \'" + id.toString() + "\'" );
+            PreparedStatement stmt = _dbConnection.prepareStatement(
+                    "UPDATE Job SET " + param + " = ? WHERE id = ?",
+                    ResultSet.TYPE_SCROLL_INSENSITIVE, 
+                    ResultSet.CONCUR_UPDATABLE );
+            stmt.setString( 1, setting );
+            stmt.setLong( 2, id );
+            return stmt.executeUpdate();
         } catch ( Exception e ) {
-            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, null, e );
+            java.util.logging.Logger.getLogger( "global" ).log( java.util.logging.Level.SEVERE, 
+                    e.getMessage() );
             return 0;
         }
     }
     
-    DBConnection _db;
-    SystemSettings _settings;
+    protected Connection _dbConnection;
+    protected SystemSettings _settings;
     
 }

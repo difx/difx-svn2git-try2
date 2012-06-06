@@ -5,7 +5,6 @@
 package edu.nrao.difx.difxdatamodel;
 
 import edu.nrao.difx.difxview.SystemSettings;
-import edu.nrao.difx.difxdatabase.DBConnection;
 import edu.nrao.difx.difxdatamodel.DiFXSystemStatus.JobStates;
 import mil.navy.usno.widgetlib.MessageDisplayPanel;
 import edu.nrao.difx.xmllib.difxmessage.*;
@@ -40,7 +39,7 @@ public class DiFXDataModel {
     private List<JobProject> mJobsProjects = new ArrayList<JobProject>();
     private Queue mQueue = new Queue(this);
     //private DBConnection mDBConnection = null;
-    private DBConnection _dbConnection;
+    //private DBConnection _dbConnection;
     private List<Object> mListeners = Collections.synchronizedList(new ArrayList<Object>());
     //  Listeners for different types of incoming data
     EventListenerList _hardwareMessageListeners;
@@ -60,7 +59,7 @@ public class DiFXDataModel {
         _hardwareMessageListeners = new EventListenerList();
         _jobMessageListeners = new EventListenerList();
         _systemSettings = newSettings;
-        updateFromSystemSettings();
+//        updateFromSystemSettings();
     }
 
 //    public void setDBConnection() {
@@ -71,15 +70,15 @@ public class DiFXDataModel {
     /*
      * Alter things based on changed system settings.
      */
-    private void updateFromSystemSettings() {
-        updataDatabaseFromSystemSettings();
-        //readResourcesConfig( _systemSettings.resourcesFile() );
-    }
-    
-    public void updataDatabaseFromSystemSettings() {
-        _dbConnection = new edu.nrao.difx.difxdatabase.DBConnection( _systemSettings.dbURL(), _systemSettings.dbDriver(),
-                _systemSettings.dbUser(), _systemSettings.dbPwd() );
-    }
+//    private void updateFromSystemSettings() {
+//        updataDatabaseFromSystemSettings();
+//        //readResourcesConfig( _systemSettings.resourcesFile() );
+//    }
+//    
+//    public void updataDatabaseFromSystemSettings() {
+//        _dbConnection = new edu.nrao.difx.difxdatabase.DBConnection( _systemSettings.dbURL(), _systemSettings.dbDriver(),
+//                _systemSettings.dbUser(), _systemSettings.dbPwd() );
+//    }
 
     public void addHardwareMessageListener( AttributedMessageListener a ) {
         _hardwareMessageListeners.add( AttributedMessageListener.class, a );
@@ -451,9 +450,9 @@ public class DiFXDataModel {
     }
 
     // Queue get/set methods
-    public DBConnection dbConnection() {
-        return _dbConnection;
-    }
+//    public DBConnection dbConnection() {
+//        return _dbConnection;
+//    }
 
 //    public void setDBConnection(DBConnection newDBConnection) {
 //        this.mDBConnection = newDBConnection;
@@ -664,7 +663,7 @@ public class DiFXDataModel {
                         // job was started locally, update the database
                         if (job.isStarted()) {
                             // update DB and spit out alert message
-                            postUpdatesToDatabase(job);
+//                            postUpdatesToDatabase(job);
                             String stateString = difxMsg.getBody().getDifxStatus().getState();
                             Calendar cal = Calendar.getInstance();
                             SimpleDateFormat sdf = new SimpleDateFormat(DiFXSystemConfig.DATE_TIME_FORMAT);
@@ -1554,195 +1553,195 @@ public class DiFXDataModel {
 //        //System.out.printf("******** Data model read resources config file complete. \n");
 //    }
 
-    public int loadQueueFromDatabase() throws Exception {
-
-        // maintain count
-        mRecCount = 0;
-
-        // Connect to DB
-        _dbConnection.connectToDB();
-
-        // get all data from DIFXQUEUE
-        // ResultSet rs = mDBConnection.selectData("select * from DIFXQUEUE where INPUT_FILE like \'%.input\' and STATUS != \'COMPLETE\' order by PRIORITY, JOB_START ASC");
-        //ResultSet rs = _dbConnection.selectData("select * from vDOIQueue ");
-        ResultSet jobInfo = _dbConnection.selectData( "select * from difxdb.Job" );
-        ResultSet jobStatusInfo = _dbConnection.selectData( "select * from difxdb.JobStatus" );
-        ResultSet passTypeInfo = _dbConnection.selectData( "select * from difxdb.PassType" );
-        // fetch each row from the result set
-        while (jobInfo.next()) {
-            mRecCount++;
-            //String proposal = jobInfo.getString("PROPOSAL");
-            //  This is now "Experiment"...
-            //String proposal = jobInfo.getString("code");
-            //Integer experimentId = new Integer( 
-            //ResultSet expInfo = _dbConnection.selectData( "select code from difxdb.Experiment where id=\'"
-            //        + Integer( jobInfo.getInt( "code)"\'" );
-            String segment = "";
-            //if (jobInfo.getString("SEGMENT") != null)
-            //if (jobInfo.getString("segment") != null) {
-                //segment = jobInfo.getString("SEGMENT");
-                //segment = jobInfo.getString("segment");
-            //}
-
-            Integer passId = jobInfo.getInt( "passID" );
-            ResultSet passInfo = _dbConnection.selectData( "select experimentID, passName from difxdb.Pass where id="
-                    + passId.toString() );
-            String jobPass = "unknown";
-            String proposal = "unknown";
-            if ( passInfo.next() ) {
-                jobPass = passInfo.getString( "passName" );
-                Integer experimentId = passInfo.getInt( "experimentID" );
-                ResultSet expInfo = _dbConnection.selectData( "select code from difxdb.Experiment where id="
-                        + experimentId.toString() );
-                if ( expInfo.next() )
-                    proposal = expInfo.getString( "code" );
-            }
-            int jobNumber = jobInfo.getInt("jobNumber");
-            int priority = jobInfo.getInt("priority");
-            long jobStart = jobInfo.getLong("jobStart");
-            long jobStop = jobInfo.getLong("jobStart");
-            //  long   jobStart  = (jobInfo.getDate("jobStart")).getTime();
-            //  long   jobStop   = (jobInfo.getDate("jobStart")).getTime();
-            float speedUp = jobInfo.getFloat("speedupFactor");
-            String inputFile = jobInfo.getString("inputFile");
-            String status = jobInfo.getString("statusID");
-            int numAnt = jobInfo.getInt("numAntennas");
-
-            // Create DOI message and service the data model
-            ObjectFactory factory = new ObjectFactory();
-            Header header = factory.createHeader();
-            header.setFrom("DOIView");
-            header.setTo("DOIModel");
-            header.setMpiProcessId("0");
-            header.setIdentifier("doi");
-            header.setType("DOIMessage");
-
-            // Service the datamodel with project data
-            String projectName = proposal;
-            int last_slash = inputFile.lastIndexOf("/");
-            String projectPath = inputFile.substring(0, last_slash);
-
-            // fill in the project data
-            DoiProject project = factory.createDoiProject();
-            project.setProjectName(projectName);
-            project.setProjectPath(projectPath);
-
-            // set project data into the body
-            Body body = factory.createBody();
-            body.setDoiProject(project);
-
-            // create only one DifxMessage, fill in header and set project data into body
-            DifxMessage difxMsg = factory.createDifxMessage();
-            difxMsg.setHeader(header);
-            difxMsg.setBody(body);
-
-            // process the message
-            serviceDataModel(difxMsg);
-            body.setDoiProject(null);
-            body = null;
-            project = null;
-
-            // Service the datamodel with job data
-            int last_dot = inputFile.lastIndexOf(".");
-            String jobName = inputFile.substring(last_slash + 1, last_dot);
-
-            // fill in the job data
-            DoiJob job = factory.createDoiJob();
-            job.setJobName(jobName);
-            job.setJobPath(projectPath);  // -- project path is the job path
-            job.setProjectName(projectName);
-            job.setProjectPath(projectPath);
-            job.setSegment(segment);
-            job.setJobPass(jobPass);
-            job.setJobNumber(jobNumber);
-            job.setPriority(priority);
-            job.setActualSpeedUp(0.0f);
-            job.setPredictedSpeedUp(speedUp);
-            job.setStatus(status);
-            job.setJobStartTimeMJD(jobStart);
-            job.setJobStopTimeMJD(jobStop);
-            job.setNumAntennas((byte) numAnt);
-            job.setDbJob(true);
-
-            // set job data into the body
-            body = factory.createBody();
-            body.setDoiJob(job);
-            difxMsg.setBody(body);
-
-            // process the message
-            serviceDataModel(difxMsg);
-            body.setDoiJob(null);
-            body = null;
-            job = null;
-
-            // Service the data model with job project relationshop
-
-            // fill in job project relationship data
-            DoiJobProject jobProj = factory.createDoiJobProject();
-            jobProj.setJobName(jobName);
-            jobProj.setProjectName(projectPath);   // use complete project name, include path
-            jobProj.setOption("Insert");
-
-            // set job project data into the body
-            body = factory.createBody();
-            body.setDoiJobProject(jobProj);
-            difxMsg.setBody(body);
-
-            // process the message
-            serviceDataModel(difxMsg);
-            body.setDoiJobProject(null);
-            body = null;
-            jobProj = null;
-
-        } // --  while (jobInfo.next())
-
-        // Close DB connection
-        _dbConnection.close();
-        return mRecCount;
-    }
-
-    public void postUpdatesToDatabase(Job job) throws Exception {
-
-        if ((job != null) && (job.isDbJob())) {
-            _dbConnection.connectToDB();
-
-            // -- Update queue data
-            int updateData = _dbConnection.updateData("update DIFXQUEUE set STATUS = "
-                    + "\'" + job.getStateString() + "\'"
-                    + "where INPUT_FILE = "
-                    + "\'" + job.getInputFile() + "\'");
-
-            // get output file size in KBytes
-            String fname = job.getOutputFile();
-            File file = new File(fname);
-            long fsize = file.length();
-
-            SimpleDateFormat formatter = new SimpleDateFormat("dd-MMM-yyyy HH:mm:ss");
-
-            Date dStart = new Date(job.getCorrelationStartUTC());
-            Date dStop = new Date(job.getCorrelationStopUTC());
-            String start = formatter.format(dStart);
-            String stop = formatter.format(dStop);
-
-            // -- Insert log data
-            _dbConnection.insertData("insert into DIFXLOG (PROPOSAL, SEGMENT, JOB_PASS, JOB_NUMBER, CORR_START, CORR_STOP, SPEEDUP, INPUT_FILE, OUTPUT_FILE, OUTPUT_SIZE, CORR_STATUS) values ("
-                    + "\'" + job.getProjectName() + "\', "
-                    + "\'" + job.getSegment().trim() + "\', "
-                    + "\'" + job.getJobPass() + "\', "
-                    + "" + job.getJobNumber() + ",   "
-                    + "TO_DATE(  \'" + start + "\', \'DD-MON-YYYY HH24:MI:SS\' ), "
-                    + "TO_DATE(  \'" + stop + "\', \'DD-MON-YYYY HH24:MI:SS\' ), "
-                    + "" + job.getPredictedSpeedUp() + ", "
-                    + "\'" + job.getInputFile() + "\', "
-                    + "\'" + job.getOutputFile() + "\', "
-                    + "" + fsize + ",   "
-                    + "\'" + job.getStateString() + "\'  "
-                    + ")");
-
-            _dbConnection.close();
-
-        } // -- if ( (job != null) && (job.isDbJob()) )
-    }
+//    public int loadQueueFromDatabase() throws Exception {
+//
+//        // maintain count
+//        mRecCount = 0;
+//
+//        // Connect to DB
+//        _dbConnection.connectToDB();
+//
+//        // get all data from DIFXQUEUE
+//        // ResultSet rs = mDBConnection.selectData("select * from DIFXQUEUE where INPUT_FILE like \'%.input\' and STATUS != \'COMPLETE\' order by PRIORITY, JOB_START ASC");
+//        //ResultSet rs = _dbConnection.selectData("select * from vDOIQueue ");
+//        ResultSet jobInfo = _dbConnection.selectData( "select * from difxdb.Job" );
+//        ResultSet jobStatusInfo = _dbConnection.selectData( "select * from difxdb.JobStatus" );
+//        ResultSet passTypeInfo = _dbConnection.selectData( "select * from difxdb.PassType" );
+//        // fetch each row from the result set
+//        while (jobInfo.next()) {
+//            mRecCount++;
+//            //String proposal = jobInfo.getString("PROPOSAL");
+//            //  This is now "Experiment"...
+//            //String proposal = jobInfo.getString("code");
+//            //Integer experimentId = new Integer( 
+//            //ResultSet expInfo = _dbConnection.selectData( "select code from difxdb.Experiment where id=\'"
+//            //        + Integer( jobInfo.getInt( "code)"\'" );
+//            String segment = "";
+//            //if (jobInfo.getString("SEGMENT") != null)
+//            //if (jobInfo.getString("segment") != null) {
+//                //segment = jobInfo.getString("SEGMENT");
+//                //segment = jobInfo.getString("segment");
+//            //}
+//
+//            Integer passId = jobInfo.getInt( "passID" );
+//            ResultSet passInfo = _dbConnection.selectData( "select experimentID, passName from difxdb.Pass where id="
+//                    + passId.toString() );
+//            String jobPass = "unknown";
+//            String proposal = "unknown";
+//            if ( passInfo.next() ) {
+//                jobPass = passInfo.getString( "passName" );
+//                Integer experimentId = passInfo.getInt( "experimentID" );
+//                ResultSet expInfo = _dbConnection.selectData( "select code from difxdb.Experiment where id="
+//                        + experimentId.toString() );
+//                if ( expInfo.next() )
+//                    proposal = expInfo.getString( "code" );
+//            }
+//            int jobNumber = jobInfo.getInt("jobNumber");
+//            int priority = jobInfo.getInt("priority");
+//            long jobStart = jobInfo.getLong("jobStart");
+//            long jobStop = jobInfo.getLong("jobStart");
+//            //  long   jobStart  = (jobInfo.getDate("jobStart")).getTime();
+//            //  long   jobStop   = (jobInfo.getDate("jobStart")).getTime();
+//            float speedUp = jobInfo.getFloat("speedupFactor");
+//            String inputFile = jobInfo.getString("inputFile");
+//            String status = jobInfo.getString("statusID");
+//            int numAnt = jobInfo.getInt("numAntennas");
+//
+//            // Create DOI message and service the data model
+//            ObjectFactory factory = new ObjectFactory();
+//            Header header = factory.createHeader();
+//            header.setFrom("DOIView");
+//            header.setTo("DOIModel");
+//            header.setMpiProcessId("0");
+//            header.setIdentifier("doi");
+//            header.setType("DOIMessage");
+//
+//            // Service the datamodel with project data
+//            String projectName = proposal;
+//            int last_slash = inputFile.lastIndexOf("/");
+//            String projectPath = inputFile.substring(0, last_slash);
+//
+//            // fill in the project data
+//            DoiProject project = factory.createDoiProject();
+//            project.setProjectName(projectName);
+//            project.setProjectPath(projectPath);
+//
+//            // set project data into the body
+//            Body body = factory.createBody();
+//            body.setDoiProject(project);
+//
+//            // create only one DifxMessage, fill in header and set project data into body
+//            DifxMessage difxMsg = factory.createDifxMessage();
+//            difxMsg.setHeader(header);
+//            difxMsg.setBody(body);
+//
+//            // process the message
+//            serviceDataModel(difxMsg);
+//            body.setDoiProject(null);
+//            body = null;
+//            project = null;
+//
+//            // Service the datamodel with job data
+//            int last_dot = inputFile.lastIndexOf(".");
+//            String jobName = inputFile.substring(last_slash + 1, last_dot);
+//
+//            // fill in the job data
+//            DoiJob job = factory.createDoiJob();
+//            job.setJobName(jobName);
+//            job.setJobPath(projectPath);  // -- project path is the job path
+//            job.setProjectName(projectName);
+//            job.setProjectPath(projectPath);
+//            job.setSegment(segment);
+//            job.setJobPass(jobPass);
+//            job.setJobNumber(jobNumber);
+//            job.setPriority(priority);
+//            job.setActualSpeedUp(0.0f);
+//            job.setPredictedSpeedUp(speedUp);
+//            job.setStatus(status);
+//            job.setJobStartTimeMJD(jobStart);
+//            job.setJobStopTimeMJD(jobStop);
+//            job.setNumAntennas((byte) numAnt);
+//            job.setDbJob(true);
+//
+//            // set job data into the body
+//            body = factory.createBody();
+//            body.setDoiJob(job);
+//            difxMsg.setBody(body);
+//
+//            // process the message
+//            serviceDataModel(difxMsg);
+//            body.setDoiJob(null);
+//            body = null;
+//            job = null;
+//
+//            // Service the data model with job project relationshop
+//
+//            // fill in job project relationship data
+//            DoiJobProject jobProj = factory.createDoiJobProject();
+//            jobProj.setJobName(jobName);
+//            jobProj.setProjectName(projectPath);   // use complete project name, include path
+//            jobProj.setOption("Insert");
+//
+//            // set job project data into the body
+//            body = factory.createBody();
+//            body.setDoiJobProject(jobProj);
+//            difxMsg.setBody(body);
+//
+//            // process the message
+//            serviceDataModel(difxMsg);
+//            body.setDoiJobProject(null);
+//            body = null;
+//            jobProj = null;
+//
+//        } // --  while (jobInfo.next())
+//
+//        // Close DB connection
+//        _dbConnection.close();
+//        return mRecCount;
+//    }
+//
+//    public void postUpdatesToDatabase(Job job) throws Exception {
+//
+//        if ((job != null) && (job.isDbJob())) {
+//            _dbConnection.connectToDB();
+//
+//            // -- Update queue data
+//            int updateData = _dbConnection.updateData("update DIFXQUEUE set STATUS = "
+//                    + "\'" + job.getStateString() + "\'"
+//                    + "where INPUT_FILE = "
+//                    + "\'" + job.getInputFile() + "\'");
+//
+//            // get output file size in KBytes
+//            String fname = job.getOutputFile();
+//            File file = new File(fname);
+//            long fsize = file.length();
+//
+//            SimpleDateFormat formatter = new SimpleDateFormat("dd-MMM-yyyy HH:mm:ss");
+//
+//            Date dStart = new Date(job.getCorrelationStartUTC());
+//            Date dStop = new Date(job.getCorrelationStopUTC());
+//            String start = formatter.format(dStart);
+//            String stop = formatter.format(dStop);
+//
+//            // -- Insert log data
+//            _dbConnection.insertData("insert into DIFXLOG (PROPOSAL, SEGMENT, JOB_PASS, JOB_NUMBER, CORR_START, CORR_STOP, SPEEDUP, INPUT_FILE, OUTPUT_FILE, OUTPUT_SIZE, CORR_STATUS) values ("
+//                    + "\'" + job.getProjectName() + "\', "
+//                    + "\'" + job.getSegment().trim() + "\', "
+//                    + "\'" + job.getJobPass() + "\', "
+//                    + "" + job.getJobNumber() + ",   "
+//                    + "TO_DATE(  \'" + start + "\', \'DD-MON-YYYY HH24:MI:SS\' ), "
+//                    + "TO_DATE(  \'" + stop + "\', \'DD-MON-YYYY HH24:MI:SS\' ), "
+//                    + "" + job.getPredictedSpeedUp() + ", "
+//                    + "\'" + job.getInputFile() + "\', "
+//                    + "\'" + job.getOutputFile() + "\', "
+//                    + "" + fsize + ",   "
+//                    + "\'" + job.getStateString() + "\'  "
+//                    + ")");
+//
+//            _dbConnection.close();
+//
+//        } // -- if ( (job != null) && (job.isDbJob()) )
+//    }
 
     // Update the data structure in the Data Model
     private synchronized void updateDataModel(DiFXObject difxObj) {

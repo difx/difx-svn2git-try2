@@ -1343,6 +1343,7 @@ public class SystemSettings extends JFrame {
     public void dbUser( String newVal ) { 
         _dbUser.setText( newVal );
         setDbURL();
+        generateDatabaseChangeEvent();
     }
     public String dbUser() { return _dbUser.getText(); }
     
@@ -1354,11 +1355,13 @@ public class SystemSettings extends JFrame {
     
     public void dbName( String newVal ) { 
         _dbName.setText( newVal );
+        setDbURL();
     }
     public String dbName() { return _dbName.getText(); }
     
     public void dbMS( String newVal ) { 
         _dbMS.setText( newVal );
+        setDbURL();
     }
     public String dbMS() { return _dbMS.getText(); }
     
@@ -1382,7 +1385,10 @@ public class SystemSettings extends JFrame {
     protected void setDbURL() {
         //  Sets the dbURL using other items - this is not accessible to the outside.
         //_dbURL = "jdbc:oracle:thin:@" + _dbHost.getText() + ":" + _oracleJdbcPort.getText() + 
-        _dbURL = "jdbc:mysql://" + _dbHost.getText() + ":" + _dbPort.getText() + "/mysql";
+        _dbURL = "jdbc:" + this.dbMS().toLowerCase() + 
+                                "://" + this.dbHost() + 
+                                ":" + this.dbPort() + 
+                                "/" + this.dbName();
         generateDatabaseChangeEvent();
     }
     public boolean dbAutoUpdate() { return _dbAutoUpdate.isSelected(); }

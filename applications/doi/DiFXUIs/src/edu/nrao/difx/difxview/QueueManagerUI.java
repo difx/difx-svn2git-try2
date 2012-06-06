@@ -16,8 +16,6 @@ import java.util.ArrayList;
 import edu.nrao.difx.difxdatamodel.*;
 import edu.nrao.difx.difxcontroller.*;
 
-import edu.nrao.difx.difxdatabase.DBConnection;
-import edu.nrao.difx.difxdatabase.LoadDBThread;
 import edu.nrao.difx.difxdatamodel.LoadProductionQueueThread;
 import edu.nrao.difx.difxutilities.*;
 import edu.nrao.difx.difxutilities.TextAreaFIFO;
@@ -1120,70 +1118,70 @@ public class QueueManagerUI extends javax.swing.JFrame
 
 	 private void loadJobsQueueFromDB()
 	 {
-			// stop updates
-			mUpdate = false;
-
-			// DB load thread
-			LoadDBThread loadDBThread = new LoadDBThread("LoadDbThread");
-
-			// connect and query the database
-			if (mDataModel != null)
-			{
-				DBConnection dBConnection = mDataModel.dbConnection();
-				if (dBConnection != null)
-				{
-					try
-					{
-						 loadDBThread.setDataModel(mDataModel);
-						 loadDBThread.start();
-					}
-					catch (Exception ex)
-					{
-						 Logger.getLogger(QueueManagerUI.class.getName()).log(Level.SEVERE, null, ex);
-					}
-
-				} // -- if (dBConnection != null)
-
-			} // -- if (mDataModel != null)
-
-			// Allow updates
-			mUpdate = true;
+//			// stop updates
+//			mUpdate = false;
+//
+//			// DB load thread
+//			LoadDBThread loadDBThread = new LoadDBThread("LoadDbThread");
+//
+//			// connect and query the database
+//			if (mDataModel != null)
+//			{
+//				DBConnection dBConnection = mDataModel.dbConnection();
+//				if (dBConnection != null)
+//				{
+//					try
+//					{
+//						 loadDBThread.setDataModel(mDataModel);
+//						 loadDBThread.start();
+//					}
+//					catch (Exception ex)
+//					{
+//						 Logger.getLogger(QueueManagerUI.class.getName()).log(Level.SEVERE, null, ex);
+//					}
+//
+//				} // -- if (dBConnection != null)
+//
+//			} // -- if (mDataModel != null)
+//
+//			// Allow updates
+//			mUpdate = true;
 	 }
 
-	 private void updateProductionQueueTable()
-	 {
-			// stop updates
-			mUpdate = false;
-
-			// DB load thread
-			LoadProductionQueueThread loadProductionQueueThread = new LoadProductionQueueThread("LoadProductionQueueThread");
-
-			// connect and query the database
-			if (mDataModel != null)
-			{
-				DBConnection dBConnection = mDataModel.dbConnection();
-				if (dBConnection != null)
-				{
-					try
-					{
-						 // Write message and load the queue from the database
-						 loadProductionQueueThread.setDataModel(mDataModel);
-                   loadProductionQueueThread.setTableModel((DefaultTableModel) productionQueueTable.getModel());
-                   loadProductionQueueThread.setTableRowSorter(mSorter2);
-						 loadProductionQueueThread.start();
-					}
-					catch (Exception ex)
-					{
-						 Logger.getLogger(QueueManagerUI.class.getName()).log(Level.SEVERE, null, ex);
-					}
-
-				} // -- if (dBConnection != null)
-
-			} // -- if (mDataModel != null)
-
-			// Allow updates
-			mUpdate = true;
-	 }
+//	 private void updateProductionQueueTable()
+//	 {
+//			// stop updates
+//			mUpdate = false;
+//
+//			// DB load thread
+//			LoadProductionQueueThread loadProductionQueueThread = new LoadProductionQueueThread("LoadProductionQueueThread");
+//
+//			// connect and query the database
+//			if (mDataModel != null)
+//			{
+//				DBConnection dBConnection = mDataModel.dbConnection();
+//				if (dBConnection != null)
+//				{
+//					try
+//					{
+//						 // Write message and load the queue from the database
+//						 loadProductionQueueThread.setDataModel(mDataModel);
+//                   loadProductionQueueThread.setTableModel((DefaultTableModel) productionQueueTable.getModel());
+//                   loadProductionQueueThread.setTableRowSorter(mSorter2);
+//						 loadProductionQueueThread.start();
+//					}
+//					catch (Exception ex)
+//					{
+//						 Logger.getLogger(QueueManagerUI.class.getName()).log(Level.SEVERE, null, ex);
+//					}
+//
+//				} // -- if (dBConnection != null)
+//
+//			} // -- if (mDataModel != null)
+//
+//			// Allow updates
+//			mUpdate = true;
+//	 }
 
 /**
  * Expands all nodes in a JTree.
@@ -2797,7 +2795,7 @@ public int expandJTreeNode (javax.swing.JTree tree,
 			}
 			if ( sel == 2 )
 			{
-			   updateProductionQueueTable();
+//			   updateProductionQueueTable();
 			}
 			else if ( sel == 3 )
 			{

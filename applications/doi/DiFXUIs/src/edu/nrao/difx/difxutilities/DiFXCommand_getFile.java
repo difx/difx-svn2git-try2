@@ -53,7 +53,6 @@ public class DiFXCommand_getFile extends DiFXCommand {
         DifxFileTransfer xfer = this.factory().createDifxFileTransfer();
         try {
             xfer.setAddress( java.net.InetAddress.getLocalHost().getHostAddress() );
-            System.out.println( "address is \"" + java.net.InetAddress.getLocalHost().getHostAddress() + "\"" );
         } catch ( java.net.UnknownHostException e ) {
         }
         _port = _settings.newDifxTransferPort();

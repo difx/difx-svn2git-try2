@@ -173,106 +173,140 @@
     <ul>
     </ul>
     <h2><a name="Database_Configuration"></a>Database Configuration</h2>
-    Trouble?&nbsp; See <a href="#Testing_the_Database_Configuration"><span
+    Database trouble?&nbsp; See <a
+      href="#Testing_the_Database_Configuration"><span
         style="font-style: italic;">Trouble-shooting the Database
         Configuration</span></a>.<br>
     <br>
     The Database Configuration settings control the access the GUI has
-    to the DiFX database on the DiFX host.&nbsp; The DiFX database
-    contains settings and status for all queued experiments, passes, and
-    jobs that appear in the Queue Browser window.&nbsp; It is a mySQL
-    database that allows remote access via a network connection (it can
-    also be consulted directly by running a mySQL client program on the
-    DiFX host).&nbsp; The following fields govern remote access to the
-    database:<br>
+    to the DiFX database.&nbsp; The DiFX database contains settings and
+    status for experiments, passes, and jobs that appear in the Queue
+    Browser window.&nbsp; The GUI remotely accesses the database using a
+    network connection (the database can also be consulted on the
+    command line by running a client program either remotely or on the
+    DiFX database host).&nbsp; The following fields govern the GUI's
+    remote access to the database:<br>
     <h4>Use Data Base</h4>
     This checkbox determines whether the GUI is using the database at
     all.&nbsp; If checked, changes to experiments, passes, and jobs in
     the Queue Browser will be reflected in the database, and items in
     the database will appear in the Queue Browser.&nbsp; If not,
-    experiments, passes, and jobs in the Queue Browser will be saved
-    "locally", and information about them may be lost if the GUI is shut
-    down.&nbsp; However the GUI will still be able to run DiFX.<br>
+    experiments, passes, and jobs will only appear in the Queue Browser
+    if they are created by the same instance of the GUI - any
+    information about them will be lost if the GUI is shut down and
+    restarted.&nbsp; Beyond this capability, the database is not
+    required - the GUI will still be able to run DiFX without it.<br>
     <h4>Version</h4>
     <p>The version field is not currently in use, but may be used in the
       future to coordinate the GUI with changes that may be made to the
-      database structure.&nbsp; At the moment it is set to blank or
-      "unknown" by default.&nbsp; Changing it will have no effect on
-      anything.<br>
+      database structure.&nbsp; It is set to the most recent version of
+      the database that the GUI can properly parse (at the moment this
+      is the <span style="font-style: italic;">only</span> version is
+      can parse).&nbsp; Changing it will have no effect.<br>
     </p>
     <h4>Host</h4>
-    The database Host is the hostname of the DiFX host that contains the
-    DiFX database.&nbsp; The named host should be accessible through
-    normal network connections, and the hostname itself must be
-    recognized by the name lookup scheme on the GUI machine.&nbsp; The <a
+    The database Host is the hostname of the host that contains the DiFX
+    database.&nbsp; The named host should be accessible through normal
+    network connections, and the hostname itself must be recognized by
+    the name lookup scheme on the GUI machine.&nbsp; The <a
       href="#Database_Ping_Test">ping test</a> can be used to test the
     hostname.<br>
     <h4>User</h4>
-    The User is mySQL username for the DiFX database.&nbsp; This is the
-    name you would use when running the mySQL client on the DiFX host as
-    follows:<br>
+    The user is the username for the DiFX database.&nbsp; This is the
+    name you would use when running the a database command line client
+    on the DiFX host as in the following example (using a mySQL client):<br>
     <pre>mysql -u USER<br></pre>
     It does not necessarily match the username you may use to log into
-    the DiFX host.&nbsp; The mySQL database must be set up to recognize
-    this user, <span style="font-style: italic;">including access to
-      the database from the host where the DiFX GUI is running</span>.&nbsp;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    the DiFX host.&nbsp; The database must be set up to recognize this
+    user, <span style="font-style: italic;">including access to the
+      database from the host where the DiFX GUI is running</span>.&nbsp;
     See <a href="#Database_Remote_Access">Problems with Database Remote
       Access</a> in the trouble-shooting section for details.<br>
+    <h4>Port</h4>
+    The JDBC Port is the port over which remote communication with the
+    database occurs.&nbsp; The default port for most mySQL installations
+    is 3306, so that is probably what you should be setting yours to (if
+    you are using the mySQL database management system).&nbsp; Consult
+    the <code>/etc/services</code> file on the database host to find
+    out which port is being used.<br>
     <h4>Password</h4>
-    This is the password for the username in the mySQL database.&nbsp;
-    This is the password you would use when prompted by the mySQL client
-    on the DiFX host.&nbsp; This password is set by the mySQL
-    administrator or by the user through the mySQL client.&nbsp; It is
-    not necessarily the same password you would use to log into the DiFX
-    host.<br>
+    This is the password for the username in the database.&nbsp; This is
+    the password you would use when prompted by the database command
+    line client on the database host.&nbsp; This password is set by the
+    database administrator or by the user through the database
+    client.&nbsp; It is not necessarily the same password you would use
+    to log into the database host.<br>
     <span style="font-weight: bold;"><span style="font-weight: bold;"></span></span>
     <h4>DifX Database</h4>
-    The DifX Database is the name of the database that contains the DiFX
-    queue.&nbsp; At the time of this writing the rest of the DiFX
-    software (difxqueue, etc) uses the database named "difxdb", so that
-    is the default value for this field.&nbsp; It probably shouldn't be
-    changed.&nbsp; However it is easy to imagine a situation where
-    different queues might have different names, so the option of
-    changing the database has been included.&nbsp; The GUI software
-    implements this option - if you change "difxdb" to something else,
-    database access will probably break for the time being.<br>
-    <h4>JDBC Driver</h4>
+    The DifX Database is the name of the database.&nbsp; At the time of
+    this writing the rest of the DiFX software (difxqueue, etc) uses the
+    database named "difxdb", so that is the default value for this
+    field.&nbsp; Unless you feel you know better, it probably shouldn't
+    be changed.&nbsp; <br>
+    <h4>Management System</h4>
+    <p>The database management system is the "application" used to
+      administer and access the DiFX database for your location, such as
+      mySQL, Postgresql, etc. (this is sometimes called the database
+      "vendor").&nbsp; The management system is set up by your database
+      administrator when the DiFX database is initialized (this is all
+      done using a management system-specific "schema", as described in
+      the database documentation).&nbsp; Management systems known to
+      function with the GUI include mySQL and Postgresql.&nbsp; If you
+      change the management system you will also have to change the
+      driver - see the table below for drivers that are known to work
+      with each management system.<br>
+    </p>
+    <h4>Driver</h4>
     This is the "driver" used by Java to give the GUI access to the
-    mySQL database.&nbsp; It probably should not be changed (the field
-    is included to ease transitions between other database software -
-    Oracle, etc. - although there are other problems associated with
-    changing database types).<br>
-    <h4>JDBC Port</h4>
-    The JDBC Port is the port over which remote communication with the
-    mySQL database occurs.&nbsp; The default port for most mySQL
-    installation is 3306, so that is probably what you should be setting
-    yours to.&nbsp; Consult the <code>/etc/services</code> file on the
-    DiFX host to find out which port is being used.<br>
-    <h4>Periodic Update</h4>
-    This checkbox tells the Queue Browser to automatically check the
+    database.&nbsp; The driver is specific to the database management
+    system, and must be something Java has access to.&nbsp; The GUI is
+    delivered with drivers appropriate for a couple of popular (and
+    free) management systems, as outlined in the table below.<br>
+    <meta http-equiv="content-type" content="text/html;
+      charset=ISO-8859-1">
+    <br>
+    <table style="text-align: left; width: 814px; height: 91px;"
+      border="1" cellpadding="2" cellspacing="2">
+      <tbody>
+        <tr>
+          <td style="vertical-align: top;"><span style="font-weight:
+              bold;">Management System</span><br>
+          </td>
+          <td style="vertical-align: top;"><span style="font-weight:
+              bold;">Driver</span><br>
+          </td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;">mySQL<br>
+          </td>
+          <td style="vertical-align: top;">com.mysql.jdbc.Driver<br>
+          </td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;">Postgresql<br>
+          </td>
+          <td style="vertical-align: top;">org.postgresql.Driver<br>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <br>
+    If your database installation uses a different management system,
+    you may wish to petition the GUI development group to include it.<br>
+    <h4>Periodic Update <br>
+    </h4>
+    This check box tells the Queue Browser to automatically check the
     database for changes after a given time interval, which you can
-    set.&nbsp; Checking the database isn't computationally expensive nor
-    does it involve much network traffic, however the database probably
-    doesn't change much so an interval of a few seconds should be fine.<br>
+    set.&nbsp; The usefulness of automatic checking is dependent on
+    whether or not other users might be changing the database while you
+    are running the GUI.&nbsp; If your GUI instance is the only source
+    of database changes it is essentially pointless as all changes you
+    make will be recognized anyway.&nbsp; If, on the other hand, other
+    users are making changes, the automatic update will make them appear
+    in real time (or reasonably close to it if you make your interval
+    short).
     <h2><a name="Testing_the_Database_Configuration"></a>Trouble-shooting
+
 
 
 
@@ -384,6 +418,7 @@
 
 
 
+
     Then remote log into that host and see if the mySQL server is
     runing:<br>
     <ul style="margin-left: 40px;">
@@ -442,6 +477,7 @@
     <br>
     <br>
     <h6> <span style="font-weight: bold; font-family: monospace;">&nbsp;&nbsp;&nbsp;
+
 
         Database contains 0 jobs.</span></h6>
     <br>

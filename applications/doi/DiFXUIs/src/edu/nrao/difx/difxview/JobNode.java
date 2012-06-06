@@ -40,7 +40,6 @@ import edu.nrao.difx.xmllib.difxmessage.DifxAlert;
 import edu.nrao.difx.xmllib.difxmessage.DifxStatus;
 import java.awt.Font;
 
-import edu.nrao.difx.difxdatabase.DBConnection;
 import edu.nrao.difx.difxdatabase.QueueDBConnection;
 
 /**

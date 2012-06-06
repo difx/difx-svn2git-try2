@@ -532,7 +532,7 @@ public class QueueBrowserPanel extends TearOffPanel {
                         File tryFile = new File( dbJobList.getString( "inputFile" ) );
                         Integer jobNumber = dbJobList.getInt( "jobNumber" );
                         String jobName = null;
-                        if ( tryFile != null ) {
+                        if ( tryFile != null && tryFile.getName() != null && tryFile.getName().lastIndexOf( "." ) > 0 ) {
                             jobName = tryFile.getName().substring( 0, tryFile.getName().lastIndexOf( "." ) );
                         }
                         if ( jobName == null )

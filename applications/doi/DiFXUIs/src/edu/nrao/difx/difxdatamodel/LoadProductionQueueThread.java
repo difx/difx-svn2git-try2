@@ -8,7 +8,7 @@ package edu.nrao.difx.difxdatamodel;
 import edu.nrao.sss.measure.JulianDate;
 import edu.nrao.sss.measure.TimeDuration;
 import edu.nrao.sss.measure.TimeUnits;
-import edu.nrao.difx.difxdatabase.LoadDBThread;
+//import edu.nrao.difx.difxdatabase.LoadDBThread;
 
 import edu.nrao.difx.difxdatamodel.DiFXDataModel;
 import edu.nrao.difx.difxdatamodel.DiFXSystemConfig;
@@ -260,7 +260,7 @@ public class LoadProductionQueueThread extends Thread
 			//catch (InterruptedException e) {}
          catch (Exception ex)
 			{
-				Logger.getLogger(LoadDBThread.class.getName()).log(Level.SEVERE, null, ex);
+//				Logger.getLogger(LoadDBThread.class.getName()).log(Level.SEVERE, null, ex);
 			}
 
 			System.out.println("DONE! " + getName() + " (" + mRecCount + ")");
