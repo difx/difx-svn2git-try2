@@ -167,6 +167,9 @@ namespace guiServer {
     			case DIFX_MESSAGE_VEX2DIFXRUN:
     				vex2difxRun( &G );
     				break;
+    			case DIFX_MESSAGE_MACHINESDEFINITION:
+    				diagnostic( INFORMATION, "Received a machines definition\n" );
+    				break;
                 default:
                     diagnostic( WARNING, "Received command message type %d - don't know what this is....\n", G.type );
                 }
