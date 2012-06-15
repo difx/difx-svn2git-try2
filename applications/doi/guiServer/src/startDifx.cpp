@@ -119,9 +119,6 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	
     jobMonitor->sendPacket( JobMonitorConnection::PARAMETER_CHECK_SUCCESS, NULL, 0 );
 
-//    jobMonitor->sendPacket( JobMonitorConnection::JOB_ENDED_GRACEFULLY, NULL, 0 );
-//    return;
-    
     //  Find the "working directory" (where the .input file resides and data will be put), the
     //  "filebase" (the path of the input file with ".input") and the "job name" (the name of
     //  the input file without .input or directory path).
@@ -189,64 +186,12 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	startInfo->ssc = this;
 	startInfo->jmc = jobMonitor;
 	
-    //  Enough checking - write the machines file.
-	snprintf(filename, DIFX_MESSAGE_FILENAME_LENGTH, "%s.machines", filebase);
-    out = fopen( filename, "w" );
-	if( !out ) {
-		diagnostic( ERROR, "Cannot open machines file \"%s\" for writing", filename );
-		return;
-	}
-	//  The "head" or "manager" node is always first.
-    fprintf(out, "%s\n", S->headNode);
-    //  Then the data source machines.
-	for( int i = 0; i < S->nDatastream; ++i )
-		fprintf( out, "%s\n", S->datastreamNode[i] );
-    //  Finally, the processing machines.  Only include those which include at least
-    //  one processing thread - for the head node this must be an "extra" thread.
-	for( int i = 0; i < S->nProcess; ++i )
-	    if ( !strcmp( S->processNode[i], S->headNode ) ) {
-	        if ( S->nThread[i] > 1 )
-	            fprintf( out, "%s\n", S->processNode[i] );
-	    }
-	    else {
-	        if ( S->nThread[i] > 0 )
-		        fprintf( out, "%s\n", S->processNode[i] );
-		}
-    fclose( out );
-
-	//  Write the threads file.
-	snprintf(filename, DIFX_MESSAGE_FILENAME_LENGTH, "%s.threads", filebase);
-	out = fopen( filename, "w" );
-	if( !out ) {
-	    diagnostic( ERROR, "Cannot open threads file \"%s\" for writing", filename );
-		return;
-	}
-	fprintf(out, "NUMBER OF CORES:    %d\n", S->nProcess );
-	//  Tally the total number of processing threads - make sure there is at
-	//  least one!
-	int threadCount = 0;
-	for( int i = 0; i < S->nProcess; ++i ) {
-	    //  The head node reserves one thread for its management duties.
-	    if ( !strcmp( S->processNode[i], S->headNode ) ) {
-	        if ( S->nThread[i] > 1 ) {
-	            fprintf( out, "%d\n", S->nThread[i] - 1 );
-	            threadCount += S->nThread[i] - 1;
-	        }
-	    }
-		else {
-	        if ( S->nThread[i] > 0 ) {
-	            fprintf( out, "%d\n", S->nThread[i] );
-	            threadCount += S->nThread[i];
-	        }
-		}
-	}
-	fclose(out);
-	
+	//  Perhaps check the sanity of the .threads and .machines files...or not.  	
 	//  There must be at least one thread to run!
-	if ( !threadCount ) {
-	    diagnostic( ERROR, "No threads available for processing this job." );
-	    return;
-	}
+//	if ( !threadCount ) {
+//	    diagnostic( ERROR, "No threads available for processing this job." );
+//	    return;
+//	}
 	
 	snprintf( startInfo->jobName, MAX_COMMAND_SIZE, "%s", filebase );
 	for ( int i = 0; filebase[i]; ++i ) {

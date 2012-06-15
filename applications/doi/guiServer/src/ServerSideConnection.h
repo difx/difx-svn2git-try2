@@ -168,7 +168,7 @@ namespace guiServer {
     				vex2difxRun( &G );
     				break;
     			case DIFX_MESSAGE_MACHINESDEFINITION:
-    				diagnostic( INFORMATION, "Received a machines definition\n" );
+    				machinesDefinition( &G );
     				break;
                 default:
                     diagnostic( WARNING, "Received command message type %d - don't know what this is....\n", G.type );
@@ -272,6 +272,8 @@ namespace guiServer {
         void difxFileTransfer( DifxMessageGeneric* G );
         void difxFileOperation( DifxMessageGeneric* G );
         void vex2difxRun( DifxMessageGeneric* G );
+        void machinesDefinition( DifxMessageGeneric* G );
+        void machinesDefinitionThread( DifxStartInfo* startInfo );  //  in machinesDefinition.cpp
         void diagnostic( const int severity, const char *fmt, ... );
 
     protected:

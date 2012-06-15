@@ -16,7 +16,10 @@ guiServer_SOURCES = \
 	diagnostic.cpp \
 	difxFileTransfer.cpp \
 	difxFileOperation.cpp \
-	vex2difxRun.cpp
+	vex2difxRun.cpp \
+	machinesDefinition.cpp \
+	MachinesMonitorConnection.h \
+	JobMonitorConnection.h
 
 testClient_SOURCES = \
 	ServerSideConnection.h \
