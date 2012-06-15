@@ -18,6 +18,8 @@ import javax.swing.JTextField;
 
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseWheelListener;
+import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -38,7 +40,8 @@ import javax.swing.text.TextAction;
 
 import javax.swing.event.EventListenerList;
 
-public class NumberBox extends JFormattedTextField implements MouseListener, MouseMotionListener {
+public class NumberBox extends JFormattedTextField implements MouseListener, 
+        MouseMotionListener, MouseWheelListener {
     
     public NumberBox() {
         super();
@@ -60,6 +63,7 @@ public class NumberBox extends JFormattedTextField implements MouseListener, Mou
         } );
         addMouseListener( this );
         addMouseMotionListener( this );
+        addMouseWheelListener( this );
         //  This crap adds listeners for the up and down keys.  This is a real mess...it seems
         //  that doing this keymap junk changes the keymap for the entire class.  Thus we have
         //  to do this "getTextComponent()" call inside the actionPerformed() function.  I can't
@@ -272,6 +276,11 @@ public class NumberBox extends JFormattedTextField implements MouseListener, Mou
                     checkNewValue( _clickValue + currentMultiple( _clickPos ) * java.lang.Math.sqrt( x * x + y * y ) / (double)d.height );
             //}
         }
+    }
+    
+    @Override
+    public void mouseWheelMoved( MouseWheelEvent e ) {
+        checkNewValue( _value + (double)( -e.getWheelRotation() ) * currentMultiple() );
     }
     
     protected void upKey() {

@@ -963,6 +963,8 @@ public class DiFXDataModel {
                         / difxMsg.getBody().getDifxLoad().getTotalMemory());
                 mark5.setNetRxRate(difxMsg.getBody().getDifxLoad().getNetRXRate());
                 mark5.setNetTxRate(difxMsg.getBody().getDifxLoad().getNetTXRate());
+                mark5.setNumCores(difxMsg.getBody().getDifxLoad().getNCore());
+                mark5.setCpuLoad( mark5.getCpuLoad() / (float)(mark5.getNumCores()) );
                 //mark5.setStatusTimeStampUTC();
 
                 // Now update the actual data structures contained in the data model
@@ -995,6 +997,8 @@ public class DiFXDataModel {
                         / difxMsg.getBody().getDifxLoad().getTotalMemory());
                 proc.setNetRxRate(difxMsg.getBody().getDifxLoad().getNetRXRate());
                 proc.setNetTxRate(difxMsg.getBody().getDifxLoad().getNetTXRate());
+                proc.setNumCores(difxMsg.getBody().getDifxLoad().getNCore());
+                proc.setCpuLoad( proc.getCpuLoad() / (float)(proc.getNumCores()) );
                 proc.setStatusTimeStampUTC();
 
                 // Now update the actual data structures contained in the data model
@@ -1138,9 +1142,9 @@ public class DiFXDataModel {
 
     private void processDOIResourceConfigMessage(DifxMessage difxMsg) {
         String name = difxMsg.getBody().getDoiResourceConfig().getName();
-        Short numCPUs = difxMsg.getBody().getDoiResourceConfig().getNumCPUs();
-        Short numCores = difxMsg.getBody().getDoiResourceConfig().getNumCores();
-        Float bogusGHz = difxMsg.getBody().getDoiResourceConfig().getBogusGHz();
+        //Short numCPUs = difxMsg.getBody().getDoiResourceConfig().getNumCPUs();
+        //Short numCores = difxMsg.getBody().getDoiResourceConfig().getNumCores();
+        //Float bogusGHz = difxMsg.getBody().getDoiResourceConfig().getBogusGHz();
         Boolean enabled = difxMsg.getBody().getDoiResourceConfig().isEnabled();
 
         Short type = difxMsg.getBody().getDoiResourceConfig().getType();
@@ -1151,9 +1155,9 @@ public class DiFXDataModel {
                 node.setObjType("processor");
                 node.setObjName(name);
                 node.setObjId(0);
-                node.setNumCPUs(numCPUs);
-                node.setNumCores(numCores);
-                node.setBogusGHz(bogusGHz);
+                //node.setNumCPUs(numCPUs);
+                //node.setNumCores(numCores);
+                //node.setBogusGHz(bogusGHz);
                 node.setType(type);
                 node.setTypeString("node");
                 node.setEnabled(enabled);
@@ -1167,9 +1171,9 @@ public class DiFXDataModel {
                 mark5.setObjType("mark5");
                 mark5.setObjName(name);
                 mark5.setObjId(0);
-                mark5.setNumCPUs(numCPUs);
-                mark5.setNumCores(numCores);
-                mark5.setBogusGHz(bogusGHz);
+                //mark5.setNumCPUs(numCPUs);
+                //mark5.setNumCores(numCores);
+                //mark5.setBogusGHz(bogusGHz);
                 mark5.setType(type);
                 mark5.setTypeString("mark5");
                 mark5.setEnabled(enabled);
@@ -1183,9 +1187,9 @@ public class DiFXDataModel {
                 manager.setObjType("processor");
                 manager.setObjName(name);
                 manager.setObjId(0);
-                manager.setNumCPUs(numCPUs);
-                manager.setNumCores(numCores);
-                manager.setBogusGHz(bogusGHz);
+                //manager.setNumCPUs(numCPUs);
+                //manager.setNumCores(numCores);
+                //manager.setBogusGHz(bogusGHz);
                 manager.setType(type);
                 manager.setTypeString("manager");
                 manager.setEnabled(enabled);

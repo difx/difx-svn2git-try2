@@ -31,7 +31,10 @@ public class SimpleTextEditor extends JScrollPane {
         _textArea.setSelectionStart( 0 );
         _textArea.setSelectionEnd( 0 );
     }
-    public String text() { return _textArea.getText(); }
+    public String text() { 
+        String ret = _textArea.getText();
+        return ret;
+    }
     public void addText( String newText ) {
         _textArea.append( newText );
     }

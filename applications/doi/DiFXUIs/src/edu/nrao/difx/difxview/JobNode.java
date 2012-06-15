@@ -490,10 +490,14 @@ public class JobNode extends QueueBrowserNode {
                                     + fileSize + " bytes read." );
                         //  Parse the file content based on the extension.
                         String ext = fileStr.substring( fileStr.lastIndexOf( '.' ) + 1 ).trim();
-                        if ( ext.contentEquals( "input" ) )
+                        if ( ext.contentEquals( "input" ) ) {
+                            _editorMonitor.inputFileName( fileStr );
                             _editorMonitor.parseInputFile( fileGet.inString() );
-                        else if ( ext.contentEquals( "calc" ) )
+                        }
+                        else if ( ext.contentEquals( "calc" ) ) {
+                            _editorMonitor.calcFileName( fileStr );
                             _editorMonitor.parseCalcFile( fileGet.inString() );
+                        }
                     }
                     else if ( fileSize == 0 ) {
                         java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, 

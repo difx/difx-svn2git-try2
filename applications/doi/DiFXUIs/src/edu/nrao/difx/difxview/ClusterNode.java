@@ -560,6 +560,7 @@ public class ClusterNode extends BrowserNode {
     
     public int numCores() { return Integer.parseInt( _numCores.getText() ); }
     public int numCPUs() { return Integer.parseInt( _numCPUs.getText() ); }
+    public String cpuUsage() { return _cpuLoad.getText(); }
     
     ProcessorMonitorWindow _monitor;
     MessageWindow _alertWindow;

@@ -21,6 +21,7 @@
     <xsd:element name="difxWeight" type="difxWeight"></xsd:element>
     <xsd:element name="difxStart" type="difxStart"></xsd:element>
     <xsd:element name="difxStop" type="difxStop"></xsd:element>
+    <xsd:element name="difxMachinesDefinition" type="difxMachinesDefinition"></xsd:element>
     <xsd:element name="difxFileTransfer" type="difxFileTransfer"></xsd:element>
     <xsd:element name="difxFileOperation" type="difxFileOperation"></xsd:element>
     <xsd:element name="difxVex2difxRun" type="difxVex2difxRun"></xsd:element>
@@ -63,6 +64,7 @@
                 <xsd:element ref="difxFileTransfer"/>
                 <xsd:element ref="difxFileOperation"/>
                 <xsd:element ref="difxVex2difxRun"/>
+                <xsd:element ref="difxMachinesDefinition"/>
                 <xsd:element ref="difxCommand"/>
                 <xsd:element ref="doiSystemConfig"/>
                 <xsd:element ref="doiResourceConfig"/>
@@ -286,6 +288,7 @@
             <xsd:element name="usedMemory" type="xsd:long"></xsd:element>
             <xsd:element name="netRXRate" type="xsd:int"></xsd:element>
             <xsd:element name="netTXRate" type="xsd:int"></xsd:element>
+            <xsd:element name="nCore" type="xsd:int"></xsd:element>
         </xsd:sequence>
     </xsd:complexType>
 
@@ -344,6 +347,8 @@
                     <xsd:attribute name="threads" type="xsd:string"/>
                 </xsd:complexType>
             </xsd:element>
+            <xsd:element name="mpiWrapper" type="xsd:string"></xsd:element>
+            <xsd:element name="mpiOptions" type="xsd:string"></xsd:element>
             <xsd:element name="force" type="xsd:int" minOccurs="0" default="1"></xsd:element>
             <xsd:element name="difxVersion" type="xsd:string" minOccurs="0" maxOccurs="1" default="unknown"></xsd:element>
             <xsd:element name="restartSeconds" type="xsd:double"></xsd:element>
@@ -356,6 +361,35 @@
     <xsd:complexType name="difxStop">
         <xsd:sequence>
             <xsd:element name="input" type="xsd:string"></xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="difxMachinesDefinition">
+        <xsd:sequence>
+            <xsd:element name="input" type="xsd:string"></xsd:element>
+            <xsd:element name="manager">
+                <xsd:complexType>
+                    <xsd:attribute name="node" type="xsd:string"/>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element name="datastream">
+                <xsd:complexType>
+                    <xsd:attribute name="nodes" type="xsd:string"/>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element name="process" maxOccurs="unbounded">
+                <xsd:complexType>
+                    <xsd:attribute name="nodes" type="xsd:string"/>
+                    <xsd:attribute name="threads" type="xsd:string"/>
+                </xsd:complexType>
+            </xsd:element>
+            <xsd:element name="mpiWrapper" type="xsd:string"></xsd:element>
+            <xsd:element name="mpiOptions" type="xsd:string"></xsd:element>
+            <xsd:element name="testProcessors" type="xsd:boolean"></xsd:element>
+            <xsd:element name="machinesFile" type="xsd:string"></xsd:element>
+            <xsd:element name="threadsFile" type="xsd:string"></xsd:element>
+            <xsd:element name="address" type="xsd:string"></xsd:element>
+            <xsd:element name="port" type="xsd:int"></xsd:element>
         </xsd:sequence>
     </xsd:complexType>
 

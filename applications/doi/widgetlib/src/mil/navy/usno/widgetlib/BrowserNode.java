@@ -216,7 +216,8 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
             for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
                 BrowserNode shoot = iter.next();
                 shoot.clearChildren();
-                removeChild( shoot );
+                //removeChild( shoot );
+                iter.remove();
             }
         }
     }
