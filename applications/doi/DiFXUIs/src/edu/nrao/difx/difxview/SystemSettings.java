@@ -802,12 +802,11 @@ public class SystemSettings extends JFrame {
     }
     
     public void newSize() {
-        int w = this.getWidth();
-        int h = this.getHeight();
-        if ( _menuBar != null )
-            _menuBar.setBounds( 0, 0, w, 25 );
         if ( _allObjectsBuilt ) {
-            _scrollPane.setBounds( 0, 25, w, h - 47 );
+            int w = this.getContentPane().getSize().width;
+            int h = this.getContentPane().getSize().height;
+            _menuBar.setBounds( 0, 0, w, 25 );
+            _scrollPane.setBounds( 0, 25, w, h - 25 );
             _settingsFileName.setBounds( 115, 25, w - 135, 25 );
             //  DiFX Controll Connection settings
             _difxControlAddress.setBounds( 165, 55, 300, 25 );
@@ -1234,7 +1233,7 @@ public class SystemSettings extends JFrame {
         _windowConfiguration.settingsWindowH = 775;
         this.setSize( _windowConfiguration.settingsWindowW, _windowConfiguration.settingsWindowH );
         _windowConfiguration.jobEditorMonitorWindowW = 900;
-        _windowConfiguration.jobEditorMonitorWindowW = 500;
+        _windowConfiguration.jobEditorMonitorWindowH = 500;
         _defaultNames.vexFileSource = "";
         _defaultNames.viaHttpLocation = "";
         _defaultNames.viaFtpLocation = "";
@@ -1246,6 +1245,7 @@ public class SystemSettings extends JFrame {
         _defaultNames.jobCreationSanityCheck = true;
         _defaultNames.eliminateNonrespondingProcessors = true;
         _defaultNames.eliminateBusyProcessors = true;
+        _defaultNames.chooseBasedOnModule = true;
         _defaultNames.busyPercentage = 50.0;
 
         _eopURL.setText( "http://gemini.gsfc.nasa.gov/solve_save/usno_finals.erp" );
@@ -1724,6 +1724,7 @@ public class SystemSettings extends JFrame {
             _defaultNames.jobCreationSanityCheck = doiConfig.isDefaultJobCreationSanityCheck();
             _defaultNames.eliminateNonrespondingProcessors = doiConfig.isDefaultNamesEliminateNonrespondingProcessors();
             _defaultNames.eliminateBusyProcessors = doiConfig.isDefaultNamesElimnateBusyProcessors();
+            _defaultNames.chooseBasedOnModule = doiConfig.isDefaultNamesChooseBasedOnModule();
             if ( doiConfig.getDefaultNamesBusyPercentage() != 0 )
                 _defaultNames.busyPercentage = doiConfig.getDefaultNamesBusyPercentage();
             if ( doiConfig.getEopURL() != null )
@@ -1838,6 +1839,7 @@ public class SystemSettings extends JFrame {
         doiConfig.setDefaultJobCreationSanityCheck( _defaultNames.jobCreationSanityCheck );
         doiConfig.setDefaultNamesEliminateNonrespondingProcessors( _defaultNames.eliminateNonrespondingProcessors );
         doiConfig.setDefaultNamesElimnateBusyProcessors( _defaultNames.eliminateBusyProcessors );
+        doiConfig.setDefaultNamesChooseBasedOnModule( _defaultNames.chooseBasedOnModule );
         doiConfig.setDefaultNamesBusyPercentage( _defaultNames.busyPercentage );
         
         doiConfig.setEopURL( _eopURL.getText() );
@@ -2461,6 +2463,7 @@ public class SystemSettings extends JFrame {
         boolean eliminateNonrespondingProcessors;
         boolean eliminateBusyProcessors;
         double busyPercentage;
+        boolean chooseBasedOnModule;
     }
     protected DefaultNames _defaultNames;
     

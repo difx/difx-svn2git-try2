@@ -110,6 +110,7 @@ public class JobEditorMonitor extends JFrame {
         _refreshInputButton.setToolTipText( "Read the Input File stored on the DiFX host." );
         _refreshInputButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
+                statusInfo( "Obtaining file \"" + _inputFileName.getText() + "\" from DiFX host." );
                 Component comp = _refreshInputButton;
                 while ( comp.getParent() != null )
                     comp = comp.getParent();
@@ -223,7 +224,7 @@ public class JobEditorMonitor extends JFrame {
                 //  has already generated the .threads and .machines files.  This
                 //  is used later when the "Start" button is pushed - it will need
                 //  to generate these files if the user has not.
-                _applyMachinesPushed = true;
+                _machinesAppliedByHand = true;
                 applyMachinesAction();
             }
         } );
@@ -259,9 +260,11 @@ public class JobEditorMonitor extends JFrame {
         _busyPercentageLabel = new JLabel( "% Busy" );
         machinesListPanel.add( _busyPercentageLabel );
         _chooseBasedOnModule = new JCheckBox( "Choose Data Source Based on Module" );
+        _chooseBasedOnModule.setSelected( _settings.defaultNames().chooseBasedOnModule );
         _chooseBasedOnModule.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 checkDataSourceList();
+                _settings.defaultNames().chooseBasedOnModule = _chooseBasedOnModule.isSelected();
             }
         } );
         machinesListPanel.add( _chooseBasedOnModule );
@@ -297,12 +300,15 @@ public class JobEditorMonitor extends JFrame {
         _uploadMachinesButton.setToolTipText( "Parse all settings from the editor text and upload to the Machines File location on the DiFX host (not necessary unless you have changed the text)." );
         _uploadMachinesButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
+                _machinesAppliedByHand = true;
                 Component comp = _uploadMachinesButton;
                 while ( comp.getParent() != null )
                     comp = comp.getParent();
                 Point pt = _uploadMachinesButton.getLocationOnScreen();
                 SendFileMonitor sendFile = new SendFileMonitor(  (Frame)comp, pt.x + 25, pt.y + 25,
                         _machinesFileName.getText(), _machinesFileEditor.text(), _settings );
+                statusInfo( "Sent machines file content (" + _machinesFileEditor.text().length()
+                        + " chars) to \"" + _machinesFileName.getText() + "\" on DiFX host." );
             }
         } );
         machinesFilePanel.add( _uploadMachinesButton );
@@ -322,6 +328,7 @@ public class JobEditorMonitor extends JFrame {
         _refreshThreadsButton.setToolTipText( "Read the Threads File as it is stored on the DiFX host." );
         _refreshThreadsButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
+                statusInfo( "Reading thread file \"" + _threadsFileName.getText() + "\" from DiFX host." );
                 Component comp = _refreshThreadsButton;
                 while ( comp.getParent() != null )
                     comp = comp.getParent();
@@ -329,7 +336,14 @@ public class JobEditorMonitor extends JFrame {
                 GetFileMonitor getFile = new GetFileMonitor(  (Frame)comp, pt.x + 25, pt.y + 25,
                         _threadsFileName.getText(), _settings );
                 if ( getFile.inString() != null && getFile.inString().length() > 0 ) {
+                    statusInfo( "\"" + _threadsFileName.getText() + "\" (" + getFile.inString().length() + " chars) read from DiFX host." );
                     _threadsFileEditor.text( getFile.inString() );
+                }
+                else {
+                    if ( getFile.inString() == null )
+                        statusWarning( "No \"" + _threadsFileName.getText() + "\" file found on DiFX host." );
+                    else
+                        statusWarning( "\"" + _threadsFileName.getText() + "\" was zero length on DiFX host." );
                 }
             }
         } );
@@ -338,12 +352,15 @@ public class JobEditorMonitor extends JFrame {
         _uploadThreadsButton.setToolTipText( "Parse all settings from the editor text and upload to the Threads File location on the DiFX host (not necessary unless you have changed the text)." );
         _uploadThreadsButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
+                _machinesAppliedByHand = true;
                 Component comp = _uploadThreadsButton;
                 while ( comp.getParent() != null )
                     comp = comp.getParent();
                 Point pt = _uploadThreadsButton.getLocationOnScreen();
                 SendFileMonitor sendFile = new SendFileMonitor(  (Frame)comp, pt.x + 25, pt.y + 25,
                         _threadsFileName.getText(), _threadsFileEditor.text(), _settings );
+                statusInfo( "Sent threads file content (" + _threadsFileEditor.text().length()
+                        + " chars) to \"" + _threadsFileName.getText() + "\" on DiFX host." );
             }
         } );
         threadsFilePanel.add( _uploadThreadsButton );
@@ -397,6 +414,10 @@ public class JobEditorMonitor extends JFrame {
         statusPanel.openHeight( 50 );
         statusPanel.alwaysOpen( true );
         statusPanel.noArrow( true );
+        statusPanel.setBackground( Color.GRAY );
+        _statusLabel = new JLabel( "" );
+        _statusLabel.setHorizontalAlignment( JLabel.RIGHT );
+        statusPanel.add( _statusLabel );
         
         //  The message panel shows raw message data pertaining to the job.
         IndexedPanel messagePanel = new IndexedPanel( "Messages" );
@@ -428,17 +449,16 @@ public class JobEditorMonitor extends JFrame {
     }
     
     public void newSize() {
-        int w = this.getWidth();
-        int h = this.getHeight();
         //  The current sizes are saved in the settings...but we can't be certain
         //  the _settings variable has been set yet.
         if ( _settings != null ) {
-            _settings.windowConfiguration().jobEditorMonitorWindowW = w;
-            _settings.windowConfiguration().jobEditorMonitorWindowH = h;
+            _settings.windowConfiguration().jobEditorMonitorWindowW = this.getWidth();
+            _settings.windowConfiguration().jobEditorMonitorWindowH = this.getHeight();
         }
-        if ( _menuBar != null )
-            _menuBar.setBounds( 0, 0, w, 25 );
         if ( _allObjectsBuilt ) {
+            int w = this.getContentPane().getSize().width;
+            int h = this.getContentPane().getSize().height;
+            _menuBar.setBounds( 0, 0, w, 25 );
             _scrollPane.setBounds( 0, 25, w, h - 25 );
             int thirdSize = ( w - 60 ) / 3;
             _dataSourcesLabel.setBounds( 10, 25, 2 * thirdSize, 25 );
@@ -474,7 +494,23 @@ public class JobEditorMonitor extends JFrame {
             _refreshThreadsButton.setBounds( w - 125, 30, 100, 25 );
             _uploadThreadsButton.setBounds( w - 230, 30, 100, 25 );
             _messageDisplayPanel.setBounds( 2, 25, w - 23, 173 );
+            _statusLabel.setBounds( 10, 0, w - 35, 25 );
         }
+    }
+    
+    public void statusInfo( String newText ) {
+        _statusLabel.setForeground( Color.BLACK );
+        _statusLabel.setText( newText );
+    }
+    
+    public void statusWarning( String newText ) {
+        _statusLabel.setForeground( Color.YELLOW );
+        _statusLabel.setText( newText );
+    }
+    
+    public void statusError( String newText ) {
+        _statusLabel.setForeground( Color.RED );
+        _statusLabel.setText( newText );
     }
     
     public void inputFileName( String newName ) { _inputFileName.setText( newName ); }
@@ -602,6 +638,8 @@ public class JobEditorMonitor extends JFrame {
             MachinesDefinitionMonitor monitor = new MachinesDefinitionMonitor( monitorPort );
             monitor.start();
         }
+        
+        statusInfo( "Using criteria to create .machines and .threads files." );
 
         // -- Create the XML defined messages and process through the system
         command.body().setDifxMachinesDefinition( cmd );
@@ -690,6 +728,7 @@ public class JobEditorMonitor extends JFrame {
                         }
                         else if ( packetType == TASK_ENDED_GRACEFULLY ) {
                             _messageDisplayPanel.warning( 0, "machines monitor", "Task finished gracefully." );
+                            statusInfo( ".machines and .threads files created." );
                             connected = false;
                         }
                         else if ( packetType == TASK_STARTED ) {
@@ -703,12 +742,15 @@ public class JobEditorMonitor extends JFrame {
                         }
                         else if ( packetType == FAILURE_NO_HEADNODE ) {
                             _messageDisplayPanel.error( 0, "machines monitor", "No headnone was specified." );
+                            statusError( "Headnode needs to be specified to create .machines and .threads files." );
                         }
                         else if ( packetType == FAILURE_NO_DATASOURCES ) {
-                            _messageDisplayPanel.error( 0, "machines monitor", "No valid data sources were specified." );
+                            _messageDisplayPanel.error( 0, "machines monitor", "No valid data streams were specified." );
+                            statusError( "No valid data streams were specified - could not create .mahcines and .threads files." );
                         }
                         else if ( packetType == FAILURE_NO_PROCESSORS ) {
                             _messageDisplayPanel.error( 0, "machines monitor", "No valid processors were specified." );
+                            statusError( "No valid processors were specified - could not create .mahcines and .threads files." );
                         }
                         else if ( packetType == WARNING_NO_MACHINES_FILE_SPECIFIED ) {
                             workState = packetType;
@@ -717,10 +759,12 @@ public class JobEditorMonitor extends JFrame {
                         else if ( packetType == MACHINES_FILE_NAME ) {
                             _machinesFileName.setText( new String( data ) );
                             _messageDisplayPanel.message( 0, "machines monitor", "Creating machines file \"" + _machinesFileName.getText() + "\"" );
+                            statusInfo( "creating \"" + _machinesFileName.getText() + "\"" );
                         }
                         else if ( packetType == THREADS_FILE_NAME ) {
                             _threadsFileName.setText( new String( data ) );
                             _messageDisplayPanel.message( 0, "machines monitor", "Creating threads file \"" + _threadsFileName.getText() + "\"" );
+                            statusInfo( "creating \"" + _threadsFileName.getText() + "\"" );
                         }
                         else if ( packetType == WARNING_NO_THREADS_FILE_SPECIFIED ) {
                             workState = packetType;
@@ -730,17 +774,19 @@ public class JobEditorMonitor extends JFrame {
                             if ( workState == WARNING_NO_MACHINES_FILE_SPECIFIED )
                                 _messageDisplayPanel.message( 0, "machines monitor", "No input file name specified - unable to form machines file name." );
                             else if ( workState == WARNING_NO_THREADS_FILE_SPECIFIED )
-                                _messageDisplayPanel.message( 0, "machines monitor", "No input file name specified - unable to form machines file name." );
+                                _messageDisplayPanel.message( 0, "machines monitor", "No input file name specified - unable to form threads file name." );
                             else
                                 _messageDisplayPanel.message( 0, "machines monitor", "Unknown error involving missing file names." );
                         }
                         else if ( packetType == FAILURE_OPEN_MACHINES_FILE ) {
                             _machinesFileName.setText( new String( data ) );
                             _messageDisplayPanel.message( 0, "machines monitor", "Failure to open machines file (" + new String( data ) + ")" );
+                            statusError( "could not open machines file \"" + new String( data ) + "\"" );
                         }
                         else if ( packetType == FAILURE_OPEN_THREADS_FILE ) {
                             _machinesFileName.setText( new String( data ) );
                             _messageDisplayPanel.message( 0, "machines monitor", "Failure to open threads file (" + new String( data ) + ")" );
+                            statusError( "could not open threads file \"" + new String( data ) + "\"" );
                         }
                         else if ( packetType == MACHINES_FILE_CREATED ) {
                             _messageDisplayPanel.message( 0, "machines monitor", "machines file created" );
@@ -755,6 +801,7 @@ public class JobEditorMonitor extends JFrame {
                                 _machinesFileEditor.text( getFile.inString() );
                             }
                             _messageDisplayPanel.message( 0, "machines monitor", "machines file successfully downloaded" );
+                            statusInfo( ".machines file created" );
                         }
                         else if ( packetType == THREADS_FILE_CREATED ) {
                             _messageDisplayPanel.message( 0, "machines monitor", "threads file created" );
@@ -769,9 +816,11 @@ public class JobEditorMonitor extends JFrame {
                                 _threadsFileEditor.text( getFile.inString() );
                             }
                             _messageDisplayPanel.message( 0, "machines monitor", "threads file successfully downloaded" );
+                            statusInfo( ".threads file created" );
                         }
                         else if ( packetType == FAILURE_FILE_REMOVAL ) {
                             _messageDisplayPanel.error( 0, "machines monitor", "Failed to remove file on DiFX host: " + new String( data ) );
+                            statusError( "permissions prevent removal of a file on DiFX host" );
                         }
                         else if ( packetType == FAILURE_POPEN ) {
                             _messageDisplayPanel.error( 0, "machines monitor", "Popen failed on DiFX host: " + new String( data ) );
@@ -847,9 +896,11 @@ public class JobEditorMonitor extends JFrame {
      */
     synchronized public void startJob() {
         //  Has the user already generated .threads and .machines files (which is
-        //  done when the "Apply" button in the Machines List settings is pushed).
-        //  If not, we need to do so here.
-        if ( !_applyMachinesPushed )
+        //  done when the "Apply" button in the Machines List settings is pushed)?
+        //  Alternatively, has the use edited and uploaded .machines and .threads
+        //  files by hand?  If these things have not been done, the files need to
+        //  be generated before running.
+        if ( !_machinesAppliedByHand )
             applyMachinesAction();
         DiFXCommand command = new DiFXCommand( _settings );
         command.header().setType( "DifxStart" );
@@ -1317,8 +1368,10 @@ public class JobEditorMonitor extends JFrame {
             else {
                 _mpiTestDisplay.setText( "Fail" );
                 _mpiTestDisplay.setForeground( Color.RED );
-                if ( baseSelect )
+                if ( baseSelect && !_handSelected ) {
                     _selected.setSelected( false );
+                    _handSelected = true;
+                }
             }           
         }
         
@@ -1735,7 +1788,7 @@ public class JobEditorMonitor extends JFrame {
     protected JMenuItem _allJobsItem;
     protected JButton _applyToButton;
     protected JButton _applyMachinesButton;
-    protected boolean _applyMachinesPushed;
+    protected boolean _machinesAppliedByHand;
     protected JCheckBox _machinesLock;
     protected JCheckBox _forceOverwrite;
     
@@ -1772,6 +1825,7 @@ public class JobEditorMonitor extends JFrame {
     protected NumberBox _busyPercentage;
     protected JLabel _busyPercentageLabel;
     protected JCheckBox _chooseBasedOnModule;
+    protected JLabel _statusLabel;
     
     protected ArrayList<String> _dataObjects;
     
