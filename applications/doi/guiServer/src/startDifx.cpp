@@ -31,10 +31,12 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	char filename[DIFX_MESSAGE_FILENAME_LENGTH];
 	char workingDir[DIFX_MESSAGE_FILENAME_LENGTH];
 	char destdir[DIFX_MESSAGE_FILENAME_LENGTH];
+	char machinesFilename[DIFX_MESSAGE_FILENAME_LENGTH];
 	char message[DIFX_MESSAGE_LENGTH];
 	char restartOption[RestartOptionLength];
 	char command[MAX_COMMAND_SIZE];
 	char chmodCommand[MAX_COMMAND_SIZE];
+	char inLine[MAX_COMMAND_SIZE];
 	FILE *out;
 	const char *jobName;
 	const DifxMessageStart *S;
@@ -186,9 +188,25 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	startInfo->ssc = this;
 	startInfo->jmc = jobMonitor;
 	
-	//  Perhaps check the sanity of the .threads and .machines files...or not.  	
-	//  There must be at least one thread to run!
-//	if ( !threadCount ) {
+	//  Sanity check of the .machines file.  We use this to get the "np" value for mpirun
+	//  as well.
+	int procCount = 0;
+    strncpy( machinesFilename, S->inputFilename, DIFX_MESSAGE_FILENAME_LENGTH );
+    l = strlen( machinesFilename );
+    for( int i = l-1; i > 0; i-- ) {
+	    if( machinesFilename[i] == '.' ) {
+		    machinesFilename[i] = 0;
+		    break;
+	    }
+    }
+    strncat( machinesFilename, ".machines", DIFX_MESSAGE_FILENAME_LENGTH );
+    FILE* inp = fopen( machinesFilename, "r" );
+    if ( inp != NULL ) {
+        while ( fgets( inLine, MAX_COMMAND_SIZE, inp ) )
+            ++procCount;
+        fclose( inp );
+    }
+//	if ( !procCount ) {
 //	    diagnostic( ERROR, "No threads available for processing this job." );
 //	    return;
 //	}
@@ -240,7 +258,7 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	          "source %s/setup.bash; %s -np %d --bynode --hostfile %s.machines %s %s %s %s 2>&1", 
               workingDir,
               mpiWrapper,
-              1 + S->nDatastream + S->nProcess,
+              procCount,
               filebase,
               mpiOptions,
               difxProgram,
