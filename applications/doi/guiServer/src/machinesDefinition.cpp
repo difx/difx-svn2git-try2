@@ -329,6 +329,7 @@ void ServerSideConnection::machinesDefinition( DifxMessageGeneric* G ) {
                     threadCount += *j;
                 }
 	        }
+	        ++j;
         }
         fclose(out);
         
