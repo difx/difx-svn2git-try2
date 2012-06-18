@@ -229,11 +229,19 @@ public class JobEditorMonitor extends JFrame {
         } );
         machinesListPanel.add( _applyMachinesButton );
         _eliminateNonrespondingProcessors = new JCheckBox( "Eliminate Non-Responding Processors" );
+        _eliminateNonrespondingProcessors.setSelected( _settings.defaultNames().eliminateNonrespondingProcessors );
+        _eliminateNonrespondingProcessors.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _settings.defaultNames().eliminateNonrespondingProcessors = _eliminateNonrespondingProcessors.isSelected();
+            }
+        } );
         machinesListPanel.add( _eliminateNonrespondingProcessors );
         _eliminateBusyProcessors = new JCheckBox( "Eliminate Processors Over" );
+        _eliminateBusyProcessors.setSelected( _settings.defaultNames().eliminateNonrespondingProcessors );
         _eliminateBusyProcessors.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 changeBusyProcessorsSettings();
+                _settings.defaultNames().eliminateBusyProcessors = _eliminateBusyProcessors.isSelected();
             }
         } );
         machinesListPanel.add( _eliminateBusyProcessors );
@@ -241,10 +249,11 @@ public class JobEditorMonitor extends JFrame {
         _busyPercentage.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 changeBusyProcessorsSettings();
+                _settings.defaultNames().busyPercentage = _busyPercentage.value();
             }
         } );
         _busyPercentage.precision( 0 );
-        _busyPercentage.value( 50.0 );
+        _busyPercentage.value( _settings.defaultNames().busyPercentage );
         _busyPercentage.limits( 0.0, 100.0 );
         machinesListPanel.add( _busyPercentage );
         _busyPercentageLabel = new JLabel( "% Busy" );

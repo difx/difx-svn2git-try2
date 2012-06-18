@@ -1244,6 +1244,10 @@ public class SystemSettings extends JFrame {
         _defaultNames.scanBasedJobNames = true;
         _defaultNames.dirListLocation = "";
         _defaultNames.jobCreationSanityCheck = true;
+        _defaultNames.eliminateNonrespondingProcessors = true;
+        _defaultNames.eliminateBusyProcessors = true;
+        _defaultNames.busyPercentage = 50.0;
+
         _eopURL.setText( "http://gemini.gsfc.nasa.gov/solve_save/usno_finals.erp" );
         _leapSecondsURL.setText( "http://gemini.gsfc.nasa.gov/500/oper/solve_apriori_files/ut1ls.dat" );
         _leapSecondsValue.value( 34 );
@@ -1718,6 +1722,10 @@ public class SystemSettings extends JFrame {
             if ( doiConfig.getDefaultNamesDirListLocation() != null )
                 _defaultNames.dirListLocation = doiConfig.getDefaultNamesDirListLocation();
             _defaultNames.jobCreationSanityCheck = doiConfig.isDefaultJobCreationSanityCheck();
+            _defaultNames.eliminateNonrespondingProcessors = doiConfig.isDefaultNamesEliminateNonrespondingProcessors();
+            _defaultNames.eliminateBusyProcessors = doiConfig.isDefaultNamesElimnateBusyProcessors();
+            if ( doiConfig.getDefaultNamesBusyPercentage() != 0 )
+                _defaultNames.busyPercentage = doiConfig.getDefaultNamesBusyPercentage();
             if ( doiConfig.getEopURL() != null )
                 _eopURL.setText( doiConfig.getEopURL() );
             if ( doiConfig.getLeapSecondsURL() != null && doiConfig.getLeapSecondsURL().length() > 0 );
@@ -1828,6 +1836,9 @@ public class SystemSettings extends JFrame {
         doiConfig.setDefaultNamesScanBasedJobNames( _defaultNames.scanBasedJobNames );
         doiConfig.setDefaultNamesDirListLocation( _defaultNames.dirListLocation );
         doiConfig.setDefaultJobCreationSanityCheck( _defaultNames.jobCreationSanityCheck );
+        doiConfig.setDefaultNamesEliminateNonrespondingProcessors( _defaultNames.eliminateNonrespondingProcessors );
+        doiConfig.setDefaultNamesElimnateBusyProcessors( _defaultNames.eliminateBusyProcessors );
+        doiConfig.setDefaultNamesBusyPercentage( _defaultNames.busyPercentage );
         
         doiConfig.setEopURL( _eopURL.getText() );
         doiConfig.setLeapSecondsURL( _leapSecondsURL.getText() );
@@ -2434,7 +2445,9 @@ public class SystemSettings extends JFrame {
     }
     protected WindowConfiguration _windowConfiguration;
     
-    //  Defaults for a bunch of things that the user would likely change.
+    //  Defaults for a bunch of things that the user would likely change (not all
+    //  of them names).  The common thread here is that these settings do not appear
+    //  in the settings window.
     public class DefaultNames {
         String vexFileSource;
         String viaHttpLocation;
@@ -2445,6 +2458,9 @@ public class SystemSettings extends JFrame {
         boolean scanBasedJobNames;
         boolean jobCreationSanityCheck;
         String dirListLocation;
+        boolean eliminateNonrespondingProcessors;
+        boolean eliminateBusyProcessors;
+        double busyPercentage;
     }
     protected DefaultNames _defaultNames;
     
