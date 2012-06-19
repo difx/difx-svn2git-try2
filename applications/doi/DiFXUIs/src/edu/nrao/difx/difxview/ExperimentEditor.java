@@ -819,8 +819,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 int bytesRead = 0;
                 _editor.text( "" );
                 while ( ( bytesRead = reader.read( buffer, 0, 153600 ) ) > 0 ) {
-                    buffer[bytesRead] = 0;
-                    _editor.addText( new String( buffer ) );
+                    _editor.addText( new String( buffer ).substring( 0, bytesRead ) );
                 }
                 parseNewVexFile();
             } catch ( MalformedURLException e ) {
@@ -843,8 +842,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 int bytesRead = 0;
                 _editor.text( "" );
                 while ( ( bytesRead = reader.read( buffer, 0, 153600 ) ) > 0 ) {
-                    buffer[bytesRead] = 0;
-                    _editor.addText( new String( buffer ) );
+                    _editor.addText( new String( buffer ).substring( 0, bytesRead ) );
                 }
                 parseNewVexFile();
             } catch ( MalformedURLException e ) {
@@ -865,8 +863,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 int bytesRead = 0;
                 _editor.text( "" );
                 while ( ( bytesRead = reader.read( buffer, 0, 153600 ) ) > 0 ) {
-                    buffer[bytesRead] = 0;
-                    _editor.addText( new String( buffer ) );
+                    _editor.addText( new String( buffer ).substring( 0, bytesRead ) );
                 }
                 parseNewVexFile();
             } catch ( FileNotFoundException e ) {
