@@ -1145,37 +1145,48 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     yp.setBounds( 590, 2, 100, 16 );
                     eopHeaderPanel.add( yp );
                 }
-                IndexedPanel eopPanel = new IndexedPanel( "" );
-                eopPanel.openHeight( 20 );
-                eopPanel.closedHeight( 20 );
-                eopPanel.setLevel( 3 );
-                eopPanel.alwaysOpen( true );
-                eopPanel.noArrow( true );
-                eopPanel.drawFrame( false );
-                _vexEOPPane.addNode( eopPanel );
                 //  Add data and labels.  None of these can be changed, however a bunch
                 //  of them have to be converted to the units that DiFX uses.
+                //  Generate a reference date for this entry...
                 JulianCalendar theDate = new JulianCalendar();
                 theDate.clear();
                 theDate.set( Calendar.YEAR, Integer.parseInt( eop.eop_ref_epoch.trim().substring( 0, 4 ) ) );
                 theDate.set( Calendar.DAY_OF_YEAR, Integer.parseInt( eop.eop_ref_epoch.trim().substring( 5, eop.eop_ref_epoch.trim().indexOf( 'd' ) ) ) );
-                //  Use the modified Julian Day for this date.
-                JLabel mjd = new JLabel( (int)(theDate.mjd()) + 
-                        " (" + theDate.get( Calendar.YEAR ) + "/" + theDate.get( Calendar.DAY_OF_YEAR ) + ")" );
-                mjd.setBounds( 90, 2, 120, 16 );
-                eopPanel.add( mjd );
-                JLabel tai = new JLabel( eop.tai_utc.trim().substring( 0, eop.tai_utc.trim().indexOf( ' ' ) ) + " sec" );
-                tai.setBounds( 230, 2, 100, 16 );
-                eopPanel.add( tai );
-                JLabel ut1 = new JLabel( eop.ut1_utc.trim().substring( 0, eop.ut1_utc.trim().indexOf( ' ' ) ) + " sec" );
-                ut1.setBounds( 350, 2, 100, 16 );
-                eopPanel.add( ut1 );
-                JLabel xp = new JLabel( eop.x_wobble.trim().substring( 0, eop.x_wobble.trim().indexOf( ' ' ) ) + " asec" );
-                xp.setBounds( 470, 2, 100, 16 );
-                eopPanel.add( xp );
-                JLabel yp = new JLabel( eop.y_wobble.trim().substring( 0, eop.y_wobble.trim().indexOf( ' ' ) ) + " asec" );
-                yp.setBounds( 590, 2, 100, 16 );
-                eopPanel.add( yp );
+                //  Find the number of points in this set.  Accomodate the possibility
+                //  that it is not specified.
+                Integer numPts = eop.num_eop_points;
+                if ( numPts == null )
+                    numPts = 1;
+                //  Loop through the total number of points, creating a new line for each.
+                for ( int i = 0; i < numPts; ++i ) {
+                    IndexedPanel eopPanel = new IndexedPanel( "" );
+                    eopPanel.openHeight( 20 );
+                    eopPanel.closedHeight( 20 );
+                    eopPanel.setLevel( 3 );
+                    eopPanel.alwaysOpen( true );
+                    eopPanel.noArrow( true );
+                    eopPanel.drawFrame( false );
+                    _vexEOPPane.addNode( eopPanel );
+                    //  Use the modified Julian Day for this date.
+                    JLabel mjd = new JLabel( (int)(theDate.mjd()) + 
+                            " (" + theDate.get( Calendar.YEAR ) + "/" + theDate.get( Calendar.DAY_OF_YEAR ) + ")" );
+                    mjd.setBounds( 90, 2, 120, 16 );
+                    eopPanel.add( mjd );
+                    //  Add the date interval between points for the next point (there may not be one).
+                    theDate.add( Calendar.HOUR, Integer.parseInt( eop.eop_interval.trim().substring( 0, eop.eop_interval.trim().indexOf( ' ' ) ) ) );
+                    JLabel tai = new JLabel( eop.tai_utc.trim().substring( 0, eop.tai_utc.trim().indexOf( ' ' ) ) + " sec" );
+                    tai.setBounds( 230, 2, 100, 16 );
+                    eopPanel.add( tai );
+                    JLabel ut1 = new JLabel( eop.ut1_utc.get(i).trim().substring( 0, eop.ut1_utc.get(i).trim().indexOf( ' ' ) ) + " sec" );
+                    ut1.setBounds( 350, 2, 100, 16 );
+                    eopPanel.add( ut1 );
+                    JLabel xp = new JLabel( eop.x_wobble.get(i).trim().substring( 0, eop.x_wobble.get(i).trim().indexOf( ' ' ) ) + " asec" );
+                    xp.setBounds( 470, 2, 100, 16 );
+                    eopPanel.add( xp );
+                    JLabel yp = new JLabel( eop.y_wobble.get(i).trim().substring( 0, eop.y_wobble.get(i).trim().indexOf( ' ' ) ) + " asec" );
+                    yp.setBounds( 590, 2, 100, 16 );
+                    eopPanel.add( yp );
+                }
             }
         }
         //  Generate EOP data from the EOP source (if available).  To do this, we first

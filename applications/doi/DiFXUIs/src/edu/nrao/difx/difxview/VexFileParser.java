@@ -440,6 +440,10 @@ public class VexFileParser {
             if ( thisLine.length() > 3 && thisLine.substring( 0, 3 ).equalsIgnoreCase( "DEF" ) ) {
                 //  Create a new scan.
                 currentEOP = new EOP();
+                currentEOP.num_eop_points = 1;
+                currentEOP.ut1_utc = new ArrayList<String>();
+                currentEOP.x_wobble = new ArrayList<String>();
+                currentEOP.y_wobble = new ArrayList<String>();
                 currentEOP.def = thisLine.substring( thisLine.indexOf( ' ' ) ).trim();
             }
             else if ( thisLine.length() > 7 && thisLine.substring( 0, 7 ).equalsIgnoreCase( "TAI-UTC" ) ) {
@@ -459,22 +463,71 @@ public class VexFileParser {
             }
             else if ( thisLine.length() > 14 && thisLine.substring( 0, 14 ).equalsIgnoreCase( "NUM_EOP_POINTS" ) ) {
                 if ( currentEOP != null ) {
-                    currentEOP.num_eop_points = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                    currentEOP.num_eop_points = Integer.parseInt( thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim() );
+                }
+            }
+            else if ( thisLine.length() > 14 && thisLine.substring( 0, 12 ).equalsIgnoreCase( "EOP_INTERVAL" ) ) {
+                if ( currentEOP != null ) {
+                    currentEOP.eop_interval = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
                 }
             }
             else if ( thisLine.length() > 7 && thisLine.substring( 0, 7 ).equalsIgnoreCase( "UT1-UTC" ) ) {
                 if ( currentEOP != null ) {
-                    currentEOP.ut1_utc = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                    int startIndex = thisLine.indexOf( '=' ) + 1;
+                    int endIndex = thisLine.indexOf( ':' );
+                    if ( endIndex < 0 )
+                        endIndex = thisLine.length();
+                    for ( int i = 0; i < currentEOP.num_eop_points && startIndex < endIndex; ++i ) {
+                        currentEOP.ut1_utc.add( thisLine.substring( startIndex, endIndex ).trim() );
+                        if ( endIndex < thisLine.length() ) {
+                            startIndex = endIndex + 1;
+                            endIndex = thisLine.substring( startIndex, thisLine.length() ).indexOf( ':' );
+                            if ( endIndex < 0 )
+                                endIndex = thisLine.length();
+                            else
+                                endIndex += startIndex;
+                        }
+                    }
                 }
             }
             else if ( thisLine.length() > 8 && thisLine.substring( 0, 8 ).equalsIgnoreCase( "X_WOBBLE" ) ) {
                 if ( currentEOP != null ) {
-                    currentEOP.x_wobble = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                    int startIndex = thisLine.indexOf( '=' ) + 1;
+                    int endIndex = thisLine.indexOf( ':' );
+                    if ( endIndex < 0 )
+                        endIndex = thisLine.length();
+                    for ( int i = 0; i < currentEOP.num_eop_points && startIndex < endIndex; ++i ) {
+                        currentEOP.x_wobble.add( thisLine.substring( startIndex, endIndex ).trim() );
+                        if ( endIndex < thisLine.length() ) {
+                            startIndex = endIndex + 1;
+                            endIndex = thisLine.substring( startIndex, thisLine.length() ).indexOf( ':' );
+                            if ( endIndex < 0 )
+                                endIndex = thisLine.length();
+                            else
+                                endIndex += startIndex;
+                        }
+                    }
+//                    currentEOP.x_wobble.add( thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim() );
                 }
             }
             else if ( thisLine.length() > 8 && thisLine.substring( 0, 8 ).equalsIgnoreCase( "Y_WOBBLE" ) ) {
                 if ( currentEOP != null ) {
-                    currentEOP.y_wobble = thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim();
+                    int startIndex = thisLine.indexOf( '=' ) + 1;
+                    int endIndex = thisLine.indexOf( ':' );
+                    if ( endIndex < 0 )
+                        endIndex = thisLine.length();
+                    for ( int i = 0; i < currentEOP.num_eop_points && startIndex < endIndex; ++i ) {
+                        currentEOP.y_wobble.add( thisLine.substring( startIndex, endIndex ).trim() );
+                        if ( endIndex < thisLine.length() ) {
+                            startIndex = endIndex + 1;
+                            endIndex = thisLine.substring( startIndex, thisLine.length() ).indexOf( ':' );
+                            if ( endIndex < 0 )
+                                endIndex = thisLine.length();
+                            else
+                                endIndex += startIndex;
+                        }
+                    }
+//                    currentEOP.y_wobble.add( thisLine.substring( thisLine.indexOf( '=' ) + 1 ).trim() );
                 }
             }
             else if ( thisLine.length() >= 6 && thisLine.substring( 0, 6 ).equalsIgnoreCase( "ENDDEF" ) ) {
@@ -563,10 +616,11 @@ public class VexFileParser {
         String tai_utc;
         String a1_tai;
         String eop_ref_epoch;
-        String num_eop_points;
-        String ut1_utc;
-        String x_wobble;
-        String y_wobble;
+        Integer num_eop_points;
+        String eop_interval;
+        ArrayList<String> ut1_utc;
+        ArrayList<String> x_wobble;
+        ArrayList<String> y_wobble;
     }
     
     static String deleteEOPData( String inStr ) {
