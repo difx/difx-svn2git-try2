@@ -14,6 +14,7 @@
 #include <pwd.h>
 #include <fcntl.h>
 #include <network/TCPClient.h>
+#include <signal.h>
 
 using namespace guiServer;
 
@@ -44,6 +45,7 @@ void ServerSideConnection::difxFileTransfer( DifxMessageGeneric* G ) {
     	//snprintf( message, DIFX_MESSAGE_LENGTH, "Request for transfer of file from %s on remote host to DiFX host - filesize is unknown", S->origin );
         //difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_WARNING );
     	//  Fork a process to do the file transfer via a TCP client.
+    	signal( SIGCHLD, SIG_IGN );
     	childPid = fork();
     	if( childPid == 0 ) {
     	    //  Open a TCP socket connection to the server that should be running for us on the
@@ -239,8 +241,8 @@ void ServerSideConnection::difxFileTransfer( DifxMessageGeneric* G ) {
 	            }
 	        }	    
 	    }
-    	snprintf( message, DIFX_MESSAGE_LENGTH, "Request for transfer of file from %s on DiFX host to remote host - filesize is %d", S->origin, filesize );
-        difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_WARNING );
+    	//snprintf( message, DIFX_MESSAGE_LENGTH, "Request for transfer of file from %s on DiFX host to remote host - filesize is %d", S->origin, filesize );
+        //difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_WARNING );
     	
     	//  Use the DiFX user to copy the requested file to a temporary location (if there is anything to copy, that is...).
     	if ( filesize > 0 ) {
@@ -253,8 +255,10 @@ void ServerSideConnection::difxFileTransfer( DifxMessageGeneric* G ) {
   		}
     	
     	//  Fork a process to do the file transfer via a TCP client.
+    	signal( SIGCHLD, SIG_IGN );
     	childPid = fork();
     	if( childPid == 0 ) {
+    	printf( "new PID: %d\n", getpid() );
     	    //  Open a TCP socket connection to the server that should be running for us on the
     	    //  remote host.
     	    int sockfd;

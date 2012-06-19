@@ -15,6 +15,7 @@
 #include <MachinesMonitorConnection.h>
 #include <list>
 #include <string>
+#include <signal.h>
 
 using namespace guiServer;
 
@@ -167,6 +168,7 @@ void ServerSideConnection::machinesDefinition( DifxMessageGeneric* G ) {
 
 	//  Fork a process to test the specified machines and create the files.  This is forked
 	//  because the testing can take some time.
+    signal( SIGCHLD, SIG_IGN );
     childPid = fork();
     if( childPid == 0 ) {
     
@@ -218,37 +220,25 @@ void ServerSideConnection::machinesDefinition( DifxMessageGeneric* G ) {
             snprintf( nodename, MAX_COMMAND_SIZE, "%s", i->c_str() );
             //  Create a test file name.
             snprintf( testPath, DIFX_MESSAGE_FILENAME_LENGTH, "%s/test_%s", workingDir, nodename );
-            //  Try to delete it, in the event it is there.  If this fails because the file doesn't
-            //  exist, that's fine.  If it fails for another reason, it is a problem.
-            int ret = unlink( testPath );
-            if ( ret == -1 && errno != ENOENT ) {
-    	        snprintf( message, DIFX_MESSAGE_LENGTH, "%s - %s", testPath, strerror( errno ) );
-    	        monitor->sendPacket( MachinesMonitorConnection::FAILURE_FILE_REMOVAL, message, 
-    	            strlen( message ) );
-                monitor->sendPacket( MachinesMonitorConnection::TASK_TERMINATED, NULL, 0 );
-                delete monitor;
-                delete guiSocket;
-    	        return;
-            }
             //  Execute an mpirun command to create a new file using each processor.
             snprintf( command, MAX_COMMAND_SIZE, "source %s/setup.bash; %s -host %s touch %s 2>&1 &", 
                 workingDir,
                 mpiWrapper,
                 nodename,
                 testPath );
-            system( command );
+            int ret = system( command );
             //  We give the remote system a generous one second to complete this task.
             sleep( 1 );
-            //  Now, try (again) to delete the test file.  If it exists, the delete should return
+            //  Now, try to delete the test file.  If it exists, the delete should return
             //  without an error.  If there IS an error, our assumption is that the mpirun did not
             //  work the way we expected.
             ret = unlink( testPath );
             if ( ret == -1 ) {
+            printf( ">>>>\n\n%s\n\n", strerror( errno ) );
     	        monitor->sendPacket( MachinesMonitorConnection::FAILURE_MPIRUN, nodename, 
     	            strlen( nodename ) );
     	        //  Eliminate this node if we are supposed to be doing so...
     	        if ( S->testProcessors ) {
-    	            //processNodes.remove( nodename );
     	            i = processNodes.erase( i );
     	            j = processThreads.erase( j );
     	        }
@@ -274,7 +264,7 @@ void ServerSideConnection::machinesDefinition( DifxMessageGeneric* G ) {
             monitor->sendPacket( MachinesMonitorConnection::TASK_TERMINATED, NULL, 0 );
             delete monitor;
             delete guiSocket;
-	        return;
+	        exit( EXIT_SUCCESS );
         }
         //  The "head" or "manager" node is always first.
         fprintf(out, "%s\n", S->headNode);
@@ -308,7 +298,7 @@ void ServerSideConnection::machinesDefinition( DifxMessageGeneric* G ) {
             monitor->sendPacket( MachinesMonitorConnection::TASK_TERMINATED, NULL, 0 );
             delete monitor;
             delete guiSocket;
-	        return;
+	        exit( EXIT_SUCCESS );
         }
         fprintf(out, "NUMBER OF CORES:    %d\n", processNodes.size() );
         //  Tally the total number of processing threads - make sure there is at
