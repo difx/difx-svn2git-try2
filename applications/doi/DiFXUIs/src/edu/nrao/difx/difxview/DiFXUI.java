@@ -6,8 +6,6 @@ package edu.nrao.difx.difxview;
 
 import mil.navy.usno.widgetlib.MessageDisplayPanel;
 
-import java.awt.Toolkit;
-import java.awt.Dimension;
 import java.awt.event.WindowListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.ActionEvent;
@@ -18,8 +16,6 @@ import edu.nrao.difx.difxcontroller.*;
 
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.awt.event.HierarchyEvent;
-import java.awt.event.HierarchyListener;
 
 import javax.swing.JSplitPane;
 import javax.swing.UIManager;
@@ -39,23 +35,10 @@ import java.awt.Font;
 /**
  *
  * @author  jspitzak (USNO)
- * @author  mguerra (NRAO)
- * @author  Helge Rottmann (MPIfR)
  * @version 1.0
  */
 public class DiFXUI extends JFrame implements WindowListener {
 
-    //  This thing collects messages for us.  It is static so we can use it in
-    //  the "main" method.
-    //private static MessageDisplayPanel messageCtr = null;
-    
-    //private static final long serialVersionUID = 1;
-    // Allow only one controller and data model instance
-//    static DiFXDataModel _dataModel;
-//    static DiFXController _difxController;
-    // Keep a copy of the current running job
-    //JobManagerUI mCurrentJM;
-    
     /*
      * This is a static method for setting the default font for all components
      * that I swiped from the web.
@@ -74,17 +57,12 @@ public class DiFXUI extends JFrame implements WindowListener {
 
     public DiFXUI( String settingsFile ) {
         
-        setUIFont( new javax.swing.plaf.FontUIResource( "Sans", Font.BOLD, 12 ) );
+        setUIFont( new javax.swing.plaf.FontUIResource( "Sans", Font.PLAIN, 12 ) );
 
         //  Produce system settings using the settings file that came from command
         //  line arguments (which might be null, indicating we should use default
         //  values).
         _systemSettings = new SystemSettings( settingsFile );
-
-        //  With system settings finalized, we may now connect to the database.
-        //connectToDB();
-        //readResourcesConfig( _systemSettings.resourcesFile() );
-
         _systemSettings.setLookAndFeel();
         
         //  This function builds all of the GUI components.
@@ -100,12 +78,12 @@ public class DiFXUI extends JFrame implements WindowListener {
         _dataModel = new DiFXDataModel( _systemSettings );
         _dataModel.messageDisplayPanel( _messageCenter );
         
-        //  The data model needs to know when changes are made to database settings.
-        _systemSettings.databaseChangeListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-//                _dataModel.updataDatabaseFromSystemSettings();
-            }
-        } );
+//        //  The data model needs to know when changes are made to database settings.
+//        _systemSettings.databaseChangeListener( new ActionListener() {
+//            public void actionPerformed( ActionEvent e ) {
+////                _dataModel.updataDatabaseFromSystemSettings();
+//            }
+//        } );
         
         //  The DiFX Controller runs threads (why, I'm not sure...)
         _difxController = new DiFXController( _systemSettings );
@@ -118,36 +96,29 @@ public class DiFXUI extends JFrame implements WindowListener {
 
                 // initialize controller with model, view
                 _difxController.initialize( _dataModel, this );
-        
-        //mitigateErrorManager.initialize( messageCenter, _dataModel, _difxController );
-        
+                
         _queueBrowser.dataModel( _dataModel );
         _hardwareMonitor.dataModel( _dataModel );
         _dataModel.notifyListeners();
         _hardwareMonitor.controller( _difxController );
 
         this.setLocation( _systemSettings.windowConfiguration().mainX, _systemSettings.windowConfiguration().mainY );
-        /*
-         * Set the locations of dividers between panels.  For some reason these
-         * settings seem to work better here.  The "resize weight" determines how
-         * resize events are allotted to component panel sizes.
-         */
+
+        // Set the locations of dividers between panels.  For some reason these
+        // settings seem to work better here.  The "resize weight" determines how
+        // resize events are allotted to component panel sizes.
         _topSplitPane.setDividerLocation( _systemSettings.windowConfiguration().topDividerLocation );
+
         //  This is a bit messy - because the top pane has not been drawn yet, its
         //  size is basically 0 by 0.  We have to guess what size it will be to set
         //  the location of its divider as an absolute pixel value
-        //_topSplitPane.setDividerLocation( _systemSettings.windowConfiguration().topDividerLocation );
         _mainSplitPane.setDividerLocation( _systemSettings.windowConfiguration().mainDividerLocation );
         _topSplitPane.setResizeWeight( 0.5 );
 
-        /*  
-         * Set ourselves up to intercept window operations (close, iconize, etc).
-         */
+        // Set ourselves up to intercept window operations (close, iconize, etc).
         addWindowListener( this );
         
-        /*
-         * This stuff is used to trap resize events.
-         */
+        // This stuff is used to trap resize events.
         _this = this;
 		this.addComponentListener(new java.awt.event.ComponentAdapter() 
 		{
@@ -160,7 +131,6 @@ public class DiFXUI extends JFrame implements WindowListener {
 				_this.newSize();
 			}
 		});
-//        java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, "WHAT IS THIS??");
         
         //  Implement the "tear off" state of panels.
         if ( _systemSettings.windowConfiguration().hardwareMonitorTearOff ) {
@@ -212,45 +182,6 @@ public class DiFXUI extends JFrame implements WindowListener {
     public void windowDeiconified(WindowEvent e) {
     }
 
-    //  Commented out Oct 11, 2011
-    //  Called from the main() function.  Not sure why.  Seems fine without it.
-//    private static void serviceDataModel() {
-//        // Add code to update the resource objects
-//        // System.out.printf("***************** Static - DiFX Manager service data model. \n");
-//        if (_dataModel != null) {
-//            // Flag the resources that can not communicate
-//            _dataModel.determineLostResources();
-//
-//            // Determine state of all queued jobs  -- done for each mark5status
-//            // _dataModel.determineStateOfAllJobs();
-//        }
-//        // System.out.printf("***************** Static - DiFX Manager service data model complete. \n");
-//    }
-
-//    private static void readResourcesConfig(String fileToOpen) {
-//        //System.out.printf("***************** DiFX Manager read resources config file data. \n");
-//        if (_dataModel != null) {
-//            // read resource config data
-//            _dataModel.readResourcesConfig(fileToOpen);
-//        }
-//    }
-
-//    private static void readSystemConfig(String fileToOpen) {
-//        //System.out.printf("***************** DiFX Manager read resources config file data. \n");
-//        if (_dataModel != null) {
-//            // read resource config data
-//            _dataModel.readSystemConfig(fileToOpen);
-//        }
-//    }
-
-//    private static void connectToDB() {
-//        //System.out.printf("***************** DiFX Manager read resources config file data. \n");
-//        if (_dataModel != null) {
-//            // read resource config data
-//            _dataModel.setDBConnection();
-//        }
-//    }
-    
     @Override
     public void setBounds( int x, int y, int w, int h ) {
         super.setBounds( x, y, w, h );
@@ -266,14 +197,11 @@ public class DiFXUI extends JFrame implements WindowListener {
             if ( _topSplitPane != null && _messageCenter != null ) {
                 double wFraction = (double)( _topSplitPane.getHeight() ) / 
                         ( (double)( _topSplitPane.getHeight() ) + (double)( _messageCenter.getHeight() ) );
-                //System.out.println( "wFraction is " + wFraction );
                 _mainSplitPane.setDividerLocation( wFraction );
             }
             if ( _queueBrowser != null && _hardwareMonitor != null ) {
                 double wFraction = (double)( _queueBrowser.getWidth() ) /
                         ( (double)( _queueBrowser.getWidth() ) + (double)( _hardwareMonitor.getWidth() ) );
-                //System.err.println( "fraction is " + wFraction );
-                //topSplitPane.setDividerLocation( (int)( wFraction * (double)w ) );
             }
             _mainSplitPane.updateUI();
         }
@@ -298,7 +226,6 @@ public class DiFXUI extends JFrame implements WindowListener {
         setDefaultCloseOperation( javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE );
         setTitle( "USNO DiFX GUI" );
         setName("DiFXUI");
-        //setSize( new java.awt.Dimension(1400, 800) );
         setSize( new java.awt.Dimension( _systemSettings.windowConfiguration().mainW, 
                 _systemSettings.windowConfiguration().mainH ) );
         
@@ -677,59 +604,15 @@ public class DiFXUI extends JFrame implements WindowListener {
      */
     public static void main( final String args[] ) {
 
-        //  Why did we do this????  Seems fine without it...
-        //java.awt.EventQueue.invokeLater(new Runnable() {
+        // Create manager UI using the first command line argument as a system settings
+        // file.
+        String settingsFile = null;
+        if ( args.length > 0 )
+            settingsFile = args[0];
+        DiFXUI view = new DiFXUI( settingsFile );
+        view.setVisible(true);
+        view.setTitle( view.getTitle() + " " + VersionWindow.version() );
 
-            //@Override
-            //public void run() {
-                
-                // Create manager UI using the first command line argument as a system settings
-                // file.
-                String settingsFile = null;
-                if ( args.length > 0 )
-                    settingsFile = args[0];
-                DiFXUI view = new DiFXUI( settingsFile );
-                view.setVisible(true);
-                view.setTitle( view.getTitle() + " " + VersionWindow.version() );
-
-//                if (messageCtr != null) {
-//                    messageCtr.message( 0, null, "***************** DiFX Manager attach listener. \n");
-//                } else {
-//                    System.out.println("***************** DiFX Manager attach listener. \n");
-//                }
-
-                // attach the listener and implementation of update()...
-                //  Commented out Oct 11, 2011
-                //  Not sure what purpose this serves.
-//                _dataModel.attachListener(new MessageListener() {
-//
-//                    @Override
-//                    public void update() {
-//                        //System.out.printf("***************** DiFX Manager service data model and view. \n");
-//                        serviceDataModel();
-//                        //UpdateView();
-//                        //System.out.println("***************** DiFX Manager service data model and view complete. \n");
-//                    }
-//                });
-
-                // kick start the message threads....start controller
-//                try {
-//                    _difxController.startController();
-//                } catch (InterruptedException ex) {
-//                    // threads failed so log an error
-//                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex);
-//                }
-//
-//                // initialize controller with model, view
-//                _difxController.initialize(_dataModel, view);
-
-                // diplay the error UI
-                //MitigateErrorManagerUI theMEM = MitigateErrorManagerUI.instance(_dataModel, _difxController);
-                //theMEM.setVisible(true);
-
-
-            //}
-        //});
     }
                     
     protected HardwareMonitorPanel _hardwareMonitor;
