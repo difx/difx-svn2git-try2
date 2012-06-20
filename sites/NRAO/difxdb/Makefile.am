@@ -10,7 +10,8 @@ dist_bin_SCRIPTS = \
 	difxcopy \
 	difxarch \
 	difxclean \
-	difxusage
+	difxusage \
+	makemark4
 
 e2ecopy_SOURCES = \
 	e2ecopy.c

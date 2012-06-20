@@ -3,7 +3,7 @@
 import datetime
 import cx_Oracle
 from sys import argv, exit
-from os import getenv, popen, umask, getcwd, system
+from os import getenv, environ, popen, umask, getcwd, system
 from os.path import isfile
 from string import find, upper, lower, strip, split
 
@@ -17,8 +17,8 @@ except:
 
 program = 'db2vex'
 author = 'Walter Brisken'
-version = '0.11'
-verdate = '20120515'
+version = '0.12'
+verdate = '20120619'
 
 tsysFile = 'tsys'
 
@@ -29,6 +29,11 @@ databaseName = getenv("VLBA_DB")
 newDatabaseName = getenv("VLBAMPTS_DB")
 if newDatabaseName == None:
 	newDB = False
+
+if environ.has_key('EVLAMPTS_DB'):
+	vlaDatabaseName = getenv('EVLAMPTS_DB')
+else:
+	vlaDatabaseName = None
 
 mjd0 = datetime.datetime(1858, 11, 17, 0, 0)
 
@@ -248,7 +253,7 @@ def getTapesFromDBbyTime(db, startMJD, stopMJD, verbose):
 	tapes = cursor.fetchall()
 	return tapes
 
-def getTapesFromNewDBbyTime(newDb, startMJD, stopMJD, isMark5C, verbose):
+def getTapesFromNewDBbyTime(newDb, startMJD, stopMJD, isMark5C, stations, verbose):
 
 	# select time range that encompases a bit more than the whole experiment
 	# better to be overly inclusive here!
@@ -256,80 +261,105 @@ def getTapesFromNewDBbyTime(newDb, startMJD, stopMJD, isMark5C, verbose):
 	
 	start = startMJD - 0.1
 	stop  = stopMJD  + 0.1
+
+	tapes = []
 	
 	cursor = newDb.cursor()
-	query = "select * from mcdata where monpointname='VSN' and timestamp > %10.4f and timestamp < %10.4f order by timestamp" % (start, stop)
-	if verbose > 0:
-		print 'Executing database query: %s' % query
-	cursor.execute(query)
-	tapes = []
-	list = cursor.fetchall()
-	nbad = 0
-	for l in list:
-		if l[1] == 'BANK0':
-			unit = 0
-		elif l[1] == 'BANK1':
-			unit = 1
+	for station in stations:
+		stn = lower(station)
+		if stn == 'y':
+			stn = 'ea'
+		if isMark5C == 3:
+			hostlist = "'%s-mark5c-usno'" % stn
 		else:
-			nbad += 1;
-			continue
-		s = split(l[0], '-')
-		if len(s) != 3:		# hostname should look something like nl-mark5c-1
-			nbad += 1
-			continue
-		stn = s[0]
+			hostlist = "'%s-mark5c-1', '%s-mark5c-2'" % (stn, stn)
+		query = "select * from mcdata where hostname IN (%s) and monpointname='VSN' and devicename IN ('BANK0', 'BANK1') and timestamp > %10.4f and timestamp < %10.4f order by timestamp" % (hostlist, start, stop)
+		if verbose > 0:
+			print 'Executing database query: %s' % query
+		cursor.execute(query)
+		list = cursor.fetchall()
+		if verbose > 0:
+			print '%d rows found' % len(list)
+		nbad = 0
+		for l in list:
+			if verbose > 1:
+				print l
+			if l[1] == 'BANK0':
+				unit = 0
+			elif l[1] == 'BANK1':
+				unit = 1
+			else:
+				nbad += 1;
+				continue
+			s = split(l[0], '-')
+			if len(s) != 3:		# hostname should look something like nl-mark5c-1
+				nbad += 1
+				continue
+			stn = s[0]
 
-# below here: implement the 1-6 bank system.  Maybe use this in the future
-#		if s[2] == '1':
-#			pass
-#		elif s[2] == '2':
-#			unit += 2
-#		elif lower(s[2]) == 'usno':
-#			unit += 4
-#		else:
-#			nbad += 1
-#			continue
-		
-# for now, just assign 0 or 1, but only look at relevant units
-		if s[2] != unitName:
-			continue
+	# below here: implement the 1-6 bank system.  Maybe use this in the future
+	#		if s[2] == '1':
+	#			pass
+	#		elif s[2] == '2':
+	#			unit += 2
+	#		elif lower(s[2]) == 'usno':
+	#			unit += 4
+	#		else:
+	#			nbad += 1
+	#			continue
+			
+	# for now, just assign 0 or 1, but only look at relevant units
+			if s[2] != unitName:
+				continue
 
-		# make old database entry look like a new one
-		row = ['', '', upper(stn), l[3], l[6], unit + 4]	# add 4 to match old nomenclature
-		tapes.append(row)
+			# make old database entry look like a new one
+			row = ['', '', upper(station), l[3], l[6], unit + 4]	# add 4 to match old nomenclature
+			tapes.append(row)
 
 	if nbad > 0:
 		print 'Warning: getTapesFromNewDBbyTime: %d records had something wrong with them!' % nbad
 	
 	return tapes
 
-def getActiveBankFromNewDB(newDb, startMJD, stopMJD, isMark5C, verbose):
+def getActiveBankFromNewDB(newDb, startMJD, stopMJD, isMark5C, stations, verbose):
 	unitName = ['A', '1', '2', 'usno'][isMark5C]
 
 	start = startMJD - 0.1
 	stop  = stopMJD  + 0.1
 
-	cursor = newDb.cursor()
-	query = "select * from mcdata where devicename='MARK5C' and monpointname='ActiveBank' and timestamp > %10.4f and timestamp < %10.4f order by timestamp" % (start, stop)
-	if verbose > 0:
-		print 'Executing database query: %s' % query
-	cursor.execute(query)
 	activeBanks = []
 	nbad = 0
-	list = cursor.fetchall()
-	for l in list:
-		s = split(l[0], '-')
-		if len(s) != 3:		# hostname should look something like nl-mark5c-1
-			nbad += 1
-			continue
-		stn = s[0]
 
-# for now, just assign 0 or 1, but only look at relevant units
-		if s[2] != unitName:
-			continue
+	cursor = newDb.cursor()
+	for station in stations:
+		stn = lower(station)
+		if stn == 'y':
+			stn = 'ea'
+		if isMark5C == 3:
+			hostlist = "'%s-mark5c-usno'" % stn
+		else:
+			hostlist = "'%s-mark5c-1', '%s-mark5c-2'" % (stn, stn)
+		query = "select * from mcdata where hostname IN () and devicename='MARK5C' and monpointname='ActiveBank' and timestamp > %10.4f and timestamp < %10.4f order by timestamp" % (hostlist, start, stop)
+		if verbose > 0:
+			print 'Executing database query: %s' % query
+		cursor.execute(query)
+		list = cursor.fetchall()
+		if verbose > 0:
+			print '%d rows found' % len(list)
+		for l in list:
+			if verbose > 1:
+				print l
+			s = split(l[0], '-')
+			if len(s) != 3:		# hostname should look something like nl-mark5c-1
+				nbad += 1
+				continue
 
-		row = [upper(stn), l[3], l[5]]		# station, time, bank
-		activeBanks.append(row)
+	# for now, just assign 0 or 1, but only look at relevant units
+			if s[2] != unitName:
+				continue
+
+			row = [upper(station), l[3], l[5]]		# station, time, bank
+			activeBanks.append(row)
 
 	if nbad > 0:
 		print 'Warning: getActiveBankFromNewDB: %d records had something wrong with them!' % nbad
@@ -364,23 +394,23 @@ def genMark5CBlocks(stn, tapes, banks):
 		if b == nBank or (t < nTape and tapes[t][3] < banks[b][1]):	# time to handle a tape row
 			if tapes[t][2] == stn and recorder >= 0:
 				if tapes[t][4] != VSN[recorder]:
-					if recorder == tapes[t][5] and len(VSN[recorder]) == 8:	# set end time for the last entry
+					if recorder == tapes[t][5] and VSN[recorder] != None and len(VSN[recorder]) == 8:	# set end time for the last entry
 						blocks[-1][1] = tapes[t][3]
 					VSN[tapes[t][5]] = tapes[t][4]
-					if recorder == tapes[t][5] and len(VSN[recorder]) == 8:	# start new entry
+					if recorder == tapes[t][5] and VSN[recorder] != None and len(VSN[recorder]) == 8:	# start new entry
 						blocks.append([tapes[t][3], 0, VSN[recorder], recorder])
-				elif len(VSN[recorder]) == 8:
+				elif VSN[recorder] != None and len(VSN[recorder]) == 8:
 					blocks[-1][1] = tapes[t][3]
 			t += 1
 		else:								# time to handle a bank row
 			if banks[b][0] == stn:
 				if int(banks[b][2])+4 != recorder:
-					if recorder == tapes[t][5] and len(VSN[recorder]) == 8:	# set end time for the last entry
+					if recorder == tapes[t][5] and VSN[recorder] != None and len(VSN[recorder]) == 8:	# set end time for the last entry
 						blocks[-1][1] = banks[b][1]
 					recorder = int(banks[b][2])+4
-					if recorder == tapes[t][5] and len(VSN[recorder]) == 8:	# start new entry
+					if recorder == tapes[t][5] and VSN[recorder] != None and len(VSN[recorder]) == 8:	# start new entry
 						blocks.append([banks[b][1], 0, VSN[recorder], recorder])
-				elif len(VSN[recorder]) == 8:
+				elif VSN[recorder] != None and len(VSN[recorder]) == 8:
 					blocks[-1][1] = tapes[t][3]
 			b += 1
 	
@@ -741,8 +771,8 @@ def processVexFile(vexFile, force, verbose, preobs, vsnProjectCode, isMark5C, fs
 
 	if not preobs:
 		if isMark5C:
-			tapes = getTapesFromNewDBbyTime(newDb, experTimes[0], experTimes[1], isMark5C, verbose)
-			activeBanks = getActiveBankFromNewDB(newDb, experTimes[0], experTimes[1], isMark5C, verbose)
+			tapes = getTapesFromNewDBbyTime(newDb, experTimes[0], experTimes[1], isMark5C, stations, verbose)
+			activeBanks = getActiveBankFromNewDB(newDb, experTimes[0], experTimes[1], isMark5C, stations, verbose)
 		else:
 			tapes = getTapesFromDBbyTime(db, experTimes[0], experTimes[1], verbose)
 		motions = getTapeMotionFromDB(db, obsCode, obsSeg, verbose)
