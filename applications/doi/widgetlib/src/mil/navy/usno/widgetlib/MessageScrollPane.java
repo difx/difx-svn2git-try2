@@ -73,14 +73,10 @@ public class MessageScrollPane extends JPanel implements MouseMotionListener,
         //  Set ourselves up to respond to a repeating timeout roughly 50 times
         //  a second.  This is used for animation of the browser content.  The
         //  time interval is set to match the timing of drag and mouse wheel
-        //  events.
-        Action updateDrawingAction = new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                timeoutIntervalEvent();
-            }
-        };
-        new Timer( 20, updateDrawingAction ).start();
+        //  events.  Previously this was actually done with timeouts, but this was
+        //  found to bog down the event loop.  The "scroll thread" handles it now.
+        _scrollThread = new ScrollThread( 20 );
+        _scrollThread.start();
         
         //  The yOffset tracks where the browser data are located vertically.
         //  It is measured in pixels.
@@ -460,6 +456,25 @@ public class MessageScrollPane extends JPanel implements MouseMotionListener,
         _messageFont = newFont;
     }
     
+    public class ScrollThread extends Thread {
+        protected int _interval;
+        public ScrollThread( int interval ) {
+            _interval = interval;
+        }
+        @Override
+        public void run() {
+            boolean keepGoing = true;
+            while ( keepGoing ) {
+                timeoutIntervalEvent();
+                try {
+                    Thread.sleep( _interval );
+                } catch ( Exception e ) {
+                    keepGoing = false;
+                }
+            }
+        }
+    }
+    
     /*
      * Give access to the message list.
      */
@@ -482,6 +497,8 @@ public class MessageScrollPane extends JPanel implements MouseMotionListener,
     protected boolean _scrolledToEnd;
     protected Font _messageFont;
     protected Color _highlightColor;
+    
+    protected ScrollThread _scrollThread;
     
     static protected int SCROLLBAR_WIDTH = 16;
     

@@ -19,12 +19,15 @@ import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseListener;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.AdjustmentEvent;
 
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Color;
+
+import java.lang.Thread;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -38,7 +41,7 @@ import javax.swing.event.EventListenerList;
  * @author jspitzak
  */
 public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener, 
-        MouseWheelListener, AdjustmentListener {
+        MouseWheelListener, MouseListener, AdjustmentListener {
     
     public NodeBrowserScrollPane() {
         initialize( 20 );
@@ -61,6 +64,7 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
         //  clicks.
         addMouseMotionListener( this );
         addMouseWheelListener( this );
+        addMouseListener( this );
         
         //  These are counters used for "momentum" in scrolling.
         _offsetMotion = 0;
@@ -77,16 +81,10 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
         //  Set ourselves up to respond to a repeating timeout roughly 50 times
         //  a second.  This is used for animation of the browser content.  The
         //  time interval is set to match the timing of drag and mouse wheel
-        //  events.
-        Action updateDrawingAction = new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                timeoutIntervalEvent();
-            }
-        };
-        _timeoutTimer = new Timer( timeInterval, updateDrawingAction );
-        _timeoutTimer.start();
-        //new Timer( timeInterval, updateDrawingAction ).start();
+        //  events.  Previously this was actually done with timeouts, but this was
+        //  found to bog down the event loop.  The "scroll thread" handles it now.
+        _scrollThread = new ScrollThread( timeInterval );
+        _scrollThread.start();
         
         //  The yOffset tracks where the browser data are located vertically.
         //  It is measured in pixels.
@@ -255,6 +253,25 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
         if ( _drawFrame )
             g.drawRect( 0, 0, d.width  - 1, d.height - 1 );
     }
+
+    public class ScrollThread extends Thread {
+        protected int _interval;
+        public ScrollThread( int interval ) {
+            _interval = interval;
+        }
+        @Override
+        public void run() {
+            boolean keepGoing = true;
+            while ( keepGoing ) {
+                timeoutIntervalEvent();
+                try {
+                    Thread.sleep( _interval );
+                } catch ( Exception e ) {
+                    keepGoing = false;
+                }
+            }
+        }
+    }
     
     /*
      * Add a "listener" to the timeout events that occur in this class (they are
@@ -290,7 +307,7 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
         //  This is where the function used to start.
         if ( _scrollBar.getValue() > _scrollBar.getMaximum() - _scrollBar.getVisibleAmount() )
             scrollToEnd();
-        if ( _offsetMotion != 0 && !_scrolling ) {
+        if ( _offsetMotion != 0 ) {
             //  Make sure we haven't scrolled too far in either direction.  The
             //  _yOffset measures how far from the top we start drawing browser
             //  items, so it should always be zero or negative.
@@ -306,7 +323,7 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
             }
             //  Otherwise, adjust the _yOffset for "momentum" motion, and decay 
             //  the amount we adjust.
-            else if ( _momentumOn ) {
+            else if ( _momentumOn && !_scrolling ) {
                 _yOffset += _offsetMotion;
                 --_decayCount;
                 if ( _decayCount < 1 ) {
@@ -322,36 +339,54 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
             }
             else {
                 _yOffset += _offsetMotion;
-                _offsetMotion = 0;
+                if ( !_scrolling )
+                    _offsetMotion = 0;
             }
             browserPane.yOffset( _yOffset );
             if ( this.isVisible() )
                 this.updateUI();
         }
-        //else
-        //    _timeoutTimer.stop();
-        //  This is needed in case closing a browser node makes the data smaller
-        //  than the screen.
-        //if ( _yOffset == 0 )
-        //    this.updateUI();
+        //_scrolling = false;
+    }
+    
+    @Override
+    public void mouseExited( MouseEvent e ) {
+        _scrolling = false;
+    }
+    
+    @Override
+    public void mouseEntered( MouseEvent e ) {
+    }
+    
+    @Override
+    public void mousePressed( MouseEvent e ) {
+    }
+    
+    @Override
+    public void mouseReleased( MouseEvent e ) {
+        _scrolling = false;
+    }
+    
+    @Override
+    public void mouseClicked(MouseEvent me) {
     }
     
     @Override
     public void mouseMoved( MouseEvent e ) {
         _lastY = e.getY();
         _lastX = e.getX();
-        _scrolling = false;
+        //_scrolling = false;
     }
     
     @Override
     public void mouseDragged( MouseEvent e ) {
+        _scrolling = true;
         if ( _scrollable && !_noScrollbar ) {
             _offsetMotion = e.getY() - _lastY;
             _decayCount = 10;
             _decayStartCount = 10;
-            _lastY = e.getY();
+            //_lastY = e.getY();
             testScrollBar();
-            //_timeoutTimer.start();
         }
     }
     
@@ -362,7 +397,6 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
             _decayCount = 10;
             _decayStartCount = 10;
             testScrollBar();
-            //_timeoutTimer.start();
         }
     }
     
@@ -388,11 +422,6 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
             browserPane.yOffset( _yOffset );
             this.updateUI();
             testScrollBar();
-            //_timeoutTimer.start();
-            //  This stuff could be used instead if momentum was desired.
-            //_offsetMotion = -e.getValue() - _yOffset;
-            //_decayCount = 10;
-            //_decayStartCount = 10;
         }
     }
     
@@ -492,6 +521,8 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
     protected boolean _scrolledToEnd;
     protected boolean _drawFrame;
     protected boolean _noScrollbar;
+    
+    protected ScrollThread _scrollThread;
     
     static protected int SCROLLBAR_WIDTH = 16;
     
