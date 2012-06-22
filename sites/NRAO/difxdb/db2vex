@@ -246,7 +246,7 @@ def getTapesFromDBbyTime(db, startMJD, stopMJD, verbose):
 	stop  = mjd2date(stopMJD  + 1.0)
 
 	cursor = db.cursor()
-	query = "select * from TAPE where EPOCH > '%s' and EPOCH < '%s' order by STAID,EPOCH" % (start, stop)
+	query = "select * from TAPE where EPOCH > '%s' and EPOCH < '%s' and UNIT IN (4,5) order by STAID,EPOCH" % (start, stop)
 	if verbose > 0:
 		print 'Executing database query: %s' % query
 	cursor.execute(query)
