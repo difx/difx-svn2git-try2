@@ -104,5 +104,6 @@ def adddisks(db):
 
 	print 'Added to add %d modules to TAPES' % len(addList)
 
+# adddisks(db)
 
 tweakdates(db)

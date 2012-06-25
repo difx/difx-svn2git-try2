@@ -141,7 +141,7 @@ def process(monData):
 		elif lastblock[2] != scan[2]:
 			lastblock = [scan[0], scan[1], scan[2], scan[3]]
 			blocks.append(lastblock)
-		elif scan[0] - lastblock[1] > 60.0/1440.0:
+		elif scan[0] - lastblock[1] > 20.0/1440.0:
 			lastblock = [scan[0], scan[1], scan[2], scan[3]]
 			blocks.append(lastblock)
 		else:

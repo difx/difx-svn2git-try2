@@ -339,7 +339,7 @@ def getActiveBankFromNewDB(newDb, startMJD, stopMJD, isMark5C, stations, verbose
 			hostlist = "'%s-mark5c-usno'" % stn
 		else:
 			hostlist = "'%s-mark5c-1', '%s-mark5c-2'" % (stn, stn)
-		query = "select * from mcdata where hostname IN () and devicename='MARK5C' and monpointname='ActiveBank' and timestamp > %10.4f and timestamp < %10.4f order by timestamp" % (hostlist, start, stop)
+		query = "select * from mcdata where hostname IN (%s) and devicename='MARK5C' and monpointname='ActiveBank' and timestamp > %10.4f and timestamp < %10.4f order by timestamp" % (hostlist, start, stop)
 		if verbose > 0:
 			print 'Executing database query: %s' % query
 		cursor.execute(query)
