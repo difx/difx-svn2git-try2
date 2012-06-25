@@ -17,8 +17,8 @@ except:
 
 program = 'db2vex'
 author = 'Walter Brisken'
-version = '0.12'
-verdate = '20120619'
+version = '0.13'
+verdate = '20120625'
 
 tsysFile = 'tsys'
 
@@ -238,7 +238,7 @@ def getShelvesFromDB(db, verbose):
 	shelves = cursor.fetchall()
 	return shelves
 
-def getTapesFromDBbyTime(db, startMJD, stopMJD, verbose):
+def getTapesFromDBbyTime(db, startMJD, stopMJD, stn, verbose):
 
 	# select time range that encompases a bit more than the whole experiment
 	# better to be overly inclusive here!
@@ -246,7 +246,7 @@ def getTapesFromDBbyTime(db, startMJD, stopMJD, verbose):
 	stop  = mjd2date(stopMJD  + 1.0)
 
 	cursor = db.cursor()
-	query = "select * from TAPE where EPOCH > '%s' and EPOCH < '%s' and UNIT IN (4,5) order by STAID,EPOCH" % (start, stop)
+	query = "select * from TAPE where EPOCH BETWEEN '%s' and '%s' and UNIT IN (4,5) and STAID = '%s' order by STAID,EPOCH" % (start, stop, stn)
 	if verbose > 0:
 		print 'Executing database query: %s' % query
 	cursor.execute(query)
@@ -366,15 +366,113 @@ def getActiveBankFromNewDB(newDb, startMJD, stopMJD, isMark5C, stations, verbose
 	
 	return activeBanks
 
-# A block is [startMjd, stopMJD, VSN, recorder]
-def genMark5CBlocks_old(stn, tapes, activeBanks):
-	blocks = []
 
-	for t in tapes[len(tapes)/3:]:
-		if t[2] == stn and len(t[4]) > 0:
-			return [[tapes[0][3], tapes[-1][3], t[4], t[5]]]
+def processMark5C(monData):
+	vsn = ['', '']
+	recvsn = ''
+	recStart = -1
+	recStop = -1
+	recBank = -1
+	active = -1	# or 0 or 1
+	rate = 0
+
+	N = len(monData)
+
+	scans = []
+
+	for m in monData:
+		N -= 1
+		action = ''
+		dev = m[0]
+		mpt = m[1]
+		t   = m[2]
+		v   = m[3]
+		s   = m[4]
+		if s == None:
+			s = ''
+
+		if mpt == 'VSN':
+			if dev == 'BANK0':
+				b = 0
+			elif dev == 'BANK1':
+				b = 1
+			else:
+				b = -1
+			if b != -1:
+				if active == b and s != vsn[b] and s != '':
+					action = 'stop'
+			vsn[b] = s
+		elif mpt == 'RecordingRate':
+			if v == 0 and rate > 0:
+				action = 'stop'
+			elif v > 0 and rate == 0 and active >= 0:
+				action = 'start'
+			rate = v
+		elif mpt == 'RecordState':
+			if v > 0 and recStart < 0 and active >= 0:
+				action = 'start'
+			elif v == 0 and recStart > 0:
+				action = 'stop'
+		elif mpt == 'ActiveBank':
+			if (v == -1 or v != active) and recStart > 0:
+				action = 'stop'
+			active = int(v)
+
+		if N == 0:
+			action = 'stop'
+
+		if action == 'stop' and recStart > 0:
+			recStop = t
+			scans.append([recStart, recStop, recvsn, recBank])
+			recStart = -1
+		elif action == 'start' and recStart < 0:
+			recvsn = vsn[active]
+			recStart = t
+			recStop = -1
+			recBank = active
+	
+	blocks = []
+	lastblock = None
+	for scan in scans:
+		if lastblock == None:
+			lastblock = [scan[0], scan[1], scan[2], scan[3]]
+			blocks.append(lastblock)
+		elif lastblock[2] != scan[2]:
+			lastblock = [scan[0], scan[1], scan[2], scan[3]]
+			blocks.append(lastblock)
+		elif scan[0] - lastblock[1] > 20.0/1440.0:
+			lastblock = [scan[0], scan[1], scan[2], scan[3]]
+			blocks.append(lastblock)
+		else:
+			lastblock[1] = scan[1]
 
 	return blocks
+
+def queryMark5C(newDb, startMJD, stopMJD, station, verbose):
+	
+	cursor = newDb.cursor()
+	
+	stn = lower(station)
+	if stn == 'y':
+		stn = 'ea'
+	hostlist = "'%s-mark5c-1', '%s-mark5c-2'" % (stn, stn)
+	query = "SELECT devicename,monpointname,timestamp,monpointvalue,monpointstr FROM mcdata WHERE hostname IN (%s) AND ((devicename IN ('BANK0', 'BANK1') AND monpointname='VSN') OR (devicename = 'MARK5C' AND monpointname IN ('ScanLabel', 'RecordingRate', 'ActiveBank', 'RecordState'))) AND timestamp BETWEEN %10.4f AND %10.4f ORDER BY timestamp" % (hostlist, startMJD, stopMJD)
+
+	if verbose > 1:
+		print 'Executing: %s' % query
+
+	cursor.execute(query)
+	monData = cursor.fetchall()
+
+	print '%d Mark5C mon data points found for station %s' % (len(monData), stn)
+
+	f = open('/tmp/%s.mon' % station, 'w')
+	for m in monData:
+		f.write('%s\n' % str(m))
+	f.close()
+
+	return monData
+
 		
 def genMark5CBlocks(stn, tapes, banks):
 	blocks = []
@@ -430,13 +528,13 @@ def getVSN(vsns, stn, unitNumber, t):
 			vsn = v[1]
 	return vsn
 
-def getTapeMotionFromDB(db, prop, seg, verbose):
+def getTapeMotionFromDB(db, prop, seg, stn, verbose):
 	cursor = db.cursor()
 	collect = "STAID,TAPESPEED1,TAPESPEED2,START_TIME,STOP_TIME"
 	if len(seg) > 0:
-		query = "select %s from OBSSTA where PROPOSAL='%s' and SEGMENT='%s' order by START_TIME" % (collect, prop, seg)
+		query = "select %s from OBSSTA where STAID='%s' and PROPOSAL='%s' and SEGMENT='%s' order by START_TIME" % (collect, stn, prop, seg)
 	else:
-		query = "select %s from OBSSTA where PROPOSAL='%s' order by START_TIME" % (collect, prop)
+		query = "select %s from OBSSTA where STAID='%s' and PROPOSAL='%s' order by START_TIME" % (collect, stn, prop)
 	if verbose > 0:
 		print 'Executing database query: %s' % query
 	cursor.execute(query)
@@ -770,45 +868,45 @@ def processVexFile(vexFile, force, verbose, preobs, vsnProjectCode, isMark5C, fs
 	vexData.append('*------------------------------------------------------------------------------\n')
 
 	if not preobs:
-		if isMark5C:
-			tapes = getTapesFromNewDBbyTime(newDb, experTimes[0], experTimes[1], isMark5C, stations, verbose)
-			activeBanks = getActiveBankFromNewDB(newDb, experTimes[0], experTimes[1], isMark5C, stations, verbose)
-		else:
-			tapes = getTapesFromDBbyTime(db, experTimes[0], experTimes[1], verbose)
-		motions = getTapeMotionFromDB(db, obsCode, obsSeg, verbose)
-		vsns = makeVSNDict(tapes)
+		vexData.append('$TAPELOG_OBS;\n')
 		shelves = getShelvesFromDB(db, verbose)
 		shelfData = []
-		vexData.append('$TAPELOG_OBS;\n')
 
 		for s in stations:
 			stn = upper(s)
-			scans = calcVSNList(motions, vsns, stn)
-
-			# A block is [startMjd, stopMJD, VSN, recorder]
-			if isMark5C:
-				blocks = genMark5CBlocks(stn, tapes, activeBanks)
+			blocks = []
+			if stn in ['EA', 'Y', 'Y1', 'Y27']:
+				stn = 'Y'
+				# FIXME: access EVLA database here
+			elif isMark5C:
+				monData = queryMark5C(newDb, experTimes[0]-0.1, experTimes[1]+0.1, stn, 1)
+				blocks = processMark5C(monData)
 			else:
+				tapes = getTapesFromDBbyTime(db, experTimes[0], experTimes[1], stn, verbose)
+				motions = getTapeMotionFromDB(db, obsCode, obsSeg, stn, verbose)
+				vsns = makeVSNDict(tapes)
+				scans = calcVSNList(motions, vsns, stn)
 				blocks = genBlocks(scans, experTimes)
+
+			#if no recording blocks found, try looking at field system log data
 			if len(blocks) < 1:
 				blocks = getBlocksFromFS(fsVSNs, Ulow(stn))
 			if len(blocks) < 1:
 				print 'Warning: No media found for station %s' % stn
-				continue
+				continue;
+			
 			vexData.append('def %s;\n' % Ulow(stn))
 			for b in blocks:
-				b.append(getShelf(shelves, b[2]))
-				vexData.append('  VSN = %d : %s : %s : %s;  * shelf = %s\n' % \
-					((b[3]+1), b[2], mjd2vex(b[0]), mjd2vex(b[1]), b[4]))
-				shelfData.append([stn, b[2], b[4]])
+				shelf = getShelf(shelves, b[2])
+				vexData.append('  VSN = %d : %s : %s : %s;  * shelf = %s\n' % ((b[3]+1), b[2], mjd2vex(b[0]), mjd2vex(b[1]), shelf))
+				shelfData.append([stn, b[2], shelf])
 			vexData.append('enddef;\n')
+		vexData.append('*------------------------------------------------------------------------------\n')
 
 		shelfFile = vexFile + '.shelf'
 		if verbose > 0:
 			print 'Writing to file: %s' % shelfFile
 		writeShelfData(shelfData, shelfFile)
-
-		vexData.append('*------------------------------------------------------------------------------\n')
 
 	timeRange = [1.0e9, -1.0e9]
 	for stn in stations:
