@@ -178,6 +178,13 @@
                 <xsd:element ref="autoUpdateEOP"/>
                 <xsd:element ref="autoUpdateSeconds"/>
 
+                <xsd:element ref="correlationDoPolarFalse" />
+                <xsd:element ref="correlationTInt" />
+                <xsd:element ref="correlationSpecRes" />
+                <xsd:element ref="correlationNChan" />
+                <xsd:element ref="correlationFFTSpecRes" />
+                <xsd:element ref="correlationNFFTChan" />
+    
             </xsd:sequence>
         </xsd:complexType>
     </xsd:element>
@@ -274,6 +281,13 @@
     <xsd:element name="autoUpdateEOP" type="xsd:boolean"></xsd:element>
     <xsd:element name="autoUpdateSeconds" type="xsd:int"></xsd:element>
                 
+    <xsd:element name="correlationDoPolarFalse" type="xsd:boolean"></xsd:element>
+    <xsd:element name="correlationTInt" type="xsd:double"></xsd:element>
+    <xsd:element name="correlationSpecRes" type="xsd:double"></xsd:element>
+    <xsd:element name="correlationNChan" type="xsd:int"></xsd:element>
+    <xsd:element name="correlationFFTSpecRes" type="xsd:double"></xsd:element>
+    <xsd:element name="correlationNFFTChan" type="xsd:int"></xsd:element>
+    
     <xsd:complexType name="mark5Status">
         <xsd:sequence>
             <xsd:element name="bankAVSN" type="xsd:string"></xsd:element>

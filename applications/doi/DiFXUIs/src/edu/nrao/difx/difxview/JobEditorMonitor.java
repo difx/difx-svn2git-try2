@@ -263,7 +263,7 @@ public class JobEditorMonitor extends JFrame {
         _chooseBasedOnModule.setSelected( _settings.defaultNames().chooseBasedOnModule );
         _chooseBasedOnModule.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                checkDataSourceList();
+                buildDataSourceList();
                 _settings.defaultNames().chooseBasedOnModule = _chooseBasedOnModule.isSelected();
             }
         } );
@@ -429,18 +429,37 @@ public class JobEditorMonitor extends JFrame {
  
         _allObjectsBuilt = true;
         
-        //  Set a timeout with a one second interval.
-        Action updateDrawingAction = new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                timeoutIntervalEvent();
-            }
-        };
-        new Timer( 1000, updateDrawingAction ).start();
+        //  Start a thread that can be used to trigger repeated updates.
+        _updateThread = new UpdateThread( 1000 );
+        _updateThread.start();
         
         this.newSize();
 
     }
+    
+    protected class UpdateThread extends Thread {
+        protected int _interval;
+        protected boolean _keepGoing;
+        public UpdateThread( int i ) {
+            _interval = i;
+            _keepGoing = true;
+        }
+        public void keepGoing( boolean newVal ) {
+            _keepGoing = newVal;
+        }
+        @Override
+        public void run() {
+            while ( _keepGoing ) {
+                timeoutIntervalEvent();
+                try {
+                    Thread.sleep( _interval );
+                } catch ( Exception e ) {
+                    _keepGoing = false;
+                }
+            }
+        }
+    }
+                
     
     @Override
     public void setBounds( int x, int y, int w, int h ) {
@@ -941,7 +960,7 @@ public class JobEditorMonitor extends JFrame {
         // -- datastreams, enabled only
         DifxStart.Datastream dataStream = command.factory().createDifxStartDatastream();
 
-        //  Include all of the "checked" data stream node names...
+        //  Include all of the "checked" data stream node names.
         String dataNodeNames = "";
         for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
@@ -1238,6 +1257,8 @@ public class JobEditorMonitor extends JFrame {
                 _dataObjectB.setForeground( Color.GRAY );
             }
         }
+        public boolean foundA() { return _foundA; }
+        public boolean foundB() { return _foundB; }
         
         public void checkFound( boolean doCheck ) {
             if ( doCheck && !_handSelected ) {
@@ -1451,16 +1472,120 @@ public class JobEditorMonitor extends JFrame {
                     _processorsEdited = true;
             }
         }
+        
+        buildDataSourceList();
+    }
+    
+    public void buildDataSourceList() {
 
         //  The data source list is built using the known data requirements (which
-        //  we get by parsing the .input file).  These are contained in the "_dataSources"
-        //  hash table.  This is a list of data items needed to run the job, along
-        //  with data sources if they are known.  We can also search here for data
-        //  sources, and check that those we know about are on line.
-//        _dataSourcesPane.browserTopNode().clearChildren();
-//        if ( _dataObjects != null ) {
-//            for ( Iterator<String> jter = _dataObjects.iterator(); jter.hasNext(); ) {
-//                String dataObject = jter.next();
+        //  we get by parsing the .input file).  These are to appear in the order in
+        //  which they occur in the .input file.  Missing data requirements are listed
+        //  in the data source list as warnings.
+        _dataSourcesPane.browserTopNode().clearChildren();
+        System.out.println( "rebuild now..." );
+        if ( _dataObjects != null ) {
+            //  Look at each data object we need.
+            for ( Iterator<String> jter = _dataObjects.iterator(); jter.hasNext(); ) {
+                String dataObject = jter.next().trim();
+System.out.println( "looking for dataobject " + dataObject );
+                //  Check the entire list of data sources to see which one (if any) provides this
+                //  object and put it on the browser.
+                boolean dataObjectLocated = false;
+                //  These are all of the known Mark 5's...
+                for ( Iterator<BrowserNode> iter = _settings.hardwareMonitor().mk5Modules().children().iterator();
+                        iter.hasNext() && !dataObjectLocated; ) {
+                    Mark5Node thisModule = (Mark5Node)(iter.next());
+System.out.println( thisModule.name() + " has " + thisModule.bankAVSN() + " and " + thisModule.bankBVSN() );
+                    if ( !thisModule.ignore() ) {
+                        if ( thisModule.bankAVSN().trim().contentEquals( dataObject ) ||
+                             thisModule.bankBVSN().trim().contentEquals( dataObject ) ) {
+                            //  Found it!  Add this mark5 to the list in the data source browser.
+                            dataObjectLocated = true;
+                            DataNode newNode = new DataNode( thisModule.name() );
+                            newNode.dataObjectA( thisModule.bankAVSN().trim() );
+                            newNode.dataObjectB( thisModule.bankBVSN().trim() );
+                            if ( thisModule.bankAVSN().trim().contentEquals( dataObject ) ) {
+System.out.println( "found A" );
+                                newNode.foundA( true );
+                            }
+                            else if ( thisModule.bankBVSN().trim().contentEquals( dataObject ) ) {
+System.out.println( "found B" );
+                                newNode.foundB( true );
+                            }
+                            //  Figure out whether this is selected or not based on whether
+                            //  we've already done selections.
+                            _dataSourcesPane.addNode( newNode );
+                        }
+                    }
+                }
+                //  If the data object was not among those found in current data sources,
+                //  include a line in the data sources warning the user of this. 
+                if ( !dataObjectLocated ) {
+//System.out.println( "did not find " + dataObject );
+                    DataNode newNode = new DataNode( "missing module" );
+                    newNode.dataObjectA( dataObject );
+                    newNode.missingA();
+                    newNode.hideSelection();
+                    _dataSourcesPane.addNode( newNode );
+                }
+            }
+        }
+        
+//        System.out.println( "gone through the modules..." );
+//        for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
+//                iter.hasNext(); ) {
+//            DataNode newNode = (DataNode)iter.next();
+//            System.out.println( "      " + newNode.name() + "   " + newNode.dataObjectA() + "   " + newNode.dataObjectB() );
+//        }
+//        System.out.println( "now add other data sources" );
+//
+        //  Now that we've built a list of data sources based on the data requirements,
+        //  add all of the other possible data sources we observe so the user knows what's
+        //  out there.
+        for ( Iterator<BrowserNode> iter = _settings.hardwareMonitor().mk5Modules().children().iterator();
+                iter.hasNext(); ) {
+            Mark5Node thisModule = (Mark5Node)(iter.next());
+            boolean moduleFound = false;
+            for ( Iterator<BrowserNode> iter2 = _dataSourcesPane.browserTopNode().children().iterator();
+                    iter2.hasNext() && !moduleFound; ) {
+                DataNode testNode = (DataNode)(iter2.next());
+                if ( testNode.name() == thisModule.name() )
+                    moduleFound = true;
+            }
+            if ( !moduleFound ) {
+                DataNode newNode = new DataNode( thisModule.name() );
+                newNode.selected( !_dataSourcesEdited );
+                newNode.dataObjectA( thisModule.bankAVSN() );
+                newNode.dataObjectB( thisModule.bankBVSN() );
+                newNode.checkFound( !_chooseBasedOnModule.isSelected() );
+                _dataSourcesPane.addNode( newNode );
+            }
+        }
+
+        System.out.println( "final list" );
+        for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
+                iter.hasNext(); ) {
+            DataNode newNode = (DataNode)iter.next();
+            System.out.print( "      " + newNode.name() + "   " + newNode.dataObjectA() );
+            if ( newNode.foundA() )
+                System.out.print( "XX" );
+            else
+                System.out.print( "  " );
+            System.out.print( "   " + newNode.dataObjectB() );
+            if ( newNode.foundB() )
+                System.out.print( "XX" );
+            else
+                System.out.print( "  " );
+            System.out.print( "\n" );
+        }
+        System.out.println( "\nDONE!\n\n" );
+        _dataSourcesPane.updateUI();
+        
+    }
+        
+/*        
+        /////////////////
 //                DataNode newNode = new DataNode( _dataSources.get( dataObject ) );
 //                _dataSourcesPane.addNode( newNode );
 //            }
@@ -1502,23 +1627,26 @@ public class JobEditorMonitor extends JFrame {
         //  Now purge the list of any items that were not "found"....
         for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
-                DataNode testNode = (DataNode)(iter.next());
-                if ( !testNode.foundIt ) {
-                    _dataSourcesPane.browserTopNode().remove( testNode );
-                    iter.remove();
-                }
-                else {
-                    //  This lets us know if anyone is editing the list.  If so, we
-                    //  don't add new items "selected" by default.
-                    if ( !testNode.selected() )
-                        _dataSourcesEdited = true;
-                }
+            DataNode testNode = (DataNode)(iter.next());
+            if ( !testNode.foundIt ) {
+                _dataSourcesPane.browserTopNode().remove( testNode );
+                iter.remove();
+            }
+            else {
+                //  This lets us know if anyone is editing the list.  If so, we
+                //  don't add new items "selected" by default.
+                if ( !testNode.selected() )
+                    _dataSourcesEdited = true;
+            }
         }
+        //java.util.Collections.sort( _dataSourcesPane.browserTopNode().children() );
         _dataSourcesPane.updateUI();
         
         checkDataSourceList();
         
     }
+    * 
+    */
     
     /*
      * Check the items in the data source list against things that we need.  Flag
@@ -1526,6 +1654,8 @@ public class JobEditorMonitor extends JFrame {
      * that are not wanted.
      */
     public void checkDataSourceList() {
+        System.out.println( ">>>>>>>>>>>>>>>\n>>>>>>>>>>>>>>\n>>>>>>>>>>>>>>>\n"
+                + "HEY\n<<<<<<<<<<<<<<\n<<<<<<<<<<<<<<<\n<<<<<<<<<<<<<<<\n" );
         //  We want to locate all of our data objects.  Turn the checklist flags
         //  to false before we search.
         if ( _dataObjects == null )
@@ -1692,6 +1822,8 @@ public class JobEditorMonitor extends JFrame {
         _jobNode.updateDatabase( "jobStart", _jobNode.jobStart().toString() );
         _jobNode.updateDatabase( "jobDuration", _jobNode.jobDuration().toString() );
         _jobNode.updateDatabase( "numAntennas", _jobNode.numAntennas().toString() );
+        
+        buildDataSourceList();
 
     }
     
@@ -1832,6 +1964,8 @@ public class JobEditorMonitor extends JFrame {
     protected Integer _executeTime;
     protected Integer _startMJD;
     protected Integer _startSeconds;
+    
+    protected UpdateThread _updateThread;
     
     protected MessageDisplayPanel _messageDisplayPanel;
     

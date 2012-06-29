@@ -28,6 +28,8 @@ import java.util.ArrayList;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import javax.swing.event.PopupMenuListener;
+import javax.swing.event.PopupMenuEvent;
 
 import java.net.UnknownHostException;
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
@@ -85,7 +87,7 @@ public class StationPanel extends IndexedPanel {
         vsnLabel.setHorizontalAlignment( JLabel.RIGHT );
         _dataSourcePanel.add( vsnLabel );
         _vsnList = new JComboBox();
-        _vsnList.setBounds( 230, 30, 210, 25 );
+        _vsnList.setBounds( 230, 30, 100, 25 );
         _vsnList.setToolTipText( "VSN of module containing data for this antenna." );
         _vsnList.setEditable( true );
         //  This little bit causes a typed-in item to be treated as a module name.
@@ -109,6 +111,51 @@ public class StationPanel extends IndexedPanel {
         });
         _dataSourcePanel.add( _vsnList );
         _vsnList.setEnabled( true );
+        _vsnFormat = new JComboBox();
+        _vsnFormat.setBounds( 335, 30, 180, 25 );
+        _vsnFormat.setToolTipText( "Module format." );
+        _vsnFormat.setEditable( true );
+        //  This little bit causes a typed-in item to be treated as a format.
+        _vsnFormat.getEditor().addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                //  If not already in the list of VSNs, add this name.
+                if ( !_settings.inModuleFormatList( (String)_vsnFormat.getEditor().getItem() ) ) {
+                    if ( ((String)_vsnFormat.getEditor().getItem()).length() > 0 )
+                        _settings.addModuleFormat( (String)_vsnFormat.getEditor().getItem() );
+                }
+                dispatchChangeCallback();
+            }
+        });
+        _vsnFormat.setBackground( Color.WHITE );
+        _vsnFormat.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                dispatchChangeCallback();
+            }
+        });
+        //  Put current items in the popup menu (so there will be a default choice).
+        for ( Iterator<String> iter = _settings.moduleFormatList().iterator(); iter.hasNext(); )
+            _vsnFormat.addItem( iter.next() );
+        //  This causes the popup menu to be rebuilt each time the button is hit.
+        //  Hopefully this is quick!
+        _vsnFormat.addPopupMenuListener( new PopupMenuListener() {
+            public void popupMenuWillBecomeVisible( PopupMenuEvent e ) {
+                //  Save the current item so we can make it the choice of the new, rebuilt
+                //  popup.
+                String currentItem = vsnFormat();
+                _vsnFormat.removeAllItems();
+                for ( Iterator<String> iter = _settings.moduleFormatList().iterator(); iter.hasNext(); )
+                    _vsnFormat.addItem( iter.next() );
+                _vsnFormat.setSelectedItem( currentItem );
+            }
+            public void popupMenuCanceled( PopupMenuEvent e ) {
+                System.out.println( "canceled" );
+            }
+            public void popupMenuWillBecomeInvisible( PopupMenuEvent e ) {
+                System.out.println( "make invisible" );
+            }
+        });
+        _dataSourcePanel.add( _vsnFormat );
+        _vsnFormat.setEnabled( true );
         _dirListLocation = new SaneTextField();
         _dirListLocation.setToolTipText( "Location on the DiFX Host of the file containing a directory listing for this module." );
         _dirListLocation.addActionListener( new ActionListener() {
@@ -125,7 +172,7 @@ public class StationPanel extends IndexedPanel {
         });
         _dataSourcePanel.add( _dirListLocation );
         JLabel dirListLabel = new JLabel( "Listing:" );
-        dirListLabel.setBounds( 450, 30, 55, 25 );
+        dirListLabel.setBounds( 525, 30, 55, 25 );
         dirListLabel.setHorizontalAlignment( JLabel.RIGHT );
         _dataSourcePanel.add( dirListLabel );
         Iterator<SystemSettings.DataSource> iter = _settings.listDataSources( "VSN" ).iterator();
@@ -235,6 +282,7 @@ public class StationPanel extends IndexedPanel {
         _fileCheck.setSelected( false );
         _eVLBICheck.setSelected( false );
         _vsnList.setEnabled( false );
+        _vsnFormat.setEnabled( false );
         _dirListLocation.setEnabled( false );
         _fileFilter.setEnabled( false );
         _fileList.setVisible( false );
@@ -243,6 +291,7 @@ public class StationPanel extends IndexedPanel {
         if ( selector == _vsnCheck ) {
             _vsnCheck.setSelected( true );
             _vsnList.setEnabled( true );
+            _vsnFormat.setEnabled( true );
             _dirListLocation.setEnabled( true );
             _dataSourcePanel.name( "Data Source: " + (String)_vsnList.getSelectedItem() );
         }
@@ -381,7 +430,7 @@ public class StationPanel extends IndexedPanel {
     public void newWidth( int w ) {
         _fileFilter.setBounds( 280, 80, w - 305, 25 );
         _fileList.setBounds( 230, 110, w - 255, 120 );
-        _dirListLocation.setBounds( 510, 30, w - 535, 25 );
+        _dirListLocation.setBounds( 585, 30, w - 610, 25 );
         _contentPane.setBounds( 0, 20, w - 2, _contentPane.dataHeight() );
     }
 
@@ -514,6 +563,7 @@ public class StationPanel extends IndexedPanel {
     public boolean useFile() { return _fileCheck.isSelected(); }
     public boolean useEVLBI() { return _eVLBICheck.isSelected(); }
     public String vsnSource() { return (String)_vsnList.getSelectedItem(); }
+    public String vsnFormat() { return (String)_vsnFormat.getSelectedItem(); }
     public String dirListLocation() { return _dirListLocation.getText(); }
     
     public boolean positionChange() {
@@ -564,6 +614,7 @@ public class StationPanel extends IndexedPanel {
     protected JCheckBox _fileCheck;
     protected JCheckBox _eVLBICheck;
     protected JComboBox _vsnList;
+    protected JComboBox _vsnFormat;
     protected JLabel _dataSource;
     protected EventListenerList _changeListeners;
     protected SaneTextField _fileFilter;

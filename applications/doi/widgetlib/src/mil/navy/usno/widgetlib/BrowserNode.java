@@ -59,6 +59,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
         _inBounds = true;
         _showThis = true;
         _ySize = 20;
+        _resizeTopBarSize = 20;
         _xSize = 500;
         _children = new ArrayDeque<BrowserNode>();
         setBounds( 0, 0, _xSize, _ySize );
@@ -213,6 +214,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
      */
     public void clearChildren() {
         if ( _children.size() > 0 ) {
+            //  Clear the children of the children first...
             for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
                 BrowserNode shoot = iter.next();
                 shoot.clearChildren();
@@ -298,7 +300,8 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
     @Override
     public void mouseClicked( MouseEvent e ) {
         int levelOffset = ( _level - 1 ) * _levelOffset;
-        if ( ( e.getX() > levelOffset + 5 && e.getX() < levelOffset + 25 ) || _resizeOnTopBar ) {
+        if ( ( e.getX() > levelOffset + 5 && e.getX() < levelOffset + 25 ) || 
+                ( _resizeOnTopBar && e.getY() < _resizeTopBarSize ) ) {
             _open = !_open;
             this.updateUI();
             dispatchResizeEvent();
@@ -404,7 +407,13 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
      * This sets the whole top of the BrowserNode to be sensitive to open/close
      * operations (not just the resize arrow).
      */
-    public void resizeOnTopBar( boolean newVal ) { _resizeOnTopBar = newVal; }
+    public void resizeOnTopBar( boolean newVal ) { 
+        _resizeOnTopBar = newVal;
+    }
+    
+    public void resizeTopBarSize( int newSize ) {
+        _resizeTopBarSize = newSize;
+    }
     
     protected boolean _open;
     protected boolean _showThis;
@@ -425,5 +434,6 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
     protected EventListenerList _resizeEventListeners;
     protected Integer _yLevelOffset;
     protected boolean _resizeOnTopBar;
+    protected int _resizeTopBarSize;
 
 }

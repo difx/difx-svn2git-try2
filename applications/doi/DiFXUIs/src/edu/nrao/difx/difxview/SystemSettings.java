@@ -1247,6 +1247,20 @@ public class SystemSettings extends JFrame {
         _defaultNames.eliminateBusyProcessors = true;
         _defaultNames.chooseBasedOnModule = true;
         _defaultNames.busyPercentage = 50.0;
+        _defaultNames.correlationDoPolar = true;
+        _defaultNames.correlationFFTSpecRes = 0.125;
+        _defaultNames.correlationSpecRes = 0.5;
+        _defaultNames.correlationTInt = 2.0;
+        _defaultNames.correlationNChan = 16;
+        _defaultNames.correlationNFFTChan = 128;
+        
+        _moduleFormatList = new ArrayList<String>();
+        addModuleFormat( "Mark5B" );
+        addModuleFormat( "MKIV" );
+        addModuleFormat( "VLBA" );
+        addModuleFormat( "S2" );
+        addModuleFormat( "VDIF" );
+        addModuleFormat( "INTERLACEDVDIF" );
 
         _eopURL.setText( "http://gemini.gsfc.nasa.gov/solve_save/usno_finals.erp" );
         _leapSecondsURL.setText( "http://gemini.gsfc.nasa.gov/500/oper/solve_apriori_files/ut1ls.dat" );
@@ -1727,6 +1741,14 @@ public class SystemSettings extends JFrame {
             _defaultNames.chooseBasedOnModule = doiConfig.isDefaultNamesChooseBasedOnModule();
             if ( doiConfig.getDefaultNamesBusyPercentage() != 0 )
                 _defaultNames.busyPercentage = doiConfig.getDefaultNamesBusyPercentage();
+            
+            _defaultNames.correlationDoPolar = !doiConfig.isCorrelationDoPolarFalse();  //  double negative because true is default
+            _defaultNames.correlationTInt = doiConfig.getCorrelationTInt();
+            _defaultNames.correlationSpecRes = doiConfig.getCorrelationSpecRes();
+            _defaultNames.correlationNChan = doiConfig.getCorrelationNChan();
+            _defaultNames.correlationFFTSpecRes = doiConfig.getCorrelationFFTSpecRes();
+            _defaultNames.correlationNFFTChan = doiConfig.getCorrelationNFFTChan();
+            
             if ( doiConfig.getEopURL() != null )
                 _eopURL.setText( doiConfig.getEopURL() );
             if ( doiConfig.getLeapSecondsURL() != null && doiConfig.getLeapSecondsURL().length() > 0 );
@@ -1841,6 +1863,13 @@ public class SystemSettings extends JFrame {
         doiConfig.setDefaultNamesElimnateBusyProcessors( _defaultNames.eliminateBusyProcessors );
         doiConfig.setDefaultNamesChooseBasedOnModule( _defaultNames.chooseBasedOnModule );
         doiConfig.setDefaultNamesBusyPercentage( _defaultNames.busyPercentage );
+        
+        doiConfig.setCorrelationDoPolarFalse( !_defaultNames.correlationDoPolar );
+        doiConfig.setCorrelationTInt( _defaultNames.correlationTInt );
+        doiConfig.setCorrelationNChan( _defaultNames.correlationNChan );
+        doiConfig.setCorrelationSpecRes( _defaultNames.correlationSpecRes );
+        doiConfig.setCorrelationFFTSpecRes( _defaultNames.correlationFFTSpecRes );
+        doiConfig.setCorrelationNFFTChan( _defaultNames.correlationNFFTChan );
         
         doiConfig.setEopURL( _eopURL.getText() );
         doiConfig.setLeapSecondsURL( _leapSecondsURL.getText() );
@@ -2320,6 +2349,45 @@ public class SystemSettings extends JFrame {
         }
     }
     
+    public ArrayList<String> moduleFormatList() {
+        return _moduleFormatList;
+    }
+    
+    /*
+     * Add a module format to the module format list.
+     */
+    public void addModuleFormat( String newFormat ) {
+        _moduleFormatList.add( newFormat );
+    }
+    
+    /*
+     * Return true if a given module format is already in the list.
+     */
+    public boolean inModuleFormatList( String oldFormat ) {
+        for ( Iterator<String> iter = _moduleFormatList.iterator(); iter.hasNext(); ) {
+            String thisString = iter.next();
+            if ( thisString.trim().contentEquals( oldFormat ) )
+                return true;
+        }
+        return false;
+    }
+    
+    /*
+     * Remove the (first) instance of the given string in the module format list.
+     * Return true if it was removed, false if it was not found.
+     */
+    public boolean removeModuleFormat( String oldFormat ) {
+        for ( Iterator<String> iter = _moduleFormatList.iterator(); iter.hasNext(); ) {
+            String thisString = iter.next();
+            if ( thisString.trim().contentEquals( oldFormat ) ) {
+                iter.remove();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    
     protected SystemSettings _this;
     
     protected boolean _allObjectsBuilt;
@@ -2464,6 +2532,12 @@ public class SystemSettings extends JFrame {
         boolean eliminateBusyProcessors;
         double busyPercentage;
         boolean chooseBasedOnModule;
+        boolean correlationDoPolar;
+        double correlationTInt;
+        double correlationSpecRes;
+        int correlationNChan;
+        double correlationFFTSpecRes;
+        int correlationNFFTChan;
     }
     protected DefaultNames _defaultNames;
     
@@ -2529,6 +2603,8 @@ public class SystemSettings extends JFrame {
     protected ResultSet _dbJobStatusList;
     protected ResultSet _dbExperimentStatusList;
     protected ResultSet _dbVersionHistoryList;
+    
+    protected ArrayList<String> _moduleFormatList;
     
     //  This stuff is used to run automatic updates of the database information.
     protected int _dbTimeoutCounter;

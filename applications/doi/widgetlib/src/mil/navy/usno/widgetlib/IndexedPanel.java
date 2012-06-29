@@ -61,7 +61,10 @@ public class IndexedPanel extends BrowserNode {
 
     public void openHeight( int h ) { _openHeight = h; }
     public int openHeight() { return _openHeight; }
-    public void closedHeight( int h ) { _closedHeight = h; }
+    public void closedHeight( int h ) { 
+        _closedHeight = h;
+        resizeTopBarSize( _closedHeight );
+    }
     public int closedHeight() { return _closedHeight; }
     
     public void drawFrame( boolean newVal ) { 

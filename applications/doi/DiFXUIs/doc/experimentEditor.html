@@ -18,15 +18,43 @@
     used), and the experiment, pass(es), and job(s) are listed on the
     Queue Browser on the GUI from where DiFX can be run.<br>
     <br>
+    As a user you control the specifics of a DiFX job using two files -
+    the ".vex" file, which describes your observations, and the ".v2d"
+    file, which (loosely) describes how you wish DiFX to process those
+    observations (these definitions with apologies to the DiFX creators
+    who defined these files and can certainly better - and perhaps
+    differently - describe what they do).&nbsp; The Experiment Editor
+    needs to be provided with a .vex file - one was presumably made
+    available with your observations.&nbsp; Almost all of what the
+    Experiment Editor does involves creating a detailed .v2d file.&nbsp;
+    The .v2d file is then used by the <span style="font-style: italic;">vex2difx</span>
+    application to produce a ".input" file - which in turn can be used
+    to run DiFX.&nbsp; There are associated files and directory
+    structures that are created as well, and some other details are seen
+    to, but the point to take away is that until you hit the "Apply"
+    button on the Experiment Editor you are using it to define a .v2d
+    file.<br>
+    <br>
+    Alternatively, specified as an outline, the steps to creating a new
+    DiFX experiment with the Experiment Editor involve:<br>
+    <ol>
+      <li>Specify where your experiment will go and what it will be
+        called</li>
+      <li>Get a .vex file</li>
+      <li>Detail all of the stuff that goes into the .v2d file</li>
+      <li>Hit "Apply" to generate the specified directory and dump the
+        .vex and .v2d file in it<br>
+      </li>
+    </ol>
+    <br>
     The Experiment Editor is launched either to create a new experiment
-    (by picking "New-&gt;Experiment" from the Queue Browser) in which
-    case its title is "Create New Experiment", or to edit an existing
-    experiment (by right-clicking on the experiment name in the Queue
-    Browser and choosing "Edit Properties") in which case its title is
-    "Edit Experiment Properties".&nbsp; While the controls are
-    identical, applying changes to an existing experiment has slightly
-    different effects than those applied to a new experiment, as
-    described below.<br>
+    (by picking "New" from the Queue Browser) in which case its title is
+    "Create New Experiment", or to edit an existing experiment (by
+    right-clicking on the experiment name in the Queue Browser and
+    choosing "Edit Properties") in which case its title is "Edit
+    Experiment Properties".&nbsp; While the controls are identical,
+    applying changes to an existing experiment has slightly different
+    effects than those applied to a new experiment, as described below.<br>
     <h3>Some General Information</h3>
     <p>The Experiment Editor controls are organized in a browser form,
       with a small number of "top level" panels that can be opened or
@@ -64,7 +92,7 @@
       previous paragraph).&nbsp; You can always "Cancel" and start again
       if you get in a position you can't figure out how to back out of.<br>
     </p>
-    <h3>GUI Controls: Identification Data<br>
+    <h3>Identification Data<br>
     </h3>
     <p>The experiment name, ID, directory, and some other items are used
       to uniquely identify an experiment and to access it in the
@@ -128,7 +156,7 @@
       the actual creation time on the database host.&nbsp; This is not a
       user-settable item.<br>
     </p>
-    <p><span style="font-weight: bold;">Directory</span><br>
+    <p><span style="font-weight: bold;">Working Directory</span><br>
       This is the "working directory" on the DiFX host under which all
       files and sub-directories associated with an experiment
       reside.&nbsp; It should be an absolute (not relative) path name -
@@ -136,8 +164,8 @@
       directory is created on the DiFX host (if necessary).&nbsp; If
       this parameter is later changed, it will cause the directory to be
       moved on the DiFX host.&nbsp; For either of these operations to
-      occur, the DiFX user must have permission to do them on the DiFX
-      host.<br>
+      occur, the DiFX user must have write permission to do them on the
+      DiFX host.<br>
     </p>
     <p><span style="font-weight: bold;">.vex File</span><br>
       This is the name of the <span style="font-family: monospace;">.vex</span>
@@ -161,8 +189,8 @@
         style="font-weight: bold;">Previous Files</span> button can be
       used to load it.<br>
     </p>
-    <h3>GUI Controls: Getting <span style="font-family: monospace;">.vex</span>
-      File Content</h3>
+    <h3>Getting <span style="font-family: monospace;">.vex</span> File
+      Content</h3>
     <p>An experiment is associated with at least one <span
         style="font-family: monospace;">.vex</span> file - in most cases
       only one (although more can be added).&nbsp; The <span
@@ -193,15 +221,15 @@
       </li>
       <li>Copying a file used in another experiment.</li>
     </ol>
-    Note that when you pick a .vex file in this interface, you are
-    getting the <span style="font-style: italic;">content</span> of the
-    source you specify - the source itself is <span style="font-style:
-      italic;">not</span> used for your experiment.&nbsp; The content is
-    stored in the file location specified in the <span
-      style="font-weight: bold;">.vex File</span> field in the
-    Identification Data section.<br>
-    <h3>GUI Controls: <span style="font-family: monospace;">.vex</span>
-      File Editor</h3>
+    Note that when you pick a .vex file in this interface (when you hit
+    "Go"), you are getting the <span style="font-style: italic;">content</span>
+    of the source you specify - the source itself is <span
+      style="font-style: italic;">not</span> used for your
+    experiment.&nbsp; The content is stored in the file location
+    specified in the <span style="font-weight: bold;">.vex File</span>
+    field in the Identification Data section (see above) when the
+    "Apply" button is hit.<br>
+    <h3><span style="font-family: monospace;">.vex</span> File Editor</h3>
     <p>The .vex File Editor panel provides a view of the .vex file
       content - the text that is written to the .vex file on the DiFX
       host (and that ultimately governs how DiFX will be run).&nbsp; The
@@ -223,10 +251,29 @@
       around with the <span style="font-family: monospace;">.vex</span>
       file content unless you are confident you know what you are doing!<br>
     </p>
-    <h3>GUI Controls: Stations</h3>
-    <h3>GUI Controls: Sources</h3>
-    <h3>GUI Controls: Scan Selection</h3>
-    <h3>GUI Controls: EOP Data</h3>
+    <h3>Correlation Parameters</h3>
+    <p>The Correlation Parameters section is something of a catch-all
+      for items that don't fit neatly in any other sections.&nbsp; Most
+      of these parameters end up in the "Setup" section of the .v2d
+      file.<br>
+    </p>
+    <h6 style="margin-left: 40px;">Spectral Resolution/Channels<br>
+    </h6>
+    <p style="margin-left: 40px;">This is the spectral resolution of the
+      visibilities produced by the correlation (in MHz).&nbsp; This
+      should be the bandwidth divided by the number of channels.&nbsp;
+      The "Channels" setting can be used to change the spectral
+      resolution, although the reverse is not true.&nbsp; The reason for
+      this is that the channels setting is limited to factors of 2 in
+      the DiFX documentation, while the spectral resolution has no such
+      limitations.&nbsp; Whether or not this makes any sense is another
+      matter.<br>
+    </p>
+    <p> </p>
+    <h3>Stations</h3>
+    <h3>Sources</h3>
+    <h3>Scan Selection</h3>
+    <h3>EOP Data</h3>
     <p><img style=" width: 830px; height: 310px;" alt=""
         src="images/experimentEditor/eop.png"><br>
     </p>
@@ -343,6 +390,23 @@
       database itself and of the underlying MySQL software) and if you
       use DiFX strictly for your own work you may not wish to bother
       with it.<br>
+    </p>
+    <p>In short, the DiFX GUI works fine without using the database at
+      all - it can create and run DiFX experiments.&nbsp; The database
+      is used to track large numbers of past experiments and/or allow
+      some users to create experiments and other users to see them and
+      run them - essentially it is used to communicate the details of
+      experiments between different sessions of the GUI (it has other
+      purposes of course - we are speaking here in the context of the
+      GUI).&nbsp; If you do not use the database each session of the GUI
+      will be operating as an island, blind to what other sessions are
+      doing or have done.&nbsp; If you shut down the GUI and restart it,
+      you will lose all information about experiments you have created
+      and run (except what you remember yourself - the experiment data
+      are all still there).&nbsp; You will not see experiments created
+      by others (although you should see them if they are
+      running).&nbsp; If none of this matters to you, the database may
+      not be worth the bother.<br>
     </p>
     <h5>Skipping the Experiment/Pass/Job Structure</h5>
     <h5><span style="font-weight: bold;">Using Multiple .vex Files in an

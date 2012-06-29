@@ -206,7 +206,7 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
     @Override
     public void setBounds( int x, int y, int w, int h ) {
         super.setBounds( x, y, w, h ); 
-        browserPane.setBounds( 1, 1, w - 2, h - 2 );
+//        browserPane.setBounds( 1, 1, w - 2, h - 2 );
         testScrollBar( h );
         if ( _scrollable && !_noScrollbar ) {
             //  We need to resize the browserPane now to avoid the scrollbar.
@@ -215,6 +215,7 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
             _scrollBar.setVisible( true );
         }
         else {
+            browserPane.setBounds( 1, 1, w - 2, h - 2 );
             _yOffset = 0;
             browserPane.yOffset( _yOffset );
             _scrollBar.setVisible( false );
@@ -240,6 +241,7 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
     
     @Override
     public void paintComponent( Graphics g ) {
+        super.paintComponent( g );
         Dimension d = getSize();
         //  Draw the scrollbar.
         if ( _scrollable && !_noScrollbar ) {
@@ -252,22 +254,27 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
         g.setColor( Color.BLACK );
         if ( _drawFrame )
             g.drawRect( 0, 0, d.width  - 1, d.height - 1 );
+        browserPane.paintComponent( g );
     }
 
     public class ScrollThread extends Thread {
         protected int _interval;
+        protected boolean _keepGoing;
         public ScrollThread( int interval ) {
             _interval = interval;
+            _keepGoing = true;
+        }
+        public void keepGoing( boolean newVal ) {
+            _keepGoing = newVal;
         }
         @Override
         public void run() {
-            boolean keepGoing = true;
-            while ( keepGoing ) {
+            while ( _keepGoing ) {
                 timeoutIntervalEvent();
                 try {
                     Thread.sleep( _interval );
                 } catch ( Exception e ) {
-                    keepGoing = false;
+                    _keepGoing = false;
                 }
             }
         }
@@ -461,7 +468,8 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
      * to accommodate expanded sizes, you don't need it.
      */
     public void noTimer() {
-        _timeoutTimer.stop();
+        if ( _scrollThread != null )
+            _scrollThread.keepGoing( false );
     }
 
     public void addResizeEventListener( ActionListener a ) {

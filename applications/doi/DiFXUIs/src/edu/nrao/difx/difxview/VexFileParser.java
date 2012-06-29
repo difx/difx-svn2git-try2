@@ -233,7 +233,26 @@ public class VexFileParser {
      * Extract "freq" data from a list of data lines.
      */
     protected void parseFreqData( ArrayList<String> data ) {
-        //System.out.println( "frequency data" );
+        //  At the moment all we are intersted in is the bandwidth, which is the 
+        //  4th column in "chan_def" lines.  We plow through three column separators
+        //  (":" characters) to get to it.  If the line we are on cannot produce
+        //  these separators, we ignore the line.
+        for ( Iterator<String> iter = data.iterator(); iter.hasNext(); ) {
+            String thisLine = iter.next();
+            //  Get beyond the third ":" character.
+            boolean okay = true;
+            int count = 0;
+            while ( okay && count < 3 ) {
+                ++count;
+                if ( thisLine.indexOf( ':' ) != -1 )
+                    thisLine = thisLine.substring( thisLine.indexOf( ':' ) + 1 );
+                else
+                    okay = false;
+            }
+            //  If the line looks good, extract the next number - the bandwidth.
+            if ( okay )
+                _bandwidth = Double.valueOf( thisLine.trim().substring( 0, thisLine.trim().indexOf( ' ' ) ) );
+        }
     }
 
     /*
@@ -550,6 +569,7 @@ public class VexFileParser {
     }
 
     public double revision() { return _revision; }
+    public double bandwidth() { return _bandwidth; }
     public ArrayList<Scan> scanList() { return _scanList; }
     public ArrayList<Station> stationList() { return _stationList; }
     public ArrayList<Site> siteList() { return _siteList; }
@@ -651,6 +671,7 @@ public class VexFileParser {
     }
     
     protected double _revision;
+    protected double _bandwidth;
     protected int _pos;
     protected int _length;
     protected String _str;

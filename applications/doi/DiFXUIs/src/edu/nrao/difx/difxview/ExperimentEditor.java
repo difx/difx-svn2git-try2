@@ -51,6 +51,7 @@ import java.text.SimpleDateFormat;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseWheelEvent;
 
 import java.net.URL;
 import java.net.MalformedURLException;
@@ -213,7 +214,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         _directoryAsLabel.setBounds( 100, 170, 310, 25 );
         _directoryAsLabel.setToolTipText( "\"Working\" directory containing all files for this experiment." );
         namePanel.add( _directoryAsLabel );
-        JLabel directoryLabel = new JLabel( "Directory:" );
+        JLabel directoryLabel = new JLabel( "Working Directory:" );
         directoryLabel.setBounds( 10, 170, 85, 25 );
         directoryLabel.setHorizontalAlignment( JLabel.RIGHT );
         namePanel.add( directoryLabel );
@@ -339,6 +340,106 @@ public class ExperimentEditor extends JFrame { //JDialog {
             }
         });
         editorPanel.add( _useMyEditor );
+        
+        //  This panel contains a few often-changed parameters that govern the
+        //  correlation.  These (mostly) end up in the "setup" section of the v2d file.
+        IndexedPanel correlationPanel = new IndexedPanel( "Correlation Parameters" );
+        correlationPanel.openHeight( 120 );
+        correlationPanel.closedHeight( 20 );
+        correlationPanel.open( false );
+        _scrollPane.addNode( correlationPanel );
+        _tInt = new NumberBox();
+        _tInt.setBounds( 180, 25, 100, 25 );
+        _tInt.limits( 0.0, 100.0 );
+        _tInt.precision( 1 );
+        _tInt.value( _settings.defaultNames().correlationTInt );
+        _tInt.addActionListener( new ActionListener() {
+            public void actionPerformed(  ActionEvent e ) {
+                _settings.defaultNames().correlationTInt = _tInt.value();
+                produceV2dFile();
+            }
+        });
+        correlationPanel.add( _tInt );
+        JLabel tIntLabel = new JLabel( "Integration Time:" );
+        tIntLabel.setBounds( 20, 25, 155, 25 );
+        tIntLabel.setHorizontalAlignment( JLabel.RIGHT );
+        correlationPanel.add( tIntLabel );
+        _doPolar = new JCheckBox( "Do Polar" );
+        _doPolar.setBounds( 300, 25, 100, 25 );
+        _doPolar.setToolTipText( "Correlate cross hands when possible." );
+        _doPolar.setSelected( _settings.defaultNames().correlationDoPolar );
+        _doPolar.addActionListener( new ActionListener() {
+            public void actionPerformed(  ActionEvent e ) {
+                _settings.defaultNames().correlationDoPolar = _doPolar.isSelected();
+                produceV2dFile();
+            }
+        });
+        correlationPanel.add( _doPolar );
+        _specRes = new NumberBox();
+        _specRes.setBounds( 180, 55, 100, 25 );
+        _specRes.precision( 3 );
+        _specRes.value( _settings.defaultNames().correlationSpecRes );
+        _specRes.setToolTipText( "Spectral resolution of visibilities produced." );
+        _specRes.addActionListener( new ActionListener() {
+            public void actionPerformed(  ActionEvent e ) {
+                _settings.defaultNames().correlationSpecRes = _specRes.value();
+                produceV2dFile();
+            }
+        });
+        correlationPanel.add( _specRes );
+        JLabel specResLabel = new JLabel( "Spectral Resolution:" );
+        specResLabel.setHorizontalAlignment( JLabel.RIGHT );
+        specResLabel.setBounds( 20, 55, 155, 25 );
+        correlationPanel.add( specResLabel );
+        _nChan = new Power2NumberBox();
+        _nChan.setBounds( 350, 55, 100, 25 );
+        _nChan.value( _settings.defaultNames().correlationNChan );
+        _nChan.addActionListener( new ActionListener() {
+            public void actionPerformed(  ActionEvent e ) {
+                _settings.defaultNames().correlationNChan = _nChan.intValue();
+                _specRes.value( _bandwidth / _nChan.value() );
+                _settings.defaultNames().correlationSpecRes = _specRes.value();
+                produceV2dFile();
+            }
+        });
+        correlationPanel.add( _nChan );
+        JLabel nChanLabel = new JLabel( "Channels:" );
+        nChanLabel.setBounds( 280, 55, 65, 25 );
+        nChanLabel.setHorizontalAlignment( JLabel.RIGHT );
+        correlationPanel.add( nChanLabel );
+        _fftSpecRes = new NumberBox();
+        _fftSpecRes.setBounds( 180, 85, 100, 25 );
+        _fftSpecRes.precision( 3 );
+        _fftSpecRes.value( _settings.defaultNames().correlationSpecRes );
+        _fftSpecRes.setToolTipText( "Spectral resolution of first stage FFTs." );
+        _fftSpecRes.addActionListener( new ActionListener() {
+            public void actionPerformed(  ActionEvent e ) {
+                _settings.defaultNames().correlationFFTSpecRes = _fftSpecRes.value();
+                produceV2dFile();
+            }
+        });
+        correlationPanel.add( _fftSpecRes );
+        JLabel fftSpecResLabel = new JLabel( "FFT Spectral Resolution:" );
+        fftSpecResLabel.setHorizontalAlignment( JLabel.RIGHT );
+        fftSpecResLabel.setBounds( 20, 85, 155, 25 );
+        correlationPanel.add( fftSpecResLabel );
+        _fftNChan = new Power2NumberBox();
+        _fftNChan.setBounds( 350, 85, 100, 25 );
+        _fftNChan.value( _settings.defaultNames().correlationNFFTChan );
+        _fftNChan.addActionListener( new ActionListener() {
+            public void actionPerformed(  ActionEvent e ) {
+                _settings.defaultNames().correlationNFFTChan = _fftNChan.intValue();
+                _fftSpecRes.value( _bandwidth / _fftNChan.value() );
+                _settings.defaultNames().correlationFFTSpecRes = _fftSpecRes.value();
+                produceV2dFile();
+            }
+        });
+        correlationPanel.add( _fftNChan );
+        JLabel fftNChanLabel = new JLabel( "Channels:" );
+        fftNChanLabel.setBounds( 280, 85, 65, 25 );
+        fftNChanLabel.setHorizontalAlignment( JLabel.RIGHT );
+        correlationPanel.add( fftNChanLabel );
+
         
         //  This panel is used to display and adjust antenna information.
         IndexedPanel antennaPanel = new IndexedPanel( "Stations" );
@@ -952,6 +1053,32 @@ public class ExperimentEditor extends JFrame { //JDialog {
         
     }
     
+    /*
+     * Extension of the NumberBox class to make it handle only powers of 2.
+     */
+    protected class Power2NumberBox extends NumberBox {
+        
+        public Power2NumberBox() {
+            precision( 0 );
+            minimum( 2.0 );
+        }
+        
+        public void mouseWheelMoved( MouseWheelEvent e ) {
+            if ( e.getWheelRotation() > 0 )
+                checkNewValue( value() * 2.0 * (double)( e.getWheelRotation() ) );
+            else
+                checkNewValue( value() / ( 2.0 * (double)( -e.getWheelRotation() ) ) );
+        }
+
+        protected void upKey() {
+            checkNewValue( value() * 2.0 );
+        }
+
+        protected void downKey() {
+            checkNewValue( value() / 2.0 );        
+        }
+    
+    }
 
     /*
      * Read the current vex file, which is stored in the editor, and parse out items
@@ -962,6 +1089,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         vexData.data( _editor.text() );
         Calendar minTime = null;
         Calendar maxTime = null;
+        _bandwidth = vexData.bandwidth();
         //  Build a grid out of the scans found
         _scanGrid.clearButtons();
         _timeLimits.clearButtons();
@@ -1591,11 +1719,17 @@ public class ExperimentEditor extends JFrame { //JDialog {
             str += "\n\n";
         }
         
-        //  This is a dummy "setup".  We might dispose of this later?
+        //  Setup section contains things from the "correlation parameters" settings.
         str +=    "SETUP normalSetup\n"
                 + "{\n"
-                + "tInt = 2\n"
-                + "}\n\n";
+                + "tInt = " + _tInt.value() + "\n"
+                + "FFTSpecRes = " + _fftSpecRes.value() + "\n"
+                + "specRes = " + _specRes.value() + "\n";
+        if ( _doPolar.isSelected() )
+            str += "doPolar = true\n";
+        else
+            str += "doPolar = false\n";
+        str += "}\n\n";
         
         //  Produce a list of the scans we want to include.  These come from the
         //  scan grid.  We only do this if any scans have been chosen (we produce
@@ -1630,7 +1764,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 if ( antenna.use() ) {
                     str += "ANTENNA " + antenna.name() + "\n";
                     str += "{\n";
-                    str += "   format = Mark5B\n";
+                    str += "   format = " + antenna.vsnFormat() + "\n";
                     if ( antenna.useVsn() ) {
                         if ( antenna.vsnSource() != null && antenna.vsnSource().length() > 0 )
                             str += "   vsn = " + antenna.vsnSource() + "\n";
@@ -2169,5 +2303,12 @@ public class ExperimentEditor extends JFrame { //JDialog {
     protected ArrayList<SystemSettings.EOPStructure> _newEOP;
     protected boolean _deleteEOPFromVex;
     protected int _databasePassId;
+    protected NumberBox _tInt;
+    protected NumberBox _fftSpecRes;
+    protected Power2NumberBox _fftNChan;
+    protected NumberBox _specRes;
+    protected Power2NumberBox _nChan;
+    protected JCheckBox _doPolar;
+    protected double _bandwidth;
     
 }

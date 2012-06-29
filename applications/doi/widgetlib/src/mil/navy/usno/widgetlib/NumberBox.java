@@ -228,7 +228,7 @@ public class NumberBox extends JFormattedTextField implements MouseListener,
 
     @Override
     public void mouseClicked( MouseEvent e ) {
-   }
+    }
     
     @Override
     public void mouseEntered( MouseEvent e ) {
