@@ -46,7 +46,8 @@ public class StationPanel extends IndexedPanel {
         _changeListeners = new EventListenerList();
         this.closedHeight( 20 );
         this.open( false );
-        //this.drawFrame( false );
+        this.darkTitleBar( false );
+        this.drawFrame( false );
         this.resizeOnTopBar( true );
         _useCheck = new JCheckBox( "" );
         _useCheck.setBounds( 100, 2, 18, 16 );
@@ -111,6 +112,7 @@ public class StationPanel extends IndexedPanel {
         });
         _dataSourcePanel.add( _vsnList );
         _vsnList.setEnabled( true );
+        String defaultVSNFormat = _settings.vsnFormat();
         _vsnFormat = new JComboBox();
         _vsnFormat.setBounds( 335, 30, 180, 25 );
         _vsnFormat.setToolTipText( "Module format." );
@@ -132,9 +134,18 @@ public class StationPanel extends IndexedPanel {
                 dispatchChangeCallback();
             }
         });
-        //  Put current items in the popup menu (so there will be a default choice).
-        for ( Iterator<String> iter = _settings.moduleFormatList().iterator(); iter.hasNext(); )
-            _vsnFormat.addItem( iter.next() );
+        //  Put current items in the popup menu and set the current selection to match the
+        //  default.
+        int index = 0;
+        int selectionIndex = 0;
+        for ( Iterator<String> iter2 = _settings.moduleFormatList().iterator(); iter2.hasNext(); ) {
+            String thisItem = iter2.next();
+            _vsnFormat.addItem( thisItem );
+            if ( thisItem.contentEquals( defaultVSNFormat ) )
+                selectionIndex = index;
+            ++index;
+        }
+        _vsnFormat.setSelectedIndex( selectionIndex );
         //  This causes the popup menu to be rebuilt each time the button is hit.
         //  Hopefully this is quick!
         _vsnFormat.addPopupMenuListener( new PopupMenuListener() {
@@ -148,10 +159,10 @@ public class StationPanel extends IndexedPanel {
                 _vsnFormat.setSelectedItem( currentItem );
             }
             public void popupMenuCanceled( PopupMenuEvent e ) {
-                System.out.println( "canceled" );
+                //System.out.println( "canceled" );
             }
             public void popupMenuWillBecomeInvisible( PopupMenuEvent e ) {
-                System.out.println( "make invisible" );
+                //System.out.println( "make invisible" );
             }
         });
         _dataSourcePanel.add( _vsnFormat );
@@ -229,7 +240,7 @@ public class StationPanel extends IndexedPanel {
         //  size, etc.  This is filled in by a function call.
         _antennaPanel = new IndexedPanel( "Antenna: " + station.antenna );
         _antennaPanel.closedHeight( 20 );
-        _antennaPanel.openHeight( 100 );
+        _antennaPanel.openHeight( 20 );
         _antennaPanel.open( false );
         _antennaPanel.drawFrame( false );
         _antennaPanel.resizeOnTopBar( true );
@@ -239,7 +250,7 @@ public class StationPanel extends IndexedPanel {
         //  etc.  The content of this panel is added by a function call.
         _sitePanel = new IndexedPanel( "Site: " + station.site );
         _sitePanel.closedHeight( 20 );
-        _sitePanel.openHeight( 100 );
+        _sitePanel.openHeight( 105 );
         _sitePanel.open( false );
         _sitePanel.drawFrame( false );
         _sitePanel.resizeOnTopBar( true );
@@ -249,13 +260,91 @@ public class StationPanel extends IndexedPanel {
         //  above panels.
         _settingsPanel = new IndexedPanel( "Settings" );
         _settingsPanel.closedHeight( 20 );
-        _settingsPanel.openHeight( 100 );
+        _settingsPanel.openHeight( 120 );
         _settingsPanel.open( false );
         _settingsPanel.drawFrame( false );
         _settingsPanel.resizeOnTopBar( true );
         _contentPane.addNode( _settingsPanel );
+        //  Get the default value of the tone selection from the settings...we have
+        //  to do it here because some of the callbacks below will mess it up.
+        String defaultToneSelection = _settings.toneSelection();
+        _toneSelection = new JComboBox();
+        _toneSelection.setBounds( 150, 30, 120, 25 );
+        _toneSelection.setToolTipText( "Use an algorithm to choose tones for you." );
+        _toneSelection.setEditable( true );
+        //  This little bit causes a typed-in item to be treated as a format.
+        _toneSelection.getEditor().addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                //  If not already in the list of tones, add this name.
+                if ( !_settings.inToneSelectionList( (String)_toneSelection.getEditor().getItem() ) ) {
+                    if ( ((String)_toneSelection.getEditor().getItem()).length() > 0 )
+                        _settings.addToneSelection( (String)_toneSelection.getEditor().getItem() );
+                }
+                _settings.toneSelection( toneSelection() );
+                dispatchChangeCallback();
+            }
+        });
+        _toneSelection.setBackground( Color.WHITE );
+        _toneSelection.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _settings.toneSelection( toneSelection() );
+                dispatchChangeCallback();
+            }
+        });
+        //  Put current items in the popup menu and set the current selection to match the
+        //  default.
+        index = 0;
+        selectionIndex = 0;
+        for ( Iterator<String> iter2 = _settings.toneSelectionList().iterator(); iter2.hasNext(); ) {
+            String thisItem = iter2.next().trim();
+            _toneSelection.addItem( thisItem );
+            if ( thisItem.contentEquals( defaultToneSelection ) )
+                selectionIndex = index;
+            ++index;
+        }
+        _toneSelection.setSelectedIndex( selectionIndex );
+        //  This causes the popup menu to be rebuilt each time the button is hit.
+        //  Hopefully this is quick!
+        _toneSelection.addPopupMenuListener( new PopupMenuListener() {
+            public void popupMenuWillBecomeVisible( PopupMenuEvent e ) {
+                //  Save the current item so we can make it the choice of the new, rebuilt
+                //  popup.
+                String currentItem = toneSelection();
+                _toneSelection.removeAllItems();
+                for ( Iterator<String> iter = _settings.toneSelectionList().iterator(); iter.hasNext(); )
+                    _toneSelection.addItem( iter.next() );
+                _toneSelection.setSelectedItem( currentItem );
+            }
+            public void popupMenuCanceled( PopupMenuEvent e ) {
+                //System.out.println( "canceled" );
+            }
+            public void popupMenuWillBecomeInvisible( PopupMenuEvent e ) {
+                //System.out.println( "make invisible" );
+            }
+        });
+        _settingsPanel.add( _toneSelection );
+        JLabel toneSelectionLabel = new JLabel( "Tone Selection:" );
+        toneSelectionLabel.setBounds( 10, 30, 135, 25 );
+        toneSelectionLabel.setHorizontalAlignment( JLabel.RIGHT );
+        _settingsPanel.add( toneSelectionLabel );
+        _phaseCalInt = new NumberBox();
+        _phaseCalInt.precision( 0 );
+        _phaseCalInt.minimum( 0.0 );
+        _phaseCalInt.intValue( _settings.phaseCalInt() );
+        _phaseCalInt.setBounds( 150, 60, 80, 25 );
+        _phaseCalInt.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _settings.phaseCalInt( _phaseCalInt.intValue() );
+                dispatchChangeCallback();
+            }
+        });
+        _settingsPanel.add( _phaseCalInt );
+        JLabel phaseCalIntLabel = new JLabel( "Phase Cal Interval:" );
+        phaseCalIntLabel.setBounds( 10, 60, 135, 25 );
+        phaseCalIntLabel.setHorizontalAlignment( JLabel.RIGHT );
+        _settingsPanel.add( phaseCalIntLabel );
         _deltaClock = new NumberBox();
-        _deltaClock.setBounds( 150, 20, 120, 25 );
+        _deltaClock.setBounds( 150, 90, 120, 25 );
         _deltaClock.precision( 3 );
         _deltaClock.value( 0.0 );
         _deltaClock.addActionListener( new ActionListener() {
@@ -264,8 +353,8 @@ public class StationPanel extends IndexedPanel {
             }
         } );
         _settingsPanel.add( _deltaClock );
-        JLabel deltaClockLabel = new JLabel( "Delta Clock (\u03bcs)" );
-        deltaClockLabel.setBounds( 10, 20, 135, 25 );
+        JLabel deltaClockLabel = new JLabel( "Delta Clock (\u03bcs):" );
+        deltaClockLabel.setBounds( 10, 90, 135, 25 );
         deltaClockLabel.setHorizontalAlignment( JLabel.RIGHT );
         _settingsPanel.add( deltaClockLabel );
         
@@ -314,24 +403,24 @@ public class StationPanel extends IndexedPanel {
      */
     public void addSiteInformation( VexFileParser.Site site ) {
         JLabel siteName = new JLabel( site.name );
-        siteName.setBounds( 150, 20, 100, 25 );
+        siteName.setBounds( 150, 25, 100, 25 );
         _sitePanel.add( siteName );
         JLabel siteNameLabel = new JLabel( "Name:" );
-        siteNameLabel.setBounds( 60, 20, 85, 25 );
+        siteNameLabel.setBounds( 60, 25, 85, 25 );
         siteNameLabel.setHorizontalAlignment( JLabel.RIGHT );
         _sitePanel.add( siteNameLabel );
         JLabel siteId = new JLabel( site.id );
-        siteId.setBounds( 150, 45, 100, 25 );
+        siteId.setBounds( 150, 50, 100, 25 );
         _sitePanel.add( siteId );
         JLabel siteIdLabel = new JLabel( "ID:" );
-        siteIdLabel.setBounds( 60, 45, 85, 25 );
+        siteIdLabel.setBounds( 60, 50, 85, 25 );
         siteIdLabel.setHorizontalAlignment( JLabel.RIGHT );
         _sitePanel.add( siteIdLabel );
         JLabel siteType = new JLabel( site.type );
-        siteType.setBounds( 150, 70, 100, 25 );
+        siteType.setBounds( 150, 75, 100, 25 );
         _sitePanel.add( siteType );
         JLabel siteTypeLabel = new JLabel( "Type:" );
-        siteTypeLabel.setBounds( 60, 70, 85, 25 );
+        siteTypeLabel.setBounds( 60, 75, 85, 25 );
         siteTypeLabel.setHorizontalAlignment( JLabel.RIGHT );
         _sitePanel.add( siteTypeLabel );
         //  Parse out the x, y, and z positions from the site position string.
@@ -345,7 +434,7 @@ public class StationPanel extends IndexedPanel {
         end = posString.indexOf( 'm' );
         _zpos = Double.parseDouble( posString.substring( 0, end ).trim() );
         _positionX = new NumberBox();
-        _positionX.setBounds( 320, 20, 120, 25 );
+        _positionX.setBounds( 320, 25, 120, 25 );
         _sitePanel.add( _positionX );
         _positionX.value( _xpos );
         _positionX.precision( 3 );
@@ -356,11 +445,12 @@ public class StationPanel extends IndexedPanel {
             }
         } );
         JLabel positionXLabel = new JLabel( "X Position (m):" );
-        positionXLabel.setBounds( 220, 20, 95, 25 );
+        positionXLabel.setBounds( 220, 25, 95, 25 );
+        positionXLabel.setHorizontalAlignment( JLabel.RIGHT );
         _sitePanel.add( positionXLabel );
         JButton resetX = new JButton( "Reset" );
         resetX.setToolTipText( "Reset the X position to its original value." );
-        resetX.setBounds( 445, 20, 80, 24 );
+        resetX.setBounds( 445, 25, 80, 24 );
         resetX.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent evt ) {
                 _positionX.value( _xpos );
@@ -369,7 +459,7 @@ public class StationPanel extends IndexedPanel {
         } );
         _sitePanel.add( resetX );
         _positionY = new NumberBox();
-        _positionY.setBounds( 320, 45, 120, 25 );
+        _positionY.setBounds( 320, 50, 120, 25 );
         _sitePanel.add( _positionY );
         _positionY.value( _ypos );
         _positionY.precision( 3 );
@@ -380,11 +470,12 @@ public class StationPanel extends IndexedPanel {
             }
         } );
         JLabel positionYLabel = new JLabel( "Y Position (m):" );
-        positionYLabel.setBounds( 220, 45, 95, 25 );
+        positionYLabel.setBounds( 220, 50, 95, 25 );
+        positionYLabel.setHorizontalAlignment( JLabel.RIGHT );
         _sitePanel.add( positionYLabel );
         JButton resetY = new JButton( "Reset" );
         resetY.setToolTipText( "Reset the Y position to its original value." );
-        resetY.setBounds( 445, 45, 80, 24 );
+        resetY.setBounds( 445, 50, 80, 24 );
         resetY.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent evt ) {
                 _positionY.value( _ypos );
@@ -393,7 +484,7 @@ public class StationPanel extends IndexedPanel {
         } );
         _sitePanel.add( resetY );
         _positionZ = new NumberBox();
-        _positionZ.setBounds( 320, 70, 120, 25 );
+        _positionZ.setBounds( 320, 75, 120, 25 );
         _sitePanel.add( _positionZ );
         _positionZ.value( _zpos );
         _positionZ.precision( 3 );
@@ -404,11 +495,12 @@ public class StationPanel extends IndexedPanel {
             }
         } );
         JLabel positionZLabel = new JLabel( "Z Position (m):" );
-        positionZLabel.setBounds( 220, 70, 95, 25 );
+        positionZLabel.setBounds( 220, 75, 95, 25 );
+        positionZLabel.setHorizontalAlignment( JLabel.RIGHT );
         _sitePanel.add( positionZLabel );
         JButton resetZ = new JButton( "Reset" );
         resetZ.setToolTipText( "Reset the Z position to its original value." );
-        resetZ.setBounds( 445, 70, 80, 24 );
+        resetZ.setBounds( 445, 75, 80, 24 );
         resetZ.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent evt ) {
                 _positionZ.value( _zpos );
@@ -564,7 +656,9 @@ public class StationPanel extends IndexedPanel {
     public boolean useEVLBI() { return _eVLBICheck.isSelected(); }
     public String vsnSource() { return (String)_vsnList.getSelectedItem(); }
     public String vsnFormat() { return (String)_vsnFormat.getSelectedItem(); }
+    public String toneSelection() { return (String)_toneSelection.getSelectedItem(); }
     public String dirListLocation() { return _dirListLocation.getText(); }
+    public int phaseCalInt() { return _phaseCalInt.intValue(); }
     
     public boolean positionChange() {
         if ( _positionX.value() != _xpos ||
@@ -638,5 +732,7 @@ public class StationPanel extends IndexedPanel {
     protected double _zpos;
     
     protected NumberBox _deltaClock;
+    protected JComboBox _toneSelection;
+    protected NumberBox _phaseCalInt;
 
 }

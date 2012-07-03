@@ -1253,6 +1253,9 @@ public class SystemSettings extends JFrame {
         _defaultNames.correlationTInt = 2.0;
         _defaultNames.correlationNChan = 16;
         _defaultNames.correlationNFFTChan = 128;
+        _defaultNames.phaseCalInt = 1;
+        _defaultNames.toneSelection = "smart";
+        _defaultNames.vsnFormat = "Mark5B";
         
         _moduleFormatList = new ArrayList<String>();
         addModuleFormat( "Mark5B" );
@@ -1261,6 +1264,14 @@ public class SystemSettings extends JFrame {
         addModuleFormat( "S2" );
         addModuleFormat( "VDIF" );
         addModuleFormat( "INTERLACEDVDIF" );
+
+        _toneSelectionList = new ArrayList<String>();
+        addToneSelection( "smart" );
+        addToneSelection( "vex" );
+        addToneSelection( "none" );
+        addToneSelection( "all" );
+        addToneSelection( "ends" );
+        addToneSelection( "most" );
 
         _eopURL.setText( "http://gemini.gsfc.nasa.gov/solve_save/usno_finals.erp" );
         _leapSecondsURL.setText( "http://gemini.gsfc.nasa.gov/500/oper/solve_apriori_files/ut1ls.dat" );
@@ -1423,6 +1434,14 @@ public class SystemSettings extends JFrame {
     public void useStagingArea( boolean newVal ) { _useStagingArea.setSelected( newVal ); }
     
     public String guiDocPath() { return _guiDocPath.getText().substring( 7 ); }
+    
+    public int phaseCalInt() { return _defaultNames.phaseCalInt; }
+    public void phaseCalInt( int newVal ) { _defaultNames.phaseCalInt = newVal; }
+    public String toneSelection() { return _defaultNames.toneSelection; }
+    public void toneSelection( String newVal ) { _defaultNames.toneSelection = newVal; }
+    public String vsnFormat() { return _defaultNames.vsnFormat; }
+    public void vsnFormat( String newVal ) { _defaultNames.vsnFormat = newVal; }
+    
     /*
      * Set the look and feel for a new JFrame.  This needs to be called before any
      * GUI components are created.
@@ -1749,6 +1768,12 @@ public class SystemSettings extends JFrame {
             _defaultNames.correlationFFTSpecRes = doiConfig.getCorrelationFFTSpecRes();
             _defaultNames.correlationNFFTChan = doiConfig.getCorrelationNFFTChan();
             
+            _defaultNames.phaseCalInt = doiConfig.getDefaultNamesPhaseCalInt();
+            if ( doiConfig.getDefaultNamesToneSelection() != null )
+                _defaultNames.toneSelection = doiConfig.getDefaultNamesToneSelection();
+            if ( doiConfig.getDefaultNamesVSNFormat() != null )
+                _defaultNames.vsnFormat = doiConfig.getDefaultNamesVSNFormat();
+            
             if ( doiConfig.getEopURL() != null )
                 _eopURL.setText( doiConfig.getEopURL() );
             if ( doiConfig.getLeapSecondsURL() != null && doiConfig.getLeapSecondsURL().length() > 0 );
@@ -1871,6 +1896,10 @@ public class SystemSettings extends JFrame {
         doiConfig.setCorrelationFFTSpecRes( _defaultNames.correlationFFTSpecRes );
         doiConfig.setCorrelationNFFTChan( _defaultNames.correlationNFFTChan );
         
+        doiConfig.setDefaultNamesPhaseCalInt( _defaultNames.phaseCalInt );
+        doiConfig.setDefaultNamesToneSelection( _defaultNames.toneSelection );
+        doiConfig.setDefaultNamesVSNFormat( _defaultNames.vsnFormat );
+            
         doiConfig.setEopURL( _eopURL.getText() );
         doiConfig.setLeapSecondsURL( _leapSecondsURL.getText() );
         doiConfig.setUseLeapSecondsURL( _useLeapSecondsURL.isSelected() );
@@ -2387,6 +2416,44 @@ public class SystemSettings extends JFrame {
         return false;
     }
 
+    public ArrayList<String> toneSelectionList() {
+        return _toneSelectionList;
+    }
+    
+    /*
+     * Add a tone selection to the tone selection list.
+     */
+    public void addToneSelection( String newFormat ) {
+        _toneSelectionList.add( newFormat );
+    }
+    
+    /*
+     * Return true if a given tone selection is already in the list.
+     */
+    public boolean inToneSelectionList( String oldFormat ) {
+        for ( Iterator<String> iter = _toneSelectionList.iterator(); iter.hasNext(); ) {
+            String thisString = iter.next();
+            if ( thisString.trim().contentEquals( oldFormat ) )
+                return true;
+        }
+        return false;
+    }
+    
+    /*
+     * Remove the (first) instance of the given string in the tone selection list.
+     * Return true if it was removed, false if it was not found.
+     */
+    public boolean removeToneSelection( String oldFormat ) {
+        for ( Iterator<String> iter = _toneSelectionList.iterator(); iter.hasNext(); ) {
+            String thisString = iter.next();
+            if ( thisString.trim().contentEquals( oldFormat ) ) {
+                iter.remove();
+                return true;
+            }
+        }
+        return false;
+    }
+
     
     protected SystemSettings _this;
     
@@ -2538,6 +2605,9 @@ public class SystemSettings extends JFrame {
         int correlationNChan;
         double correlationFFTSpecRes;
         int correlationNFFTChan;
+        int phaseCalInt;
+        String toneSelection;
+        String vsnFormat;
     }
     protected DefaultNames _defaultNames;
     
@@ -2605,6 +2675,7 @@ public class SystemSettings extends JFrame {
     protected ResultSet _dbVersionHistoryList;
     
     protected ArrayList<String> _moduleFormatList;
+    protected ArrayList<String> _toneSelectionList;
     
     //  This stuff is used to run automatic updates of the database information.
     protected int _dbTimeoutCounter;

@@ -168,6 +168,9 @@
                 <xsd:element ref="defaultNamesElimnateBusyProcessors"/>
                 <xsd:element ref="defaultNamesBusyPercentage"/>
                 <xsd:element ref="defaultNamesChooseBasedOnModule"/>
+                <xsd:element ref="defaultNamesPhaseCalInt"/>
+                <xsd:element ref="defaultNamesToneSelection"/>
+                <xsd:element ref="defaultNamesVSNFormat"/>
                 
                 <xsd:element ref="suppressUnknownMessageWarnings"/>
 
@@ -271,6 +274,9 @@
     <xsd:element name="defaultNamesElimnateBusyProcessors" type="xsd:boolean"></xsd:element>
     <xsd:element name="defaultNamesBusyPercentage" type="xsd:double"></xsd:element>
     <xsd:element name="defaultNamesChooseBasedOnModule" type="xsd:boolean"></xsd:element>
+    <xsd:element name="defaultNamesPhaseCalInt" type="xsd:int"></xsd:element>
+    <xsd:element name="defaultNamesToneSelection" type="xsd:string"></xsd:element>
+    <xsd:element name="defaultNamesVSNFormat" type="xsd:string"></xsd:element>
 
     <xsd:element name="suppressUnknownMessageWarnings" type="xsd:boolean"></xsd:element>
 

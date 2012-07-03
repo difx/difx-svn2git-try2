@@ -254,7 +254,6 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
         g.setColor( Color.BLACK );
         if ( _drawFrame )
             g.drawRect( 0, 0, d.width  - 1, d.height - 1 );
-        browserPane.paintComponent( g );
     }
 
     public class ScrollThread extends Thread {

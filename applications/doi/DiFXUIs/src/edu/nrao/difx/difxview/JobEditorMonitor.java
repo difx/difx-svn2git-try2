@@ -99,7 +99,7 @@ public class JobEditorMonitor extends JFrame {
         //  the DiFX host.  The existing file on the DiFX host can also be downloaded.
         IndexedPanel inputFilePanel = new IndexedPanel( "Input File" );
         inputFilePanel.openHeight( 400 );
-        inputFilePanel.closedHeight( 25 );
+        inputFilePanel.closedHeight( 20 );
         inputFilePanel.open( false );
         _scrollPane.addNode( inputFilePanel );
         _inputFileEditor = new SimpleTextEditor();
@@ -143,7 +143,7 @@ public class JobEditorMonitor extends JFrame {
         //  the DiFX host.  The existing file on the DiFX host can also be downloaded.
         IndexedPanel calcFilePanel = new IndexedPanel( "Calc File" );
         calcFilePanel.openHeight( 400 );
-        calcFilePanel.closedHeight( 25 );
+        calcFilePanel.closedHeight( 20 );
         calcFilePanel.open( false );
         _scrollPane.addNode( calcFilePanel );
         _calcFileEditor = new SimpleTextEditor();
@@ -184,7 +184,7 @@ public class JobEditorMonitor extends JFrame {
 
         IndexedPanel machinesListPanel = new IndexedPanel( "Machines List" );
         machinesListPanel.openHeight( 395 );
-        machinesListPanel.closedHeight( 25 );
+        machinesListPanel.closedHeight( 20 );
         _scrollPane.addNode( machinesListPanel );
         _dataSourcesPane = new NodeBrowserScrollPane();
         _dataSourcesPane.setBackground( Color.WHITE );
@@ -273,7 +273,7 @@ public class JobEditorMonitor extends JFrame {
         //  the DiFX host.  The existing file on the DiFX host can also be downloaded.
         IndexedPanel machinesFilePanel = new IndexedPanel( "Machines File" );
         machinesFilePanel.openHeight( 300 );
-        machinesFilePanel.closedHeight( 25 );
+        machinesFilePanel.closedHeight( 20 );
         machinesFilePanel.open( false );
         _scrollPane.addNode( machinesFilePanel );
         _machinesFileEditor = new SimpleTextEditor();
@@ -317,7 +317,7 @@ public class JobEditorMonitor extends JFrame {
         //  the DiFX host.  The existing file on the DiFX host can also be downloaded.
         IndexedPanel threadsFilePanel = new IndexedPanel( "Threads File" );
         threadsFilePanel.openHeight( 300 );
-        threadsFilePanel.closedHeight( 25 );
+        threadsFilePanel.closedHeight( 20 );
         threadsFilePanel.open( false );
         _scrollPane.addNode( threadsFilePanel );
         _threadsFileEditor = new SimpleTextEditor();
@@ -414,7 +414,7 @@ public class JobEditorMonitor extends JFrame {
         statusPanel.openHeight( 50 );
         statusPanel.alwaysOpen( true );
         statusPanel.noArrow( true );
-        statusPanel.setBackground( Color.GRAY );
+        statusPanel.setBackground( statusPanel.getBackground().darker() );
         _statusLabel = new JLabel( "" );
         _statusLabel.setHorizontalAlignment( JLabel.RIGHT );
         statusPanel.add( _statusLabel );
@@ -423,7 +423,7 @@ public class JobEditorMonitor extends JFrame {
         IndexedPanel messagePanel = new IndexedPanel( "Messages" );
         _scrollPane.addNode( messagePanel );
         messagePanel.openHeight( 200 );
-        messagePanel.closedHeight( 25 );
+        messagePanel.closedHeight( 20 );
         _messageDisplayPanel = new MessageDisplayPanel();
         messagePanel.add( _messageDisplayPanel );
  
@@ -1278,6 +1278,9 @@ public class JobEditorMonitor extends JFrame {
         public boolean selected() { return _selected.isSelected(); }
         public void selected( boolean newVal ) { _selected.setSelected( newVal ); }
         public void hideSelection() { _selected.setVisible( false ); }
+        public boolean hideSelected() { return !_selected.isVisible(); }
+        public boolean handSelected() { return _handSelected; }
+        public void handSelected( boolean newVal ) { _handSelected = newVal; }
         
         public boolean foundIt;
         protected JCheckBox _selected;
@@ -1476,19 +1479,36 @@ public class JobEditorMonitor extends JFrame {
         buildDataSourceList();
     }
     
+    /*
+     * The data source list is built using the known data requirements (which
+     * we get by parsing the .input file).  These are to appear in the order in
+     * which they occur in the .input file.  Missing data requirements are listed
+     * in the data source list as warnings.
+     */
     public void buildDataSourceList() {
 
-        //  The data source list is built using the known data requirements (which
-        //  we get by parsing the .input file).  These are to appear in the order in
-        //  which they occur in the .input file.  Missing data requirements are listed
-        //  in the data source list as warnings.
-        _dataSourcesPane.browserTopNode().clearChildren();
-        System.out.println( "rebuild now..." );
+        //  Before anything, we need to build lists of the existing data source items
+        //  that have been checked and unchecked "by hand" (i.e. the user has clicked 
+        //  the check box on or off).
+        ArrayList<String> handSelected = new ArrayList<String>();
+        ArrayList<String> handUnselected = new ArrayList<String>();
+        for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
+                iter.hasNext(); ) {
+            DataNode newNode = (DataNode)iter.next();
+            if ( newNode.handSelected() ) {  //  this means the check box was clicked on (either on or off)
+                if ( newNode.selected() )  //  this means the checkbox is checked
+                    handSelected.add( newNode.name() );
+                else
+                    handUnselected.add( newNode.name() );
+            }
+        }
+        
+        //  Clear out the current data sources list and build it again.
+        _dataSourcesPane.clear();
         if ( _dataObjects != null ) {
             //  Look at each data object we need.
             for ( Iterator<String> jter = _dataObjects.iterator(); jter.hasNext(); ) {
                 String dataObject = jter.next().trim();
-System.out.println( "looking for dataobject " + dataObject );
                 //  Check the entire list of data sources to see which one (if any) provides this
                 //  object and put it on the browser.
                 boolean dataObjectLocated = false;
@@ -1496,7 +1516,6 @@ System.out.println( "looking for dataobject " + dataObject );
                 for ( Iterator<BrowserNode> iter = _settings.hardwareMonitor().mk5Modules().children().iterator();
                         iter.hasNext() && !dataObjectLocated; ) {
                     Mark5Node thisModule = (Mark5Node)(iter.next());
-System.out.println( thisModule.name() + " has " + thisModule.bankAVSN() + " and " + thisModule.bankBVSN() );
                     if ( !thisModule.ignore() ) {
                         if ( thisModule.bankAVSN().trim().contentEquals( dataObject ) ||
                              thisModule.bankBVSN().trim().contentEquals( dataObject ) ) {
@@ -1506,15 +1525,11 @@ System.out.println( thisModule.name() + " has " + thisModule.bankAVSN() + " and 
                             newNode.dataObjectA( thisModule.bankAVSN().trim() );
                             newNode.dataObjectB( thisModule.bankBVSN().trim() );
                             if ( thisModule.bankAVSN().trim().contentEquals( dataObject ) ) {
-System.out.println( "found A" );
                                 newNode.foundA( true );
                             }
                             else if ( thisModule.bankBVSN().trim().contentEquals( dataObject ) ) {
-System.out.println( "found B" );
                                 newNode.foundB( true );
                             }
-                            //  Figure out whether this is selected or not based on whether
-                            //  we've already done selections.
                             _dataSourcesPane.addNode( newNode );
                         }
                     }
@@ -1522,7 +1537,6 @@ System.out.println( "found B" );
                 //  If the data object was not among those found in current data sources,
                 //  include a line in the data sources warning the user of this. 
                 if ( !dataObjectLocated ) {
-//System.out.println( "did not find " + dataObject );
                     DataNode newNode = new DataNode( "missing module" );
                     newNode.dataObjectA( dataObject );
                     newNode.missingA();
@@ -1532,14 +1546,6 @@ System.out.println( "found B" );
             }
         }
         
-//        System.out.println( "gone through the modules..." );
-//        for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
-//                iter.hasNext(); ) {
-//            DataNode newNode = (DataNode)iter.next();
-//            System.out.println( "      " + newNode.name() + "   " + newNode.dataObjectA() + "   " + newNode.dataObjectB() );
-//        }
-//        System.out.println( "now add other data sources" );
-//
         //  Now that we've built a list of data sources based on the data requirements,
         //  add all of the other possible data sources we observe so the user knows what's
         //  out there.
@@ -1553,155 +1559,62 @@ System.out.println( "found B" );
                 if ( testNode.name() == thisModule.name() )
                     moduleFound = true;
             }
-            if ( !moduleFound ) {
+            if ( !moduleFound && !thisModule.ignore() ) {
                 DataNode newNode = new DataNode( thisModule.name() );
-                newNode.selected( !_dataSourcesEdited );
                 newNode.dataObjectA( thisModule.bankAVSN() );
                 newNode.dataObjectB( thisModule.bankBVSN() );
-                newNode.checkFound( !_chooseBasedOnModule.isSelected() );
                 _dataSourcesPane.addNode( newNode );
             }
         }
 
-        System.out.println( "final list" );
+        //  One more step - go through the list of data source we created and select
+        //  or unselect them based on whether they have been chosen before or whether
+        //  they have modules.
         for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
             DataNode newNode = (DataNode)iter.next();
-            System.out.print( "      " + newNode.name() + "   " + newNode.dataObjectA() );
-            if ( newNode.foundA() )
-                System.out.print( "XX" );
-            else
-                System.out.print( "  " );
-            System.out.print( "   " + newNode.dataObjectB() );
-            if ( newNode.foundB() )
-                System.out.print( "XX" );
-            else
-                System.out.print( "  " );
-            System.out.print( "\n" );
+            String searchName = newNode.name().trim();
+            boolean foundIt = false;
+            //  See if this node matches anything in the list of nodes that were previously
+            //  selected by hand.  If so, cause it to be selected.
+            for ( Iterator<String> iter2 = handSelected.iterator(); iter2.hasNext() && !foundIt; ) {
+                if ( iter2.next().trim().contentEquals( searchName ) ) {
+                    foundIt = true;
+                    newNode.selected( true );
+                    newNode.handSelected( true );
+                }
+            }
+            //  Then check the unselected list.
+            for ( Iterator<String> iter2 = handUnselected.iterator(); iter2.hasNext() && !foundIt; ) {
+                if ( iter2.next().trim().contentEquals( searchName ) ) {
+                    foundIt = true;
+                    newNode.selected( false );
+                    newNode.handSelected( true );
+                }
+            }
+            //  If it was not found that way, see if should be selected or unselected
+            //  based on user preferences.
+            if ( !foundIt ) {
+                //  The user can cause only those data sources that have modules we need
+                //  to be selected.
+                if ( _chooseBasedOnModule.isSelected() ) {
+                    if ( newNode.foundA() || newNode.foundB() )
+                        newNode.selected( true );
+                    else
+                        newNode.selected( false );
+                }
+                //  In the absense of any other information, select any modules that
+                //  have selection capability.
+                else {
+                    if ( !newNode.hideSelected() )
+                        newNode.selected( true );
+                }
+            }
         }
-        System.out.println( "\nDONE!\n\n" );
         _dataSourcesPane.updateUI();
         
     }
-        
-/*        
-        /////////////////
-//                DataNode newNode = new DataNode( _dataSources.get( dataObject ) );
-//                _dataSourcesPane.addNode( newNode );
-//            }
-//        }
-        
-        //  Do the same stuff for the data source list
-        for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
-                iter.hasNext(); )
-            ( (DataNode)(iter.next()) ).foundIt = false;        
-        //  These are all of the processing nodes that the hardware monitor knows
-        //  about.  See if they are in the list.
-        for ( Iterator<BrowserNode> iter = _settings.hardwareMonitor().mk5Modules().children().iterator();
-                iter.hasNext(); ) {
-            Mark5Node thisModule = (Mark5Node)(iter.next());
-            if ( !thisModule.ignore() ) {
-                DataNode foundNode = null;
-                //  Is this processor in our list?
-                for ( Iterator<BrowserNode> iter2 = _dataSourcesPane.browserTopNode().children().iterator();
-                        iter2.hasNext() && foundNode == null; ) {
-                    DataNode testNode = (DataNode)(iter2.next());
-                    if ( testNode.name() == thisModule.name() ) {
-                        foundNode = testNode;
-                        testNode.foundIt = true;
-                    }
-                }
-                //  New node?  Then add it to the list.
-                if ( foundNode == null ) {
-                    foundNode = new DataNode( thisModule.name() );
-                    foundNode.foundIt = true;
-                    foundNode.selected( !_dataSourcesEdited );
-                    _dataSourcesPane.addNode( foundNode );
-                }
-                //  Add the data modules (if this is a Mark5).
-                foundNode.dataObjectA( thisModule.bankAVSN() );
-                foundNode.dataObjectB( thisModule.bankBVSN() );
-                //foundNode.dataObjectCheck( _dataObjects );
-            }
-        }
-        //  Now purge the list of any items that were not "found"....
-        for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
-                iter.hasNext(); ) {
-            DataNode testNode = (DataNode)(iter.next());
-            if ( !testNode.foundIt ) {
-                _dataSourcesPane.browserTopNode().remove( testNode );
-                iter.remove();
-            }
-            else {
-                //  This lets us know if anyone is editing the list.  If so, we
-                //  don't add new items "selected" by default.
-                if ( !testNode.selected() )
-                    _dataSourcesEdited = true;
-            }
-        }
-        //java.util.Collections.sort( _dataSourcesPane.browserTopNode().children() );
-        _dataSourcesPane.updateUI();
-        
-        checkDataSourceList();
-        
-    }
-    * 
-    */
-    
-    /*
-     * Check the items in the data source list against things that we need.  Flag
-     * things that don't apply, or are missing, and in some cases eliminate items
-     * that are not wanted.
-     */
-    public void checkDataSourceList() {
-        System.out.println( ">>>>>>>>>>>>>>>\n>>>>>>>>>>>>>>\n>>>>>>>>>>>>>>>\n"
-                + "HEY\n<<<<<<<<<<<<<<\n<<<<<<<<<<<<<<<\n<<<<<<<<<<<<<<<\n" );
-        //  We want to locate all of our data objects.  Turn the checklist flags
-        //  to false before we search.
-        if ( _dataObjects == null )
-            return;
-        //  Make a copy of the list of data objects.  We will delete those we find in
-        //  data sources.
-        ArrayList<String> testObjects = new ArrayList<String>();
-        for ( Iterator<String> iter = _dataObjects.iterator(); iter.hasNext(); ) {
-            testObjects.add( iter.next() );
-        } 
-        //  Look at all remaining items in the data source list and determine whether their
-        //  data objects are in the list of things we need for this job.
-        for ( Iterator<BrowserNode> iter = _dataSourcesPane.browserTopNode().children().iterator();
-                iter.hasNext(); ) {
-            DataNode testNode = (DataNode)(iter.next());
-            testNode.foundA( false );
-            testNode.foundB( false );
-            //  Check the data objects for this source agains the list of required
-            //  data objects.
-            for ( Iterator<String> iter1 = testObjects.iterator(); iter1.hasNext(); ) {
-                String testObject = iter1.next();
-                if ( testObject.contentEquals( testNode.dataObjectA() ) ) {   
-                    testNode.foundA( true );
-                    iter1.remove();
-                }
-                if ( testObject.contentEquals( testNode.dataObjectB() ) ) {
-                    testNode.foundB( true );
-                    iter1.remove();
-                }                
-            }
-            testNode.checkFound( _chooseBasedOnModule.isSelected() );
-        }
-        
-        // Add missing modules to the data source list.  These are data source nodes
-        // masquerading as something else, which is a bit kludgey.
-        for ( Iterator<String> iter = testObjects.iterator(); iter.hasNext(); ) {
-            String testObject = iter.next();
-            DataNode newNode = new DataNode( "missing module" );
-            newNode.dataObjectA( testObject );
-            newNode.missingA();
-            newNode.hideSelection();
-            _dataSourcesPane.addNode( newNode );
-        }        
-
-    }
-    
+                
     /*
      * Called once a second to update things.
      */
@@ -1711,7 +1624,7 @@ System.out.println( "found B" );
     }
     
     /*
-     * Override the to load hardware lists before display.
+     * Override to load hardware lists before display.
      */
     @Override
     public void setVisible( boolean newVal ) {
@@ -1934,7 +1847,6 @@ System.out.println( "found B" );
     protected HardwareMonitorPanel _hardwareMonitor;
     
     protected boolean _processorsEdited;
-    protected boolean _dataSourcesEdited;
     protected SimpleTextEditor _inputFileEditor;
     protected SimpleTextEditor _calcFileEditor;
     protected JButton _refreshInputButton;

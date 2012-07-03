@@ -31,6 +31,7 @@ public class IndexedPanel extends BrowserNode {
         super( name );
         _drawFrame = true;
         _highlightColor = Color.WHITE;
+        _darkTitleBar = true;
         this.resizeOnTopBar( true );
     }
     
@@ -58,6 +59,8 @@ public class IndexedPanel extends BrowserNode {
             inBounds( true );
         return height;
     }
+    
+    public void darkTitleBar( boolean newVal ) { _darkTitleBar = newVal; }
 
     public void openHeight( int h ) { _openHeight = h; }
     public int openHeight() { return _openHeight; }
@@ -87,9 +90,20 @@ public class IndexedPanel extends BrowserNode {
         else {
             g.setColor( this.getBackground() );
             g.fillRect( 0, 0, this.getWidth(), this.getHeight() );
+            //  Make a darker bar on the top of open panels...if requested.
+            if ( _open && _darkTitleBar ) {
+                //g.setColor( this.getBackground().darker() );
+                Color bg = this.getBackground();
+                int rd = (int)( 0.95 * (double)( bg.getRed() ) );
+                int gr = (int)( 0.95 * (double)( bg.getGreen() ) );
+                int bl = (int)( 0.95 * (double)( bg.getBlue() ) );
+                g.setColor( new Color( rd, gr, bl ) );
+                g.fillRect( 0, 0, this.getWidth(), _closedHeight );
+            }
         }
         //  This draws a frame around the panel, if requested.
         if ( _drawFrame ) {
+            //g.setColor( Color.GRAY );
             int w = this.getWidth();
             //  Not entirely convinced what looks better here.
             int h = _openHeight; //this.getHeight();
@@ -182,6 +196,7 @@ public class IndexedPanel extends BrowserNode {
     protected boolean _drawFrame;
     protected boolean _alwaysOpen;
     protected boolean _noArrow;
+    protected boolean _darkTitleBar;
     protected ArrayList<NodeBrowserScrollPane> _scrollPanes;
     
 }

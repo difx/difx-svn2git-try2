@@ -202,7 +202,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         namePanel.add( createdLabel );
         _directory = new SaneTextField();
         _directory.setBounds( 100, 170, 310, 25 );
-        _directory.setToolTipText( "\"Working\" directory containing all files for this experiment." );
+        _directory.setToolTipText( "\"Working\" directory that will contain all files for this experiment." );
         _directory.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 directoryChangeAction();
@@ -212,9 +212,9 @@ public class ExperimentEditor extends JFrame { //JDialog {
         _directory.setVisible( false );
         _directoryAsLabel = new JLabel( "" );
         _directoryAsLabel.setBounds( 100, 170, 310, 25 );
-        _directoryAsLabel.setToolTipText( "\"Working\" directory containing all files for this experiment." );
+        _directoryAsLabel.setToolTipText( "\"Working\" directory that will contain all files for this experiment." );
         namePanel.add( _directoryAsLabel );
-        JLabel directoryLabel = new JLabel( "Working Directory:" );
+        JLabel directoryLabel = new JLabel( "Working Dir:" );
         directoryLabel.setBounds( 10, 170, 85, 25 );
         directoryLabel.setHorizontalAlignment( JLabel.RIGHT );
         namePanel.add( directoryLabel );
@@ -333,7 +333,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         editorPanel.add( _editor );
         _useMyEditor = new JButton( "Alternate Editor" );
         _useMyEditor.setToolTipText( "Use your preferred text editor to edit the .vex file.\nThe preferred editor is specified in the Settings Window." );
-        _useMyEditor.setBounds( 20, 20, 140, 25 );
+        _useMyEditor.setBounds( 20, 30, 140, 25 );
         _useMyEditor.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 useMyEditor();
@@ -344,12 +344,12 @@ public class ExperimentEditor extends JFrame { //JDialog {
         //  This panel contains a few often-changed parameters that govern the
         //  correlation.  These (mostly) end up in the "setup" section of the v2d file.
         IndexedPanel correlationPanel = new IndexedPanel( "Correlation Parameters" );
-        correlationPanel.openHeight( 120 );
+        correlationPanel.openHeight( 125 );
         correlationPanel.closedHeight( 20 );
         correlationPanel.open( false );
         _scrollPane.addNode( correlationPanel );
         _tInt = new NumberBox();
-        _tInt.setBounds( 180, 25, 100, 25 );
+        _tInt.setBounds( 180, 30, 100, 25 );
         _tInt.limits( 0.0, 100.0 );
         _tInt.precision( 1 );
         _tInt.value( _settings.defaultNames().correlationTInt );
@@ -361,11 +361,11 @@ public class ExperimentEditor extends JFrame { //JDialog {
         });
         correlationPanel.add( _tInt );
         JLabel tIntLabel = new JLabel( "Integration Time:" );
-        tIntLabel.setBounds( 20, 25, 155, 25 );
+        tIntLabel.setBounds( 20, 30, 155, 25 );
         tIntLabel.setHorizontalAlignment( JLabel.RIGHT );
         correlationPanel.add( tIntLabel );
         _doPolar = new JCheckBox( "Do Polar" );
-        _doPolar.setBounds( 300, 25, 100, 25 );
+        _doPolar.setBounds( 300, 30, 100, 25 );
         _doPolar.setToolTipText( "Correlate cross hands when possible." );
         _doPolar.setSelected( _settings.defaultNames().correlationDoPolar );
         _doPolar.addActionListener( new ActionListener() {
@@ -376,7 +376,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         });
         correlationPanel.add( _doPolar );
         _specRes = new NumberBox();
-        _specRes.setBounds( 180, 55, 100, 25 );
+        _specRes.setBounds( 180, 60, 100, 25 );
         _specRes.precision( 3 );
         _specRes.value( _settings.defaultNames().correlationSpecRes );
         _specRes.setToolTipText( "Spectral resolution of visibilities produced." );
@@ -389,10 +389,10 @@ public class ExperimentEditor extends JFrame { //JDialog {
         correlationPanel.add( _specRes );
         JLabel specResLabel = new JLabel( "Spectral Resolution:" );
         specResLabel.setHorizontalAlignment( JLabel.RIGHT );
-        specResLabel.setBounds( 20, 55, 155, 25 );
+        specResLabel.setBounds( 20, 60, 155, 25 );
         correlationPanel.add( specResLabel );
         _nChan = new Power2NumberBox();
-        _nChan.setBounds( 350, 55, 100, 25 );
+        _nChan.setBounds( 350, 60, 100, 25 );
         _nChan.value( _settings.defaultNames().correlationNChan );
         _nChan.addActionListener( new ActionListener() {
             public void actionPerformed(  ActionEvent e ) {
@@ -404,11 +404,11 @@ public class ExperimentEditor extends JFrame { //JDialog {
         });
         correlationPanel.add( _nChan );
         JLabel nChanLabel = new JLabel( "Channels:" );
-        nChanLabel.setBounds( 280, 55, 65, 25 );
+        nChanLabel.setBounds( 280, 60, 65, 25 );
         nChanLabel.setHorizontalAlignment( JLabel.RIGHT );
         correlationPanel.add( nChanLabel );
         _fftSpecRes = new NumberBox();
-        _fftSpecRes.setBounds( 180, 85, 100, 25 );
+        _fftSpecRes.setBounds( 180, 90, 100, 25 );
         _fftSpecRes.precision( 3 );
         _fftSpecRes.value( _settings.defaultNames().correlationSpecRes );
         _fftSpecRes.setToolTipText( "Spectral resolution of first stage FFTs." );
@@ -421,10 +421,10 @@ public class ExperimentEditor extends JFrame { //JDialog {
         correlationPanel.add( _fftSpecRes );
         JLabel fftSpecResLabel = new JLabel( "FFT Spectral Resolution:" );
         fftSpecResLabel.setHorizontalAlignment( JLabel.RIGHT );
-        fftSpecResLabel.setBounds( 20, 85, 155, 25 );
+        fftSpecResLabel.setBounds( 20, 90, 155, 25 );
         correlationPanel.add( fftSpecResLabel );
         _fftNChan = new Power2NumberBox();
-        _fftNChan.setBounds( 350, 85, 100, 25 );
+        _fftNChan.setBounds( 350, 90, 100, 25 );
         _fftNChan.value( _settings.defaultNames().correlationNFFTChan );
         _fftNChan.addActionListener( new ActionListener() {
             public void actionPerformed(  ActionEvent e ) {
@@ -436,7 +436,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         });
         correlationPanel.add( _fftNChan );
         JLabel fftNChanLabel = new JLabel( "Channels:" );
-        fftNChanLabel.setBounds( 280, 85, 65, 25 );
+        fftNChanLabel.setBounds( 280, 90, 65, 25 );
         fftNChanLabel.setHorizontalAlignment( JLabel.RIGHT );
         correlationPanel.add( fftNChanLabel );
 
@@ -482,7 +482,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         });
         scanPanel.add( _scanGrid );
         _selectAllScansButton = new JButton( "Select All" );
-        _selectAllScansButton.setBounds( 10, 30, 100, 25 );
+        _selectAllScansButton.setBounds( 10, 40, 100, 25 );
         _selectAllScansButton.setToolTipText( "Select all scans for which all restrictions apply." );
         _selectAllScansButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
@@ -493,7 +493,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         });
         scanPanel.add( _selectAllScansButton );
         _selectNoScansButton = new JButton( "Clear All" );
-        _selectNoScansButton.setBounds( 115, 30, 100, 25 );
+        _selectNoScansButton.setBounds( 115, 40, 100, 25 );
         _selectNoScansButton.setToolTipText( "De-select all scans." );
         _selectNoScansButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
@@ -505,7 +505,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         _timeLimits = new TimeLimitPanel();
         scanPanel.add( _timeLimits );
         JLabel timeLimitsLabel = new JLabel( "Time Limits:" );
-        timeLimitsLabel.setBounds( 180, 30, 145, 25 );
+        timeLimitsLabel.setBounds( 180, 40, 145, 25 );
         timeLimitsLabel.setHorizontalAlignment( JLabel.RIGHT );
         scanPanel.add( timeLimitsLabel );
         
@@ -600,7 +600,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         _v2dFileName = new SaneTextField();
         v2dEditorPanel.add( _v2dFileName );
         JLabel v2dFileNameLabel = new JLabel( "File Name:" );
-        v2dFileNameLabel.setBounds( 10, 20, 85, 25 );
+        v2dFileNameLabel.setBounds( 10, 30, 85, 25 );
         v2dFileNameLabel.setHorizontalAlignment( JLabel.RIGHT );
         v2dEditorPanel.add( v2dFileNameLabel );
         
@@ -765,7 +765,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         //  The "status" panel shows information about the progress of different
         //  activities.
         IndexedPanel statusPanel = new IndexedPanel( "" );
-        statusPanel.openHeight( 25 );
+        statusPanel.openHeight( 20 );
         statusPanel.alwaysOpen( true );
         statusPanel.noArrow( true );
         _statusLabel = new JLabel( "" );
@@ -798,31 +798,31 @@ public class ExperimentEditor extends JFrame { //JDialog {
             _previousVexFileButton.setBounds( w - 150, 200, 125, 25 );
             _directoryAsLabel.setBounds( 100, 170, w - 125, 25 );
             _vexFileNameAsLabel.setBounds( 100, 200, w - 125, 25 );
-            _editor.setBounds( 10, 50, w - 35, 440 );
-            _fromHost.setBounds( 20, 20, 150, 25 );
-            _fromHostLocation.setBounds( 175, 20, w - 200, 25 );
-            _viaHttp.setBounds( 20, 50, 150, 25 );
-            _viaHttpLocation.setBounds( 175, 50, w - 200, 25 );
-            _viaFtp.setBounds( 20, 80, 150, 25 );
-            _viaFtpLocation.setBounds( 175, 80, w - 200, 25 );
-            _localFile.setBounds( 20, 110, 150, 25 );
-            _localFileLocation.setBounds( 175, 110, w - 200, 25 );
-            _fromExperiment.setBounds( 20, 140, 150, 25 );
-            _vexBrowseButton.setBounds( 175, 140, 100, 25 );
-            _goButton.setBounds( w - 125, 170, 100, 25 );
+            _editor.setBounds( 10, 60, w - 35, 430 );
+            _fromHost.setBounds( 20, 30, 150, 25 );
+            _fromHostLocation.setBounds( 175, 30, w - 200, 25 );
+            _viaHttp.setBounds( 20, 60, 150, 25 );
+            _viaHttpLocation.setBounds( 175, 60, w - 200, 25 );
+            _viaFtp.setBounds( 20, 90, 150, 25 );
+            _viaFtpLocation.setBounds( 175, 90, w - 200, 25 );
+            _localFile.setBounds( 20, 120, 150, 25 );
+            _localFileLocation.setBounds( 175, 120, w - 200, 25 );
+            _fromExperiment.setBounds( 20, 150, 150, 25 );
+            _vexBrowseButton.setBounds( 175, 150, 100, 25 );
+            _goButton.setBounds( w - 125, 175, 100, 25 );
             _doSanityCheck.setBounds( w - 50, 110, 25, 25 );
             _doSanityLabel.setBounds( w - 250, 110, 195, 25 );
-            _scanGrid.setBounds( 10, 60, w - 35, 330 );
-            _timeLimits.setBounds( 330, 20, w - 355, 35 );
-            _v2dFileName.setBounds( 100, 20, w - 125, 25 );
-            _v2dEditor.setBounds( 10, 50, w - 35, 440 );
+            _scanGrid.setBounds( 10, 70, w - 35, 320 );
+            _timeLimits.setBounds( 330, 30, w - 355, 35 );
+            _v2dFileName.setBounds( 100, 30, w - 125, 25 );
+            _v2dEditor.setBounds( 10, 60, w - 35, 430 );
             _passDirectory.setBounds( 285, 50, w - 310, 25 );
             _stagingArea.setBounds( 285, 80, w - 310, 25 );
             //  These things set the panel sizes based on their content.
             _antennaPane.setBounds( 0, 20, w, _antennaPane.dataHeight() );
             for ( Iterator<BrowserNode> iter = _antennaPane.browserTopNode().childrenIterator(); iter.hasNext(); ) {
                 StationPanel thisPanel = (StationPanel)iter.next();
-                thisPanel.newWidth( w - 25 );
+                thisPanel.newWidth( w );//- 25 );
             }
             try {
                 _sourcePane.setBounds( 0, 20, w, _sourcePane.dataHeight() );
@@ -996,8 +996,9 @@ public class ExperimentEditor extends JFrame { //JDialog {
             _this = this;
             _changeListeners = new EventListenerList();
             this.closedHeight( 20 );
-            this.openHeight( 200 );
+            this.openHeight( 20 );
             this.open( false );
+            this.darkTitleBar( false );
             this.drawFrame( false );
             this.resizeOnTopBar( true );
             _useCheck = new JCheckBox( "" );
@@ -1216,6 +1217,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
             IndexedPanel vexEOPPanel = new IndexedPanel( "From .vex File" );
             vexEOPPanel.open( false );
             vexEOPPanel.closedHeight( 20 );
+            vexEOPPanel.darkTitleBar( false );
+            vexEOPPanel.drawFrame( false );
             _vexEOPUseCheck = new JCheckBox( "" );
             _vexEOPUseCheck.setBounds( 210, 2, 18, 16 );
             _vexEOPUseCheck.setSelected( true );
@@ -1324,6 +1327,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
             IndexedPanel newEOPPanel = new IndexedPanel( "Updated From Source" );
             newEOPPanel.open( false );
             newEOPPanel.closedHeight( 20 );
+            newEOPPanel.darkTitleBar( false );
+            newEOPPanel.drawFrame( false );
             _newEOPUseCheck = new JCheckBox( "" );
             _newEOPUseCheck.setBounds( 210, 2, 18, 16 );
             if ( _vexEOPUseCheck != null )
@@ -1764,13 +1769,15 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 if ( antenna.use() ) {
                     str += "ANTENNA " + antenna.name() + "\n";
                     str += "{\n";
-                    str += "   format = " + antenna.vsnFormat() + "\n";
+                    str += "   phaseCalInt = " + antenna.phaseCalInt() + "\n";
+                    str += "   toneSelection = " + antenna.toneSelection() + "\n";
                     if ( antenna.useVsn() ) {
                         if ( antenna.vsnSource() != null && antenna.vsnSource().length() > 0 )
                             str += "   vsn = " + antenna.vsnSource() + "\n";
                         else {
                             // Warning, perhaps?
                         }
+                        str += "   format = " + antenna.vsnFormat() + "\n";
                     }
                     else if ( antenna.useFile() ) {
                         ArrayList<String> fileList = antenna.fileList();
