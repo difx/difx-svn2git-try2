@@ -78,10 +78,10 @@ public class JobEditorMonitor extends JFrame {
             }
         } );
         helpMenu.add( controlHelpItem );
-        JMenuItem helpIndexItem = new JMenuItem( "Help Index" );
+        JMenuItem helpIndexItem = new JMenuItem( "GUI Documentation" );
         helpIndexItem.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                _settings.launchGUIHelp( "index.html" );
+                _settings.launchGUIHelp( "intro.html" );
             }
         } );
         helpMenu.add( helpIndexItem );

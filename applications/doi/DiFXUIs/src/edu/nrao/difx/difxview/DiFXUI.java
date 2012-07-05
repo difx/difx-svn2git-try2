@@ -342,10 +342,10 @@ public class DiFXUI extends JFrame implements WindowListener {
         } );
         helpMenu.add( aboutItem );
         helpMenu.add( new JSeparator() );
-        JMenuItem helpIndexItem = new JMenuItem( "GUI Documentation Index" );
+        JMenuItem helpIndexItem = new JMenuItem( "GUI Documentation" );
         helpIndexItem.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                _systemSettings.launchGUIHelp( "index.html" );
+                _systemSettings.launchGUIHelp( "intro.html" );
             }
         } );
         helpMenu.add( helpIndexItem );

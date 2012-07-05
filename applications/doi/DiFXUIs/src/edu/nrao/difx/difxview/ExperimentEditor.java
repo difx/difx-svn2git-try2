@@ -97,10 +97,10 @@ public class ExperimentEditor extends JFrame { //JDialog {
             }
         } );
         helpMenu.add( settingsHelpItem );
-        JMenuItem helpIndexItem = new JMenuItem( "Help Index" );
+        JMenuItem helpIndexItem = new JMenuItem( "GUI Documentation" );
         helpIndexItem.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                _settings.launchGUIHelp( "index.html" );
+                _settings.launchGUIHelp( "intro.html" );
             }
         } );
         helpMenu.add( helpIndexItem );
@@ -1220,7 +1220,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
             vexEOPPanel.darkTitleBar( false );
             vexEOPPanel.drawFrame( false );
             _vexEOPUseCheck = new JCheckBox( "" );
-            _vexEOPUseCheck.setBounds( 210, 2, 18, 16 );
+            _vexEOPUseCheck.setBounds( 250, 2, 18, 16 );
             _vexEOPUseCheck.setSelected( true );
             _vexEOPUseCheck.setToolTipText( "Use the EOP data from the .vex file." );
             _vexEOPUseCheck.addActionListener( new ActionListener() {
@@ -1330,7 +1330,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
             newEOPPanel.darkTitleBar( false );
             newEOPPanel.drawFrame( false );
             _newEOPUseCheck = new JCheckBox( "" );
-            _newEOPUseCheck.setBounds( 210, 2, 18, 16 );
+            _newEOPUseCheck.setBounds( 250, 2, 18, 16 );
             if ( _vexEOPUseCheck != null )
                 _vexEOPUseCheck.setSelected( false );
             _newEOPUseCheck.setSelected( true );

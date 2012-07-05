@@ -187,10 +187,10 @@ public class SystemSettings extends JFrame {
             }
         } );
         helpMenu.add( settingsHelpItem );
-        JMenuItem helpIndexItem = new JMenuItem( "Help Index" );
+        JMenuItem helpIndexItem = new JMenuItem( "GUI Documentation" );
         helpIndexItem.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                launchGUIHelp( "index.html" );
+                launchGUIHelp( "intro.html" );
             }
         } );
         helpMenu.add( helpIndexItem );
@@ -1169,7 +1169,6 @@ public class SystemSettings extends JFrame {
     public void setDefaults() {
         _jaxbPackage = "edu.nrao.difx.xmllib.difxmessage";
         _home = "/home/swc/difx";
-        //_resourcesFile = "/cluster/difx/DiFX_trunk_64/conf/resources.difx";
         _loggingEnabled = false;
         _statusValidDuration = 2000l;
         _useTCPRelayCheck.setSelected( false );
@@ -1302,9 +1301,6 @@ public class SystemSettings extends JFrame {
     
     public void home( String newVal ) { _home = newVal; }
     public String home() { return _home; }
-    
-    //public void resourcesFile( String newVal ) { _resourcesFile = newVal; }
-    //public String resourcesFile() { return _resourcesFile; }
     
     public void loggingEnabled( boolean newVal ) { _loggingEnabled = newVal; }
     public boolean loggingEnabled() { return _loggingEnabled; }
@@ -1603,7 +1599,7 @@ public class SystemSettings extends JFrame {
      */
     public boolean getSettingsFromFile( String filename ) {
         //  Can't read a non-existent filename
-        if ( filename == null )
+        if ( filename == null || filename.length() < 1 )
             return false;
         //  Or a non-existent file
         File theFile = new File( filename );
@@ -2465,7 +2461,6 @@ public class SystemSettings extends JFrame {
     
     protected String _jaxbPackage;
     protected String _home;
-    //protected String _resourcesFile;
     protected boolean _loggingEnabled;
     protected long _statusValidDuration;
     //  DiFX Control Connection
