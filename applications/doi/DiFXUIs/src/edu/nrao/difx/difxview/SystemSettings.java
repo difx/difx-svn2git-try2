@@ -31,13 +31,10 @@ import java.awt.Point;
 import java.util.Calendar;
 
 import java.io.BufferedWriter;
-import java.io.IOException;
 import java.io.FileWriter;
 
 import java.net.URL;
-import java.net.Socket;
 import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.io.IOException;
 
 import javax.swing.Action;
@@ -72,6 +69,8 @@ import mil.navy.usno.widgetlib.MessageScrollPane;
 import mil.navy.usno.widgetlib.MessageNode;
 import mil.navy.usno.widgetlib.SaneTextField;
 import mil.navy.usno.widgetlib.SimpleTextEditor;
+import mil.navy.usno.widgetlib.ActivityMonitorLight;
+import mil.navy.usno.widgetlib.MessageDisplayPanel;
 
 import javax.swing.JFrame;
 
@@ -147,6 +146,11 @@ public class SystemSettings extends JFrame {
         _updateDatabaseLoop.start();
         
         new Timer( 1000, updateDatabaseAction ).start();
+        
+        //  Start the connection thread that will try to maintain a TCP connection
+        //  with the guiServer.
+        TCPConnectionThread connectionThread = new TCPConnectionThread();
+        connectionThread.start();
 
     }
     
@@ -276,12 +280,20 @@ public class SystemSettings extends JFrame {
                 changeDifxControlConnection();
             }
         } );
-        difxControlPanel.add( _difxTCPCheck );        
+        difxControlPanel.add( _difxTCPCheck );
+        _guiServerConnectionLight = new ActivityMonitorLight();
+        _guiServerConnectionLight.setBounds( 360, 32, 12, 12 );
+        _guiServerConnectionLight.alertTime( 0 );
+        _guiServerConnectionLight.warningTime( 0 );
+        difxControlPanel.add( _guiServerConnectionLight );
+        JLabel guiServerConnectionLabel = new JLabel( "guiServer Connection" );
+        guiServerConnectionLabel.setBounds( 380, 25, 200, 25 );
+        difxControlPanel.add( guiServerConnectionLabel );
         _difxControlAddress = new JFormattedTextField();
         _difxControlAddress.setFocusLostBehavior( JFormattedTextField.COMMIT );
         _difxControlAddress.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                //generateControlChangeEvent();
+                changeTCPConnectionSettings();
             }
         } );
         difxControlPanel.add( _difxControlAddress );
@@ -294,7 +306,7 @@ public class SystemSettings extends JFrame {
         _difxControlPort.minimum( 0 );
         _difxControlPort.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                //generateControlChangeEvent();
+                changeTCPConnectionSettings();
             }
         } );
         difxControlPanel.add( _difxControlPort );
@@ -865,16 +877,120 @@ public class SystemSettings extends JFrame {
         else {
             _useTCPRelayCheck.setEnabled( true );
             //  Open a new client socket to the guiServer if we need to.
-            if ( _guiServerConnection == null ) {
-                _guiServerConnection = new GuiServerConnection( difxControlAddress(), 
-                        difxControlPort(), timeout(), this );
-            }
+//            if ( _guiServerConnection == null ) {
+//                _guiServerConnection = new GuiServerConnection( difxControlAddress(), 
+//                        difxControlPort(), timeout(), this );
+//            }
             //  Turn on/off the relay based on the checkbox (and the quality of the connection).
-            if ( _guiServerConnection.connected() ) {
+            if ( _guiServerConnection != null && _guiServerConnection.connected() ) {
                 _guiServerConnection.relayBroadcast( _useTCPRelayCheck.isSelected() );
             }
         }
         generateBroadcastChangeEvent();
+    }
+    
+    /*
+     * Called when the TCP connection settings have been changed.  This causes
+     * the current connection (if it exists) to be closed.  The TCP connection
+     * thread should then reform it.
+     */
+    public void changeTCPConnectionSettings() {
+        if ( _guiServerConnection != null )
+            _guiServerConnection.close();
+    }
+    
+    /*
+     * This thread makes connections to the guiServer.  It will continually try to
+     * do so until a proper connection is made.  If that connection is broken, it
+     * will try to make a new one.
+     */
+    protected class TCPConnectionThread extends Thread {      
+        protected int _counter = 0;
+        public void run() {
+            //  Initial one second delay to make sure everything is set up before
+            //  we make our first connection attempt.
+            try { Thread.sleep( 1000 ); } catch ( Exception e ) {}
+            while ( true ) {
+                //  Are we using the TCP connection?
+                if ( _difxTCPCheck.isSelected() ) {
+                    //  Change the connection status to "connecting".
+                    _guiServerConnectionLight.warning();
+                    if ( _queueBrowser != null )
+                        _queueBrowser.guiServerConnectionLight().warning();
+                    //  Make a new guiServer connection.
+                    _guiServerConnection = new GuiServerConnection( difxControlAddress(), 
+                            difxControlPort(), timeout() );
+                    //  Add callbacks for various actions.
+                    _guiServerConnection.addConnectionListener( new ActionListener() {
+                        public void actionPerformed( ActionEvent e ) {
+                            if ( e.getActionCommand().contentEquals( "connected" ) ) {
+                                _guiServerConnectionLight.on( true );
+                                if ( _queueBrowser != null )
+                                    _queueBrowser.guiServerConnectionLight().on( true );
+                            }
+                            else {
+                                _guiServerConnectionLight.alert();
+                                if ( _queueBrowser != null )
+                                    _queueBrowser.guiServerConnectionLight().alert();
+                            }
+                        }
+                    } );
+                    //  These might be useful for some sort of connection display...
+//                    _guiServerConnection.addSendListener( new ActionListener() {
+//                        public void actionPerformed( ActionEvent e ) {
+//                            System.out.println( "sent " + e.getActionCommand() + " bytes" );
+//                        }
+//                    } );
+//                    _guiServerConnection.addReceiveListener( new ActionListener() {
+//                        public void actionPerformed( ActionEvent e ) {
+//                            System.out.println( "received " + e.getActionCommand() + " bytes" );
+//                        }
+//                    } );
+                    if ( _guiServerConnection.connect() ) {
+                        _counter = 0;
+                        if ( _messageCenter != null )
+                            _messageCenter.message( 0, "SystemSettings - guiServer connection", "connection successful" );
+                        //  This is used to relay multicast packets.
+                        _guiServerConnection.relayBroadcast( _useTCPRelayCheck.isSelected() );
+                        //  Hang out while this connection is running.  We'll notice a
+                        //  break in a tenth of a second.
+                        while ( _guiServerConnection.connected() ) {
+                            try { Thread.sleep( 100 ); } catch ( Exception e ) {}
+                        }
+                        //  Connection lost
+                        _guiServerConnectionLight.warning();
+                        if ( _queueBrowser != null )
+                            _queueBrowser.guiServerConnectionLight().warning();
+                    }
+                    else {
+                        if ( _counter <= 0 ) {
+                            if ( _messageCenter != null ) {
+                                _messageCenter.error( 0, "SystemSettings - guiServer connection", 
+                                        difxControlAddress() + " port " + difxControlPort() + " - connection failed" );
+                            }
+                            else {
+                                java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE,
+                                            difxControlAddress() + " port " + difxControlPort() + " - connection failed" );
+                                }
+                            _counter = 10;
+                        }
+                        --_counter;
+                        _guiServerConnectionLight.alert();
+                        if ( _queueBrowser != null )
+                            _queueBrowser.guiServerConnectionLight().alert();
+                    }
+                }
+                else {
+                    _guiServerConnectionLight.on( false );
+                    if ( _queueBrowser != null )
+                        _queueBrowser.guiServerConnectionLight().on( false );
+                }
+                //  One second sleep between attempts to connect.
+                try {
+                    Thread.sleep( 1000 );
+                } catch ( Exception e ) {}
+            }
+        }        
     }
     
     /*
@@ -902,6 +1018,10 @@ public class SystemSettings extends JFrame {
         if ( _guiServerConnection == null )
             return false;
         return ( _difxTCPCheck.isSelected() && _guiServerConnection.connected() );
+    }
+    
+    public void messageCenter( MessageDisplayPanel newVal ) {
+        _messageCenter = newVal;
     }
     
     /*
@@ -1176,8 +1296,8 @@ public class SystemSettings extends JFrame {
         _port.intValue( 52525 );
         _bufferSize.intValue( 1500 );
         _timeout.intValue( 100 );
-        _difxUDPCheck.setSelected( true );
-        _difxTCPCheck.setSelected( false );
+        _difxUDPCheck.setSelected( false );
+        _difxTCPCheck.setSelected( true );
         _difxControlAddress.setText( "swc01.usno.navy.mil" );
         _difxControlPort.intValue( 50200 );
         _difxTransferPort.intValue( 50300 );
@@ -2622,6 +2742,7 @@ public class SystemSettings extends JFrame {
     //  of convenience as all locations have access to this class.
     HardwareMonitorPanel _hardwareMonitor;
     QueueBrowserPanel _queueBrowser;
+    MessageDisplayPanel _messageCenter;
     
     //  These lists contain "status" values that can be applied to different things.
     //  Nominally they come from the database, but in the absense of the database the
@@ -2678,6 +2799,6 @@ public class SystemSettings extends JFrame {
     protected UpdateDatabaseLoop _updateDatabaseLoop;
     EventListenerList _databaseUpdateListeners;
 
-    
+    protected ActivityMonitorLight _guiServerConnectionLight;
     
 }

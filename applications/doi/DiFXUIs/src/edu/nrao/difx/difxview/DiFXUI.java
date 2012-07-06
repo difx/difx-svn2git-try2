@@ -74,6 +74,8 @@ public class DiFXUI extends JFrame implements WindowListener {
         //  logging system).
         _messageCenter.captureLogging( "global" );
         
+        _systemSettings.messageCenter( _messageCenter );
+        
         //  Create a "data model" for processing incoming data transmissions
         _dataModel = new DiFXDataModel( _systemSettings );
         _dataModel.messageDisplayPanel( _messageCenter );

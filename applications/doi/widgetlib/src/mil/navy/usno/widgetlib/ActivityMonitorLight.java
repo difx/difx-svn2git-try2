@@ -38,13 +38,22 @@ public class ActivityMonitorLight extends JPanel {
         alertColor( Color.RED );
         _currentColor = _offColor;
         //  Set up a repeating timeout that occurs every 10th of a second.
-        Action updateDrawingAction = new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
+        TimerThread timerThread = new TimerThread();
+        timerThread.start();
+    }
+    
+    protected class TimerThread extends Thread {
+        protected boolean _keepGoing = true;
+        public void run() {
+            while ( _keepGoing ) {
+                try {
+                    Thread.sleep( 100 );
+                } catch ( Exception e ) {
+                    _keepGoing = false;
+                }
                 timeoutIntervalEvent();
             }
-        };
-        new Timer( 100, updateDrawingAction ).start();
+        }
     }
     
     @Override
@@ -146,6 +155,20 @@ public class ActivityMonitorLight extends JPanel {
     }
     public Color alertColor() {
         return _alertColor;
+    }
+    
+    public void warning() {
+        _currentColor = _warningColor;
+        onDuration( Long.MAX_VALUE );
+        alertTime( Long.MAX_VALUE );
+        warningTime( Long.MAX_VALUE );
+    }
+    
+    public void alert() {
+        _currentColor = _alertColor;
+        onDuration( Long.MAX_VALUE );
+        alertTime( Long.MAX_VALUE );
+        warningTime( Long.MAX_VALUE );
     }
     
     protected long _onDuration;

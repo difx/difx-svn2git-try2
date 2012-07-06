@@ -169,6 +169,14 @@ public class QueueBrowserPanel extends TearOffPanel {
             }
         });
         this.add( _showButton );
+        _guiServerConnectionLight = new ActivityMonitorLight();
+        _guiServerConnectionLight.setBounds( 360, 32, 12, 12 );
+        _guiServerConnectionLight.alertTime( 0 );
+        _guiServerConnectionLight.warningTime( 0 );
+        this.add( _guiServerConnectionLight );
+        _guiServerConnectionLabel = new JLabel( "guiServer Connection" );
+        _guiServerConnectionLabel.setBounds( 380, 25, 200, 25 );
+        this.add( _guiServerConnectionLabel );
         _updateButton = new JButton( "DB Update" );
         _updateButton.setToolTipText( "Update queue data from the DiFX database." );
         _updateButton.addActionListener( new ActionListener() {
@@ -217,8 +225,14 @@ public class QueueBrowserPanel extends TearOffPanel {
         _newButton.setBounds( 5, 30, 100, 25 );
         _selectButton.setBounds( 110, 30, 100, 25 );
         _showButton.setBounds( 220, 30, 100, 25 );
+        _guiServerConnectionLight.setBounds( width - 300, 37, 12, 12 );
+        _guiServerConnectionLabel.setBounds( width - 280, 30, 130, 25 );
         _updateButton.setBounds( width - 120, 30, 110, 25 );
         _autoButton.setBounds( width - 145, 30, 25, 25 );
+    }
+    
+    public ActivityMonitorLight guiServerConnectionLight() {
+        return _guiServerConnectionLight;
     }
 
     /*
@@ -713,5 +727,7 @@ public class QueueBrowserPanel extends TearOffPanel {
     protected JCheckBoxMenuItem _showUnselectedItem;
     protected JCheckBoxMenuItem _showCompletedItem;
     protected JCheckBoxMenuItem _showIncompleteItem;
+    protected ActivityMonitorLight _guiServerConnectionLight;
+    protected JLabel _guiServerConnectionLabel;
     
 }
