@@ -466,10 +466,13 @@ def queryMark5C(newDb, startMJD, stopMJD, station, verbose):
 
 	print '%d Mark5C mon data points found for station %s' % (len(monData), stn)
 
-	f = open('/tmp/%s.mon' % station, 'w')
-	for m in monData:
-		f.write('%s\n' % str(m))
-	f.close()
+	if verbose > 2:
+		fn = '/tmp/%s.mon' % station
+		print 'Writing mon data for %s to %s' % (station, fn)
+		f = open(fn, 'w')
+		for m in monData:
+			f.write('%s\n' % str(m))
+		f.close()
 
 	return monData
 
@@ -600,65 +603,6 @@ def getClockFromDB(db, stn, timerange, verbose):
 
 
 	return v
-
-def getEarthFromDBold(db, centerMJD, verbose, preobs):
-	cursor = db.cursor()
-	startMJD = int(centerMJD+0.5) - 2
-	stopMJD  = int(centerMJD+0.5) + 2
-	eops  = []
-	ver = '  * data versions = '
-	origin = '  * data origins = '
-	ut1_utc = '  ut1-utc  = '
-	x_pole  = '  x_wobble = '
-	y_pole  = '  y_wobble = '
-
-	eops.append("$EOP;\n")
-	eops.append("def EOP%d;\n" % startMJD)
-
-	nPredict = 0;
-
-	for m in range(startMJD, stopMJD+1):
-		d  = mjd2date(m)
-		query = "select EPOCH,VERSION,ORIGIN,TAI_UTC,UT1_UTC,X_POLE,Y_POLE " \
-			"from EARTH where EPOCH = '%s' order by EPOCH,VERSION" % d
-		if verbose > 0:
-			print 'Executing database query: %s' % query
-		cursor.execute(query)
-		E = cursor.fetchall()
-		if len(E) < 1:
-			print 'Error: no EOPs for day %s' % d
-		else:
-			e = E[-1]	# select most recent
-			if m == startMJD:
-				eops.append("  TAI-UTC= %d sec;\n" % e[3])
-				eops.append("  A1-TAI= 0 sec;\n")
-				eops.append("  eop_ref_epoch=%s;\n" % mjd2vex(calcMJD(e[0]), True))
-				eops.append("  num_eop_points=5;\n")
-				eops.append("  eop_interval=24 hr;\n")
-			if m == stopMJD:
-				end = ';\n'
-			else:
-				end = ' : '
-			ver = ver + mjd2vex(calcMJD(e[1])) + end
-			org = upper(strip(e[2]))
-			if org == 'PREDICT':
-				nPredict += 1
-			origin = origin + org + end
-			ut1_utc = ut1_utc + ('%8.6f sec' % e[4]) + end
-			x_pole = x_pole + ('%7.5f asec' % e[5]) + end
-			y_pole = y_pole + ('%7.5f asec' % e[6]) + end
-		
-	eops.append(ut1_utc)
-	eops.append(x_pole)
-	eops.append(y_pole)
-	eops.append(ver)
-	eops.append(origin)
-	eops.append("enddef;\n")
-
-	if not preobs and nPredict > 0:
-		print 'Warning: %d of %d EOP data are PREDICTs' % (nPredict, stopMJD-startMJD+1)
-
-	return eops
 
 def getEarthFromDB(db, centerMJD, verbose, preobs):
 	cursor = db.cursor()

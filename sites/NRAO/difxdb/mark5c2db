@@ -7,7 +7,10 @@ from sys import argv, exit, stdout
 from string import find, upper, lower, strip, split
 from os import getenv, environ, popen, umask, getcwd, system
 
-
+program = 'mark5c2db'
+author = 'Walter Brisken'
+version = '0.2'
+verdate = '20120706'
 
 # Name of the Oracle VLBA legacy database
 databaseName = getenv("VLBA_DB")
@@ -20,6 +23,13 @@ newDb = psycopg2.connect(newDatabaseName)
 db = cx_Oracle.connect(databaseName)
 
 mjd0 = datetime.datetime(1858, 11, 17, 0, 0)
+
+def usage(pgm):
+	print '%s ver %s  %s  %s\n' % (program, version, author, verdate)
+	print 'A program to populate the legacy VLBA database with Mark5C information.\n'
+	print 'Usage: %s [options] <vex file>\n'
+	print 'Note! Avoid running this program multiple times for the same experiment.\n'
+	print 'Example: %s bl175s.vex\n' % pgm
 
 def zero2oh(str):
 	return str.replace('O', '0')
@@ -124,13 +134,11 @@ def process(monData):
 			recStop = t
 			scans.append([recStart, recStop, recvsn, recBank])
 			recStart = -1
-			stdout.write('>')
 		elif action == 'start':
 			recvsn = vsn[active]
 			recStart = t
 			recStop = -1
 			recBank = active
-			stdout.write('<')
 	
 	blocks = []
 	lastblock = None
@@ -175,8 +183,14 @@ def queryMark5C(newDb, startMJD, stopMJD, station, verbose):
 	return monData
 	
 if len(argv) != 2:
-	print 'Usage:  %s vex' % argv[0]
+	print 'Invalid comamnd line.  See help information below.\n'
+	usage(argv[0])
 	exit(0)
+
+if argv[1] in ['--help', '-h']:
+	usage(argv[0])
+	exit(0)
+	
 
 obsCode, obsSeg, stationTimes = vexPeek(argv[1], 1)
 
