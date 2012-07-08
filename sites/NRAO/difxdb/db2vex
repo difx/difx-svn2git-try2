@@ -17,8 +17,8 @@ except:
 
 program = 'db2vex'
 author = 'Walter Brisken'
-version = '0.13'
-verdate = '20120625'
+version = '0.14'
+verdate = '20120708'
 
 tsysFile = 'tsys'
 
@@ -608,7 +608,8 @@ def getEarthFromDB(db, centerMJD, verbose, preobs):
 	cursor = db.cursor()
 	startMJD = int(centerMJD+0.5) - 2
 	stopMJD  = int(centerMJD+0.5) + 2
-	eops  = []
+	vals = {}	# indexed by mjd
+	eops = []
 	ver = '  * data versions = '
 	origin = '  * data origins = '
 	ut1_utc = '  ut1-utc  = '
@@ -619,6 +620,7 @@ def getEarthFromDB(db, centerMJD, verbose, preobs):
 
 	nPredict = 0;
 
+	# extract raw eop data from legacy database
 	for m in range(startMJD, stopMJD+1):
 		d  = mjd2date(m)
 		query = "select EPOCH,VERSION,ORIGIN,TAI_UTC,UT1_UTC,X_POLE,Y_POLE " \
@@ -630,22 +632,38 @@ def getEarthFromDB(db, centerMJD, verbose, preobs):
 		if len(E) < 1:
 			print 'Error: no EOPs for day %s' % d
 		else:
-			e = E[-1]	# select most recent EOP entry for this day
-			origin = upper(strip(e[2]))
-			eops.append("def EOP%d_%s;\n" % (m, origin))
-			eops.append("  TAI-UTC= %d sec;\n" % e[3])
-			eops.append("  A1-TAI= 0 sec;\n")
-			eops.append("  eop_ref_epoch=%s;\n" % mjd2vex(calcMJD(e[0]), True))
-			eops.append("  num_eop_points=1;\n")
-			eops.append("  eop_interval=24 hr;\n")
-			eops.append("  ut1-utc  = %8.6f sec;\n" % e[4])
-			eops.append("  x_wobble = %7.5f asec;\n" % e[5])
-			eops.append("  y_wobble = %7.5f asec;\n" % e[6])
-			eops.append("  * data version = %s;\n" % mjd2vex(calcMJD(e[1])))
+			vals[m] = E[-1]	# E[-1] is the most recent EOP for this day
 
-			if origin == 'PREDICT':
-				nPredict += 1
-			eops.append("enddef;\n")
+	# adjust values so that all tai-utc are based on day of observing:
+	if vals[startMJD][3] != vals[stopMJD][3]:
+		print '*** Notice: EOPs for this experiment span a leap second ***'
+		eops.append('* EOPs span a leap second.  UT1-UTC and TAI-UTC are calculated\n')
+		eops.append('* such that the number of leap seconds corresponds to the observation date\n')
+	tai_utc0 = vals[int(centerMJD)][3]
+	
+	# generate text to add to .vex
+	for m in range(startMJD, stopMJD+1):
+		e = vals[m]
+		tai_utc = e[3]
+		ut1_utc = e[4]
+		if tai_utc != tai_utc0:
+			ut1_utc -= (tai_utc - tai_utc0)
+			tai_utc = tai_utc0
+		origin = upper(strip(e[2]))
+		eops.append("def EOP%d_%s;\n" % (m, origin))
+		eops.append("  TAI-UTC= %d sec;\n" % tai_utc)
+		eops.append("  A1-TAI= 0 sec;\n")
+		eops.append("  eop_ref_epoch=%s;\n" % mjd2vex(calcMJD(e[0]), True))
+		eops.append("  num_eop_points=1;\n")
+		eops.append("  eop_interval=24 hr;\n")
+		eops.append("  ut1-utc  = %8.6f sec;\n" % ut1_utc)
+		eops.append("  x_wobble = %7.5f asec;\n" % e[5])
+		eops.append("  y_wobble = %7.5f asec;\n" % e[6])
+		eops.append("  * data version = %s;\n" % mjd2vex(calcMJD(e[1])))
+
+		if origin == 'PREDICT':
+			nPredict += 1
+		eops.append("enddef;\n")
 		
 	if not preobs and nPredict > 0:
 		print 'Warning: %d of %d EOP data are PREDICTs' % (nPredict, stopMJD-startMJD+1)
