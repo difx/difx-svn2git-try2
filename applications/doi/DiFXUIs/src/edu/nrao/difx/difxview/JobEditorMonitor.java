@@ -709,6 +709,7 @@ public class JobEditorMonitor extends JFrame {
         protected final int FAILURE_MPIRUN                      = 119;
         protected final int SUCCESS_MPIRUN                      = 120;
         protected final int LOW_THREAD_COUNT                    = 121;
+        protected final int RUNNING_MPIRUN_TESTS                = 122;
         
         @Override
         public void run() {
@@ -861,6 +862,10 @@ public class JobEditorMonitor extends JFrame {
                         else if ( packetType == LOW_THREAD_COUNT ) {
                             _messageDisplayPanel.error( 0, "machines monitor", "Number of processing threads is zero" );
                         }
+                        else if ( packetType == RUNNING_MPIRUN_TESTS ) {
+                            _messageDisplayPanel.message( 0, "machines monitor", "Running mpirun tests." );
+                            statusInfo( "running mpirun tests" );
+                        }
                         else {
                             _messageDisplayPanel.warning( 0, "GUI", "Ignoring unrecongized job monitor packet type (" + packetType + ")." );
                         }
@@ -998,7 +1003,7 @@ public class JobEditorMonitor extends JFrame {
             RunningJobMonitor runMonitor = new RunningJobMonitor( monitorPort );
             runMonitor.start();
         }
-
+        
         // -- Create the XML defined messages and process through the system
         command.body().setDifxStart(jobStart);
         try {
@@ -1035,6 +1040,8 @@ public class JobEditorMonitor extends JFrame {
         protected final int FAILURE_NO_INPUTFILE_SPECIFIED   = 108;
         protected final int FAILURE_INPUTFILE_NOT_FOUND      = 109;
         protected final int FAILURE_INPUTFILE_NAME_TOO_LONG  = 110;
+        protected final int FAILURE_OUTPUT_EXISTS            = 111;
+        protected final int DELETING_PREVIOUS_OUTPUT         = 112;
         
         @Override
         public void run() {
@@ -1084,17 +1091,21 @@ public class JobEditorMonitor extends JFrame {
                         //  Interpret the packet type.
                         if ( packetType == JOB_TERMINATED ) {
                             _messageDisplayPanel.warning( 0, "job monitor", "Job terminated prematurely." );
+                            statusWarning( "job terminated prematurely" );
                             connected = false;
                         }
                         else if ( packetType == JOB_ENDED_GRACEFULLY ) {
                             _messageDisplayPanel.warning( 0, "job monitor", "Job finished gracefully." );
+                            statusInfo( "job completed" );
                             connected = false;
                         }
                         else if ( packetType == JOB_STARTED ) {
                             _messageDisplayPanel.message( 0, "job monitor", "Job started by guiServer." );
+                            statusInfo( "job started" );
                         }
                         else if ( packetType == PARAMETER_CHECK_IN_PROGRESS ) {
                             _messageDisplayPanel.message( 0, "job monitor", "Checking parameters." );
+                            statusInfo( "checking parameters..." );
                         }
                         else if ( packetType == PARAMETER_CHECK_SUCCESS ) {
                             _messageDisplayPanel.message( 0, "job monitor", "Parameter check successful." );
@@ -1116,6 +1127,12 @@ public class JobEditorMonitor extends JFrame {
                         }
                         else if ( packetType == FAILURE_INPUTFILE_NAME_TOO_LONG ) {
                             _messageDisplayPanel.message( 0, "job monitor", "Input file name \"" + _jobNode.inputFile() + "\" is too long for DiFX." );
+                        }
+                        else if ( packetType == FAILURE_OUTPUT_EXISTS ) {
+                            _messageDisplayPanel.error( 0, "job monitor", "Output exists for this job on DiFX host - use \"force\" to replace." );
+                        }
+                        else if ( packetType == DELETING_PREVIOUS_OUTPUT ) {
+                            statusInfo( "force output - deleting existing output files" );
                         }
                         else {
                             _messageDisplayPanel.warning( 0, "GUI", "Ignoring unrecongized job monitor packet type (" + packetType + ")." );
