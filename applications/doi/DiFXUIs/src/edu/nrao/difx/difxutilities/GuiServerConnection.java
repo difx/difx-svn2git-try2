@@ -97,7 +97,7 @@ public class GuiServerConnection {
      * the packet are sent as integers - and thus are swapped (if necessary) to
      * network byte order.  The data are not.
      */
-    public void sendPacket( int packetId, int nBytes, byte[] data ) {
+    synchronized public void sendPacket( int packetId, int nBytes, byte[] data ) {
         if ( _connected ) {
             try {
                 _out.writeInt( packetId );

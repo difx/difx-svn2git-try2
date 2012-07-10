@@ -1,18 +1,86 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
   <head>
-
-    <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+    <meta http-equiv="content-type" content="text/html;
+      charset=ISO-8859-1">
     <link type="text/css" rel="stylesheet" href="style.css">
-
+    <title></title>
   </head>
   <body>
-
-    <h1>Introduction to the DiFX GUI</h3>
-
-    This is supposed to be an introduction to the USNO DiFX GUI.  Eventually something
-    well-written and introductory will be put here.
-
+    <h1>Overview of the DiFX GUI</h1>
+    This is supposed to be an introduction to the USNO DiFX GUI.
+    Eventually something well-written and introductory will be put here.<br>
+    <h3>What the GUI Does<br>
+    </h3>
+    The USNO GUI serves two purposes:<br>
+    <span style="font-weight: bold;"></span>
+    <h5 style="margin-left: 40px;">DiFX Cluster Monitor</h5>
+    <p style="margin-left: 40px;">The GUI monitors and displays the
+      health and activity of DiFX cluster components (processors, Mark5
+      units, etc) and shows the progress of DiFX jobs running on the
+      cluster.&nbsp; In this capacity it is essentially a passive
+      observer, serving as a somewhat more colorful replacement to the <span
+        style="font-style: italic;">errormon</span>, <span
+        style="font-style: italic;">mk5mon</span> and <span
+        style="font-style: italic;">cpumon</span> scripts that come with
+      DiFX.<br>
+    </p>
+    <h5 style="margin-left: 40px;">Experiment/Job Administrator</h5>
+    <p style="margin-left: 40px;">The GUI can also be used to create
+      runnable jobs from "raw" data - scans and<span style="font-family:
+        Courier New,Courier,monospace;"></span> vex file content.&nbsp;
+      Files required to run DiFX and directories for data products are
+      all created according to user specifications, and jobs are
+      organized in "Experiments" and "Passes", all of which can be
+      stored using a database.&nbsp; These jobs can then be run through
+      DiFX and their progress and data products can be monitored in
+      detail.<br>
+      <br>
+    </p>
+    <h3>Running the GUI</h3>
+    There are two components to the DiFX GUI.&nbsp; A single instance of
+    the application <span style="font-style: italic;">guiServer</span>
+    runs on one of the processing nodes in the DiFX cluster.&nbsp; The
+    processor running <span style="font-style: italic;">guiServer</span>
+    is often referred to in the documentation as the "DiFX Host" node or
+    "DiFX Control" node.&nbsp; Itshould have read and write permission
+    over all data directories used by DiFX and must be able to start
+    processes on all other nodes using <span style="font-style:
+      italic;">mpirun</span>.<br>
+    <br>
+    The GUI itself is a Java program, currently called <span
+      style="font-style: italic;">DiFXUIs</span> (this name is
+    historical and will hopefully be changed some day).&nbsp; It can be
+    run anywhere that a network connection to the DiFX cluster is
+    available (not necessarily on the LAN of the DiFX cluster) on any
+    platform that can run Java.&nbsp; Any number of GUI sessions can be
+    run simultaneously using the same <span style="font-style: italic;">guiServer</span>.<br>
+    <br>
+    The GUI and <span style="font-style: italic;">guiServer</span> can
+    be started in any order - the GUI will connect as soon as a <span
+      style="font-style: italic;">guiServer</span> becomes available.<br>
+    <br>
+    GuiServer is run from the command line on the DiFX Host:<br>
+    <pre>	guiServer [PORT #]
+</pre>
+    The optional port number is the TCP connection port.&nbsp; If it is
+    not specified, guiServer will use a default port number (it uses the
+    value given by the DIFX_MESSAGE_PORT environment variable, or 50200
+    if that is not available).&nbsp; As soon as it is started, guiServer
+    will give a message indicating the port it is using:<br>
+    <pre>	server at port 50200
+</pre>
+    The GUI is run from its ".jar" file:<br>
+    <pre>	java -jar DiFXUIs.jar
+</pre>
+    Once the GUI is running, the address of the DiFX Host (where <span
+      style="font-style: italic;">guiServer</span> is running) and the
+    port number (what <span style="font-style: italic;">guiServer</span>
+    told you above) can be entered to connect the two.&nbsp; See <a
+      href="settings_content.html#DiFX_Control_Connection">DiFX Control
+      Connection</a> in the Settings documentation for details.<br>
+    <h3>Structure and Communication<br>
+      <br>
+    </h3>
   </body>
 </html>
-

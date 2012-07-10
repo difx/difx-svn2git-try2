@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
-import java.net.UnknownHostException;
 
 /**
  *
@@ -90,10 +89,6 @@ public class DiFXCommand {
                 data = null;
             }
             else {
-                //  Send using UDP multicast.
-                //  BLAT this "SendMessage" class is probably useless.  This might be
-                //       the only place it is used!
-                //SendMessage.writeToSocket( xmlString, _settings );
                 try {
                     MulticastSocket sock = new MulticastSocket();
 
@@ -107,7 +102,7 @@ public class DiFXCommand {
                 } catch ( java.net.UnknownHostException e ) {
                     throw( e );
                 } catch (IOException ex) {
-                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex); //NOI18N
+                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex);
                 }
             }
         }

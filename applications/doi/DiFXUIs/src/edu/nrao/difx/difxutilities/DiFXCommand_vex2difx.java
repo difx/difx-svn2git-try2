@@ -124,7 +124,7 @@ public class DiFXCommand_vex2difx extends DiFXCommand {
                     
                 }
                 ssock.close();
-            } catch ( Exception e ) {
+            } catch ( java.io.IOException e ) {
                 
             }
             endCallback();
