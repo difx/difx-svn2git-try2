@@ -66,8 +66,8 @@ namespace network {
         //----------------------------------------------------------------------------
         ~TCPServer() {
             if ( _listenFd > -1 )
-            close( _listenFd );
-         }
+                close( _listenFd );
+        }
 
         //----------------------------------------------------------------------------
         //  Wait for a client connection.  If one occurs, return a pointer to a new

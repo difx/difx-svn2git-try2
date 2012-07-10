@@ -125,8 +125,9 @@ main( int argc, char **argv ) {
     while ( 1 ) {
 
         //  Wait for the next client to connect and spawn a new socket to cover it.
+        printf( "guiServer: wait for new client connection\n" );
         network::TCPSocket* newClientSocket = server->acceptClient();
-        printf( "client connection from address %s\n", server->lastClientIP() );
+        printf( "guiServer: client connection from address %s\n", server->lastClientIP() );
 
         //  Open a packet exchange mechanism to deal with this connection as a server.
         guiServer::ServerSideConnection* newClient = new guiServer::ServerSideConnection( newClientSocket, server->lastClientIP() );
@@ -148,5 +149,7 @@ main( int argc, char **argv ) {
     }
     
     delete server;
+    
+    printf( "guiServer: exited endless loop??\n" );
 
 }

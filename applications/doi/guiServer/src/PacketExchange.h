@@ -78,6 +78,7 @@ namespace guiServer {
                 printf( "waiting for packet\n" );
                 if ( getPacket( packetId, data, nBytes ) == -1 ) {
                     //  connection failure
+                    printf( "PacketExchange: connection failed\n" );
                     _receiveActive = false;
                 }
                 else  {
@@ -105,6 +106,7 @@ namespace guiServer {
                     delete [] data;
                 }
             }
+            printf( "PacketExchange: exiting receive thread\n" );
         }
         
         virtual void newPacket( int packetId, char* data, const int nBytes ) {}

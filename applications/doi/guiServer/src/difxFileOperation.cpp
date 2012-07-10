@@ -36,30 +36,40 @@ void ServerSideConnection::difxFileOperation( DifxMessageGeneric* G ) {
 	if ( !user ) {
     	user = getenv( "DIFX_USER_ID" );
 	}
+	
+	printf( "THIS IS A DIFX FILE OPERATION: %s\n", S->operation );
 
 	//  Check the file operation against the list of "legal" operations.
 	if ( !strcmp( S->operation, "mkdir" ) ) {
 	    //  Make a new directory with the given path.  The "-p" option will make the entire path.  The
 	    //  operation should be silent if all goes well - any output from popen will be something bad
 	    //  (thus we generate an error message).
-		snprintf( command, MAX_COMMAND_SIZE, "mkdir -p %s", S->path );
+		snprintf( command, MAX_COMMAND_SIZE, "mkdir -p %s 2>&1", S->path );
   		FILE* fp = popen( command, "r" );
   		while ( fgets( message, DIFX_MESSAGE_LENGTH, fp ) != NULL )
-  		    difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_INFO );
+  		    difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_ERROR );
   		pclose( fp );	    
   		snprintf( message, DIFX_MESSAGE_LENGTH, "%s performed!", command );
 	}
 	else if ( !strcmp( S->operation, "rmdir" ) ) {
-    	snprintf( message, DIFX_MESSAGE_LENGTH, "rmdir %s", S->path );
+	    //  The "rmdir" command doesn't remove content.
+		snprintf( command, MAX_COMMAND_SIZE, "rm %s 2>&1", S->path );
+  		FILE* fp = popen( command, "r" );
+  		while ( fgets( message, DIFX_MESSAGE_LENGTH, fp ) != NULL )
+  		    difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_ERROR );
+  		pclose( fp );	    
+    	snprintf( message, DIFX_MESSAGE_LENGTH, "%s performed", command );
+    	printf( "%s\n", message );
 	}
 	else if ( !strcmp( S->operation, "rm" ) ) {
 	    //  Remove the files matching the given path description.
-		snprintf( command, MAX_COMMAND_SIZE, "rm %s %s", S->arg, S->path );
+		snprintf( command, MAX_COMMAND_SIZE, "rm %s %s 2>&1", S->arg, S->path );
   		FILE* fp = popen( command, "r" );
   		while ( fgets( message, DIFX_MESSAGE_LENGTH, fp ) != NULL )
   		    difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_INFO );
   		pclose( fp );	    
   		snprintf( message, DIFX_MESSAGE_LENGTH, "%s performed!", command );
+    	printf( "%s\n", message );
 	}
 	else if ( !strcmp( S->operation, "mv" ) ) {
 	    if ( S->arg[0] != '/' ) {

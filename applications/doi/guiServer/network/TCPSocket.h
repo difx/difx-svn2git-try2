@@ -48,7 +48,10 @@ namespace network {
         //  Destructor closes the socket.  
         //----------------------------------------------------------------------------
         ~TCPSocket() {
-            closeConnection();
+            delete[] _buffer;
+            _buffer = NULL;
+            if ( _fd > -1 )
+                close( _fd );
         }
         
         //----------------------------------------------------------------------------
@@ -56,10 +59,6 @@ namespace network {
         //----------------------------------------------------------------------------
         void closeConnection() {
             _connected = false;
-            delete[] _buffer;
-            _buffer = NULL;
-            if ( _fd > -1 )
-                close( _fd );
         }
 
         //----------------------------------------------------------------------------
@@ -144,7 +143,7 @@ namespace network {
         //----------------------------------------------------------------------------
         int monitorReader( char* buff, int nBytes ) {
             if ( !_connected )
-                return 0;
+                return -1;
             int soFar = 0;
             while ( soFar < nBytes ) {
                 //  The number of bytes we wish to read...
@@ -221,7 +220,6 @@ namespace network {
                 int ret = select( _fd + 1, &rfds, NULL, NULL, _timeout );
                 if ( ret == -1 ) {  //  broken socket
                     _connected = false;
-                    closeConnection();
                     staticCallback( this );
                 }
                 else if ( ret == 0 ) {
@@ -254,7 +252,7 @@ namespace network {
                         ret = read( _fd, (void*)(_buffer + _writePtr), readN );
                         if ( ret <= 0 ) {
                             //  Either a bad socket or an end of file.
-                            closeConnection();
+                            _connected = false;
                         }
                         _writePtr += ret;
                         if ( _writePtr >= _bufferSize ) {
