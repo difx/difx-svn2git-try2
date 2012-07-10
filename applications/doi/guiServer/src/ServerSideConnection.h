@@ -273,7 +273,6 @@ namespace guiServer {
         void difxFileOperation( DifxMessageGeneric* G );
         void vex2difxRun( DifxMessageGeneric* G );
         void machinesDefinition( DifxMessageGeneric* G );
-        void machinesDefinitionThread( DifxStartInfo* startInfo );  //  in machinesDefinition.cpp
         void diagnostic( const int severity, const char *fmt, ... );
 
     protected:

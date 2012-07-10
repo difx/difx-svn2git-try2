@@ -42,6 +42,7 @@ namespace network {
             _monitored = false;
             _connected = false;
             _buffer = NULL;
+            pthread_mutex_init( &_writeMutex, NULL );
         }
 
         //----------------------------------------------------------------------------
@@ -131,10 +132,14 @@ namespace network {
         } 
 
         //----------------------------------------------------------------------------
-        //  Writing is considerably easier than reading.
+        //  Writing is considerably easier than reading.  It is mutex locked to be
+        //  thread safe.
         //----------------------------------------------------------------------------
         int writer( char* buff, int nBytes ) {
-            return( write( _fd, buff, nBytes ) );
+            pthread_mutex_lock( &_writeMutex );
+            int ret = write( _fd, buff, nBytes );
+            pthread_mutex_unlock( &_writeMutex );
+            return ret;
         }
         
         //----------------------------------------------------------------------------
@@ -300,6 +305,7 @@ namespace network {
         unsigned int _readPtrWrap;
         unsigned int _writePtrWrap;
         bool _monitored;
+        pthread_mutex_t _writeMutex;
 
     };
 

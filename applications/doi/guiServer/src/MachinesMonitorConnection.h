@@ -42,6 +42,7 @@ namespace guiServer {
         static const int FAILURE_MPIRUN                      = 119;
         static const int SUCCESS_MPIRUN                      = 120;
         static const int LOW_THREAD_COUNT                    = 121;
+        static const int RUNNING_MPIRUN_TESTS                = 122;
     
         MachinesMonitorConnection( network::GenericSocket* sock ) : PacketExchange( sock ) {
         }

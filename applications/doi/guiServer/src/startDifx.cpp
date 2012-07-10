@@ -179,6 +179,8 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	if( outputExists && !S->force ) {
 		diagnostic( ERROR, "Output file %s exists.  Aborting correlation.", 
 			filename );
+        jobMonitor->sendPacket( JobMonitorConnection::FAILURE_OUTPUT_EXISTS, NULL, 0 );
+        jobMonitor->sendPacket( JobMonitorConnection::JOB_TERMINATED, NULL, 0 );
 		return;
 	}
 
@@ -219,6 +221,7 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	
 	//  Build the "remove" command - this removes existing data if the force option is picked.
 	if( S->force && outputExists ) {
+		jobMonitor->sendPacket( JobMonitorConnection::DELETING_PREVIOUS_OUTPUT, NULL, 0 );
 		snprintf( startInfo->removeCommand, MAX_COMMAND_SIZE, "/bin/rm -rf %s.difx/", filebase );
 		startInfo->force = 1;
 	}

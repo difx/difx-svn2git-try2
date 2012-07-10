@@ -32,6 +32,8 @@ namespace guiServer {
         static const int FAILURE_NO_INPUTFILE_SPECIFIED     = 108;
         static const int FAILURE_INPUTFILE_NOT_FOUND        = 109;
         static const int FAILURE_INPUTFILE_NAME_TOO_LONG    = 110;
+        static const int FAILURE_OUTPUT_EXISTS              = 111;
+        static const int DELETING_PREVIOUS_OUTPUT           = 112;
     
         JobMonitorConnection( network::GenericSocket* sock ) : PacketExchange( sock ) {
         }

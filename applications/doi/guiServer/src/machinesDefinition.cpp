@@ -27,30 +27,18 @@ using namespace guiServer;
 //!  spawns.
 //-----------------------------------------------------------------------------
 void ServerSideConnection::machinesDefinition( DifxMessageGeneric* G ) {
-	const int RestartOptionLength = 16;
-	int l, n;
+	int l;
 	int childPid;
-	char filebase[DIFX_MESSAGE_FILENAME_LENGTH];
-	char filename[DIFX_MESSAGE_FILENAME_LENGTH];
 	char machinesFilename[DIFX_MESSAGE_FILENAME_LENGTH];
 	char threadsFilename[DIFX_MESSAGE_FILENAME_LENGTH];
 	char workingDir[DIFX_MESSAGE_FILENAME_LENGTH];
 	char testPath[DIFX_MESSAGE_FILENAME_LENGTH];
-	char destdir[DIFX_MESSAGE_FILENAME_LENGTH];
 	char message[DIFX_MESSAGE_LENGTH];
-	char restartOption[RestartOptionLength];
 	char command[MAX_COMMAND_SIZE];
 	char nodename[MAX_COMMAND_SIZE];
 	FILE *out;
-	const char *jobName;
 	const DifxMessageMachinesDefinition *S;
-	bool outputExists = false;
-	const char *mpiOptions;
 	const char *mpiWrapper;
-	const char *difxProgram;
-	int returnValue;
-	char altDifxProgram[64];
-	const char *user;
 	MachinesMonitorConnection* monitor;
 
 	//  Cast the body of this message to a DifxMessageStart structure.
@@ -213,6 +201,7 @@ void ServerSideConnection::machinesDefinition( DifxMessageGeneric* G ) {
         //  This should test both write permission for the host and ssh permission required by
         //  mpirun (which is more likely to be a problem).  Maybe these tests can get more 
         //  elaborate - test processing time, etc, if we get adventurous.
+        monitor->sendPacket( MachinesMonitorConnection::RUNNING_MPIRUN_TESTS, NULL, 0 );
         std::list<std::string>::iterator i;
         std::list<int>::iterator j = processThreads.begin();
         for ( i = processNodes.begin(); i != processNodes.end(); ) {
@@ -234,7 +223,6 @@ void ServerSideConnection::machinesDefinition( DifxMessageGeneric* G ) {
             //  work the way we expected.
             ret = unlink( testPath );
             if ( ret == -1 ) {
-            printf( ">>>>\n\n%s\n\n", strerror( errno ) );
     	        monitor->sendPacket( MachinesMonitorConnection::FAILURE_MPIRUN, nodename, 
     	            strlen( nodename ) );
     	        //  Eliminate this node if we are supposed to be doing so...
@@ -339,50 +327,4 @@ void ServerSideConnection::machinesDefinition( DifxMessageGeneric* G ) {
 		
 }
 
-//-----------------------------------------------------------------------------
-//!  Thread to run and monitor DiFX.  All of the necessary setup should be
-//!  done already - the "startInfo" structure contains all information needed
-//!  to run.  
-//-----------------------------------------------------------------------------	
-void ServerSideConnection::machinesDefinitionThread( DifxStartInfo* startInfo ) {
-    
-    //  Delete data directories if "force" is in effect.
-    if ( startInfo->force )
-        diagnostic( INFORMATION, "execute \"%s\"\n", startInfo->removeCommand );
-        
-    //  Run the DiFX process!
-    diagnostic( INFORMATION, "execute \"%s\"\n", startInfo->startCommand );
-    
-    FILE* difxPipe = popen( startInfo->startCommand, "r" );
-    if( !difxPipe ) {
-	    diagnostic( ERROR, "mpifxcorr process not started for job %s; popen returned NULL", startInfo->jobName );
-        return;
-    }
-
-    char line[DIFX_MESSAGE_LENGTH];
-
-    for (;;) {
-
-	    const char* rv = fgets( line, DIFX_MESSAGE_LENGTH, difxPipe );
-	    if ( !rv )	/* eof, probably */
-		    break;
-
-	    for ( int i = 0; line[i]; ++i ) {
-		    if(line[i] == '\n')
-			    line[i] = ' ';
-	    }
-
-	    if ( strstr( line, "ERROR" ) != NULL )
-		    diagnostic( ERROR, "MPI: %s", line );
-	    else if ( strstr( line, "WARNING" ) != NULL )
-		    diagnostic( WARNING, "MPI: %s", line );
-	    else
-		    diagnostic( INFORMATION, "MPI: %s", line );
-
-    }
-    pclose( difxPipe );
-
-    difxMessageSendDifxStatus2( startInfo->jobName, DIFX_STATE_MPIDONE, "" );
-
-}
 
