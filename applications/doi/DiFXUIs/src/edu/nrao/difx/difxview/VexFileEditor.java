@@ -5,7 +5,6 @@
 package edu.nrao.difx.difxview;
 
 import mil.navy.usno.widgetlib.SaneTextField;
-import mil.navy.usno.widgetlib.NumberBox;
 
 import javax.swing.JLabel;
 import javax.swing.JDialog;
@@ -18,17 +17,10 @@ import javax.swing.JMenuItem;
 
 import java.awt.Frame;
 
-import java.util.Map;
-import java.util.Timer;
-import java.awt.Color;
-
-import java.util.Iterator;
-
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
-import mil.navy.usno.widgetlib.IndexedPanel;
 
 /**
  *
@@ -170,7 +162,6 @@ public class VexFileEditor extends JDialog {
 
     protected SaneTextField _name;
     protected boolean _ok;
-    protected Timer _timeoutTimer;
     protected JCheckBox _inDataBase;
     protected JLabel _id;
     protected JButton _okButton;

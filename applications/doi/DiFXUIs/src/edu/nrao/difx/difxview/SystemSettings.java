@@ -37,10 +37,6 @@ import java.net.URL;
 import java.io.InputStream;
 import java.io.IOException;
 
-import javax.swing.Action;
-import javax.swing.AbstractAction;
-import javax.swing.Timer;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Iterator;
@@ -132,20 +128,13 @@ public class SystemSettings extends JFrame {
 		} );
         
 
-        //  Set up a repeating timeout that occurs every 10th of a second.
-        Action updateDatabaseAction = new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                databaseTimeoutEvent();
-            }
-        };
-        
-        //  This thread is used to update from the database (updates can hang if
+        //  These threads are used to update from the database (updates can hang if
         //  the database can't be located).
+        _databaseThread = new DatabaseThread( 1000 );
+        _databaseThread.start();
+        
         _updateDatabaseLoop = new UpdateDatabaseLoop();
         _updateDatabaseLoop.start();
-        
-        new Timer( 1000, updateDatabaseAction ).start();
         
         //  Start the connection thread that will try to maintain a TCP connection
         //  with the guiServer.
@@ -1373,6 +1362,7 @@ public class SystemSettings extends JFrame {
         _defaultNames.correlationNChan = 16;
         _defaultNames.correlationNFFTChan = 128;
         _defaultNames.phaseCalInt = 1;
+        _defaultNames.correlationSubintNS = 160000000;
         _defaultNames.toneSelection = "smart";
         _defaultNames.vsnFormat = "Mark5B";
         
@@ -1883,6 +1873,7 @@ public class SystemSettings extends JFrame {
             _defaultNames.correlationNChan = doiConfig.getCorrelationNChan();
             _defaultNames.correlationFFTSpecRes = doiConfig.getCorrelationFFTSpecRes();
             _defaultNames.correlationNFFTChan = doiConfig.getCorrelationNFFTChan();
+            _defaultNames.correlationSubintNS = doiConfig.getCorrelationSubintNS();
             
             _defaultNames.phaseCalInt = doiConfig.getDefaultNamesPhaseCalInt();
             if ( doiConfig.getDefaultNamesToneSelection() != null )
@@ -2011,6 +2002,7 @@ public class SystemSettings extends JFrame {
         doiConfig.setCorrelationSpecRes( _defaultNames.correlationSpecRes );
         doiConfig.setCorrelationFFTSpecRes( _defaultNames.correlationFFTSpecRes );
         doiConfig.setCorrelationNFFTChan( _defaultNames.correlationNFFTChan );
+        doiConfig.setCorrelationSubintNS( _defaultNames.correlationSubintNS );
         
         doiConfig.setDefaultNamesPhaseCalInt( _defaultNames.phaseCalInt );
         doiConfig.setDefaultNamesToneSelection( _defaultNames.toneSelection );
@@ -2360,6 +2352,32 @@ public class SystemSettings extends JFrame {
         }
         else
             _dbTimeoutCounter = 0;
+    }
+    
+    /*
+     * This thread calls the database timeout event.
+     */
+    public class DatabaseThread extends Thread {
+        protected int _interval;
+        protected boolean _keepGoing;
+        public DatabaseThread( int interval ) {
+            _interval = interval;
+            _keepGoing = true;
+        }
+        public void keepGoing( boolean newVal ) {
+            _keepGoing = newVal;
+        }
+        @Override
+        public void run() {
+            while ( _keepGoing ) {
+                databaseTimeoutEvent();
+                try {
+                    Thread.sleep( _interval );
+                } catch ( Exception e ) {
+                    _keepGoing = false;
+                }
+            }
+        }
     }
     
     /*
@@ -2721,6 +2739,7 @@ public class SystemSettings extends JFrame {
         double correlationFFTSpecRes;
         int correlationNFFTChan;
         int phaseCalInt;
+        int correlationSubintNS;
         String toneSelection;
         String vsnFormat;
     }
@@ -2800,5 +2819,7 @@ public class SystemSettings extends JFrame {
     EventListenerList _databaseUpdateListeners;
 
     protected ActivityMonitorLight _guiServerConnectionLight;
+    
+    protected DatabaseThread _databaseThread;
     
 }

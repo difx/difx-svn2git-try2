@@ -24,11 +24,6 @@ import java.awt.Point;
 
 import java.io.File;
 
-import javax.swing.Action;
-import javax.swing.AbstractAction;
-import javax.swing.Timer;
-
-import java.util.List;
 import java.util.Iterator;
 import java.util.Date;
 import java.text.SimpleDateFormat;

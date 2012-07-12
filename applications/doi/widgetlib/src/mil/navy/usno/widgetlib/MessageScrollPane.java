@@ -5,18 +5,13 @@ package mil.navy.usno.widgetlib;
 
 import mil.navy.usno.widgetlib.MessageNode;
 import javax.swing.JPanel;
-import javax.swing.Action;
-import javax.swing.AbstractAction;
 
-import java.awt.event.ActionEvent;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.AdjustmentEvent;
-
-import javax.swing.Timer;
 
 import java.awt.Dimension;
 import java.awt.Graphics;

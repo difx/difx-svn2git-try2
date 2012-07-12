@@ -22,7 +22,6 @@ import edu.nrao.difx.difxdatabase.QueueDBConnection;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JButton;
-import javax.swing.Timer;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.SwingConstants;
@@ -344,7 +343,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         //  This panel contains a few often-changed parameters that govern the
         //  correlation.  These (mostly) end up in the "setup" section of the v2d file.
         IndexedPanel correlationPanel = new IndexedPanel( "Correlation Parameters" );
-        correlationPanel.openHeight( 125 );
+        correlationPanel.openHeight( 155 );
         correlationPanel.closedHeight( 20 );
         correlationPanel.open( false );
         _scrollPane.addNode( correlationPanel );
@@ -377,7 +376,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         correlationPanel.add( _doPolar );
         _specRes = new NumberBox();
         _specRes.setBounds( 180, 60, 100, 25 );
-        _specRes.precision( 3 );
+        _specRes.precision( 5 );
         _specRes.value( _settings.defaultNames().correlationSpecRes );
         _specRes.setToolTipText( "Spectral resolution of visibilities produced." );
         _specRes.addActionListener( new ActionListener() {
@@ -409,8 +408,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
         correlationPanel.add( nChanLabel );
         _fftSpecRes = new NumberBox();
         _fftSpecRes.setBounds( 180, 90, 100, 25 );
-        _fftSpecRes.precision( 3 );
-        _fftSpecRes.value( _settings.defaultNames().correlationSpecRes );
+        _fftSpecRes.precision( 5 );
+        _fftSpecRes.value( _settings.defaultNames().correlationFFTSpecRes );
         _fftSpecRes.setToolTipText( "Spectral resolution of first stage FFTs." );
         _fftSpecRes.addActionListener( new ActionListener() {
             public void actionPerformed(  ActionEvent e ) {
@@ -430,7 +429,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
             public void actionPerformed(  ActionEvent e ) {
                 _settings.defaultNames().correlationNFFTChan = _fftNChan.intValue();
                 _fftSpecRes.value( _bandwidth / _fftNChan.value() );
-                _settings.defaultNames().correlationFFTSpecRes = _fftSpecRes.value();
+                _settings.defaultNames().correlationFFTSpecRes = _specRes.value();
                 produceV2dFile();
             }
         });
@@ -439,6 +438,22 @@ public class ExperimentEditor extends JFrame { //JDialog {
         fftNChanLabel.setBounds( 280, 90, 65, 25 );
         fftNChanLabel.setHorizontalAlignment( JLabel.RIGHT );
         correlationPanel.add( fftNChanLabel );
+        _subintNS = new NumberBox();
+        _subintNS.setBounds( 180, 120, 100, 25 );
+        _subintNS.precision( 0 );
+        _subintNS.intValue( _settings.defaultNames().correlationSubintNS );
+        _subintNS.setToolTipText( "The mpifxcorr SUBINT NS" );
+        _subintNS.addActionListener( new ActionListener() {
+            public void actionPerformed(  ActionEvent e ) {
+                _settings.defaultNames().correlationSubintNS = _subintNS.intValue();
+                produceV2dFile();
+            }
+        });
+        correlationPanel.add( _subintNS );
+        JLabel subintNSLabel = new JLabel( "SUBINT NS:" );
+        subintNSLabel.setHorizontalAlignment( JLabel.RIGHT );
+        subintNSLabel.setBounds( 20, 120, 155, 25 );
+        correlationPanel.add( subintNSLabel );
 
         
         //  This panel is used to display and adjust antenna information.
@@ -1729,7 +1744,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 + "{\n"
                 + "tInt = " + _tInt.value() + "\n"
                 + "FFTSpecRes = " + _fftSpecRes.value() + "\n"
-                + "specRes = " + _specRes.value() + "\n";
+                + "specRes = " + _specRes.value() + "\n"
+                + "subintNS = " + _subintNS.intValue() + "\n";
         if ( _doPolar.isSelected() )
             str += "doPolar = true\n";
         else
@@ -2234,7 +2250,6 @@ public class ExperimentEditor extends JFrame { //JDialog {
     protected JLabel _nameAsLabel;
     protected NumberBox _number;
     protected JLabel _numberAsLabel;
-    protected Timer _timeoutTimer;
     protected JCheckBox _inDataBase;
     protected JLabel _id;
     protected JLabel _created;
@@ -2316,6 +2331,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
     protected NumberBox _specRes;
     protected Power2NumberBox _nChan;
     protected JCheckBox _doPolar;
+    protected NumberBox _subintNS;
     protected double _bandwidth;
     
 }

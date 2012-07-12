@@ -7,9 +7,6 @@ package edu.nrao.difx.difxview;
 import mil.navy.usno.widgetlib.ButtonGrid;
 
 import javax.swing.JPanel;
-import javax.swing.Action;
-import javax.swing.AbstractAction;
-import javax.swing.Timer;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -30,7 +27,6 @@ import java.util.GregorianCalendar;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import java.util.Locale;
 import javax.swing.event.EventListenerList;
 
 /**
@@ -54,13 +50,32 @@ public class TimeLimitPanel extends JPanel implements MouseMotionListener,
         this.setFont( new Font( "Monospaced", Font.BOLD, 10 ) );
         //  Set ourselves up to respond to a repeating timeout roughly 50 times
         //  a second.  This is used for animation of drag events.
-        Action updateDrawingAction = new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
+        _timerThread = new TimerThread( 20 );
+        _timerThread.start();
+    }
+    
+    public class TimerThread extends Thread {
+        protected int _interval;
+        protected boolean _keepGoing;
+        public TimerThread( int interval ) {
+            _interval = interval;
+            _keepGoing = true;
+        }
+        public void keepGoing( boolean newVal ) {
+            _keepGoing = newVal;
+        }
+        @Override
+        public void run() {
+            _keepGoing = true;
+            while ( _keepGoing ) {
                 timeoutIntervalEvent();
+                try {
+                    Thread.sleep( _interval );
+                } catch ( Exception e ) {
+                    _keepGoing = false;
+                }
             }
-        };
-        _timeoutTimer = new Timer( 20, updateDrawingAction );
+        }
     }
     
     /*
@@ -247,6 +262,7 @@ public class TimeLimitPanel extends JPanel implements MouseMotionListener,
         _viewSize = _viewEnd - _viewStart;
         _firstLittleStep = firstLittleStep.getTimeInMillis();
         _firstBigStep = firstBigStep.getTimeInMillis();
+        this.updateUI();
     }
     
     /*
@@ -451,7 +467,7 @@ public class TimeLimitPanel extends JPanel implements MouseMotionListener,
             redraw();
         }
         else
-            _timeoutTimer.stop();
+            _timerThread.keepGoing( false );
     }
 
     @Override
@@ -492,7 +508,7 @@ public class TimeLimitPanel extends JPanel implements MouseMotionListener,
             _decayCount = 10;
             _decayStartCount = 10;
             _lastX = e.getX();
-            _timeoutTimer.start();
+            _timerThread.start();
         }
         //  Otherwise, see if we are dragging the user limit buttons.
         else {
@@ -632,7 +648,6 @@ public class TimeLimitPanel extends JPanel implements MouseMotionListener,
     protected int _offsetMotion;
     protected int _decayCount;
     protected int _decayStartCount;
-    protected Timer _timeoutTimer;
     protected double _viewMul;
     protected int _minPos;
     protected int _maxPos;
@@ -641,5 +656,6 @@ public class TimeLimitPanel extends JPanel implements MouseMotionListener,
     protected long _inMinTime;
     protected long _inMaxTime;
     protected ArrayList<ButtonInfo> _buttonList;
+    protected TimerThread _timerThread;
     
 }

@@ -9,9 +9,6 @@
 package mil.navy.usno.widgetlib;
 
 import javax.swing.JPanel;
-import javax.swing.Action;
-import javax.swing.AbstractAction;
-import javax.swing.Timer;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -28,9 +25,6 @@ import java.awt.Graphics;
 import java.awt.Color;
 
 import java.lang.Thread;
-
-import java.util.ArrayList;
-import java.util.Iterator;
 
 import javax.swing.JScrollBar;
 
@@ -534,7 +528,5 @@ public class NodeBrowserScrollPane extends JPanel implements MouseMotionListener
     static protected int SCROLLBAR_WIDTH = 16;
     
     protected EventListenerList _timeoutEventListeners;
-    
-    protected Timer _timeoutTimer;
     
 }

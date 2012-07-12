@@ -187,6 +187,7 @@
                 <xsd:element ref="correlationNChan" />
                 <xsd:element ref="correlationFFTSpecRes" />
                 <xsd:element ref="correlationNFFTChan" />
+                <xsd:element ref="correlationSubintNS" />
     
             </xsd:sequence>
         </xsd:complexType>
@@ -293,6 +294,7 @@
     <xsd:element name="correlationNChan" type="xsd:int"></xsd:element>
     <xsd:element name="correlationFFTSpecRes" type="xsd:double"></xsd:element>
     <xsd:element name="correlationNFFTChan" type="xsd:int"></xsd:element>
+    <xsd:element name="correlationSubintNS" type="xsd:int"></xsd:element>
     
     <xsd:complexType name="mark5Status">
         <xsd:sequence>
