@@ -359,7 +359,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
             }
         });
         correlationPanel.add( _tInt );
-        JLabel tIntLabel = new JLabel( "Integration Time:" );
+        JLabel tIntLabel = new JLabel( "Integration Time (sec):" );
         tIntLabel.setBounds( 20, 30, 155, 25 );
         tIntLabel.setHorizontalAlignment( JLabel.RIGHT );
         correlationPanel.add( tIntLabel );
@@ -442,7 +442,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         _subintNS.setBounds( 180, 120, 100, 25 );
         _subintNS.precision( 0 );
         _subintNS.intValue( _settings.defaultNames().correlationSubintNS );
-        _subintNS.setToolTipText( "The mpifxcorr SUBINT NS" );
+        _subintNS.setToolTipText( "The mpifxcorr sub integration time (in nanoseconds)" );
         _subintNS.addActionListener( new ActionListener() {
             public void actionPerformed(  ActionEvent e ) {
                 _settings.defaultNames().correlationSubintNS = _subintNS.intValue();
@@ -450,7 +450,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
             }
         });
         correlationPanel.add( _subintNS );
-        JLabel subintNSLabel = new JLabel( "SUBINT NS:" );
+        JLabel subintNSLabel = new JLabel( "Subintegration (nsec):" );
         subintNSLabel.setHorizontalAlignment( JLabel.RIGHT );
         subintNSLabel.setBounds( 20, 120, 155, 25 );
         correlationPanel.add( subintNSLabel );

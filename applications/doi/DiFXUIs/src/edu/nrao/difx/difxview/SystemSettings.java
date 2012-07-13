@@ -1868,12 +1868,18 @@ public class SystemSettings extends JFrame {
                 _defaultNames.busyPercentage = doiConfig.getDefaultNamesBusyPercentage();
             
             _defaultNames.correlationDoPolar = !doiConfig.isCorrelationDoPolarFalse();  //  double negative because true is default
-            _defaultNames.correlationTInt = doiConfig.getCorrelationTInt();
-            _defaultNames.correlationSpecRes = doiConfig.getCorrelationSpecRes();
-            _defaultNames.correlationNChan = doiConfig.getCorrelationNChan();
-            _defaultNames.correlationFFTSpecRes = doiConfig.getCorrelationFFTSpecRes();
-            _defaultNames.correlationNFFTChan = doiConfig.getCorrelationNFFTChan();
-            _defaultNames.correlationSubintNS = doiConfig.getCorrelationSubintNS();
+            if ( _defaultNames.correlationTInt != 0.0 )
+                _defaultNames.correlationTInt = doiConfig.getCorrelationTInt();
+            if ( _defaultNames.correlationSpecRes != 0.0 )
+                _defaultNames.correlationSpecRes = doiConfig.getCorrelationSpecRes();
+            if ( _defaultNames.correlationNChan != 0 )
+                _defaultNames.correlationNChan = doiConfig.getCorrelationNChan();
+            if ( _defaultNames.correlationFFTSpecRes != 0.0 )
+                _defaultNames.correlationFFTSpecRes = doiConfig.getCorrelationFFTSpecRes();
+            if ( _defaultNames.correlationNFFTChan != 0 )
+                _defaultNames.correlationNFFTChan = doiConfig.getCorrelationNFFTChan();
+            if ( _defaultNames.correlationSubintNS != 0 )
+                _defaultNames.correlationSubintNS = doiConfig.getCorrelationSubintNS();
             
             _defaultNames.phaseCalInt = doiConfig.getDefaultNamesPhaseCalInt();
             if ( doiConfig.getDefaultNamesToneSelection() != null )

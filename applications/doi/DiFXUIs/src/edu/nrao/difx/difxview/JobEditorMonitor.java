@@ -4,6 +4,10 @@
  */
 package edu.nrao.difx.difxview;
 
+import javax.swing.Timer;
+import javax.swing.Action;
+import javax.swing.AbstractAction;
+
 import edu.nrao.difx.difxutilities.SendMessage;
 import edu.nrao.difx.difxutilities.DiFXCommand;
 import edu.nrao.difx.xmllib.difxmessage.ObjectFactory;
@@ -124,7 +128,9 @@ public class JobEditorMonitor extends JFrame {
         _uploadInputButton.setToolTipText( "Parse all settings from the editor text and upload to the Input File location on the DiFX host (not necessary unless you have changed the text)." );
         _uploadInputButton.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
+                System.out.println( "save the input file 1");
                 parseInputFile( _inputFileEditor.text() );
+                System.out.println( "save the input file 2");
                 Component comp = _uploadInputButton;
                 while ( comp.getParent() != null )
                     comp = comp.getParent();
@@ -426,8 +432,16 @@ public class JobEditorMonitor extends JFrame {
         _allObjectsBuilt = true;
         
         //  Start a thread that can be used to trigger repeated updates.
-        _updateThread = new UpdateThread( 1000 );
-        _updateThread.start();
+        Action timeoutAction = new AbstractAction() {
+            @Override
+            public void actionPerformed( ActionEvent e ) {
+                timeoutIntervalEvent();
+            }
+        };
+        _timeoutTimer = new Timer( 1000, timeoutAction );
+        _timeoutTimer.setRepeats( false );
+//        _updateThread = new UpdateThread( 1000 );
+//        _updateThread.start();
         
         this.newSize();
 
@@ -914,7 +928,7 @@ public class JobEditorMonitor extends JFrame {
      * dedicated socket and report any errors.  In the latter case the job start
      * instruction is more of a "set and forget" kind of operation.
      */
-    synchronized public void startJob() {
+    public void startJob() {
         //  Has the user already generated .threads and .machines files (which is
         //  done when the "Apply" button in the Machines List settings is pushed)?
         //  Alternatively, has the use edited and uploaded .machines and .threads
@@ -1434,7 +1448,7 @@ public class JobEditorMonitor extends JFrame {
      * Fill the processor list from the Hardware Monitor and the data sources
      * list from our collected information.
      */
-    synchronized public void loadHardwareLists() {
+    public void loadHardwareLists() {
         //  We need to "relocate" everything in the existing processor list, so unset a
         //  "found" flag for each.
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
@@ -1650,7 +1664,7 @@ public class JobEditorMonitor extends JFrame {
      * Parse the string data as if it came from an .input file (which, presumably,
      * it did).
      */
-    synchronized public void parseInputFile( String str ) {
+    public void parseInputFile( String str ) {
         
         //  This is a list that holds our data the files/modules/whatever that are
         //  our data requirements.
@@ -1891,6 +1905,7 @@ public class JobEditorMonitor extends JFrame {
     protected Integer _startSeconds;
     
     protected UpdateThread _updateThread;
+    protected Timer _timeoutTimer;
     
     protected MessageDisplayPanel _messageDisplayPanel;
     

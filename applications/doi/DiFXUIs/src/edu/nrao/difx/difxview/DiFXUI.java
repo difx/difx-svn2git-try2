@@ -605,6 +605,7 @@ public class DiFXUI extends JFrame implements WindowListener {
      * @param args the command line arguments
      */
     public static void main( final String args[] ) {
+        
 
         // Create manager UI using the first command line argument as a system settings
         // file.

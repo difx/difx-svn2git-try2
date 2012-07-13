@@ -121,6 +121,7 @@ public class DiFXCommand_sendFile extends DiFXCommand {
                     DataOutputStream out = new DataOutputStream( sock.getOutputStream() );
                     out.writeInt( _content.length() );
                     out.writeBytes( _content );
+//                    out.flush();
                     //  Read how many characters were received.
                     DataInputStream in = new DataInputStream( sock.getInputStream() );
                     _fileSize = in.readInt();
