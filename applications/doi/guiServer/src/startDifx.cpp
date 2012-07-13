@@ -284,8 +284,10 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 void ServerSideConnection::runDifxThread( DifxStartInfo* startInfo ) {
     
     //  Delete data directories if "force" is in effect.
-    if ( startInfo->force )
+    if ( startInfo->force ) {
         diagnostic( INFORMATION, "execute \"%s\"\n", startInfo->removeCommand );
+        system( startInfo->removeCommand );
+    }
         
     //  Run the DiFX process!
     diagnostic( INFORMATION, "execute \"%s\"\n", startInfo->startCommand );
