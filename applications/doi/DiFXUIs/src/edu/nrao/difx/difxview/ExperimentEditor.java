@@ -696,8 +696,6 @@ public class ExperimentEditor extends JFrame { //JDialog {
         _passTypeList.setBackground( Color.WHITE );
         _passTypeList.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                //  Maybe set the pass name to something that contains (String)_passTypeList.getSelectedItem()
-                //  if the user hasn't specified a name yet
                 //  See if the name of the pass looks like the default name for
                 //  the previous (called "current") pass type.  If so, make a new
                 //  default name out of this new pass type.
@@ -708,6 +706,25 @@ public class ExperimentEditor extends JFrame { //JDialog {
                 }
                 _currentPassType = (String)_passTypeList.getSelectedItem();
                 
+            }
+        });
+        _passTypeList.setEditable( true );
+        //  This little bit causes a typed-in item to be treated as a module name.
+        _passTypeList.getEditor().addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                //  If not already in the list of pass types, add this name.
+                boolean found = false;
+                for ( int i = 0; i < _passTypeList.getItemCount() && !found; ++i ) {
+                    if ( _passTypeList.getItemAt( i ).equals( _passTypeList.getEditor().getItem() ) ) {
+                        found = true;
+                        _passTypeList.setSelectedIndex( i );
+                    }
+                }
+                if ( !found ) {
+                    _passTypeList.addItem( _passTypeList.getEditor().getItem() );
+                    _passTypeList.setSelectedIndex( _passTypeList.getItemCount() - 1 );
+                }
+                _currentPassType = (String)_passTypeList.getSelectedItem();
             }
         });
         buttonPanel.add( _passTypeList );
@@ -1103,8 +1120,8 @@ public class ExperimentEditor extends JFrame { //JDialog {
     public void parseNewVexFile() {
         VexFileParser vexData = new VexFileParser();
         vexData.data( _editor.text() );
-        Calendar minTime = null;
-        Calendar maxTime = null;
+        _eopMinTime = null;
+        _eopMaxTime = null;
         _bandwidth = vexData.bandwidth();
         //  Build a grid out of the scans found
         _scanGrid.clearButtons();
@@ -1128,15 +1145,15 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     endTime.add( Calendar.SECOND, station.delay + station.duration );
                     //  Check these against the minimum and maximum times for the whole set of scans
                     //  described by this .vex file.
-                    if ( minTime == null ) {
-                        minTime = startTime;
-                        maxTime = endTime;
+                    if ( _eopMinTime == null ) {
+                        _eopMinTime = startTime;
+                        _eopMaxTime = endTime;
                     }
                     else {
-                        if ( startTime.before( minTime ) )
-                            minTime = startTime;
-                        if ( endTime.after( maxTime ) )
-                            maxTime = endTime;
+                        if ( startTime.before( _eopMinTime ) )
+                            _eopMinTime = startTime;
+                        if ( endTime.after( _eopMaxTime ) )
+                            _eopMaxTime = endTime;
                     }
                 }
                 //  Add a new button to the grid, then attach the associated data to it so they
@@ -1148,10 +1165,10 @@ public class ExperimentEditor extends JFrame { //JDialog {
         }
         //  Set the limits on the time limit panel.  We expand this a few percent beyond the
         //  actual limits to make sure everything is contained in the original timeline.
-        int adj = (int)( ( maxTime.getTimeInMillis() - minTime.getTimeInMillis() ) / 50 );
-        minTime.add( Calendar.MILLISECOND, -adj );
-        maxTime.add( Calendar.MILLISECOND, adj );
-        _timeLimits.limits( minTime, maxTime );
+        int adj = (int)( ( _eopMaxTime.getTimeInMillis() - _eopMinTime.getTimeInMillis() ) / 50 );
+        _eopMinTime.add( Calendar.MILLISECOND, -adj );
+        _eopMaxTime.add( Calendar.MILLISECOND, adj );
+        _timeLimits.limits( _eopMinTime, _eopMaxTime );
         //  Add panels of information about each antenna.  First we clear the existing
         //  lists of antennas (these might have been formed the last time the .vex file
         //  was parsed).
@@ -1336,7 +1353,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
         //  need to find the date of these observations (I'm using the midpoint of the
         //  observations, but it probably doesn't matter too much).
         JulianCalendar midTime = new JulianCalendar();
-        midTime.setTimeInMillis( minTime.getTimeInMillis() + ( maxTime.getTimeInMillis() - minTime.getTimeInMillis() ) / 2 );
+        midTime.setTimeInMillis( _eopMinTime.getTimeInMillis() + ( _eopMaxTime.getTimeInMillis() - _eopMinTime.getTimeInMillis() ) / 2 );
         _newEOP = _settings.eopData( midTime.julian() - 2.0, midTime.julian() + 3.0 );
         if ( _newEOP != null && _newEOP.size() > 0 ) {
             IndexedPanel newEOPPanel = new IndexedPanel( "Updated From Source" );
@@ -1364,75 +1381,102 @@ public class ExperimentEditor extends JFrame { //JDialog {
             _newEOPPane.respondToResizeEvents( true );
             _newEOPPane.noTimer();
             newEOPPanel.addScrollPane( _newEOPPane );
-            boolean doHeader = true;
-            //  Then add an IndexedPanel item for each EOP data item.
-            for ( Iterator<SystemSettings.EOPStructure> iter = _newEOP.iterator(); iter.hasNext(); ) {
-                SystemSettings.EOPStructure eop = iter.next();
-                //  Put in a header line explaining what these things are (but only
-                //  if we are on the first line).
-                if ( doHeader ) {
-                    doHeader = false;
-                    IndexedPanel eopHeaderPanel = new IndexedPanel( "" );
-                    eopHeaderPanel.openHeight( 20 );
-                    eopHeaderPanel.closedHeight( 20 );
-                    eopHeaderPanel.setLevel( 3 );
-                    eopHeaderPanel.alwaysOpen( true );
-                    eopHeaderPanel.noArrow( true );
-                    eopHeaderPanel.drawFrame( false );
-                    _newEOPPane.addNode( eopHeaderPanel );
-                    JLabel mjd = new JLabel( "MJD" );
-                    mjd.setBounds( 90, 2, 120, 16 );
-                    eopHeaderPanel.add( mjd );
-                    JLabel tai = new JLabel( "TAI-UTC" );
-                    tai.setToolTipText( "Leap second count" );
-                    tai.setBounds( 230, 2, 100, 16 );
-                    eopHeaderPanel.add( tai );
-                    JLabel ut1 = new JLabel( "UT1-UTC" );
-                    ut1.setToolTipText( "Earth rotation phase" );
-                    ut1.setBounds( 350, 2, 100, 16 );
-                    eopHeaderPanel.add( ut1 );
-                    JLabel xp = new JLabel( "X Pole" );
-                    xp.setToolTipText( "X component of spin axis offset" );
-                    xp.setBounds( 470, 2, 100, 16 );
-                    eopHeaderPanel.add( xp );
-                    JLabel yp = new JLabel( "Y Pole" );
-                    yp.setToolTipText( "Y component of spin axis offset" );
-                    yp.setBounds( 590, 2, 100, 16 );
-                    eopHeaderPanel.add( yp );
-                }
-                IndexedPanel eopPanel = new IndexedPanel( "" );
-                eopPanel.openHeight( 20 );
-                eopPanel.closedHeight( 20 );
-                eopPanel.setLevel( 3 );
-                eopPanel.alwaysOpen( true );
-                eopPanel.noArrow( true );
-                eopPanel.drawFrame( false );
-                _newEOPPane.addNode( eopPanel );
-                //  Add data and labels.  None of these can be changed, however a bunch
-                //  of them have to be converted to the units that DiFX uses.
-                JulianCalendar theDate = new JulianCalendar();
-                theDate.clear();
-                theDate.julian( eop.date );
-                //  Use the modified Julian Day for this date.
-                JLabel mjd = new JLabel( (int)(theDate.mjd()) + 
-                        " (" + theDate.get( Calendar.YEAR ) + "/" + theDate.get( Calendar.DAY_OF_YEAR ) + ")" );
-                mjd.setBounds( 90, 2, 120, 16 );
-                eopPanel.add( mjd );
-                JLabel tai = new JLabel( (int)eop.tai_utc + " sec" );
-                tai.setBounds( 230, 2, 100, 16 );
-                eopPanel.add( tai );
-                JLabel ut1 = new JLabel( String.format( "%.6f sec ", eop.ut1_tai / 1000000.0 + eop.tai_utc ) );
-                ut1.setBounds( 350, 2, 100, 16 );
-                eopPanel.add( ut1 );
-                JLabel xp = new JLabel( String.format( "%.6f asec ", eop.xPole / 10.0 ) );
-                xp.setBounds( 470, 2, 100, 16 );
-                eopPanel.add( xp );
-                JLabel yp = new JLabel( String.format( "%.6f asec ", eop.yPole / 10.0 ) );
-                yp.setBounds( 590, 2, 100, 16 );
-                eopPanel.add( yp );
-            }
+            replaceRemoteEOPData();
         }
         produceV2dFile();
+        //  Add a "listener" to pick up changes in the EOP data.  These will cause
+        //  the EOP table to be rebuilt.
+        _settings.eopChangeListener( new ActionListener() {
+            public void actionPerformed( ActionEvent evt ) {
+                replaceRemoteEOPData();
+                produceV2dFile();
+            }
+        } );
+    }
+    
+    /*
+     * Fill the table containing EOP data from external sources (not from the .vex file)
+     * using current data.  This is done when the table is created intialy, or when there
+     * are changes to the data.
+     */
+    protected void replaceRemoteEOPData() {
+        //  This has to be here because a callback is triggered before this pane is built.
+        if ( _newEOPPane == null )
+            return;
+        _newEOPPane.clear();
+        //  Generate EOP data from the EOP source (if available).  To do this, we first
+        //  need to find the date of these observations (I'm using the midpoint of the
+        //  observations, but it probably doesn't matter too much).
+        JulianCalendar midTime = new JulianCalendar();
+        midTime.setTimeInMillis( _eopMinTime.getTimeInMillis() + ( _eopMaxTime.getTimeInMillis() - _eopMinTime.getTimeInMillis() ) / 2 );
+        _newEOP = _settings.eopData( midTime.julian() - 2.0, midTime.julian() + 3.0 );
+        boolean doHeader = true;
+        //  Then add an IndexedPanel item for each EOP data item.
+        for ( Iterator<SystemSettings.EOPStructure> iter = _newEOP.iterator(); iter.hasNext(); ) {
+            SystemSettings.EOPStructure eop = iter.next();
+            //  Put in a header line explaining what these things are (but only
+            //  if we are on the first line).
+            if ( doHeader ) {
+                doHeader = false;
+                IndexedPanel eopHeaderPanel = new IndexedPanel( "" );
+                eopHeaderPanel.openHeight( 20 );
+                eopHeaderPanel.closedHeight( 20 );
+                eopHeaderPanel.setLevel( 3 );
+                eopHeaderPanel.alwaysOpen( true );
+                eopHeaderPanel.noArrow( true );
+                eopHeaderPanel.drawFrame( false );
+                _newEOPPane.addNode( eopHeaderPanel );
+                JLabel mjd = new JLabel( "MJD" );
+                mjd.setBounds( 90, 2, 120, 16 );
+                eopHeaderPanel.add( mjd );
+                JLabel tai = new JLabel( "TAI-UTC" );
+                tai.setToolTipText( "Leap second count" );
+                tai.setBounds( 230, 2, 100, 16 );
+                eopHeaderPanel.add( tai );
+                JLabel ut1 = new JLabel( "UT1-UTC" );
+                ut1.setToolTipText( "Earth rotation phase" );
+                ut1.setBounds( 350, 2, 100, 16 );
+                eopHeaderPanel.add( ut1 );
+                JLabel xp = new JLabel( "X Pole" );
+                xp.setToolTipText( "X component of spin axis offset" );
+                xp.setBounds( 470, 2, 100, 16 );
+                eopHeaderPanel.add( xp );
+                JLabel yp = new JLabel( "Y Pole" );
+                yp.setToolTipText( "Y component of spin axis offset" );
+                yp.setBounds( 590, 2, 100, 16 );
+                eopHeaderPanel.add( yp );
+            }
+            IndexedPanel eopPanel = new IndexedPanel( "" );
+            eopPanel.openHeight( 20 );
+            eopPanel.closedHeight( 20 );
+            eopPanel.setLevel( 3 );
+            eopPanel.alwaysOpen( true );
+            eopPanel.noArrow( true );
+            eopPanel.drawFrame( false );
+            _newEOPPane.addNode( eopPanel );
+            //  Add data and labels.  None of these can be changed, however a bunch
+            //  of them have to be converted to the units that DiFX uses.
+            JulianCalendar theDate = new JulianCalendar();
+            theDate.clear();
+            theDate.julian( eop.date );
+            //  Use the modified Julian Day for this date.
+            JLabel mjd = new JLabel( (int)(theDate.mjd()) + 
+                    " (" + theDate.get( Calendar.YEAR ) + "/" + theDate.get( Calendar.DAY_OF_YEAR ) + ")" );
+            mjd.setBounds( 90, 2, 120, 16 );
+            eopPanel.add( mjd );
+            JLabel tai = new JLabel( (int)eop.tai_utc + " sec" );
+            tai.setBounds( 230, 2, 100, 16 );
+            eopPanel.add( tai );
+            JLabel ut1 = new JLabel( String.format( "%.6f sec ", eop.ut1_tai / 1000000.0 + eop.tai_utc ) );
+            ut1.setBounds( 350, 2, 100, 16 );
+            eopPanel.add( ut1 );
+            JLabel xp = new JLabel( String.format( "%.6f asec ", eop.xPole / 10.0 ) );
+            xp.setBounds( 470, 2, 100, 16 );
+            eopPanel.add( xp );
+            JLabel yp = new JLabel( String.format( "%.6f asec ", eop.yPole / 10.0 ) );
+            yp.setBounds( 590, 2, 100, 16 );
+            eopPanel.add( yp );
+        }
     }
     
     protected void selectEOPSource( JCheckBox source ) {
@@ -2333,5 +2377,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
     protected JCheckBox _doPolar;
     protected NumberBox _subintNS;
     protected double _bandwidth;
+    protected Calendar _eopMinTime;
+    protected Calendar _eopMaxTime;
     
 }

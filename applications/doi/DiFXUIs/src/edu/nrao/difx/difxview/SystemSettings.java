@@ -744,6 +744,11 @@ public class SystemSettings extends JFrame {
         _leapSecondsValue = new NumberBox();
         _leapSecondsValue.setBounds( 165, 85, 120, 25 );
         _leapSecondsValue.precision( 0 );
+        _leapSecondsValue.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                generateEOPChangeEvent();
+            }
+        } );
         eopSettingsPanel.add( _leapSecondsValue );
         _autoUpdateEOP = new JCheckBox( "" );
         _autoUpdateEOP.setBounds( 140, 115, 20, 25 );
@@ -1029,6 +1034,7 @@ public class SystemSettings extends JFrame {
             _useLeapSecondsValue.setSelected( true );
             _leapSecondsURL.setEnabled( false );
             _leapSecondsValue.setEnabled( true );
+            generateEOPChangeEvent();
         }
     }
     
@@ -1115,7 +1121,7 @@ public class SystemSettings extends JFrame {
         //  In case anyone is out there listening, generate callbacks indicating
         //  new EOP data exist.
         generateEOPChangeEvent();
-        eopData( 2447302.0 - 3.0, 2447302.0 + 3.0 );       
+        //eopData( 2447302.0 - 3.0, 2447302.0 + 3.0 );       
     }
     
     public class EOPStructure {
