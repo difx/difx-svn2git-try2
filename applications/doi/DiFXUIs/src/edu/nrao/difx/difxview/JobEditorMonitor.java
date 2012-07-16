@@ -1052,7 +1052,12 @@ public class JobEditorMonitor extends JFrame {
         protected final int FAILURE_INPUTFILE_NAME_TOO_LONG  = 110;
         protected final int FAILURE_OUTPUT_EXISTS            = 111;
         protected final int DELETING_PREVIOUS_OUTPUT         = 112;
-        
+        protected final int STARTING_DIFX                    = 113;
+        protected final int DIFX_MESSAGE                     = 114;
+        protected final int DIFX_WARNING                     = 115;
+        protected final int DIFX_ERROR                       = 116;
+        protected final int DIFX_COMPLETE                    = 117;
+                
         @Override
         public void run() {
             //  Open a new server socket and await a connection.  The connection
@@ -1096,8 +1101,6 @@ public class JobEditorMonitor extends JFrame {
 //                        //_inString += in.readUTF();
 //                        _inString += new String( Arrays.copyOfRange( data, 0, n ) );
 //                        incrementalCallback();
-                        System.out.println( "packet type is " + packetType );
-                        System.out.println( "packet size is " + packetSize );
                         //  Interpret the packet type.
                         if ( packetType == JOB_TERMINATED ) {
                             _messageDisplayPanel.warning( 0, "job monitor", "Job terminated prematurely." );
@@ -1143,6 +1146,26 @@ public class JobEditorMonitor extends JFrame {
                         }
                         else if ( packetType == DELETING_PREVIOUS_OUTPUT ) {
                             statusInfo( "force output - deleting existing output files" );
+                            _messageDisplayPanel.warning( 0, "job monitor", "force output - deleting existing output files" );
+                        }
+                        else if ( packetType == STARTING_DIFX ) {
+                            statusInfo( "DiFX running!" );
+                            _messageDisplayPanel.warning( 0, "job monitor", "DiFX started!" );
+                            //  turn the frame green!!!!
+                        }
+                        else if ( packetType == DIFX_MESSAGE ) {
+                            _messageDisplayPanel.message( 0, "job monitor", new String( data ) );
+                        }
+                        else if ( packetType == DIFX_WARNING ) {
+                            _messageDisplayPanel.warning( 0, "job monitor", new String( data ) );
+                        }
+                        else if ( packetType == DIFX_ERROR ) {
+                            _messageDisplayPanel.error( 0, "job monitor", new String( data ) );
+                            //  turn the frame red
+                        }
+                        else if ( packetType == DIFX_COMPLETE ) {
+                            statusInfo( "DiFX compete!" );
+                            _messageDisplayPanel.warning( 0, "job monitor", "DiFX complete!" );
                         }
                         else {
                             _messageDisplayPanel.warning( 0, "GUI", "Ignoring unrecongized job monitor packet type (" + packetType + ")." );
