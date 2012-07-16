@@ -30,7 +30,7 @@ namespace network {
     public:
     
         static const unsigned int READ_BLOCK_SIZE = 1024;
-        static const unsigned int BUFFER_SIZE = 1024 * 1024;
+        static const unsigned int BUFFER_SIZE = 2 * 1024 * 1024;
 
         //----------------------------------------------------------------------------
         //  Note that the file descriptor should be set before read and write will
@@ -150,7 +150,7 @@ namespace network {
             if ( !_connected )
                 return -1;
             int soFar = 0;
-            while ( soFar < nBytes ) {
+            while ( soFar < nBytes && _connected ) {
                 //  The number of bytes we wish to read...
                 int readN = nBytes - soFar;
                 //  Are we limited by the write pointer?
@@ -177,7 +177,10 @@ namespace network {
                     }
                 }
             }
-            return soFar;
+            if ( !_connected )
+                return -1;
+            else
+                return soFar;
         }
         
         //----------------------------------------------------------------------------
@@ -231,6 +234,8 @@ namespace network {
                     //  timeout...do nothing
                 }
                 else {  
+                    //  Grab the read lock...
+                    //pthread_mutex_lock( &_readMutex );
                     //  Actual data are available...maybe...figure how much we should
                     //  be reading.  The maximum read is the READ_BLOCK_SIZE, however
                     //  we don't want to write beyond the end of our buffer, nor overtake

@@ -63,14 +63,14 @@ namespace guiServer {
                 int packetId = 0;
                 int nBytes;
                 char* data;
-                printf( "waiting for packet\n" );
+                printf( "PacketExchange: waiting for packet\n" );
                 if ( getPacket( packetId, data, nBytes ) == -1 ) {
                     //  connection failure
                     printf( "PacketExchange: connection failed\n" );
                     _receiveActive = false;
                 }
                 else  {
-                    printf( "packet id is %d size is %d\n", packetId, nBytes );
+                    printf( "PacketExchange: packet id is %d size is %d\n", packetId, nBytes );
                     switch( packetId ) {
                     case RELAY_PACKET:
                         relay( data, nBytes );

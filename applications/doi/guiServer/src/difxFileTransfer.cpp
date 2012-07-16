@@ -258,7 +258,6 @@ void ServerSideConnection::difxFileTransfer( DifxMessageGeneric* G ) {
     	signal( SIGCHLD, SIG_IGN );
     	childPid = fork();
     	if( childPid == 0 ) {
-    	printf( "new PID: %d\n", getpid() );
     	    //  Open a TCP socket connection to the server that should be running for us on the
     	    //  remote host.
     	    int sockfd;
@@ -305,7 +304,7 @@ void ServerSideConnection::difxFileTransfer( DifxMessageGeneric* G ) {
             system( command );
       		close( sockfd );
       		
-    		exit(EXIT_SUCCESS);
+    		exit( EXIT_SUCCESS );
     	}
     	
 	}
