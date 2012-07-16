@@ -34,6 +34,11 @@ namespace guiServer {
         static const int FAILURE_INPUTFILE_NAME_TOO_LONG    = 110;
         static const int FAILURE_OUTPUT_EXISTS              = 111;
         static const int DELETING_PREVIOUS_OUTPUT           = 112;
+        static const int STARTING_DIFX                      = 113;
+        static const int DIFX_MESSAGE                       = 114;
+        static const int DIFX_WARNING                       = 115;
+        static const int DIFX_ERROR                         = 116;
+        static const int DIFX_COMPLETE                      = 117;
     
         JobMonitorConnection( network::GenericSocket* sock ) : PacketExchange( sock ) {
         }

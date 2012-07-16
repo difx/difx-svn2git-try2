@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <network/TCPClient.h>
+#include <signal.h>
 
 using namespace guiServer;
 
@@ -52,6 +53,7 @@ void ServerSideConnection::vex2difxRun( DifxMessageGeneric* G ) {
 	    strncpy( difxPath, getenv( "DIFX_PREFIX" ), DIFX_MESSAGE_FILENAME_LENGTH );
 	
 	//  Forked process runs vex2difx...
+    signal( SIGCHLD, SIG_IGN );
 	if(childPid == 0)
 	{
 	    //  Copy the .bash file for the difx user to the pass working directory.

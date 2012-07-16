@@ -13,6 +13,7 @@
 #include <sys/statvfs.h>
 #include <network/TCPClient.h>
 #include <JobMonitorConnection.h>
+#include <signal.h>
 
 using namespace guiServer;
 
@@ -208,10 +209,6 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
             ++procCount;
         fclose( inp );
     }
-//	if ( !procCount ) {
-//	    diagnostic( ERROR, "No threads available for processing this job." );
-//	    return;
-//	}
 	
 	snprintf( startInfo->jobName, MAX_COMMAND_SIZE, "%s", filebase );
 	for ( int i = 0; filebase[i]; ++i ) {
@@ -221,7 +218,6 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	
 	//  Build the "remove" command - this removes existing data if the force option is picked.
 	if( S->force && outputExists ) {
-		jobMonitor->sendPacket( JobMonitorConnection::DELETING_PREVIOUS_OUTPUT, NULL, 0 );
 		snprintf( startInfo->removeCommand, MAX_COMMAND_SIZE, "/bin/rm -rf %s.difx/", filebase );
 		startInfo->force = 1;
 	}
@@ -268,11 +264,69 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
               restartOption,
               S->inputFilename );
 	
+	//  Fork a process to do run the difx job.
+	signal( SIGCHLD, SIG_IGN );
+	childPid = fork();
+	if( childPid == 0 ) {
+	
+        //  Delete data directories if "force" is in effect.
+        if ( startInfo->force ) {
+		    jobMonitor->sendPacket( JobMonitorConnection::DELETING_PREVIOUS_OUTPUT, NULL, 0 );
+            system( startInfo->removeCommand );
+        }
+            
+        //  Run the DiFX process!
+        diagnostic( INFORMATION, "execute \"%s\"\n", startInfo->startCommand );
+		jobMonitor->sendPacket( JobMonitorConnection::STARTING_DIFX, NULL, 0 );
+        
+        FILE* difxPipe = popen( startInfo->startCommand, "r" );
+        if( !difxPipe ) {
+            diagnostic( ERROR, "mpifxcorr process not started for job %s; popen returned NULL", startInfo->jobName );
+            sprintf( message, "mpifxcorr process not started for job %s; popen returned NULL", startInfo->jobName );
+		    jobMonitor->sendPacket( JobMonitorConnection::DIFX_ERROR, message, strlen( message ) );
+            return;
+        }
+
+        char line[DIFX_MESSAGE_LENGTH];
+
+        for (;;) {
+
+            const char* rv = fgets( line, DIFX_MESSAGE_LENGTH, difxPipe );
+            if ( !rv )	// eof, probably
+	            break;
+
+            for ( int i = 0; line[i]; ++i ) {
+	            if(line[i] == '\n')
+		            line[i] = ' ';
+            }
+
+            if ( strstr( line, "ERROR" ) != NULL ) {
+	            diagnostic( ERROR, "MPI: %s", line );
+	            jobMonitor->sendPacket( JobMonitorConnection::DIFX_ERROR, line, strlen( line ) );
+	        }
+            else if ( strstr( line, "WARNING" ) != NULL ) {
+	            diagnostic( WARNING, "MPI: %s", line );
+	            jobMonitor->sendPacket( JobMonitorConnection::DIFX_WARNING, line, strlen( line ) );
+	        }
+            else {
+	            diagnostic( INFORMATION, "MPI: %s", line );
+	            jobMonitor->sendPacket( JobMonitorConnection::DIFX_MESSAGE, line, strlen( line ) );
+	        }
+
+        }
+        pclose( difxPipe );
+
+        difxMessageSendDifxStatus2( startInfo->jobName, DIFX_STATE_MPIDONE, "" );
+		jobMonitor->sendPacket( JobMonitorConnection::DIFX_COMPLETE, NULL, 0 );
+	
+		exit( EXIT_SUCCESS );
+	}
+
 	//  Start an independent thread to run it.
-	pthread_attr_t threadAttr;
-	pthread_t threadId;
-    pthread_attr_init( &threadAttr );
-    pthread_create( &threadId, &threadAttr, staticRunDifxThread, (void*)startInfo );               	
+//	pthread_attr_t threadAttr;
+//	pthread_t threadId;
+//    pthread_attr_init( &threadAttr );
+//    pthread_create( &threadId, &threadAttr, staticRunDifxThread, (void*)startInfo );               	
 	
 }
 
@@ -283,45 +337,6 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 //-----------------------------------------------------------------------------	
 void ServerSideConnection::runDifxThread( DifxStartInfo* startInfo ) {
     
-    //  Delete data directories if "force" is in effect.
-    if ( startInfo->force ) {
-        diagnostic( INFORMATION, "execute \"%s\"\n", startInfo->removeCommand );
-        system( startInfo->removeCommand );
-    }
-        
-    //  Run the DiFX process!
-    diagnostic( INFORMATION, "execute \"%s\"\n", startInfo->startCommand );
-    
-    FILE* difxPipe = popen( startInfo->startCommand, "r" );
-    if( !difxPipe ) {
-	    diagnostic( ERROR, "mpifxcorr process not started for job %s; popen returned NULL", startInfo->jobName );
-        return;
-    }
-
-    char line[DIFX_MESSAGE_LENGTH];
-
-    for (;;) {
-
-	    const char* rv = fgets( line, DIFX_MESSAGE_LENGTH, difxPipe );
-	    if ( !rv )	/* eof, probably */
-		    break;
-
-	    for ( int i = 0; line[i]; ++i ) {
-		    if(line[i] == '\n')
-			    line[i] = ' ';
-	    }
-
-	    if ( strstr( line, "ERROR" ) != NULL )
-		    diagnostic( ERROR, "MPI: %s", line );
-	    else if ( strstr( line, "WARNING" ) != NULL )
-		    diagnostic( WARNING, "MPI: %s", line );
-	    else
-		    diagnostic( INFORMATION, "MPI: %s", line );
-
-    }
-    pclose( difxPipe );
-
-    difxMessageSendDifxStatus2( startInfo->jobName, DIFX_STATE_MPIDONE, "" );
 
 }
 

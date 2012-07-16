@@ -239,8 +239,8 @@ namespace guiServer {
         void relayDifxMulticasts( const bool newVal ) { _relayDifxMulticasts = newVal; }
         
         //---------------------------------------------------------------------
-        //!  Structure used to pass information to the thread that starts and
-        //!  monitors DiFX.
+        //!  Structure used to pass information to the thread that monitors
+        //!  a running DiFX job.
         //---------------------------------------------------------------------
         struct DifxStartInfo {
             ServerSideConnection* ssc;
