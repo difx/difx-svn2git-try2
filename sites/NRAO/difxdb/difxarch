@@ -10,7 +10,7 @@ from time import gmtime
 program = 'difxarch'
 version = '0.4'
 author  = 'Walter Brisken and David Gordon'
-verdate = '20120527'
+verdate = '20120718'
 # Modified by David Gordon to archive Mark4 files from makemark4.
 
 def usage(prog):
@@ -318,7 +318,7 @@ class Mark4List:
 
 # Add mark4 metadata file
 		metadatafile = self.kv['exper'] + '.mark4.metadata.txt'
-		if isfile(metadatafile):
+		if isfile(indir + '/' + metadatafile):
 		        cmd += ' %s' % metadatafile
 		else: 
 		        print '\n Cannot find metadata file %s !!!!! \n' % metadatafile
