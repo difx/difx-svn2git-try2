@@ -552,6 +552,10 @@ public class JobNode extends QueueBrowserNode {
     
     public void consumeMessage( DifxMessage difxMsg ) {
         
+        //  If this job is "running" (it was started by the job editor/monitor) 
+        //  then send the message to the monitor.
+        _editorMonitor.consumeMessage( difxMsg );
+        
         //  Got something...
         _networkActivity.data();
         
@@ -791,6 +795,13 @@ public class JobNode extends QueueBrowserNode {
     
     public JobEditorMonitor editorMonitor() { return _editorMonitor; }
     
+    public boolean running() {
+        return _running;
+    }
+    public void running( boolean newVal ) {
+        _running = newVal;
+    }
+    
     protected PassNode _passNode;
     
     protected JButton _startButton;
@@ -869,5 +880,7 @@ public class JobNode extends QueueBrowserNode {
     protected String _fullName;
     
     protected SystemSettings _settings;
+    
+    protected boolean _running;
 //    protected Integer _databaseJobId;
 }

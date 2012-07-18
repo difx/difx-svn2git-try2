@@ -653,7 +653,13 @@ public class QueueBrowserPanel extends TearOffPanel {
             //  to go on, we use the job name to locate the job in our current list of
             //  jobs.
             JobNode thisJob = null;
-            //  Loop through each "experiment" and "pass" to find this job.
+            
+            //  First, we loop through all the jobs we know about and see if one matching
+            //  this name considers itself currently "running".  If so, it gets the message.
+            //  We do this to *try* to get the correct job to absorb the message, as it
+            //  is easy for multiple jobs to have the same names.  Until we have access
+            //  to a unique identifier, this is the best we can do.  Note that jobs
+            //  become "running" when the user starts them from the GUI.
             for ( Iterator<BrowserNode> projectIter = _browserPane.browserTopNode().children().iterator();
                     projectIter.hasNext() && thisJob == null; ) {
                 ExperimentNode testExperiment = (ExperimentNode)projectIter.next();
@@ -665,8 +671,30 @@ public class QueueBrowserPanel extends TearOffPanel {
                         for ( Iterator<BrowserNode> jobIter = testPass.children().iterator(); 
                             jobIter.hasNext() && thisJob == null; ) {
                             JobNode testJob = (JobNode)jobIter.next();
-                            if ( testJob.name().equals( difxMsg.getHeader().getIdentifier() ) )
+                            if ( testJob.name().equals( difxMsg.getHeader().getIdentifier() ) && testJob.running() )
                                 thisJob = testJob;
+                        }
+                    }
+                }
+            }
+            
+            //  If the job hasn't been located using the "active" search above, try
+            //  finding the job just using its name.
+            if ( thisJob == null ) {
+                for ( Iterator<BrowserNode> projectIter = _browserPane.browserTopNode().children().iterator();
+                        projectIter.hasNext() && thisJob == null; ) {
+                    ExperimentNode testExperiment = (ExperimentNode)projectIter.next();
+                    PassNode thisPass = null;
+                    if ( testExperiment.children().size() > 0 ) {
+                        for ( Iterator<BrowserNode> iter = testExperiment.childrenIterator(); iter.hasNext(); ) {
+                            PassNode testPass = (PassNode)(iter.next());
+                            //  Within each project, look at all jobs...
+                            for ( Iterator<BrowserNode> jobIter = testPass.children().iterator(); 
+                                jobIter.hasNext() && thisJob == null; ) {
+                                JobNode testJob = (JobNode)jobIter.next();
+                                if ( testJob.name().equals( difxMsg.getHeader().getIdentifier() ) )
+                                    thisJob = testJob;
+                            }
                         }
                     }
                 }
@@ -674,7 +702,6 @@ public class QueueBrowserPanel extends TearOffPanel {
 
             //  If we didn't find this job, create an entry for it in the "unaffiliated"
             //  project (which we might have to create if it doesn't exist!).
-
             if ( thisJob == null ) {
                 if ( _unaffiliated == null ) {
                     _unaffiliated = new ExperimentNode( "Jobs Outside Queue", _systemSettings );

@@ -7,6 +7,7 @@ import java.awt.Color;
 import javax.swing.JPanel;
 
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Dimension;
 import java.awt.Container;
 
@@ -53,7 +54,8 @@ public class ColumnTextArea extends JPanel implements MouseListener, MouseMotion
     }
     
     @Override
-    public void paintComponent( Graphics g ) {
+    public void paintComponent( Graphics g1 ) {
+        Graphics2D g = (Graphics2D)g1;
         super.paintComponent( g );
         Dimension d = this.getSize();
         int height = g.getFontMetrics().getHeight();

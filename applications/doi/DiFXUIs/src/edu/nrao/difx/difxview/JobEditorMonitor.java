@@ -19,6 +19,7 @@ import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 import edu.nrao.difx.xmllib.difxmessage.DifxMachinesDefinition;
 
 import edu.nrao.difx.difxcontroller.JAXBDiFXProcessor;
+import edu.nrao.difx.xmllib.difxmessage.*;
 
 import javax.swing.JFrame;
 import javax.swing.JMenuBar;
@@ -30,6 +31,7 @@ import javax.swing.JLabel;
 import javax.swing.JCheckBox;
 import javax.swing.JPopupMenu;
 import javax.swing.JButton;
+import javax.swing.JProgressBar;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -411,15 +413,24 @@ public class JobEditorMonitor extends JFrame {
         runControlPanel.add( restartSecondsLabel );
         
         //  The Status Panel shows the current state of the job.
-        IndexedPanel statusPanel = new IndexedPanel( "" );
-        _scrollPane.addNode( statusPanel );
-        statusPanel.openHeight( 50 );
-        statusPanel.alwaysOpen( true );
-        statusPanel.noArrow( true );
-        statusPanel.setBackground( statusPanel.getBackground().darker() );
+        _statusPanel = new IndexedPanel( "" );
+        _scrollPane.addNode( _statusPanel );
+        _statusPanel.openHeight( 60 );
+        _statusPanel.alwaysOpen( true );
+        _statusPanel.noArrow( true );
+        _statusPanelBackground = _statusPanel.getBackground();
+        _statusPanel.setBackground( _statusPanelBackground );
         _statusLabel = new JLabel( "" );
         _statusLabel.setHorizontalAlignment( JLabel.RIGHT );
-        statusPanel.add( _statusLabel );
+        _statusPanel.add( _statusLabel );
+        _state = new ColumnTextArea();
+        _state.justify( ColumnTextArea.CENTER );
+        _state.setText( "not started" );
+        _statusPanel.add( _state );
+        _progress = new JProgressBar( 0, 100 );
+        _progress.setValue( 0 );
+        _progress.setStringPainted( true );
+        _statusPanel.add( _progress );
         
         //  The message panel shows raw message data pertaining to the job.
         IndexedPanel messagePanel = new IndexedPanel( "Messages" );
@@ -523,6 +534,8 @@ public class JobEditorMonitor extends JFrame {
             _refreshThreadsButton.setBounds( w - 125, 30, 100, 25 );
             _uploadThreadsButton.setBounds( w - 230, 30, 100, 25 );
             _messageDisplayPanel.setBounds( 2, 25, w - 23, 173 );
+            _state.setBounds( 10, 30, 200, 25 );
+            _progress.setBounds( 220, 30, w - 245, 25 );
             _statusLabel.setBounds( 10, 0, w - 35, 25 );
         }
     }
@@ -540,6 +553,10 @@ public class JobEditorMonitor extends JFrame {
     public void statusError( String newText ) {
         _statusLabel.setForeground( Color.RED );
         _statusLabel.setText( newText );
+    }
+    
+    public void statusPanelColor( Color newColor ) {
+        _statusPanel.setBackground( newColor );
     }
     
     public void inputFileName( String newName ) { _inputFileName.setText( newName ); }
@@ -1060,6 +1077,7 @@ public class JobEditorMonitor extends JFrame {
                 
         @Override
         public void run() {
+            _jobNode.running( true );
             //  Open a new server socket and await a connection.  The connection
             //  will timeout after a given number of seconds (nominally 10).
             try {
@@ -1105,12 +1123,14 @@ public class JobEditorMonitor extends JFrame {
                         if ( packetType == JOB_TERMINATED ) {
                             _messageDisplayPanel.warning( 0, "job monitor", "Job terminated prematurely." );
                             statusWarning( "job terminated prematurely" );
+                            statusPanelColor( Color.RED );
                             connected = false;
                         }
                         else if ( packetType == JOB_ENDED_GRACEFULLY ) {
                             _messageDisplayPanel.warning( 0, "job monitor", "Job finished gracefully." );
                             statusInfo( "job completed" );
                             connected = false;
+                            statusPanelColor( _statusPanelBackground.darker() );
                         }
                         else if ( packetType == JOB_STARTED ) {
                             _messageDisplayPanel.message( 0, "job monitor", "Job started by guiServer." );
@@ -1151,7 +1171,7 @@ public class JobEditorMonitor extends JFrame {
                         else if ( packetType == STARTING_DIFX ) {
                             statusInfo( "DiFX running!" );
                             _messageDisplayPanel.warning( 0, "job monitor", "DiFX started!" );
-                            //  turn the frame green!!!!
+                            statusPanelColor( Color.GREEN );                            //  turn the frame green!!!!
                         }
                         else if ( packetType == DIFX_MESSAGE ) {
                             _messageDisplayPanel.message( 0, "job monitor", new String( data ) );
@@ -1161,11 +1181,12 @@ public class JobEditorMonitor extends JFrame {
                         }
                         else if ( packetType == DIFX_ERROR ) {
                             _messageDisplayPanel.error( 0, "job monitor", new String( data ) );
-                            //  turn the frame red
+                            statusPanelColor( Color.RED );
                         }
                         else if ( packetType == DIFX_COMPLETE ) {
                             statusInfo( "DiFX compete!" );
                             _messageDisplayPanel.warning( 0, "job monitor", "DiFX complete!" );
+                            statusPanelColor( _statusPanelBackground.darker() );
                         }
                         else {
                             _messageDisplayPanel.warning( 0, "GUI", "Ignoring unrecongized job monitor packet type (" + packetType + ")." );
@@ -1181,11 +1202,54 @@ public class JobEditorMonitor extends JFrame {
 //                _error = "IOException : " + e.toString();
 //                _fileSize = -11;
             }
-//            endCallback();
+            _jobNode.running( false );
         }
         
         protected int _port;
         
+    }
+    
+    //  Consume a message for this job.  The source of these messages is mk5daemon
+    //  processes on different nodes.
+    public void consumeMessage( DifxMessage difxMsg ) {
+        
+        //  See what kind of message this is...try status first.
+        if ( difxMsg.getBody().getDifxStatus() != null ) {
+            if ( difxMsg.getBody().getDifxStatus().getVisibilityMJD() != null &&
+                    difxMsg.getBody().getDifxStatus().getJobstartMJD() != null &&
+                    difxMsg.getBody().getDifxStatus().getJobstopMJD() != null )
+                _progress.setValue( (int)( 0.5 + 100.0 * ( Double.valueOf( difxMsg.getBody().getDifxStatus().getVisibilityMJD() ) -
+                        Double.valueOf( difxMsg.getBody().getDifxStatus().getJobstartMJD() ) ) /
+                        ( Double.valueOf( difxMsg.getBody().getDifxStatus().getJobstopMJD() ) -
+                        Double.valueOf( difxMsg.getBody().getDifxStatus().getJobstartMJD() ) ) ) );
+            else
+                _progress.setValue( 0 );
+            _state.setText( difxMsg.getBody().getDifxStatus().getState() );
+            if ( _state.getText().equalsIgnoreCase( "done" ) || _state.getText().equalsIgnoreCase( "mpidone" ) ) {
+                _state.setBackground( Color.GREEN );
+                _progress.setValue( 100 );  
+            }
+            else if ( _state.getText().equalsIgnoreCase( "running" ) )
+                _state.setBackground( Color.YELLOW );
+            else
+                _state.setBackground( Color.LIGHT_GRAY ); 
+            List<DifxStatus.Weight> weightList = difxMsg.getBody().getDifxStatus().getWeight();
+            //  Create a new list of antennas/weights if one hasn't been created yet.
+//            if ( _weights == null )
+//                newWeightDisplay( weightList.size() );
+//            for ( Iterator<DifxStatus.Weight> iter = weightList.iterator(); iter.hasNext(); ) {
+//                DifxStatus.Weight thisWeight = iter.next();
+//                weight( thisWeight.getAnt(), thisWeight.getWt() );
+//            }
+        }
+        else if ( difxMsg.getBody().getDifxAlert() != null ) {
+            //System.out.println( "this is an alert" );
+            //System.out.println( difxMsg.getBody().getDifxAlert().getAlertMessage() );
+            //System.out.println( difxMsg.getBody().getDifxAlert().getSeverity() );
+        }
+        
+        //_messageDisplayPanel.message( 0, "mk5daemon", difxMsg.getBody().toString() );
+
     }
     
     public void pauseJob() {}
@@ -1931,5 +1995,11 @@ public class JobEditorMonitor extends JFrame {
     protected Timer _timeoutTimer;
     
     protected MessageDisplayPanel _messageDisplayPanel;
+    protected IndexedPanel _statusPanel;
+    protected Color _statusPanelBackground;
+    
+    protected JProgressBar _progress;
+    protected ColumnTextArea _state;
+
     
 }
