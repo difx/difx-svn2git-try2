@@ -37,8 +37,6 @@ void ServerSideConnection::difxFileOperation( DifxMessageGeneric* G ) {
     	user = getenv( "DIFX_USER_ID" );
 	}
 	
-	printf( "THIS IS A DIFX FILE OPERATION: %s\n", S->operation );
-
 	//  Check the file operation against the list of "legal" operations.
 	if ( !strcmp( S->operation, "mkdir" ) ) {
 	    //  Make a new directory with the given path.  The "-p" option will make the entire path.  The

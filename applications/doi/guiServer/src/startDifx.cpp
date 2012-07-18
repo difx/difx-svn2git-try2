@@ -205,8 +205,10 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
     strncat( machinesFilename, ".machines", DIFX_MESSAGE_FILENAME_LENGTH );
     FILE* inp = fopen( machinesFilename, "r" );
     if ( inp != NULL ) {
-        while ( fgets( inLine, MAX_COMMAND_SIZE, inp ) )
-            ++procCount;
+        while ( fgets( inLine, MAX_COMMAND_SIZE, inp ) ) {
+            if ( strlen( inLine ) > 0 )
+                ++procCount;
+        }
         fclose( inp );
     }
 	
@@ -292,8 +294,9 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
         for (;;) {
 
             const char* rv = fgets( line, DIFX_MESSAGE_LENGTH, difxPipe );
-            if ( !rv )	// eof, probably
+            if ( !rv ) {	// eof, probably
 	            break;
+	        }
 
             for ( int i = 0; line[i]; ++i ) {
 	            if(line[i] == '\n')
@@ -327,7 +330,6 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 //	pthread_t threadId;
 //    pthread_attr_init( &threadAttr );
 //    pthread_create( &threadId, &threadAttr, staticRunDifxThread, (void*)startInfo );               	
-	
 }
 
 //-----------------------------------------------------------------------------
