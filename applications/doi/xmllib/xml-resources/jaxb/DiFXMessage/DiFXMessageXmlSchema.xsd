@@ -111,7 +111,7 @@
                 <xsd:element ref="difxControlUser"/>
                 <xsd:element ref="difxControlPWD"/>
                 <xsd:element ref="difxVersion"/>
-                <xsd:element ref="difxPath"/>
+                <xsd:element ref="difxBase"/>
                 <xsd:element ref="dbUseDataBase"/>
                 <xsd:element ref="dbVersion"/>
                 <xsd:element ref="dbName"/>
@@ -218,7 +218,7 @@
     <xsd:element name="difxControlUser" type="xsd:string"></xsd:element>
     <xsd:element name="difxControlPWD" type="xsd:string"></xsd:element>
     <xsd:element name="difxVersion" type="xsd:string"></xsd:element>
-    <xsd:element name="difxPath" type="xsd:string"></xsd:element>
+    <xsd:element name="difxBase" type="xsd:string"></xsd:element>
     <xsd:element name="dbUseDataBase" type="xsd:boolean"></xsd:element>
     <xsd:element name="dbVersion" type="xsd:string"></xsd:element>
     <xsd:element name="dbName" type="xsd:string"></xsd:element>
@@ -415,6 +415,7 @@
             </xsd:element>
             <xsd:element name="mpiWrapper" type="xsd:string"></xsd:element>
             <xsd:element name="mpiOptions" type="xsd:string"></xsd:element>
+            <xsd:element name="difxVersion" type="xsd:string" minOccurs="0" maxOccurs="1" default="unknown"></xsd:element>
             <xsd:element name="testProcessors" type="xsd:boolean"></xsd:element>
             <xsd:element name="machinesFile" type="xsd:string"></xsd:element>
             <xsd:element name="threadsFile" type="xsd:string"></xsd:element>
@@ -449,11 +450,12 @@
         <xsd:sequence>
             <xsd:element name="user" type="xsd:string"></xsd:element>
             <xsd:element name="node" type="xsd:string"></xsd:element>
-            <xsd:element name="difxPath" type="xsd:string"></xsd:element>
+            <xsd:element name="difxVersion" type="xsd:string"></xsd:element>
             <xsd:element name="passPath" type="xsd:string"></xsd:element>
             <xsd:element name="file" type="xsd:string"></xsd:element>
             <xsd:element name="address" type="xsd:string"></xsd:element>
             <xsd:element name="port" type="xsd:int"></xsd:element>
+            <xsd:element name="calcifOnly" type="xsd:int"></xsd:element>
         </xsd:sequence>
     </xsd:complexType>
 

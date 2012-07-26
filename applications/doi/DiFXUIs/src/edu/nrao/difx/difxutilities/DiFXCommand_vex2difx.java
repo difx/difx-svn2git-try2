@@ -4,6 +4,9 @@
  * transmitted via a TCP socket connection back to this process, which receives
  * the data in a thread.  Call backs (incremental and end) tell us when each new
  * line of data appears and when all are done.
+ * 
+ * The "vex2difx" command can be set to run "calcif" alone (i.e. not run vex2difx
+ * at all).  This may be required if the user messes with the .calc file.
  */
 package edu.nrao.difx.difxutilities;
 
@@ -30,15 +33,19 @@ import javax.swing.event.EventListenerList;
  */
 public class DiFXCommand_vex2difx extends DiFXCommand {
     
-    public DiFXCommand_vex2difx( String passPath, String file, SystemSettings settings ) {
+    public DiFXCommand_vex2difx( String passPath, String file, SystemSettings settings, boolean calcifOnly ) {
         super( settings );
         this.header().setType( "DifxVex2DifxRun" );
         DifxVex2DifxRun v2d = this.factory().createDifxVex2DifxRun();
         v2d.setUser( settings.difxControlUser() );
         v2d.setNode( settings.difxControlAddress() );
-        v2d.setDifxPath( settings.difxPath() );
+        v2d.setDifxVersion( settings.difxVersion() );
         v2d.setPassPath( passPath );
         v2d.setFile( file );
+        if ( calcifOnly )
+            v2d.setCalcifOnly( 1 );
+        else
+            v2d.setCalcifOnly( 0 );
         _port = _settings.newDifxTransferPort();
         v2d.setPort( _port );
         try {

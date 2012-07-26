@@ -22,8 +22,7 @@ import java.awt.Color;
 public class Mark5Node extends ClusterNode {
     
     public Mark5Node( String name, SystemSettings settings ) {
-        super( name );
-        _settings = settings;
+        super( name, settings );
     }
     
     @Override
@@ -287,6 +286,4 @@ public class Mark5Node extends ClusterNode {
     protected int _widthDataMJD;
     protected int _widthCurrentJob;
     
-    protected SystemSettings _settings;
-
 }

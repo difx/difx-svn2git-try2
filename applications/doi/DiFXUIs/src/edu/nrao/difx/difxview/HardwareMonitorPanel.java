@@ -84,13 +84,6 @@ public class HardwareMonitorPanel extends TearOffPanel {
     }
     
     /*
-     * The controller provides us a way of sending commands to DiFX
-     */
-    public void controller( DiFXController newController ) {
-        _mController = newController;
-    }
-    
-    /*
      * This method services a data message from the data model.  It adds information
      * about any hardware to appropriate lists, creating new nodes on the lists
      * as new hardware appears.
@@ -119,8 +112,7 @@ public class HardwareMonitorPanel extends TearOffPanel {
                 }
                 //  If there was no node representing this unit, create one.
                 if ( processor == null ) {
-                    processor = new ClusterNode( thisProcessor.getObjName() );
-                    processor.difxController( _mController );
+                    processor = new ClusterNode( thisProcessor.getObjName(), _settings );
                     _clusterNodes.addChild( processor );
                 }
                 //  Update the processor with new data.
@@ -162,7 +154,6 @@ public class HardwareMonitorPanel extends TearOffPanel {
                 //  If there was no node representing this unit, create one.
                 if ( mk5Module == null ) {
                     mk5Module = new Mark5Node( thisMark5.getObjName(), _settings );
-                    mk5Module.difxController( _mController );
                     _mk5Modules.addChild( mk5Module );
                 }
                 mk5Module.setData( thisMark5 );
@@ -197,8 +188,7 @@ public class HardwareMonitorPanel extends TearOffPanel {
                     }
                     //  If there was no node representing this unit in our list, create one.
                     if ( processor == null ) {
-                        processor = new ClusterNode( thisProcessor.getObjName() );
-                        processor.difxController( _mController );
+                        processor = new ClusterNode( thisProcessor.getObjName(), _settings );
                         _clusterNodes.addChild( processor );
                     }
                     //  If this is an "alert" relating to this processor, send it to the
@@ -246,7 +236,6 @@ public class HardwareMonitorPanel extends TearOffPanel {
                     //  If there was no node representing this unit, create one.
                     if ( mk5Module == null ) {
                         mk5Module = new Mark5Node( thisMark5.getObjName(), _settings );
-                        mk5Module.difxController( _mController );
                         _mk5Modules.addChild( mk5Module );
                     }
                     //  If this is an "alert" relating to this mark5, send it to the
@@ -272,7 +261,6 @@ public class HardwareMonitorPanel extends TearOffPanel {
     protected BrowserNode _mk5Modules;
     private JLabel _mainLabel;
     DiFXDataModel  _mDataModel;
-    DiFXController _mController;
     MessageListener _mListener;
     protected SystemSettings _settings;
     

@@ -2154,7 +2154,7 @@ public class ExperimentEditor extends JFrame { //JDialog {
                     passDir = directory();
                     if ( createPass() )
                         passDir += "/" + passDirectory();
-                    DiFXCommand_vex2difx v2d = new DiFXCommand_vex2difx( passDir, v2dFileName(), _settings );
+                    DiFXCommand_vex2difx v2d = new DiFXCommand_vex2difx( passDir, v2dFileName(), _settings, false );
                     v2d.addIncrementalListener( new ActionListener() {
                         public void actionPerformed( ActionEvent e ) {
                             newFileCallback( e.getActionCommand() );

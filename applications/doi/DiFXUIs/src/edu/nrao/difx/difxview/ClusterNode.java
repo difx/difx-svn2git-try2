@@ -32,9 +32,9 @@ import edu.nrao.difx.difxdatamodel.ProcessorNode;
 import edu.nrao.difx.xmllib.difxmessage.ObjectFactory;
 import edu.nrao.difx.xmllib.difxmessage.Header;
 import edu.nrao.difx.xmllib.difxmessage.Body;
-import edu.nrao.difx.xmllib.difxmessage.DifxCommand;
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 import edu.nrao.difx.xmllib.difxmessage.DifxAlert;
+import edu.nrao.difx.difxutilities.DiFXCommand_mark5Control;
 import java.net.UnknownHostException;
 /**
  *
@@ -42,8 +42,9 @@ import java.net.UnknownHostException;
  */
 public class ClusterNode extends BrowserNode {
     
-    public ClusterNode( String name ) {
+    public ClusterNode( String name, SystemSettings settings ) {
         super( name );
+        _settings = settings;
         _columnColor = new Color( 204, 204, 255 );
         _dec = new DecimalFormat();
         _popupButton.setVisible( true );
@@ -332,53 +333,16 @@ public class ClusterNode extends BrowserNode {
     }
     
     /*
-     * Send a command to the processor.
-     * This function was swiped from the difxdatamodel.Mark5Unit class in the
-     * original difx design.  It has been simplified and somewhat altered.  This
-     * seemed a more logical place for it than where it was.
-     * 
-     * Allowed commands are:
-     *  "GetVSN"
-     *  "GetLoad"
-     *  "GetDir"
-     *  "ResetMark5"
-     *  "StartMark5A"
-     *  "StopMark5A"
-     *  "Clear"
-     *  "Reboot"
-     *  "Poweroff"
-     *  "Copy"
+     * Send a "mark5" command to this processor.  See "monitor.cpp" in the
+     * mark5daemon code to see allowed commands.
      */
     protected void sendDiFXCommandMessage( String cmd ) {
         System.out.println( cmd );
-        if ( _difxController != null ) {
-            ObjectFactory factory = new ObjectFactory();
-
-            // Create header
-            Header header = factory.createHeader();
-            header.setFrom( "doi" );
-            header.setTo( _label.getText() );
-            header.setMpiProcessId( "-1" );
-            header.setIdentifier( "doi" );
-            header.setType( "DifxCommand" );
-
-            // Create mark5 command
-            DifxCommand mark5Command = factory.createDifxCommand();
-            mark5Command.setCommand( cmd );
-
-            // Create the XML defined messages and process through the system
-            Body body = factory.createBody();
-            body.setDifxCommand( mark5Command );
-
-            DifxMessage difxMsg = factory.createDifxMessage();
-            difxMsg.setHeader( header );
-            difxMsg.setBody( body );
-            
-            try {
-            _difxController.writeToSocket( difxMsg );
-            } catch ( java.net.UnknownHostException e ) {
-                //  BLAT handle properly
-            }
+        DiFXCommand_mark5Control command = new DiFXCommand_mark5Control( cmd, name(), _settings );
+        try {
+            command.send();
+        } catch ( Exception e ) {
+            System.out.println( e.getMessage() );
         }
     }
 
@@ -540,10 +504,6 @@ public class ClusterNode extends BrowserNode {
                 difxMsg.getBody().getDifxAlert().getAlertMessage() );
     }
     
-    public void difxController( DiFXController newController ) {
-        _difxController = newController;
-    }
-    
     public void showIgnored( boolean newVal ) {
         _showIgnored = newVal;
         changeIgnoreState();
@@ -627,6 +587,5 @@ public class ClusterNode extends BrowserNode {
     int _widthNetRxRate;
     int _widthNetTxRate;
 
-    DiFXController _difxController;
-    
+    protected SystemSettings _settings;
 }

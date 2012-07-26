@@ -53,6 +53,8 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPasswordField;
 import javax.swing.JCheckBox;
+import javax.swing.JTextField;
+import javax.swing.JComboBox;
 
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.IndexedPanel;
@@ -323,6 +325,7 @@ public class SystemSettings extends JFrame {
         userAddressLabel.setBounds( 10, 115, 150, 25 );
         userAddressLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( userAddressLabel );
+        //  Password is not currently useful...probably delete it soon.
         _difxControlPWD = new JPasswordField();
         _difxControlPWD.setHorizontalAlignment( NumberBox.LEFT );
         _difxControlPWD.addActionListener( new ActionListener() {
@@ -330,30 +333,63 @@ public class SystemSettings extends JFrame {
                 //generateControlChangeEvent();
             }
         } );
-        difxControlPanel.add( _difxControlPWD );
+        //difxControlPanel.add( _difxControlPWD );
         JLabel pwdLabel = new JLabel( "Password:" );
         pwdLabel.setBounds( 10, 145, 150, 25 );
         pwdLabel.setHorizontalAlignment( JLabel.RIGHT );
-        difxControlPanel.add( pwdLabel );
-        _difxVersion = new JFormattedTextField();
-        _difxVersion.setFocusLostBehavior( JFormattedTextField.COMMIT );
-        _difxVersion.addActionListener( new ActionListener() {
+        //difxControlPanel.add( pwdLabel );
+        //
+        _guiServerVersion = new JTextField( "N/A" );
+        _guiServerVersion.setEditable( false );
+        _guiServerVersion.setBackground( this.getBackground() );
+        _guiServerVersion.setBounds( 165, 145, 100, 25 );
+        difxControlPanel.add( _guiServerVersion );
+        JLabel guiServerVersionLabel = new JLabel( "guiServer Version:" );
+        guiServerVersionLabel.setBounds( 10, 145, 150, 25 );
+        guiServerVersionLabel.setHorizontalAlignment( JLabel.RIGHT );
+        difxControlPanel.add( guiServerVersionLabel );
+        _guiServerDifxVersion = new JTextField( "N/A" );
+        _guiServerDifxVersion.setEditable( false );
+        _guiServerDifxVersion.setBackground( this.getBackground() );
+        _guiServerDifxVersion.setBounds( 365, 145, 100, 25 );
+        difxControlPanel.add( _guiServerDifxVersion );
+        JLabel guiServerDifxVersionLabel = new JLabel( "built w/DiFX:" );
+        guiServerDifxVersionLabel.setBounds( 210, 145, 150, 25 );
+        guiServerDifxVersionLabel.setHorizontalAlignment( JLabel.RIGHT );
+        difxControlPanel.add( guiServerDifxVersionLabel );
+        _difxVersion = new JComboBox();
+        _difxVersion.setToolTipText( "Run all DiFX applications (vex2difx, mpifxcorr, etc.) using this DiFx version." );
+        _difxVersion.setEditable( true );
+        //  This little bit causes a typed-in item to be treated as a new version.
+        _difxVersion.getEditor().addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                //generateControlChangeEvent();
+                //  If not already in the list of difx versions, add this name.
+                boolean found = false;
+                for ( int i = 0; i < _difxVersion.getItemCount() && !found; ++i ) {
+                    if ( _difxVersion.getItemAt( i ).equals( _difxVersion.getEditor().getItem() ) ) {
+                        found = true;
+                        _difxVersion.setSelectedIndex( i );
+                    }
+                }
+                if ( !found ) {
+                    _difxVersion.addItem( _difxVersion.getEditor().getItem() );
+                    _difxVersion.setSelectedIndex( _difxVersion.getItemCount() - 1 );
+                }
             }
-        } );
+        });
         difxControlPanel.add( _difxVersion );
-        JLabel versionAddressLabel = new JLabel( "DiFX Version:" );
-        versionAddressLabel.setBounds( 10, 175, 150, 25 );
+        JLabel versionAddressLabel = new JLabel( "Run w/DiFX Version:" );
+        versionAddressLabel.setBounds( 10, 205, 150, 25 );
         versionAddressLabel.setHorizontalAlignment( JLabel.RIGHT );
         difxControlPanel.add( versionAddressLabel );
-        _difxPath = new SaneTextField();
-        _difxPath.setToolTipText( "Path to DiFX directory tree on the DiFX host (\"bin\" and \"setup\" should be below this)." );
-        difxControlPanel.add( _difxPath );
-        JLabel difxPathLabel = new JLabel( "DiFX Path:" );
-        difxPathLabel.setBounds( 10, 205, 150, 25 );
-        difxPathLabel.setHorizontalAlignment( JLabel.RIGHT );
-        difxControlPanel.add( difxPathLabel );
+        _difxBase = new SaneTextField();
+        _difxBase.setEditable( false ); // BLAT the user should be able to change this...but a change needs to trigger a VersionRequest (see guiServer code)
+        _difxBase.setToolTipText( "Path to DiFX directory tree on the DiFX host (the \"bin\" directory containing \"setup_difx\" files should be below this)." );
+        difxControlPanel.add( _difxBase );
+        JLabel difxBaseLabel = new JLabel( "DiFX Base:" );
+        difxBaseLabel.setBounds( 10, 175, 150, 25 );
+        difxBaseLabel.setHorizontalAlignment( JLabel.RIGHT );
+        difxControlPanel.add( difxBaseLabel );
         
         IndexedPanel networkPanel = new IndexedPanel( "DiFX Multicast Messages" );
         networkPanel.openHeight( 210 );
@@ -820,8 +856,8 @@ public class SystemSettings extends JFrame {
             _difxTransferPort.setBounds( 365, 85, 100, 25 );
             _difxControlUser.setBounds( 165, 115, 300, 25 );
             _difxControlPWD.setBounds( 165, 145, 300, 25 );
-            _difxVersion.setBounds( 165, 175, 300, 25 );
-            _difxPath.setBounds( 165, 205, w - 195, 25 );
+            _difxVersion.setBounds( 165, 205, 300, 25 );
+            _difxBase.setBounds( 165, 175, w - 195, 25 );
             //  Broadcast network settings
             _ipAddress.setBounds( 165, 55, 300, 25 );
             _port.setBounds( 165, 85, 300, 25 );
@@ -912,7 +948,7 @@ public class SystemSettings extends JFrame {
                     if ( _queueBrowser != null )
                         _queueBrowser.guiServerConnectionLight().warning();
                     //  Make a new guiServer connection.
-                    _guiServerConnection = new GuiServerConnection( difxControlAddress(), 
+                    _guiServerConnection = new GuiServerConnection( _this, difxControlAddress(), 
                             difxControlPort(), timeout() );
                     //  Add callbacks for various actions.
                     _guiServerConnection.addConnectionListener( new ActionListener() {
@@ -924,6 +960,8 @@ public class SystemSettings extends JFrame {
                             }
                             else {
                                 _guiServerConnectionLight.alert();
+                                guiServerVersion( "N/A" );
+                                guiServerDifxVersion( "N/A" );
                                 if ( _queueBrowser != null )
                                     _queueBrowser.guiServerConnectionLight().alert();
                             }
@@ -970,12 +1008,16 @@ public class SystemSettings extends JFrame {
                         }
                         --_counter;
                         _guiServerConnectionLight.alert();
+                        guiServerVersion( "N/A" );
+                        guiServerDifxVersion( "N/A" );
                         if ( _queueBrowser != null )
                             _queueBrowser.guiServerConnectionLight().alert();
                     }
                 }
                 else {
                     _guiServerConnectionLight.on( false );
+                    guiServerVersion( "N/A" );
+                    guiServerDifxVersion( "N/A" );
                     if ( _queueBrowser != null )
                         _queueBrowser.guiServerConnectionLight().on( false );
                 }
@@ -1017,6 +1059,7 @@ public class SystemSettings extends JFrame {
     public void messageCenter( MessageDisplayPanel newVal ) {
         _messageCenter = newVal;
     }
+    public MessageDisplayPanel messageCenter() { return _messageCenter; }
     
     /*
      * Called when one of the checks associated with leap seconds is picked.
@@ -1298,8 +1341,8 @@ public class SystemSettings extends JFrame {
         _difxTransferPort.intValue( 50300 );
         _difxControlUser.setText( "difx" );
         _difxControlPWD.setText( "difx2010" );
-        _difxVersion.setText( "trunk" );
-        _difxPath.setText( "/usr/local/swc/difx" );
+        //_difxVersion.setText( "trunk" );
+        _difxBase.setText( "/usr/local/swc/difx" );
         _dbUseDataBase.setSelected( true );
         _dbVersion.setText( "unknown" );
         _dbHost.setText( "swc02.usno.navy.mil" );
@@ -1452,11 +1495,47 @@ public class SystemSettings extends JFrame {
     public void difxControlPassword( String newVal ) { _difxControlPWD.setText( newVal ); }
     public String difxControlPassword() { return new String( _difxControlPWD.getPassword() ); }
     
-    public void difxVersion( String newVal ) { _difxVersion.setText( newVal ); }
-    public String difxVersion() { return _difxVersion.getText(); }
+    /*
+     * Set the difxVersion to match a particular string.  If there is no version
+     * matching the string a new one will be added if "addNew" is true.
+     */
+    public void difxVersion( String newVal, boolean addNew ) { 
+        //  If not already in the list of difx versions, add this name.
+        boolean found = false;
+        for ( int i = 0; i < _difxVersion.getItemCount() && !found; ++i ) {
+            if ( _difxVersion.getItemAt( i ).equals( newVal ) ) {
+                found = true;
+                _difxVersion.setSelectedIndex( i );
+            }
+        }
+        if ( !found && addNew ) {
+            _difxVersion.addItem( newVal );
+            _difxVersion.setSelectedIndex( _difxVersion.getItemCount() - 1 );
+        }
+    }
+    public String difxVersion() { 
+        return (String)_difxVersion.getSelectedItem();
+    }
+    public void addDifxVersion( String newVal ) { 
+        //  If not already in the list of difx versions, add this name.
+        boolean found = false;
+        for ( int i = 0; i < _difxVersion.getItemCount() && !found; ++i ) {
+            if ( _difxVersion.getItemAt( i ).equals( newVal ) ) {
+                found = true;
+                _difxVersion.setSelectedIndex( i );
+            }
+        }
+        if ( !found ) {
+            _difxVersion.addItem( newVal );
+            _difxVersion.updateUI();
+        }
+    }
+    public void clearDifxVersion() {
+        _difxVersion.removeAll();
+    }
     
-    public void difxPath( String newVal ) { _difxPath.setText( newVal ); }
-    public String difxPath() { return _difxPath.getText(); }
+    public void difxBase( String newVal ) { _difxBase.setText( newVal ); }
+    public String difxBase() { return _difxBase.getText(); }
     
     public void ipAddress( String newVal ) { _ipAddress.setText( newVal ); }
     public String ipAddress() { return _ipAddress.getText(); }
@@ -1777,9 +1856,9 @@ public class SystemSettings extends JFrame {
             if ( doiConfig.getDifxControlPWD() != null )
                 this.difxControlPassword( doiConfig.getDifxControlPWD() );
             if ( doiConfig.getDifxVersion() != null )
-                this.difxVersion( doiConfig.getDifxVersion() );
-            if ( doiConfig.getDifxPath() != null )
-                this.difxPath( doiConfig.getDifxPath() );
+                this.difxVersion( doiConfig.getDifxVersion(), false );
+            if ( doiConfig.getDifxBase() != null )
+                this.difxBase( doiConfig.getDifxBase() );
             _dbUseDataBase.setSelected( doiConfig.isDbUseDataBase() );
             if ( doiConfig.getDbVersion() != null )
                 _dbVersion.setText( doiConfig.getDbVersion() );
@@ -1950,7 +2029,7 @@ public class SystemSettings extends JFrame {
         doiConfig.setDifxControlUser( this.difxControlUser() );
         doiConfig.setDifxControlPWD( new String( this.difxControlPassword() ) );
         doiConfig.setDifxVersion( this.difxVersion() );
-        doiConfig.setDifxPath( this.difxPath() );
+        doiConfig.setDifxBase( this.difxBase() );
         doiConfig.setDbUseDataBase( this.useDatabase() );
         doiConfig.setDbVersion( this.dbVersion() );
         doiConfig.setDbName( this.dbName() );
@@ -2600,6 +2679,19 @@ public class SystemSettings extends JFrame {
         return false;
     }
 
+    public void guiServerVersion( String newVal ) {
+        _guiServerVersion.setText( newVal );
+    }
+    public String guiServerVersion() {
+        return _guiServerVersion.getText();
+    }
+    
+    public void guiServerDifxVersion( String newVal ) {
+        _guiServerDifxVersion.setText( newVal );
+    }
+    public String guiServerDifxVersion() {
+        return _guiServerDifxVersion.getText();
+    }
     
     protected SystemSettings _this;
     
@@ -2622,8 +2714,8 @@ public class SystemSettings extends JFrame {
     protected int _newDifxTransferPort;
     protected JFormattedTextField _difxControlUser;
     protected JPasswordField _difxControlPWD;
-    protected JFormattedTextField _difxVersion;
-    protected SaneTextField _difxPath;
+    protected JComboBox _difxVersion;
+    protected SaneTextField _difxBase;
     protected GuiServerConnection _guiServerConnection;
     //  Broadcast network
     protected JCheckBox _useTCPRelayCheck;
@@ -2833,5 +2925,8 @@ public class SystemSettings extends JFrame {
     protected ActivityMonitorLight _guiServerConnectionLight;
     
     protected DatabaseThread _databaseThread;
+    
+    protected JTextField _guiServerVersion;
+    protected JTextField _guiServerDifxVersion;
     
 }

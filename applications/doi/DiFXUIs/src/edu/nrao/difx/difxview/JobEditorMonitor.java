@@ -617,9 +617,10 @@ public class JobEditorMonitor extends JFrame {
             ( (ProcessorNode)(iter.next()) ).clearTest();
         }
         
-        // Create start job command
+        // Create machines definition command
         DifxMachinesDefinition cmd = command.factory().createDifxMachinesDefinition();
         cmd.setInput( _jobNode.inputFile() );
+        cmd.setDifxVersion( _settings.difxVersion() );
 
         // If we are using the TCP connection, set the address and port for diagnostic
         // reporting.

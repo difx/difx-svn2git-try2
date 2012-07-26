@@ -102,7 +102,6 @@ public class DiFXUI extends JFrame implements WindowListener {
         _queueBrowser.dataModel( _dataModel );
         _hardwareMonitor.dataModel( _dataModel );
         _dataModel.notifyListeners();
-        _hardwareMonitor.controller( _difxController );
 
         this.setLocation( _systemSettings.windowConfiguration().mainX, _systemSettings.windowConfiguration().mainY );
 
