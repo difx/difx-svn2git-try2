@@ -39,6 +39,7 @@ namespace guiServer {
         static const int DIFX_WARNING                       = 115;
         static const int DIFX_ERROR                         = 116;
         static const int DIFX_COMPLETE                      = 117;
+        static const int DATA_FILE_SIZE                     = 118;
     
         JobMonitorConnection( network::GenericSocket* sock ) : PacketExchange( sock ) {
         }

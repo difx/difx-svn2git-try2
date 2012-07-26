@@ -69,15 +69,26 @@ main( int argc, char **argv ) {
     int multicastPort = 50200;         //  Port for receiving DiFX multicasts
     char multicastGroup[16];           //  Group ID for DIFX multicasts.
     snprintf( multicastGroup, 16, "224.2.2.1" );
+    char difxBase[DIFX_MESSAGE_LENGTH];
     
-    //  Check values from environment variables.
+    //  Check values from environment variables.  The default port is used both
+    //  for TCP connections and for the multicast network.  These don't need to
+    //  stay the same!
     char* newPort = getenv( "DIFX_MESSAGE_PORT" );
     if ( newPort != NULL ) {
         serverPort = atoi( newPort );
         multicastPort = atoi( newPort );
     }
+    //  Message group for multicasts.
     if ( getenv( "DIFX_MESSAGE_GROUP" ) != NULL )
         snprintf( multicastGroup, 16, "%s", getenv( "DIFX_MESSAGE_GROUP" ) );
+        
+    //  The DiFX "base" is where the setup files (used to set up DiFX processes)
+    //  for different versions are located.  It must either be defined using an
+    //  environment variable or on the command line, or guiServer quits.
+    difxBase[0] = 0;
+    if ( getenv( "DIFX_BASE" ) != NULL )
+        strncpy( difxBase, getenv( "DIFX_BASE" ), DIFX_MESSAGE_LENGTH );
     
     //  Command line arguments -- error checking should perhaps be more thorough here.
     for ( int i = 1; i < argc; ++i ) {
@@ -90,6 +101,10 @@ main( int argc, char **argv ) {
         }
         else if ( !strcmp( argv[i], "--multicastPort" ) || !strcmp( argv[i], "-mp" ) ) {
             multicastPort = atoi( argv[i+1] );
+            ++i;
+        }
+        else if ( !strcmp( argv[i], "--base" ) || !strcmp( argv[i], "-b" ) ) {
+            strncpy( difxBase, argv[i+1], DIFX_MESSAGE_LENGTH );
             ++i;
         }
         else {
@@ -105,11 +120,19 @@ main( int argc, char **argv ) {
         }
     }
     
+    //  Bail out if we don't have a defined DiFX base.
+    if ( difxBase[0] == 0 ) {
+        fprintf( stderr, "No DiFX base was defined (either command line or environment variable).\n" );
+        fprintf( stderr, "guiServer is terminating!\n" );
+        exit( EXIT_FAILURE );
+    }
+    
     //  The TCP server for all connections.
     network::TCPServer* server = new network::TCPServer( serverPort );
     if ( !server->serverUp() )
         exit( EXIT_FAILURE );
     printf( "server at port %d\n", serverPort );
+    printf( "DiFX base is %s\n", difxBase );
     
     //  Initialize the list of client connections.
     _clientConnections.clear();
@@ -130,7 +153,7 @@ main( int argc, char **argv ) {
         printf( "guiServer: client connection from address %s\n", server->lastClientIP() );
 
         //  Open a packet exchange mechanism to deal with this connection as a server.
-        guiServer::ServerSideConnection* newClient = new guiServer::ServerSideConnection( newClientSocket, server->lastClientIP() );
+        guiServer::ServerSideConnection* newClient = new guiServer::ServerSideConnection( newClientSocket, server->lastClientIP(), difxBase );
         
         //  Set the (default) multicast information for this client to match our defaults.
         newClient->multicast( multicastGroup, multicastPort );

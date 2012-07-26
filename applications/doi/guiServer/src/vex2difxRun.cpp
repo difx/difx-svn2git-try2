@@ -6,8 +6,10 @@
 //
 //=============================================================================
 #include <ServerSideConnection.h>
+#include <ExecuteSystem.h>
 #include <sys/statvfs.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <pwd.h>
@@ -32,88 +34,64 @@ void ServerSideConnection::vex2difxRun( DifxMessageGeneric* G ) {
 	char roundup[DIFX_MESSAGE_LENGTH];
 	char hostname[DIFX_MESSAGE_LENGTH];
 	pid_t childPid;
+    ExecuteSystem* executor;
 	
 	S = &G->body.vex2DifxRun;
-	
-	snprintf( message, DIFX_MESSAGE_LENGTH, "vex2difx command....%s, %s, %s, %s, %s",
-             S->user,
-             S->headNode,
-             S->difxPath,
-             S->passPath,
-             S->v2dFile );
-	//difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_WARNING );
 
 	childPid = fork();
 	
-	//  Use a specified path to the DiFX software if the user has chosen one.  Otherwise, use
-	//  the default path.
-	if ( strlen( S->difxPath ) > 0 )
-	    strncpy( difxPath, S->difxPath, DIFX_MESSAGE_FILENAME_LENGTH );
-	else
-	    strncpy( difxPath, getenv( "DIFX_PREFIX" ), DIFX_MESSAGE_FILENAME_LENGTH );
-	
 	//  Forked process runs vex2difx...
     signal( SIGCHLD, SIG_IGN );
-	if(childPid == 0)
-	{
-	    //  Copy the .bash file for the difx user to the pass working directory.
-		snprintf( command, MAX_COMMAND_SIZE, "cp %s/setup/setup.bash %s", 
-				  difxPath,
-				  S->passPath );
-		system( command );
-	    	
+	if( childPid == 0 )
+	{	    	
 	    //  Get the current time, used below to figure out which files in the directory
 	    //  are new.
 	    struct timeval tv;
 	    gettimeofday( &tv, NULL );
 		
 		//  This is where we actually run vex2difx
-		snprintf( command, MAX_COMMAND_SIZE, "source %s/setup/setup.bash; cd %s; vex2difx -f %s 2>&1", 
-				  difxPath,
+		snprintf( command, MAX_COMMAND_SIZE, "source %s/bin/setup_difx.%s; cd %s; vex2difx -f %s", 
+		          _difxBase,
+				  S->difxVersion,
 				  S->passPath,
 				  S->v2dFile );
 		
-		snprintf(message, DIFX_MESSAGE_LENGTH, "Executing: %s", command);
-		//difxMessageSendDifxAlert(message, DIFX_ALERT_LEVEL_INFO);
-		//printf( "%s\n", command );
+		diagnostic( WARNING, "Executing: %s", command );
+        executor = new ExecuteSystem( command );
+        while ( int ret = executor->nextOutput( message, DIFX_MESSAGE_LENGTH ) ) {
+            if ( ret == 1 )  { // stdout
+                if ( strlen( message ) )
+                    diagnostic( INFORMATION, "vex2difx... %s", message );
+            }
+            else             // stderr
+                diagnostic( ERROR, "vex2difx... %s", message );
+        }
+        if ( executor->noErrors() )
+            diagnostic( WARNING, "vex2difx complete" );
+        else
+            diagnostic( ERROR, "vex2difx FAILED" );
+        delete executor;
 
-        roundup[0] = 0;		
-		FILE* fp = popen( command, "r" );
-		while ( fgets( message, DIFX_MESSAGE_LENGTH, fp ) != NULL ) {
-		    //  Try to create a clean "# jobs" message for transmission back to the GUI.
-		    if ( strstr( message, "created" ) != NULL ) {
-		        strncat( roundup, message, strcspn( message, "(" ) );
-		        sprintf( roundup + strlen( roundup ), "(s) created in %s", S->passPath );
-		        difxMessageSendDifxAlert( roundup, DIFX_ALERT_LEVEL_INFO );
-		    }
-		    else if ( !strncmp( message, "WARNING", 7 ) || !strncmp( message, "Warning", 7 ) ) {
-		        difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_WARNING );
-		    }
-		    else if ( !strncmp( message, "ERROR", 5 ) || !strncmp( message, "Error", 5 ) ) {
-		        difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_ERROR );
-		    }
-		}
-		pclose( fp );
-		
 		//  Next thing to run - calcif2.
-		snprintf( command, MAX_COMMAND_SIZE, "source %s/setup/setup.bash; cd %s; calcif2 -f -a", 
-				  difxPath,
+		snprintf( command, MAX_COMMAND_SIZE, "source %s/bin/setup_difx.%s; cd %s; calcif2 -f -a", 
+				  _difxBase,
+				  S->difxVersion,
 				  S->passPath );
 		
-		snprintf( message, DIFX_MESSAGE_LENGTH, "Executing: %s", command);
-		//difxMessageSendDifxAlert(message, DIFX_ALERT_LEVEL_INFO);
-
-        roundup[0] = 0;		
-		fp = popen( command, "r" );
-		while ( fgets( message, DIFX_MESSAGE_LENGTH, fp ) != NULL ) {
-		    if ( !strncmp( message, "WARNING", 7 ) || !strncmp( message, "Warning", 7 ) ) {
-		        difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_WARNING );
-		    }
-		    else if ( !strncmp( message, "ERROR", 5 ) || !strncmp( message, "Error", 5 ) ) {
-		        difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_ERROR );
-		    }
-		}
-		pclose( fp );
+		diagnostic( WARNING, "Executing: %s", command );
+        executor = new ExecuteSystem( command );
+        while ( int ret = executor->nextOutput( message, DIFX_MESSAGE_LENGTH ) ) {
+            if ( ret == 1 )  // stdout
+                diagnostic( INFORMATION, "calcif2... %s", message );
+            else             // stderr
+                diagnostic( ERROR, "calcif2... %s", message );
+        }
+        if ( executor->noErrors() )
+            diagnostic( WARNING, "calcif2 complete" );
+        else
+            diagnostic( ERROR, "calcif2 FAILED" );
+        delete executor;
+        
 		
     	//  Open a TCP socket connection to the server that should be running for us on the
         //  remote host.  This is used to transfer a list of all of the files we have created.

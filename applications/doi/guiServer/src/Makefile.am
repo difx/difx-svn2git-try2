@@ -18,6 +18,7 @@ guiServer_SOURCES = \
 	difxFileOperation.cpp \
 	vex2difxRun.cpp \
 	machinesDefinition.cpp \
+	ExecuteSystem.h \
 	MachinesMonitorConnection.h \
 	JobMonitorConnection.h
 

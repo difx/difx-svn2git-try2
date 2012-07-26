@@ -30,6 +30,10 @@ namespace guiServer {
         static const int WARNING_PACKET                 = 5;
         static const int ERROR_PACKET                   = 6;
         static const int MULTICAST_SETTINGS_PACKET      = 7;
+        static const int GUISERVER_VERSION              = 8;
+        static const int GUISERVER_DIFX_VERSION         = 9;
+        static const int AVAILABLE_DIFX_VERSION         = 10;
+        static const int DIFX_BASE                      = 11;
 
         PacketExchange( network::GenericSocket* sock ) : network::PacketExchange( sock ) {
             _receiveActive = false;
@@ -84,6 +88,9 @@ namespace guiServer {
                     case MULTICAST_SETTINGS_PACKET:
                         multicastSettings( data, nBytes );
                         break;
+                    case GUISERVER_VERSION:
+                        guiServerVersionRequest();
+                        break;
                     //  Any packet we don't recognize we send to the "newPacket()" function,
                     //  which might know what to do with it.
                     default:
@@ -103,6 +110,7 @@ namespace guiServer {
         virtual void relayCommand( char* data, const int nBytes ) {}
         virtual void command( char* data, const int nBytes ) {}
         virtual void multicastSettings( char* data, const int nBytes ) {}
+        virtual void guiServerVersionRequest() {}
 
     protected:
     

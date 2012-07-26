@@ -21,6 +21,7 @@
 #include <PacketExchange.h>
 #include <difxmessage.h>
 #include <JobMonitorConnection.h>
+#include <glob.h>
 
 namespace guiServer {
 
@@ -30,15 +31,17 @@ namespace guiServer {
         
     public:
 
-        ServerSideConnection( network::GenericSocket* sock, const char* clientIP ) : PacketExchange( sock ) {
+        ServerSideConnection( network::GenericSocket* sock, const char* clientIP, const char* difxBase ) : PacketExchange( sock ) {
             _commandSocket = NULL;
             _monitorSocket = NULL;
             _multicastGroup[0] = 0;
             _multicastPort = 0;
             _newMulticastSettings = true;            
-            _difxAlertsOn = true;
+            _difxAlertsOn = false;
             _relayDifxMulticasts = false;
+            _diagnosticPacketsOn = true;
             snprintf( _clientIP, 16, "%s", clientIP );
+            strncpy( _difxBase, difxBase, DIFX_MESSAGE_LENGTH );
         }
         
         ~ServerSideConnection() {
@@ -99,6 +102,52 @@ namespace guiServer {
                         sendPacket( RELAY_PACKET, message, ret );
                 }
             }
+        }
+
+        //---------------------------------------------------------------------
+        //!  The GUI has requested all known version information for this
+        //!  guiServer instance.  This includes the guiServer version itself,
+        //!  the version of DiFX for which it was compiled (which difxio is
+        //!  used) and all version of DiFX software that can be run by this
+        //!  guiServer instance.
+        //---------------------------------------------------------------------
+        virtual void guiServerVersionRequest() {
+            char newVersion[DIFX_MESSAGE_LENGTH];
+            //  The guiServer version and the version of DiFX which was used
+            //  to compile it come from compilation defines, which isn't pretty
+            //  but it works.
+#ifdef VERSION
+            sendPacket( GUISERVER_VERSION, VERSION, strlen( VERSION ) );
+#else
+            sendPacket( GUISERVER_VERSION, "unknown", strlen( "unknown" ) );
+#endif
+#ifdef DIFX_VERSION
+            sendPacket( GUISERVER_DIFX_VERSION, DIFX_VERSION, strlen( DIFX_VERSION ) );
+#else
+            sendPacket( GUISERVER_DIFX_VERSION, "unknown", strlen( "unknown" ) );
+#endif
+            //  Send the current DiFX "base" that we are using.  This determines
+            //  where the setup files for different versions exist.
+            sendPacket( DIFX_BASE, _difxBase, strlen( _difxBase ) );
+                
+            //  Find all available versions of DiFX software under the base.  Any of these
+            //  can be used when running DiFX programs (vex2difx, runmpifxcorr, etc.).
+            char searchStr[DIFX_MESSAGE_LENGTH];
+            snprintf( searchStr, DIFX_MESSAGE_LENGTH, "%s/bin/setup_difx.*", _difxBase );
+            glob_t globbuf;
+            if ( glob( searchStr, 0, NULL, &globbuf ) ) {
+                diagnostic( ERROR, "On DiFX Host \"%s\" returns empty or path does not exist\n", searchStr );
+            } else {
+                //  Parse the "version" out of the name of each setup file we find.  This
+                //  version is then transmitted back to the GUI so it knows it is an option.
+                for ( int i = 0; i < globbuf.gl_pathc; ++i ) {
+                    strncpy( newVersion, globbuf.gl_pathv[i] + strlen( searchStr ) - 1, DIFX_MESSAGE_LENGTH );
+                    if ( strlen( newVersion ) > 0 )
+                        sendPacket( AVAILABLE_DIFX_VERSION, newVersion, strlen( newVersion ) );
+                }
+            }
+            globfree( &globbuf );
+            
         }
 
         //---------------------------------------------------------------------
@@ -170,6 +219,9 @@ namespace guiServer {
     			case DIFX_MESSAGE_MACHINESDEFINITION:
     				machinesDefinition( &G );
     				break;
+    		    case DIFX_MESSAGE_COMMAND:
+    		        relayCommand( data, nBytes );
+    		        break;
                 default:
                     diagnostic( WARNING, "Received command message type %d - don't know what this is....\n", G.type );
                 }
@@ -244,12 +296,14 @@ namespace guiServer {
         //---------------------------------------------------------------------
         struct DifxStartInfo {
             ServerSideConnection* ssc;
-            JobMonitorConnection* jmc;
+            JobMonitorConnection* jobMonitor;
             int force;
             int sockFd;
             char removeCommand[MAX_COMMAND_SIZE];
             char startCommand[MAX_COMMAND_SIZE];
             char jobName[MAX_COMMAND_SIZE];
+            char filebase[MAX_COMMAND_SIZE];
+            int runThread;
         };
 
         //-----------------------------------------------------------------------------
@@ -274,6 +328,8 @@ namespace guiServer {
         void vex2difxRun( DifxMessageGeneric* G );
         void machinesDefinition( DifxMessageGeneric* G );
         void diagnostic( const int severity, const char *fmt, ... );
+        int popenRWE( int *rwepipe, const char *exe, const char *const argv[] );
+        int pcloseRWE( int pid, int *rwepipe );
 
     protected:
     
@@ -288,6 +344,7 @@ namespace guiServer {
         char _multicastGroup[16];
         int _multicastPort;
         char _clientIP[16];
+        char _difxBase[DIFX_MESSAGE_LENGTH];
         
     };
 
