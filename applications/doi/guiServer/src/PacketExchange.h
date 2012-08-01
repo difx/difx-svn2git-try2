@@ -50,6 +50,7 @@ namespace guiServer {
         //---------------------------------------------------------------------
         static void* staticReceiveThread( void* a ) {
             ( (PacketExchange*)a )->receiveThread();
+            return NULL;
         }
         
         //---------------------------------------------------------------------

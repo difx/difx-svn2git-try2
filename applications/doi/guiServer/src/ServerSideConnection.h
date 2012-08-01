@@ -97,10 +97,26 @@ namespace guiServer {
                     _monitorSocket = NULL;
                 }
                 else {
-                    //  Decide what to do with this packet.
+                    //  Decide what to do with this message.
+                    /*
+                    DifxMessageGeneric G;
+                    if ( !difxMessageParse( &G, message ) ) {
+                        switch( G.type ) {
+                        case DIFX_MESSAGE_STATUS:
+                            break;
+                        case DIFX_MESSAGE_DIAGNOSTIC:
+                            break;
+                        case DIFX_MESSAGE_ALERT:
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                    */
                     if ( _relayDifxMulticasts )
                         sendPacket( RELAY_PACKET, message, ret );
                 }
+                sched_yield();
             }
         }
 

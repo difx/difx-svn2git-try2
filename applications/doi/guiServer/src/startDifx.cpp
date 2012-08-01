@@ -302,6 +302,7 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
         diagnostic( WARNING, "executing: %s\n", startInfo->startCommand );
         printf( "%s\n", startInfo->startCommand );
 		jobMonitor->sendPacket( JobMonitorConnection::STARTING_DIFX, NULL, 0 );
+		bool noErrors = true;
         ExecuteSystem* executor = new ExecuteSystem( startInfo->startCommand );
         if ( executor->pid() > -1 ) {
             while ( int ret = executor->nextOutput( message, DIFX_MESSAGE_LENGTH ) ) {
@@ -310,14 +311,24 @@ void ServerSideConnection::startDifx( DifxMessageGeneric* G ) {
 	                jobMonitor->sendPacket( JobMonitorConnection::DIFX_MESSAGE, message, strlen( message ) );
 	            }
                 else {            // stderr
-                    diagnostic( ERROR, "%s... %s", difxProgram, message );
-	                jobMonitor->sendPacket( JobMonitorConnection::DIFX_ERROR, message, strlen( message ) );
+                    //  See if this message contains the string "warning" (multiple case situations)
+                    //  indicating that....it is a warning.
+                    if ( strcasestr( message, "WARNING" ) != NULL ) {
+                        diagnostic( WARNING, "%s... %s", difxProgram, message );
+	                    jobMonitor->sendPacket( JobMonitorConnection::DIFX_WARNING, message, strlen( message ) );
+                    }
+                    else {
+                        diagnostic( ERROR, "%s... %s", difxProgram, message );
+	                    jobMonitor->sendPacket( JobMonitorConnection::DIFX_ERROR, message, strlen( message ) );
+	                    noErrors = false;
+	                }
 	            }
             }
-            if ( executor->noErrors() ) {
+            if ( noErrors ) {
                 diagnostic( WARNING, "%s complete", difxProgram );
                 difxMessageSendDifxStatus2( startInfo->jobName, DIFX_STATE_MPIDONE, "" );
         		jobMonitor->sendPacket( JobMonitorConnection::DIFX_COMPLETE, NULL, 0 );
+                jobMonitor->sendPacket( JobMonitorConnection::JOB_ENDED_GRACEFULLY, NULL, 0 );
     		}
             else {
                 diagnostic( ERROR, "%s FAILED", difxProgram );

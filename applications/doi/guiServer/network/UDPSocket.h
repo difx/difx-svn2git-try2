@@ -189,6 +189,7 @@ namespace network {
             } while ( _ignoreOwn && (fromaddr.sin_addr.s_addr == hostaddr.sin_addr.s_addr) );
 
             _ipValid = true;
+            message[charcount] = 0;
             return( charcount );
         }
 

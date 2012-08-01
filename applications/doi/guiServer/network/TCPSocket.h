@@ -214,6 +214,7 @@ namespace network {
         //----------------------------------------------------------------------------
         static void* staticThreadStart( void* a ) {
             ( (TCPSocket*)a )->monitorThread();
+            return NULL;
         }
         
         //----------------------------------------------------------------------------
@@ -287,6 +288,7 @@ namespace network {
             //  Extract the pointer to the class instance making this static call.
             TCPSocket* inst = (TCPSocket*)(a);
             inst->doCallback();
+            return NULL;
         }
         
         void doCallback() {
