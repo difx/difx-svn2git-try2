@@ -535,6 +535,7 @@ public class DiFXDataModel {
         }
         //
         //======================================================================
+        /*
         
         // -- catch some exceptions and keep the program from terminating. . .
         // Message must originate from mpifxcorr or swc000
@@ -850,6 +851,8 @@ public class DiFXDataModel {
 
         //} // -- if ( (difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("mpifxcorr")) ||
         // --      (difxMsg.getHeader().getFrom().substring(0, len).equalsIgnoreCase("swc000"   )) )
+         * 
+         */
 
     }
 

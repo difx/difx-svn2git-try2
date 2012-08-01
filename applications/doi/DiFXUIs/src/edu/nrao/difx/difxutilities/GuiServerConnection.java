@@ -197,6 +197,7 @@ public class GuiServerConnection {
                     _connected = false;
                     connectEvent( e.toString() );
                 }
+            try { Thread.sleep( 20 ); } catch ( Exception e ) {}
             }
         }
         

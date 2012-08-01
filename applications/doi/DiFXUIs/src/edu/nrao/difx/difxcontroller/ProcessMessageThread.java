@@ -25,7 +25,7 @@ public class ProcessMessageThread implements Runnable
    private String  mThreadName;
    private boolean mDone = false;
 
-   private BlockingQueue<ByteArrayInputStream> mBlockQueue;
+   private BlockingQueue<ByteArrayInputStream> _messageQueue;
 
    private DiFXController      mTheController;
    private JAXBPacketProcessor mThePacketProcessor;
@@ -34,7 +34,7 @@ public class ProcessMessageThread implements Runnable
    public ProcessMessageThread(String name, SystemSettings systemSettings )
    {
       mThreadName         = name;
-      mBlockQueue         = new LinkedBlockingQueue<ByteArrayInputStream>();
+      _messageQueue       = new LinkedBlockingQueue<ByteArrayInputStream>();
       mThePacketProcessor = new JAXBPacketProcessor( systemSettings.jaxbPackage() );
    }
 
@@ -50,7 +50,7 @@ public class ProcessMessageThread implements Runnable
       // no null entries allowed
       try
       {
-         return ( mBlockQueue.offer( pack ) );
+         return ( _messageQueue.offer( pack ) );
       }
       catch (NullPointerException e)
       {
@@ -61,7 +61,7 @@ public class ProcessMessageThread implements Runnable
 //   public DatagramPacket remove() throws InterruptedException
    public ByteArrayInputStream remove() throws InterruptedException
    {
-      return ( mBlockQueue.take() );
+      return ( _messageQueue.take() );
    }
 
    // Assign a controller, DiFX has a single GUI controller
@@ -142,10 +142,10 @@ public class ProcessMessageThread implements Runnable
             try
             {
                // Check queue for the packet
-               if (mBlockQueue != null)
+               if (_messageQueue != null)
                {
                   // Wait and get packet from queue
-                  packet = mBlockQueue.take();
+                  packet = _messageQueue.take();
 
                   // process the message packet
                   if (packet != null)
@@ -171,7 +171,7 @@ public class ProcessMessageThread implements Runnable
                      mDone = true;
                   }
 
-               } // -- if (mBlockQueue != null)
+               } // -- if (_messageQueue != null)
             }
             catch (InterruptedException exception)
             {

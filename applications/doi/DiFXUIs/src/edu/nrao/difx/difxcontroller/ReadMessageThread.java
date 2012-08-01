@@ -26,7 +26,7 @@ public class ReadMessageThread implements Runnable {
     private boolean mDone = false;
     private boolean _settingsChange = true;
     // -- always start the process message thread before this thread.
-    private ProcessMessageThread mMessageQueue;
+    private ProcessMessageThread _processMessageThread;
     SystemSettings _settings;
 
     // Constructor, give the thread a name and a link to the system settings.
@@ -54,11 +54,11 @@ public class ReadMessageThread implements Runnable {
 
     // Methods specific to the message queue
     public void addQueue(ProcessMessageThread queue) {
-        mMessageQueue = queue;
+        _processMessageThread = queue;
     }
 
     public ProcessMessageThread getQueue() {
-        return mMessageQueue;
+        return _processMessageThread;
     }
 
     private void printPacket(DatagramPacket packet) {
@@ -95,7 +95,7 @@ public class ReadMessageThread implements Runnable {
                                 if ( buffer != null ) {
                                     //  Feedback for the plot in the settings window
                                     _settings.gotPacket( buffer.length );
-                                    if ( !mMessageQueue.add( new ByteArrayInputStream( buffer, 0, buffer.length ) ) ) {
+                                    if ( !_processMessageThread.add( new ByteArrayInputStream( buffer, 0, buffer.length ) ) ) {
                                         System.out.printf("******** Read message thread packet FAILED to add into queue. \n");
                                     }
                                     buffer = null;
@@ -129,8 +129,8 @@ public class ReadMessageThread implements Runnable {
                                     socket.receive(packet);
                                     //  This allows the systems settings to show the packets as we receive them...very exciting.
                                     _settings.gotPacket( packet.getLength() );
-//                                    if (!mMessageQueue.add(packet)) {
-                                    if ( !mMessageQueue.add( new ByteArrayInputStream( packet.getData(), 0, packet.getLength() ) ) ) {
+//                                    if (!_processMessageThread.add(packet)) {
+                                    if ( !_processMessageThread.add( new ByteArrayInputStream( packet.getData(), 0, packet.getLength() ) ) ) {
                                         System.out.printf("******** Read message thread packet FAILED to add into queue. \n");
                                     }
                                 } catch ( SocketTimeoutException exception ) {
