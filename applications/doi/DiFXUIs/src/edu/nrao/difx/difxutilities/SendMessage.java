@@ -6,7 +6,6 @@
 package edu.nrao.difx.difxutilities;
 
 import edu.nrao.difx.difxview.SystemSettings;
-import edu.nrao.difx.difxdatamodel.DiFXSystemConfig;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
