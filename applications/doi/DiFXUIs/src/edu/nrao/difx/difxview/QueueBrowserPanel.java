@@ -45,10 +45,9 @@ import java.sql.ResultSet;
 
 public class QueueBrowserPanel extends TearOffPanel {
 
-    public QueueBrowserPanel( SystemSettings systemSettings, MessageDisplayPanel messageDisplay ) {
+    public QueueBrowserPanel( SystemSettings systemSettings ) {
         _systemSettings = systemSettings;
         _systemSettings.queueBrowser( this );
-        _messageDisplay = messageDisplay;
         setLayout( null );
         _browserPane = new NodeBrowserScrollPane( 20 );
         this.add( _browserPane );
@@ -734,7 +733,6 @@ public class QueueBrowserPanel extends TearOffPanel {
     protected ExperimentNode _unaffiliated;
     protected PassNode _unknown;
     protected SystemSettings _systemSettings;
-    protected MessageDisplayPanel _messageDisplay;
     protected int _timeoutCounter;
     protected JButton _autoButton;
     protected ActivityMonitorLight _autoActiveLight;

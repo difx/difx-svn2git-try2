@@ -14,7 +14,6 @@ import java.awt.event.ActionListener;
 import edu.nrao.difx.difxdatamodel.*;
 import edu.nrao.difx.difxcontroller.*;
 
-import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 
 import javax.swing.JSplitPane;
@@ -79,13 +78,6 @@ public class DiFXUI extends JFrame implements WindowListener {
         //  Create a "data model" for processing incoming data transmissions
         _dataModel = new DiFXDataModel( _systemSettings );
         _dataModel.messageDisplayPanel( _messageCenter );
-        
-//        //  The data model needs to know when changes are made to database settings.
-//        _systemSettings.databaseChangeListener( new ActionListener() {
-//            public void actionPerformed( ActionEvent e ) {
-////                _dataModel.updataDatabaseFromSystemSettings();
-//            }
-//        } );
         
         //  The DiFX Controller runs threads (why, I'm not sure...)
         _difxController = new DiFXController( _systemSettings );
@@ -217,7 +209,7 @@ public class DiFXUI extends JFrame implements WindowListener {
         _mainSplitPane = new javax.swing.JSplitPane();
         _topSplitPane = new javax.swing.JSplitPane();
         _messageCenter = new mil.navy.usno.widgetlib.MessageDisplayPanel();
-        _queueBrowser = new edu.nrao.difx.difxview.QueueBrowserPanel( _systemSettings, _messageCenter );
+        _queueBrowser = new edu.nrao.difx.difxview.QueueBrowserPanel( _systemSettings );
         _queueBrowser.addTearOffListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 queueBrowserTearOffEvent();
@@ -298,41 +290,6 @@ public class DiFXUI extends JFrame implements WindowListener {
         arrangeMenu.add( _verticalItem );
         windowMenu.add( arrangeMenu );
         windowMenu.add( new JSeparator() );
-        JMenuItem resourceItem = new JMenuItem( "Resource Manager" );
-        resourceItem.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                resourceManagerButtonActionPerformed( e );
-            }
-        });
-        windowMenu.add( resourceItem );
-        JMenuItem modulesItem = new JMenuItem( "Units/Modules" );
-        modulesItem.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                modulesButtonActionPerformed( e );
-            }
-        });
-        windowMenu.add( modulesItem );
-        JMenuItem projectItem = new JMenuItem( "Project Manager" );
-        projectItem.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                projectManagerButtonActionPerformed( e );
-            }
-        });
-        windowMenu.add( projectItem );
-        JMenuItem jobManagerItem = new JMenuItem( "Job Manager" );
-        jobManagerItem.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                jobManagerButtonActionPerformed( e );
-            }
-        });
-        windowMenu.add( jobManagerItem );
-        JMenuItem queueManagerItem = new JMenuItem( "Queue Manager" );
-        queueManagerItem.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                queueManagerButtonActionPerformed( e );
-            }
-        });
-        windowMenu.add( queueManagerItem );
         _menuBar.add( windowMenu );
         JMenu helpMenu = new JMenu( "Help" );
         JMenuItem aboutItem = new JMenuItem( "Version, etc." );
@@ -515,78 +472,6 @@ public class DiFXUI extends JFrame implements WindowListener {
         }
     }
 
-    private void projectManagerButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                     
-
-        // Display the GUI
-        ProjectManagerUI thePM = ProjectManagerUI.instance( _systemSettings, _dataModel, _difxController);
-        // singleton, attach listener in the ProjectManagerUI class not here.
-        // thePM.attachListenerCallback();
-        thePM.setVisible(true);
-        _dataModel.notifyListeners();
-
-    }                                                    
-
-    private void resourceManagerButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                      
-
-        // Display the GUI
-        ResourceManagerUI theRM = ResourceManagerUI.instance(_dataModel, _difxController);
-        // singleton, attach listener in the ResourceManagerUI class not here.
-        //theRM.attachListenerCallback();
-        theRM.setVisible(true);
-        _dataModel.notifyListeners();
-
-    }                                                     
-
-    private void jobManagerButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                 
-
-        // Display the GUI, get current job running
-        Queue queue = _dataModel.getQueue();
-        if (queue != null) {
-            Job job = queue.getCurrentJob();
-            String jobName = null;
-            if (job != null) {
-                jobName = job.getObjName();
-                if (jobName.isEmpty()) {
-                    jobName = "Open a Job";
-                }
-                // clean up -BLAT is this necessary??  I thought the all-powerful Java
-                // garbage collector would take care of this!
-                job = null;
-            }
-
-            JobManagerUI theJM = new JobManagerUI(_dataModel, _difxController, jobName, true);
-            theJM.attachListenerCallback();
-            theJM.setVisible(true);
-
-        }
-
-
-        // clean up
-        queue = null;
-    }                                                
-
-    private void modulesButtonActionPerformed(java.awt.event.ActionEvent evt) {                                              
-
-        // Display the GUI
-        ModuleManagerUI theMM = ModuleManagerUI.instance(_dataModel, _difxController);
-        // singleton, attach listener in the ResourceManagerUI class not here.
-        // theMM.attachListenerCallback();
-        theMM.setVisible(true);
-        _dataModel.notifyListeners();
-
-    }                                             
-
-    private void queueManagerButtonActionPerformed(java.awt.event.ActionEvent evt)                                                   
-    {                                                       
-        // Display the GUI
-        QueueManagerUI theQM = QueueManagerUI.instance(_dataModel, _difxController);
-        // singleton, attach listener in the QueueManagerUI class not here.
-        // theQM.attachListenerCallback();
-        theQM.setVisible(true);
-        _dataModel.notifyListeners();
-
-    }
-    
     /*
      * Pop up a window containing information about this software.  The event is
      * passed so that the window pops up near the mouse.
