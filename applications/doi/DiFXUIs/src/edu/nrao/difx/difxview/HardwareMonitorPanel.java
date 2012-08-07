@@ -66,15 +66,6 @@ public class HardwareMonitorPanel extends TearOffPanel {
      */
     public void dataModel( DiFXDataModel newModel ) {
         _mDataModel = newModel;
-        // create a listener that calls our local function
-//        _mListener = new MessageListener() {
-//            @Override
-//            public void update() {
-//                serviceDataUpdate();
-//            }
-//        };
-//        // hand DataModel a call back listener
-//        _mDataModel.attachListener( _mListener );
         _mDataModel.addHardwareMessageListener( new AttributedMessageListener() {
             @Override
             public void update( DifxMessage data ) {
@@ -261,7 +252,6 @@ public class HardwareMonitorPanel extends TearOffPanel {
     protected BrowserNode _mk5Modules;
     private JLabel _mainLabel;
     DiFXDataModel  _mDataModel;
-    MessageListener _mListener;
     protected SystemSettings _settings;
     
 }

@@ -48,10 +48,6 @@ public class UpdateViewThread  implements Runnable
       if (mTheController != null)
       {
          // have the controller process the message to service data model
-         if (mTheController.getDataModel() != null)
-         {
-            (mTheController.getDataModel()).notifyListeners();
-         }
 
       } else
       {

@@ -10,7 +10,6 @@ import edu.nrao.difx.difxdatamodel.*;
 import edu.nrao.difx.difxutilities.SendMessage;
 import edu.nrao.difx.xmllib.difxmessage.*;
 
-import java.net.UnknownHostException;
 import javax.swing.*;
 
 /**
@@ -26,9 +25,6 @@ public class DiFXController {
    // Support a view
    JFrame mView;
 
-   // Call back listener
-   MessageListener mListener;
-   
    SystemSettings _systemSettings;
 
    // Constructor
@@ -105,21 +101,6 @@ public class DiFXController {
       mDataModel = model;
       mView      = view;
 
-      // create this controller's listener implementation of update()...
-      mListener = new MessageListener() {
-         @Override
-         public void update()
-         {
-            // Get handle to conroller and update
-            //System.out.printf("***************** DiFX update controller. \n");
-            //UpdateController();
-            //System.out.println("***************** DiFX update controller complete. \n");
-         }
-         
-      };
-
-      // attach this controller's listener to the model
-      mDataModel.attachListener(mListener);
    }
 
    // Start the controller thread
@@ -128,7 +109,6 @@ public class DiFXController {
       // Set the controller, used to update data model from process message queue
       (mThreadMgr.getProcessThread()).setController(this);
       (mThreadMgr.getUpdateThread()).setController(this);
-      (mThreadMgr.getJobStateThread()).setController(this);
 
       // kick the threads
       mThreadMgr.startThreads();

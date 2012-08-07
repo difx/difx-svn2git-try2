@@ -1175,13 +1175,22 @@ public class JobEditorMonitor extends JFrame {
                             statusPanelColor( Color.GREEN );                            //  turn the frame green!!!!
                         }
                         else if ( packetType == DIFX_MESSAGE ) {
-                            _messageDisplayPanel.message( 0, "job monitor", new String( data ) );
+                            if ( data != null )
+                                _messageDisplayPanel.message( 0, "job monitor", new String( data ) );
+                            else
+                                _messageDisplayPanel.message( 0, "job monitor", "" );
                         }
                         else if ( packetType == DIFX_WARNING ) {
-                            _messageDisplayPanel.warning( 0, "job monitor", new String( data ) );
+                            if ( data != null )
+                                _messageDisplayPanel.warning( 0, "job monitor", new String( data ) );
+                            else
+                                _messageDisplayPanel.warning( 0, "job monitor", "" );
                         }
                         else if ( packetType == DIFX_ERROR ) {
-                            _messageDisplayPanel.error( 0, "job monitor", new String( data ) );
+                            if ( data != null )
+                                _messageDisplayPanel.error( 0, "job monitor", new String( data ) );
+                            else
+                                _messageDisplayPanel.error( 0, "job monitor", "" );
                             statusPanelColor( Color.RED );
                         }
                         else if ( packetType == DIFX_COMPLETE ) {
