@@ -18,7 +18,6 @@ public class ThreadManager {
 
    private ReadMessageThread     mReadThread;
    private ProcessMessageThread  mProcessThread;
-   private UpdateViewThread      mUpdateThread;
    private ExecutorService       mThreadExecutor;
 
    public ThreadManager( SystemSettings systemSettings )
@@ -27,7 +26,6 @@ public class ThreadManager {
       // an executor to manage the threads.
       mReadThread     = new ReadMessageThread( "ReadMessageThread", systemSettings );
       mProcessThread  = new ProcessMessageThread("ProcessMessageThread", systemSettings );
-      mUpdateThread   = new UpdateViewThread("UpdateViewThread");
       mThreadExecutor = Executors.newFixedThreadPool(4);
    }
 
@@ -41,17 +39,11 @@ public class ThreadManager {
       return mReadThread;
    }
 
-   public UpdateViewThread getUpdateThread()
-   {
-      return mUpdateThread;
-   }
-
    public void startThreads() throws InterruptedException
    {
       System.out.println("Thread manager threads starting.");
 
       // Start the threads
-      mThreadExecutor.execute(mUpdateThread);
       mThreadExecutor.execute(mProcessThread);
 
       // Assign the preccess message thread to the read thread

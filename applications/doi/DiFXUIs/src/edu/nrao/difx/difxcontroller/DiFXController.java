@@ -108,7 +108,7 @@ public class DiFXController {
    {
       // Set the controller, used to update data model from process message queue
       (mThreadMgr.getProcessThread()).setController(this);
-      (mThreadMgr.getUpdateThread()).setController(this);
+//      (mThreadMgr.getUpdateThread()).setController(this);
 
       // kick the threads
       mThreadMgr.startThreads();

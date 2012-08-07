@@ -151,9 +151,6 @@ public class ProcessMessageThread implements Runnable
                   if (packet != null)
                   {
                      processMessage( packet );
-
-                     //Update the UIs
-                     UpdateViewThread.mUpdateNow = true;
                   }
                   else
                   {
