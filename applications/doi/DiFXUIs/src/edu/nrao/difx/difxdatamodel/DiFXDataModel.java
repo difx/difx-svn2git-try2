@@ -37,7 +37,7 @@ public class DiFXDataModel {
     private List<Job> mJobs = new ArrayList<Job>();
     private List<Project> mProjects = new ArrayList<Project>();
     private List<JobProject> mJobsProjects = new ArrayList<JobProject>();
-    private Queue mQueue = new Queue(this);
+    //private Queue mQueue = new Queue(this);
     //private DBConnection mDBConnection = null;
     //private DBConnection _dbConnection;
     private List<Object> mListeners = Collections.synchronizedList(new ArrayList<Object>());
@@ -431,15 +431,6 @@ public class DiFXDataModel {
         this.mJobsProjects = newJobsProjects;
     }
 
-    // Queue get/set methods
-    public Queue getQueue() {
-        return this.mQueue;
-    }
-
-    public void setQueue(Queue newQueue) {
-        this.mQueue = newQueue;
-    }
-
     // System get/set methods
     public void setSystemConfig(DiFXSystemConfig sysConfig) {
         mSystemConfig = sysConfig;
@@ -476,13 +467,13 @@ public class DiFXDataModel {
             //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DifxAlertMessage");
             processDifxAlertMessage(difxMsg);
 
-        } else if (header.getType().equalsIgnoreCase("DOIMessage")) {
-            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DOIMessage");
-            processDOIMessage(difxMsg);
-
-        } else if (header.getType().equalsIgnoreCase("DoiErrorMessage")) {
-            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DoiErrorMessage");
-            processDOIMessage(difxMsg);
+//        } else if (header.getType().equalsIgnoreCase("DOIMessage")) {
+//            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DOIMessage");
+//            processDOIMessage(difxMsg);
+//
+//        } else if (header.getType().equalsIgnoreCase("DoiErrorMessage")) {
+//            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DoiErrorMessage");
+//            processDOIMessage(difxMsg);
 
         } else {
             if ( !_systemSettings.suppressWarnings() ) {
@@ -1090,308 +1081,308 @@ public class DiFXDataModel {
         }
     }
 
-    private synchronized void processDOIMessage(DifxMessage difxMsg) {
-        Body body = difxMsg.getBody();
-        if (body.getDoiAntenna() != null) {
-            processDOIAntennaMessage(difxMsg);
-        } else if (body.getDoiModule() != null) {
-            processDOIModuleMessage(difxMsg);
-        } else if (body.getDoiResourceConfig() != null) {
-            processDOIResourceConfigMessage(difxMsg);
-        } else if (body.getDoiProject() != null) {
-            processDOIProjectMessage(difxMsg);
-        } else if (body.getDoiJob() != null) {
-            processDOIJobMessage(difxMsg);
-        } else if (body.getDoiJobProject() != null) {
-            processDOIJobProjectMessage(difxMsg);
-        } else if (body.getDoiJobCommand() != null) {
-            processDOIJobCommandMessage(difxMsg);
-        } else if (body.getDoiQueueCommand() != null) {
-            processDOIQueueCommandMessage(difxMsg);
-//        } else if (body.getDoiSystemConfig() != null) {
-//            processDOISystemConfigMessage(difxMsg);
-        } else if (body.getDoiError() != null) {
-            processDOIErrorMessage(difxMsg);
-        }
+//    private synchronized void processDOIMessage(DifxMessage difxMsg) {
+//        Body body = difxMsg.getBody();
+//        if (body.getDoiAntenna() != null) {
+//            processDOIAntennaMessage(difxMsg);
+//        } else if (body.getDoiModule() != null) {
+//            processDOIModuleMessage(difxMsg);
+//        } else if (body.getDoiResourceConfig() != null) {
+//            processDOIResourceConfigMessage(difxMsg);
+//        } else if (body.getDoiProject() != null) {
+//            processDOIProjectMessage(difxMsg);
+//        } else if (body.getDoiJob() != null) {
+//            processDOIJobMessage(difxMsg);
+//        } else if (body.getDoiJobProject() != null) {
+//            processDOIJobProjectMessage(difxMsg);
+//        } else if (body.getDoiJobCommand() != null) {
+//            processDOIJobCommandMessage(difxMsg);
+//        } else if (body.getDoiQueueCommand() != null) {
+//            processDOIQueueCommandMessage(difxMsg);
+////        } else if (body.getDoiSystemConfig() != null) {
+////            processDOISystemConfigMessage(difxMsg);
+//        } else if (body.getDoiError() != null) {
+//            processDOIErrorMessage(difxMsg);
+//        }
+//
+//        // clean up
+//        body = null;
+//    }
 
-        // clean up
-        body = null;
-    }
+//    private void processDOIResourceConfigMessage(DifxMessage difxMsg) {
+//        String name = difxMsg.getBody().getDoiResourceConfig().getName();
+//        //Short numCPUs = difxMsg.getBody().getDoiResourceConfig().getNumCPUs();
+//        //Short numCores = difxMsg.getBody().getDoiResourceConfig().getNumCores();
+//        //Float bogusGHz = difxMsg.getBody().getDoiResourceConfig().getBogusGHz();
+//        Boolean enabled = difxMsg.getBody().getDoiResourceConfig().isEnabled();
+//
+//        Short type = difxMsg.getBody().getDoiResourceConfig().getType();
+//        switch (type) {
+//            case 0: // Processor Node
+//            {
+//                ProcessorNode node = new ProcessorNode();
+//                node.setObjType("processor");
+//                node.setObjName(name);
+//                node.setObjId(0);
+//                //node.setNumCPUs(numCPUs);
+//                //node.setNumCores(numCores);
+//                //node.setBogusGHz(bogusGHz);
+//                node.setType(type);
+//                node.setTypeString("node");
+//                node.setEnabled(enabled);
+//                updateDataModel(node);
+//                node = null;
+//                break;
+//            }
+//            case 1: // Mark 5 Unit
+//            {
+//                Mark5Unit mark5 = new Mark5Unit();
+//                mark5.setObjType("mark5");
+//                mark5.setObjName(name);
+//                mark5.setObjId(0);
+//                //mark5.setNumCPUs(numCPUs);
+//                //mark5.setNumCores(numCores);
+//                //mark5.setBogusGHz(bogusGHz);
+//                mark5.setType(type);
+//                mark5.setTypeString("mark5");
+//                mark5.setEnabled(enabled);
+//                updateDataModel(mark5);
+//                mark5 = null;
+//                break;
+//            }
+//            case 2: // Processor Manager
+//            {
+//                ProcessorNode manager = new ProcessorNode();
+//                manager.setObjType("processor");
+//                manager.setObjName(name);
+//                manager.setObjId(0);
+//                //manager.setNumCPUs(numCPUs);
+//                //manager.setNumCores(numCores);
+//                //manager.setBogusGHz(bogusGHz);
+//                manager.setType(type);
+//                manager.setTypeString("manager");
+//                manager.setEnabled(enabled);
+//                updateDataModel(manager);
+//                manager = null;
+//                break;
+//            }
+//            default: {
+//                // -- Invalid type
+//                System.out.printf("******** Data model service model - invalid resource type \n");
+//            }
+//
+//        } // -- switch (type)
+//    }
 
-    private void processDOIResourceConfigMessage(DifxMessage difxMsg) {
-        String name = difxMsg.getBody().getDoiResourceConfig().getName();
-        //Short numCPUs = difxMsg.getBody().getDoiResourceConfig().getNumCPUs();
-        //Short numCores = difxMsg.getBody().getDoiResourceConfig().getNumCores();
-        //Float bogusGHz = difxMsg.getBody().getDoiResourceConfig().getBogusGHz();
-        Boolean enabled = difxMsg.getBody().getDoiResourceConfig().isEnabled();
+//    private void processDOIAntennaMessage(DifxMessage difxMsg) {
+//        String jobName = difxMsg.getBody().getDoiAntenna().getJobName();
+//        String antName = difxMsg.getBody().getDoiAntenna().getAntennaName();
+//        int id = difxMsg.getBody().getDoiAntenna().getId();
+//        String moduleVSN = difxMsg.getBody().getDoiAntenna().getModuleVSN();
+//        String shelf = difxMsg.getBody().getDoiAntenna().getShelf();
+//
+//        // Create and populate the antenna
+//        //Antenna ant = new Antenna();
+//        //ant.setObjName(antName);
+//        //ant.setObjId(id);
+//        //ant.setObjType("antenna");
+//        //ant.setModuleVSN(moduleVSN);
+//        //ant.setShelf(shelf);
+//
+//        // This is a kluge until something better....
+//        //
+//        // NOTE:
+//        // 2 step process.
+//        // 1. Associate the antenna to the job via addAntenna() method
+//        // 2. Insert/Update the antenna into the data model done in UpdateModel()
+//        //Job job = GetJob(jobName);
+//        //job.addAntenna(ant);
+//
+//        //UpdateDataModel(ant);
+//    }
 
-        Short type = difxMsg.getBody().getDoiResourceConfig().getType();
-        switch (type) {
-            case 0: // Processor Node
-            {
-                ProcessorNode node = new ProcessorNode();
-                node.setObjType("processor");
-                node.setObjName(name);
-                node.setObjId(0);
-                //node.setNumCPUs(numCPUs);
-                //node.setNumCores(numCores);
-                //node.setBogusGHz(bogusGHz);
-                node.setType(type);
-                node.setTypeString("node");
-                node.setEnabled(enabled);
-                updateDataModel(node);
-                node = null;
-                break;
-            }
-            case 1: // Mark 5 Unit
-            {
-                Mark5Unit mark5 = new Mark5Unit();
-                mark5.setObjType("mark5");
-                mark5.setObjName(name);
-                mark5.setObjId(0);
-                //mark5.setNumCPUs(numCPUs);
-                //mark5.setNumCores(numCores);
-                //mark5.setBogusGHz(bogusGHz);
-                mark5.setType(type);
-                mark5.setTypeString("mark5");
-                mark5.setEnabled(enabled);
-                updateDataModel(mark5);
-                mark5 = null;
-                break;
-            }
-            case 2: // Processor Manager
-            {
-                ProcessorNode manager = new ProcessorNode();
-                manager.setObjType("processor");
-                manager.setObjName(name);
-                manager.setObjId(0);
-                //manager.setNumCPUs(numCPUs);
-                //manager.setNumCores(numCores);
-                //manager.setBogusGHz(bogusGHz);
-                manager.setType(type);
-                manager.setTypeString("manager");
-                manager.setEnabled(enabled);
-                updateDataModel(manager);
-                manager = null;
-                break;
-            }
-            default: {
-                // -- Invalid type
-                System.out.printf("******** Data model service model - invalid resource type \n");
-            }
+//    private void processDOIModuleMessage(DifxMessage difxMsg) {
+//        String jobName = difxMsg.getBody().getDoiModule().getJobName();
+//        String antName = difxMsg.getBody().getDoiModule().getAntennaName();
+//        int id = difxMsg.getBody().getDoiModule().getId();
+//        String moduleVSN = difxMsg.getBody().getDoiModule().getModuleVSN();
+//        String shelf = difxMsg.getBody().getDoiModule().getShelf();
+//
+//        // Create and populate the module
+//        Module mod = new Module();
+//        mod.setObjName(antName);
+//        mod.setObjId(id);
+//        mod.setObjType("antenna");
+//        mod.setModuleVSN(moduleVSN);
+//        mod.setShelf(shelf);
+//
+//        // This is a kluge until something better....
+//        //
+//        // NOTE:
+//        // 2 step process.
+//        // 1. Associate the antenna to the job via addAntenna() method
+//        // 2. Insert/Update the antenna into the data model done in UpdateModel()
+//        Job job = getJob(jobName);
+//        job.addModule(mod);
+//
+//        updateDataModel(mod);
+//        mod = null;
+//        job = null;
+//    }
 
-        } // -- switch (type)
-    }
+//    private void processDOIProjectMessage(DifxMessage difxMsg) {
+//        // Add project to the datamodel
+//        Project proj = new Project();
+//        proj.setObjType("project");
+//        proj.setObjName(difxMsg.getBody().getDoiProject().getProjectName());
+//        proj.setObjId(0);
+//        proj.setProjectPath(difxMsg.getBody().getDoiProject().getProjectPath());
+//        updateDataModel(proj);
+//        proj = null;
+//    }
 
-    private void processDOIAntennaMessage(DifxMessage difxMsg) {
-        String jobName = difxMsg.getBody().getDoiAntenna().getJobName();
-        String antName = difxMsg.getBody().getDoiAntenna().getAntennaName();
-        int id = difxMsg.getBody().getDoiAntenna().getId();
-        String moduleVSN = difxMsg.getBody().getDoiAntenna().getModuleVSN();
-        String shelf = difxMsg.getBody().getDoiAntenna().getShelf();
+//    private void processDOIJobMessage(DifxMessage difxMsg) {
+//        // -- Create a job, load the data and add job to datamodel
+//
+//        // Create job, hand it a copy of data model for verification
+//        Job job = new Job(this);
+//
+//        // Fill in the values from difx message
+//        job.setObjType("job");
+//        job.setObjName(difxMsg.getBody().getDoiJob().getJobName());
+//        job.setObjId(0);
+//        job.setJobPath(difxMsg.getBody().getDoiJob().getJobPath());
+//        job.setProjectName(difxMsg.getBody().getDoiJob().getProjectName());
+//        job.setProjectPath(difxMsg.getBody().getDoiJob().getProjectPath());
+//        job.setSegment(difxMsg.getBody().getDoiJob().getSegment());
+//        job.setJobPass(difxMsg.getBody().getDoiJob().getJobPass());
+//        job.setJobNumber(difxMsg.getBody().getDoiJob().getJobNumber());
+//        job.setPriority(difxMsg.getBody().getDoiJob().getPriority());
+//        job.setActualSpeedUp(difxMsg.getBody().getDoiJob().getActualSpeedUp());
+//        job.setPredictedSpeedUp(difxMsg.getBody().getDoiJob().getPredictedSpeedUp());
+//        job.setJobStartTimeMJD(BigDecimal.valueOf(difxMsg.getBody().getDoiJob().getJobStartTimeMJD()));
+//        job.setJobStopTimeMJD(BigDecimal.valueOf(difxMsg.getBody().getDoiJob().getJobStopTimeMJD()));
+//        job.setNumAntennas(difxMsg.getBody().getDoiJob().getNumAntennas());
+//        job.setDbJob(difxMsg.getBody().getDoiJob().isDbJob());
+//
+//        // Read the job's data file
+//        job.readJobData();
+//
+//        // Put the job into the data model
+//        updateDataModel(job);
+//        job = null;
+//    }
 
-        // Create and populate the antenna
-        //Antenna ant = new Antenna();
-        //ant.setObjName(antName);
-        //ant.setObjId(id);
-        //ant.setObjType("antenna");
-        //ant.setModuleVSN(moduleVSN);
-        //ant.setShelf(shelf);
+//    private void processDOIJobProjectMessage(DifxMessage difxMsg) {
+//        // This is a kluge until something better....
+//        //
+//        // NOTE:
+//        // This is a 2 step process
+//        //  1. associate job and project (done here), and
+//        //  2. insert the association into the jobs queue map (done in UpdateDataModel)... Bad comments
+//        JobProject jobProject = new JobProject();
+//        jobProject.setObjType("jobProject");
+//        jobProject.setObjId(0);
+//        jobProject.setObjName(difxMsg.getBody().getDoiJobProject().getProjectName() + "+"
+//                + difxMsg.getBody().getDoiJobProject().getJobName());
+//        jobProject.SetJobName(difxMsg.getBody().getDoiJobProject().getJobName());
+//        jobProject.SetProject(difxMsg.getBody().getDoiJobProject().getProjectName());
+//        jobProject.SetOption(difxMsg.getBody().getDoiJobProject().getOption());
+//        jobProject.setStatusTimeStampUTC();
+//        updateDataModel(jobProject);
+//        jobProject = null;
+//    }
+//
+//    private void processDOIJobCommandMessage(DifxMessage difxMsg) {
+//        // get the job
+//        Job job = getJob(difxMsg.getBody().getDoiJobCommand().getJobName(),
+//                difxMsg.getBody().getDoiJobCommand().getFullPath());
+//        // command it
+//        if (job != null) {
+//            if (difxMsg.getBody().getDoiJobCommand().getCommand().equalsIgnoreCase("ResetReady")) {
+//                job.setStarted(false);
+//                job.setStatus("Ready");
+//                job.setState(DiFXSystemStatus.JobStates.READY);
+//                job.setCompletion(0.0f);
+//                //job.setQueued(false);
+//            } else if (difxMsg.getBody().getDoiJobCommand().getCommand().equalsIgnoreCase("ResetFail")) {
+//                job.setStatus("Failed");
+//                job.setState(DiFXSystemStatus.JobStates.FAILED);
+//                job.setCompletion(0.0f);
+//                //job.setQueued(false);
+//            } else if (difxMsg.getBody().getDoiJobCommand().getCommand().equalsIgnoreCase("ResetComplete")) {
+//                job.setStatus("Complete");
+//                job.setState(DiFXSystemStatus.JobStates.COMPLETE);
+//                job.setCompletion(0.0f);
+//                //job.setQueued(false);
+//            } else if (difxMsg.getBody().getDoiJobCommand().getCommand().equalsIgnoreCase("ResetUnknown")) {
+//                job.setStatus("Unknown");
+//                job.setState(DiFXSystemStatus.JobStates.UNKNOWN);
+//                job.setCompletion(0.0f);
+//                //job.setQueued(false);
+//            }
+//        }
+//
+//        // clean up
+//        job = null;
+//    }
 
-        // This is a kluge until something better....
-        //
-        // NOTE:
-        // 2 step process.
-        // 1. Associate the antenna to the job via addAntenna() method
-        // 2. Insert/Update the antenna into the data model done in UpdateModel()
-        //Job job = GetJob(jobName);
-        //job.addAntenna(ant);
+//    private void processDOIQueueCommandMessage(DifxMessage difxMsg) {
+//        // get the queue
+//        // command it
+//    }
 
-        //UpdateDataModel(ant);
-    }
+//    private void processDOIErrorMessage(DifxMessage difxMsg) {
+//        // -- catch some exceptions and keep the program from terminating. . .
+//        try {
+//            // Just store the error message, no need to create an object and call updateDataModel()
+//            if ((difxMsg.getBody().getDoiError().getSeverity() >= 0)
+//                    && (difxMsg.getBody().getDoiError().getSeverity() <= 4)) {
+//                String alertString = DiFXSystemStatus.ConvertDiFXAlertIntoString(
+//                        DiFXSystemStatus.DiFXAlerts.convert(difxMsg.getBody().getDoiError().getSeverity()));
+//                Calendar cal = Calendar.getInstance();
+//                SimpleDateFormat sdf = new SimpleDateFormat(DiFXSystemConfig.DATE_TIME_FORMAT);
+//                String timeStamp = sdf.format(cal.getTime());
+//
+//                String strToAdd = timeStamp + " "
+//                        + difxMsg.getHeader().getFrom() + " : "
+//                        + difxMsg.getHeader().getIdentifier() + " : "
+//                        + alertString + " : "
+//                        + difxMsg.getBody().getDoiError().getErrorMessage().toString() + "\n";
+//
+//                this.addAlert(strToAdd);
+//            }
+//        } catch (Exception e) {
+//            System.err.println("uncaught exception: " + e);
+//        }
+//    }
 
-    private void processDOIModuleMessage(DifxMessage difxMsg) {
-        String jobName = difxMsg.getBody().getDoiModule().getJobName();
-        String antName = difxMsg.getBody().getDoiModule().getAntennaName();
-        int id = difxMsg.getBody().getDoiModule().getId();
-        String moduleVSN = difxMsg.getBody().getDoiModule().getModuleVSN();
-        String shelf = difxMsg.getBody().getDoiModule().getShelf();
-
-        // Create and populate the module
-        Module mod = new Module();
-        mod.setObjName(antName);
-        mod.setObjId(id);
-        mod.setObjType("antenna");
-        mod.setModuleVSN(moduleVSN);
-        mod.setShelf(shelf);
-
-        // This is a kluge until something better....
-        //
-        // NOTE:
-        // 2 step process.
-        // 1. Associate the antenna to the job via addAntenna() method
-        // 2. Insert/Update the antenna into the data model done in UpdateModel()
-        Job job = getJob(jobName);
-        job.addModule(mod);
-
-        updateDataModel(mod);
-        mod = null;
-        job = null;
-    }
-
-    private void processDOIProjectMessage(DifxMessage difxMsg) {
-        // Add project to the datamodel
-        Project proj = new Project();
-        proj.setObjType("project");
-        proj.setObjName(difxMsg.getBody().getDoiProject().getProjectName());
-        proj.setObjId(0);
-        proj.setProjectPath(difxMsg.getBody().getDoiProject().getProjectPath());
-        updateDataModel(proj);
-        proj = null;
-    }
-
-    private void processDOIJobMessage(DifxMessage difxMsg) {
-        // -- Create a job, load the data and add job to datamodel
-
-        // Create job, hand it a copy of data model for verification
-        Job job = new Job(this);
-
-        // Fill in the values from difx message
-        job.setObjType("job");
-        job.setObjName(difxMsg.getBody().getDoiJob().getJobName());
-        job.setObjId(0);
-        job.setJobPath(difxMsg.getBody().getDoiJob().getJobPath());
-        job.setProjectName(difxMsg.getBody().getDoiJob().getProjectName());
-        job.setProjectPath(difxMsg.getBody().getDoiJob().getProjectPath());
-        job.setSegment(difxMsg.getBody().getDoiJob().getSegment());
-        job.setJobPass(difxMsg.getBody().getDoiJob().getJobPass());
-        job.setJobNumber(difxMsg.getBody().getDoiJob().getJobNumber());
-        job.setPriority(difxMsg.getBody().getDoiJob().getPriority());
-        job.setActualSpeedUp(difxMsg.getBody().getDoiJob().getActualSpeedUp());
-        job.setPredictedSpeedUp(difxMsg.getBody().getDoiJob().getPredictedSpeedUp());
-        job.setJobStartTimeMJD(BigDecimal.valueOf(difxMsg.getBody().getDoiJob().getJobStartTimeMJD()));
-        job.setJobStopTimeMJD(BigDecimal.valueOf(difxMsg.getBody().getDoiJob().getJobStopTimeMJD()));
-        job.setNumAntennas(difxMsg.getBody().getDoiJob().getNumAntennas());
-        job.setDbJob(difxMsg.getBody().getDoiJob().isDbJob());
-
-        // Read the job's data file
-        job.readJobData();
-
-        // Put the job into the data model
-        updateDataModel(job);
-        job = null;
-    }
-
-    private void processDOIJobProjectMessage(DifxMessage difxMsg) {
-        // This is a kluge until something better....
-        //
-        // NOTE:
-        // This is a 2 step process
-        //  1. associate job and project (done here), and
-        //  2. insert the association into the jobs queue map (done in UpdateDataModel)... Bad comments
-        JobProject jobProject = new JobProject();
-        jobProject.setObjType("jobProject");
-        jobProject.setObjId(0);
-        jobProject.setObjName(difxMsg.getBody().getDoiJobProject().getProjectName() + "+"
-                + difxMsg.getBody().getDoiJobProject().getJobName());
-        jobProject.SetJobName(difxMsg.getBody().getDoiJobProject().getJobName());
-        jobProject.SetProject(difxMsg.getBody().getDoiJobProject().getProjectName());
-        jobProject.SetOption(difxMsg.getBody().getDoiJobProject().getOption());
-        jobProject.setStatusTimeStampUTC();
-        updateDataModel(jobProject);
-        jobProject = null;
-    }
-
-    private void processDOIJobCommandMessage(DifxMessage difxMsg) {
-        // get the job
-        Job job = getJob(difxMsg.getBody().getDoiJobCommand().getJobName(),
-                difxMsg.getBody().getDoiJobCommand().getFullPath());
-        // command it
-        if (job != null) {
-            if (difxMsg.getBody().getDoiJobCommand().getCommand().equalsIgnoreCase("ResetReady")) {
-                job.setStarted(false);
-                job.setStatus("Ready");
-                job.setState(DiFXSystemStatus.JobStates.READY);
-                job.setCompletion(0.0f);
-                //job.setQueued(false);
-            } else if (difxMsg.getBody().getDoiJobCommand().getCommand().equalsIgnoreCase("ResetFail")) {
-                job.setStatus("Failed");
-                job.setState(DiFXSystemStatus.JobStates.FAILED);
-                job.setCompletion(0.0f);
-                //job.setQueued(false);
-            } else if (difxMsg.getBody().getDoiJobCommand().getCommand().equalsIgnoreCase("ResetComplete")) {
-                job.setStatus("Complete");
-                job.setState(DiFXSystemStatus.JobStates.COMPLETE);
-                job.setCompletion(0.0f);
-                //job.setQueued(false);
-            } else if (difxMsg.getBody().getDoiJobCommand().getCommand().equalsIgnoreCase("ResetUnknown")) {
-                job.setStatus("Unknown");
-                job.setState(DiFXSystemStatus.JobStates.UNKNOWN);
-                job.setCompletion(0.0f);
-                //job.setQueued(false);
-            }
-        }
-
-        // clean up
-        job = null;
-    }
-
-    private void processDOIQueueCommandMessage(DifxMessage difxMsg) {
-        // get the queue
-        // command it
-    }
-
-    private void processDOIErrorMessage(DifxMessage difxMsg) {
-        // -- catch some exceptions and keep the program from terminating. . .
-        try {
-            // Just store the error message, no need to create an object and call updateDataModel()
-            if ((difxMsg.getBody().getDoiError().getSeverity() >= 0)
-                    && (difxMsg.getBody().getDoiError().getSeverity() <= 4)) {
-                String alertString = DiFXSystemStatus.ConvertDiFXAlertIntoString(
-                        DiFXSystemStatus.DiFXAlerts.convert(difxMsg.getBody().getDoiError().getSeverity()));
-                Calendar cal = Calendar.getInstance();
-                SimpleDateFormat sdf = new SimpleDateFormat(DiFXSystemConfig.DATE_TIME_FORMAT);
-                String timeStamp = sdf.format(cal.getTime());
-
-                String strToAdd = timeStamp + " "
-                        + difxMsg.getHeader().getFrom() + " : "
-                        + difxMsg.getHeader().getIdentifier() + " : "
-                        + alertString + " : "
-                        + difxMsg.getBody().getDoiError().getErrorMessage().toString() + "\n";
-
-                this.addAlert(strToAdd);
-            }
-        } catch (Exception e) {
-            System.err.println("uncaught exception: " + e);
-        }
-    }
-
-    public DifxMessage CreateDOIErrorMessage(String message) {
-        ObjectFactory factory = new ObjectFactory();
-
-        // Create header
-        Header header = factory.createHeader();
-        header.setFrom("doi");
-        header.setTo("doi");
-        header.setMpiProcessId("-1");
-        header.setIdentifier("doi");
-        header.setType("DoiErrorMessage");
-
-        // Create alert informational message
-        DoiError errorMessage = factory.createDoiError();
-        errorMessage.setErrorMessage(message);
-        errorMessage.setSeverity(4);
-
-        // -- Create the XML defined messages and process through the system
-        Body body = factory.createBody();
-        body.setDoiError(errorMessage);
-
-        DifxMessage difxMsg = factory.createDifxMessage();
-        difxMsg.setHeader(header);
-        difxMsg.setBody(body);
-
-        return difxMsg;
-    }
+//    public DifxMessage CreateDOIErrorMessage(String message) {
+//        ObjectFactory factory = new ObjectFactory();
+//
+//        // Create header
+//        Header header = factory.createHeader();
+//        header.setFrom("doi");
+//        header.setTo("doi");
+//        header.setMpiProcessId("-1");
+//        header.setIdentifier("doi");
+//        header.setType("DoiErrorMessage");
+//
+//        // Create alert informational message
+//        DoiError errorMessage = factory.createDoiError();
+//        errorMessage.setErrorMessage(message);
+//        errorMessage.setSeverity(4);
+//
+//        // -- Create the XML defined messages and process through the system
+//        Body body = factory.createBody();
+//        body.setDoiError(errorMessage);
+//
+//        DifxMessage difxMsg = factory.createDifxMessage();
+//        difxMsg.setHeader(header);
+//        difxMsg.setBody(body);
+//
+//        return difxMsg;
+//    }
 
     public DifxMessage CreateDiFXAlertMessage(String message) {
         ObjectFactory factory = new ObjectFactory();
@@ -1428,27 +1419,27 @@ public class DiFXDataModel {
 
         if (difxObj.getObjType().equalsIgnoreCase("jobQueue")) {
             // find the jobsQueue
-            mQueue.updateObject(difxObj);
-        } else if (difxObj.getObjType().equalsIgnoreCase("module")) {
-            // -- test, update existing or insert new object
-            boolean exists = false;
-
-            // find the module
-            Iterator it = mModules.iterator();
-            while ((!exists) && it.hasNext()) {
-                Module element = (Module) it.next();
-                if (element.getObjName().equalsIgnoreCase(difxObj.getObjName())) {
-                    // update the data model
-                    element.updateObject((Module) difxObj);
-                    exists = true;
-                }
-                element = null;
-            }
-
-            // insert new object
-            if (!exists) {
-                addModule((Module) difxObj);
-            }
+//            mQueue.updateObject(difxObj);
+//        } else if (difxObj.getObjType().equalsIgnoreCase("module")) {
+//            // -- test, update existing or insert new object
+//            boolean exists = false;
+//
+//            // find the module
+//            Iterator it = mModules.iterator();
+//            while ((!exists) && it.hasNext()) {
+//                Module element = (Module) it.next();
+//                if (element.getObjName().equalsIgnoreCase(difxObj.getObjName())) {
+//                    // update the data model
+//                    element.updateObject((Module) difxObj);
+//                    exists = true;
+//                }
+//                element = null;
+//            }
+//
+//            // insert new object
+//            if (!exists) {
+//                addModule((Module) difxObj);
+//            }
         } else if (difxObj.getObjType().equalsIgnoreCase("mark5")) {
             // -- update existing or insert new mark5
             boolean exists = false;
@@ -1489,172 +1480,172 @@ public class DiFXDataModel {
             if (!exists) {
                 addProcessorNode((ProcessorNode) difxObj);
             }
-        } else if (difxObj.getObjType().equalsIgnoreCase("project")) {
-            // -- test, update existing or insert new object
-            boolean exists = false;
-
-            // find the project and update
-            Iterator it = mProjects.iterator();
-            while ((!exists) && it.hasNext()) {
-                Project element = (Project) it.next();
-                if (element.getObjName().equalsIgnoreCase(((Project) difxObj).getObjName())
-                        && element.getProjectPath().equalsIgnoreCase(((Project) difxObj).getProjectPath())) {
-                    // update the data model
-                    element.updateObject((Project) difxObj);
-                    exists = true;
-                }
-                element = null;
-            }
-
-            // insert new project
-            if (!exists) {
-                addProject((Project) difxObj);
-            }
-        } else if (difxObj.getObjType().equalsIgnoreCase("job")) {
-            // -- test, update existing or insert new object
-            boolean exists = false;
-
-            // find and update job         
-            Iterator it = mJobs.iterator();
-            while ((!exists) && it.hasNext()) {
-                Job element = (Job) it.next();
-                if (element.getObjName().equalsIgnoreCase(((Job) difxObj).getObjName())
-                        && element.getJobPath().equalsIgnoreCase(((Job) difxObj).getJobPath())) {
-                    // update the data model
-                    element.updateObject((Job) difxObj);
-                    exists = true;
-                }
-                element = null;
-            }
-
-            // insert new job and add to project
-            if (!exists) {
-                addJob((Job) difxObj);
-
-                // Link the job to the project
-                it = mProjects.iterator();
-                while (it.hasNext()) {
-                    // ProjectPath and JobPath are the same, paths exist in the project directory
-                    Project element = (Project) it.next();
-                    if (element.getObjName().equalsIgnoreCase(((Job) difxObj).getProjectName())
-                            && element.getProjectPath().equalsIgnoreCase(((Job) difxObj).getProjectPath())) {
-                        // update the data model
-                        element.addJob((Job) difxObj);
-                    }
-                    element = null;
-                }
-            }
-        } else if (difxObj.getObjType().equalsIgnoreCase("jobProject")) {
-            // -- update existing or insert new objects
-            boolean exists = false;
-
-            // Find and update jobProject and jobQueue
-            Iterator it = mJobsProjects.iterator();
-            while ((!exists) && it.hasNext()) {
-                // Does the job already exist in the project/job association?
-                String jobName = ((JobProject) difxObj).GetJobName();
-                String projectPath = ((JobProject) difxObj).GetProject(); //-- need project full path
-
-                JobProject element = (JobProject) it.next();
-                if (element.GetJobName().equalsIgnoreCase(jobName)
-                        && element.GetProject().equalsIgnoreCase(projectPath)) {
-                    // always update existing JobProject relationship
-                    element.updateObject((JobProject) difxObj);
-
-                    // Now update the actual queue
-                    Job job = getJob(jobName, projectPath);
-
-                    // Either insert/update the job in the queue, or delete it
-                    if ((((JobProject) difxObj).GetOption().equalsIgnoreCase("Insert"))) {
-                        job.setState(DiFXSystemStatus.JobStates.NOTREADY);
-                        if (!mQueue.exists(job)) {
-                            mQueue.add(job);
-                        }
-                    } else if ((((JobProject) difxObj).GetOption().equalsIgnoreCase("Delete"))) {
-                        // If the job can be removed from the queue, delete it.
-                        if ((mQueue.remove(job) == true)) {
-                            job.setState(DiFXSystemStatus.JobStates.NOTQUEUED);
-                        } else // hrnnn some sort of issue....
-                        {
-                            System.out.println("******** Data model job not removed from queue. \n");
-                        }
-                    } else if ((((JobProject) difxObj).GetOption().equalsIgnoreCase("EnQueue"))) {
-                        // do not insert duplicate job into run queue
-                        if (mQueue.existsRun(job) != true) {
-                            //job.setQueued(true);
-                            mQueue.addRun(job);
-                        }
-                    } else if ((((JobProject) difxObj).GetOption().equalsIgnoreCase("DeQueue"))) {
-                        //job.setQueued(false);
-                        mQueue.removeRun(job);
-                    }
-
-                    // found it, so exit
-                    job = null;
-                    exists = true;
-
-                } // -- if ( element.GetJobName().equalsIgnoreCase( jobName )     &&
-                // --      element.GetProject().equalsIgnoreCase( projectPath ) )
-
-                // clean up
-                element = null;
-                jobName = null;
-                projectPath = null;
-
-            } // --  while ((!exists) && it.hasNext())
-
-            // insert new jobProject, and add job into JobQueue
-            if (!exists) {
-                // -- Verify option is an insert
-                if ((((JobProject) difxObj).GetOption().equalsIgnoreCase("Insert"))) {
-                    // associate job to a specific project
-                    mJobsProjects.add((JobProject) difxObj);
-
-                    // insert job into jobs queue
-                    String jobName = ((JobProject) difxObj).GetJobName();
-                    String projPathName = ((JobProject) difxObj).GetProject(); //-- need project full path
-                    Job job = getJob(jobName, projPathName);
-                    job.setState(DiFXSystemStatus.JobStates.NOTREADY);
-                    mQueue.add(job);
-
-                    // clean up
-                    job = null;
-                    projPathName = null;
-                    jobName = null;
-                }
-            } // -- if (!exists)
+//        } else if (difxObj.getObjType().equalsIgnoreCase("project")) {
+//            // -- test, update existing or insert new object
+//            boolean exists = false;
+//
+//            // find the project and update
+//            Iterator it = mProjects.iterator();
+//            while ((!exists) && it.hasNext()) {
+//                Project element = (Project) it.next();
+//                if (element.getObjName().equalsIgnoreCase(((Project) difxObj).getObjName())
+//                        && element.getProjectPath().equalsIgnoreCase(((Project) difxObj).getProjectPath())) {
+//                    // update the data model
+//                    element.updateObject((Project) difxObj);
+//                    exists = true;
+//                }
+//                element = null;
+//            }
+//
+//            // insert new project
+//            if (!exists) {
+//                addProject((Project) difxObj);
+//            }
+//        } else if (difxObj.getObjType().equalsIgnoreCase("job")) {
+//            // -- test, update existing or insert new object
+//            boolean exists = false;
+//
+//            // find and update job         
+//            Iterator it = mJobs.iterator();
+//            while ((!exists) && it.hasNext()) {
+//                Job element = (Job) it.next();
+//                if (element.getObjName().equalsIgnoreCase(((Job) difxObj).getObjName())
+//                        && element.getJobPath().equalsIgnoreCase(((Job) difxObj).getJobPath())) {
+//                    // update the data model
+//                    element.updateObject((Job) difxObj);
+//                    exists = true;
+//                }
+//                element = null;
+//            }
+//
+//            // insert new job and add to project
+//            if (!exists) {
+//                addJob((Job) difxObj);
+//
+//                // Link the job to the project
+//                it = mProjects.iterator();
+//                while (it.hasNext()) {
+//                    // ProjectPath and JobPath are the same, paths exist in the project directory
+//                    Project element = (Project) it.next();
+//                    if (element.getObjName().equalsIgnoreCase(((Job) difxObj).getProjectName())
+//                            && element.getProjectPath().equalsIgnoreCase(((Job) difxObj).getProjectPath())) {
+//                        // update the data model
+//                        element.addJob((Job) difxObj);
+//                    }
+//                    element = null;
+//                }
+//            }
+//        } else if (difxObj.getObjType().equalsIgnoreCase("jobProject")) {
+//            // -- update existing or insert new objects
+//            boolean exists = false;
+//
+//            // Find and update jobProject and jobQueue
+//            Iterator it = mJobsProjects.iterator();
+//            while ((!exists) && it.hasNext()) {
+//                // Does the job already exist in the project/job association?
+//                String jobName = ((JobProject) difxObj).GetJobName();
+//                String projectPath = ((JobProject) difxObj).GetProject(); //-- need project full path
+//
+//                JobProject element = (JobProject) it.next();
+//                if (element.GetJobName().equalsIgnoreCase(jobName)
+//                        && element.GetProject().equalsIgnoreCase(projectPath)) {
+//                    // always update existing JobProject relationship
+//                    element.updateObject((JobProject) difxObj);
+//
+//                    // Now update the actual queue
+//                    Job job = getJob(jobName, projectPath);
+//
+//                    // Either insert/update the job in the queue, or delete it
+//                    if ((((JobProject) difxObj).GetOption().equalsIgnoreCase("Insert"))) {
+//                        job.setState(DiFXSystemStatus.JobStates.NOTREADY);
+////                        if (!mQueue.exists(job)) {
+////                            mQueue.add(job);
+////                        }
+//                    } else if ((((JobProject) difxObj).GetOption().equalsIgnoreCase("Delete"))) {
+//                        // If the job can be removed from the queue, delete it.
+////                        if ((mQueue.remove(job) == true)) {
+////                            job.setState(DiFXSystemStatus.JobStates.NOTQUEUED);
+////                        } else // hrnnn some sort of issue....
+////                        {
+////                            System.out.println("******** Data model job not removed from queue. \n");
+////                        }
+//                    } else if ((((JobProject) difxObj).GetOption().equalsIgnoreCase("EnQueue"))) {
+////                        // do not insert duplicate job into run queue
+////                        if (mQueue.existsRun(job) != true) {
+////                            //job.setQueued(true);
+////                            mQueue.addRun(job);
+////                        }
+//                    } else if ((((JobProject) difxObj).GetOption().equalsIgnoreCase("DeQueue"))) {
+//                        //job.setQueued(false);
+////                        mQueue.removeRun(job);
+//                    }
+//
+//                    // found it, so exit
+//                    job = null;
+//                    exists = true;
+//
+//                } // -- if ( element.GetJobName().equalsIgnoreCase( jobName )     &&
+//                // --      element.GetProject().equalsIgnoreCase( projectPath ) )
+//
+//                // clean up
+//                element = null;
+//                jobName = null;
+//                projectPath = null;
+//
+//            } // --  while ((!exists) && it.hasNext())
+//
+//            // insert new jobProject, and add job into JobQueue
+//            if (!exists) {
+//                // -- Verify option is an insert
+//                if ((((JobProject) difxObj).GetOption().equalsIgnoreCase("Insert"))) {
+//                    // associate job to a specific project
+//                    mJobsProjects.add((JobProject) difxObj);
+//
+//                    // insert job into jobs queue
+//                    String jobName = ((JobProject) difxObj).GetJobName();
+//                    String projPathName = ((JobProject) difxObj).GetProject(); //-- need project full path
+//                    Job job = getJob(jobName, projPathName);
+//                    job.setState(DiFXSystemStatus.JobStates.NOTREADY);
+//                    mQueue.add(job);
+//
+//                    // clean up
+//                    job = null;
+//                    projPathName = null;
+//                    jobName = null;
+//                }
+//            } // -- if (!exists)
         } else {
             System.out.println("DiFXDataModel.java(2247): " + difxObj.getObjType());
         }
 
     }
 
-    // Create various DiFX messages
-    public DifxMessage createMark5StatusMessageLost(Mark5Unit mark5) {
-        ObjectFactory factory = new ObjectFactory();
-
-        // Create header
-        Header header = factory.createHeader();
-        header.setFrom("doi");
-        header.setTo("doi");
-        header.setMpiProcessId("-1");
-        header.setIdentifier(mark5.getObjName());
-        header.setType("Mark5StatusMessage");
-
-        // -- Create the XML defined messages and process through the system
-        Mark5Status mark5Status = factory.createMark5Status();
-        mark5Status.setState("Lost");
-
-        Body body = factory.createBody();
-        body.setMark5Status(mark5Status);
-
-        DifxMessage difxMsg = factory.createDifxMessage();
-        difxMsg.setHeader(header);
-        difxMsg.setBody(body);
-
-        return difxMsg;
-
-    }
+//    // Create various DiFX messages
+//    public DifxMessage createMark5StatusMessageLost(Mark5Unit mark5) {
+//        ObjectFactory factory = new ObjectFactory();
+//
+//        // Create header
+//        Header header = factory.createHeader();
+//        header.setFrom("doi");
+//        header.setTo("doi");
+//        header.setMpiProcessId("-1");
+//        header.setIdentifier(mark5.getObjName());
+//        header.setType("Mark5StatusMessage");
+//
+//        // -- Create the XML defined messages and process through the system
+//        Mark5Status mark5Status = factory.createMark5Status();
+//        mark5Status.setState("Lost");
+//
+//        Body body = factory.createBody();
+//        body.setMark5Status(mark5Status);
+//
+//        DifxMessage difxMsg = factory.createDifxMessage();
+//        difxMsg.setHeader(header);
+//        difxMsg.setBody(body);
+//
+//        return difxMsg;
+//
+//    }
 
 
 }
