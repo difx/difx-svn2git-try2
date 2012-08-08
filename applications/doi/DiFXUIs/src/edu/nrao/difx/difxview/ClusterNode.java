@@ -27,15 +27,9 @@ import mil.navy.usno.plotlib.PlotWindow;
 import mil.navy.usno.plotlib.Plot2DObject;
 import mil.navy.usno.plotlib.Track2D;
 
-import edu.nrao.difx.difxcontroller.DiFXController;
 import edu.nrao.difx.difxdatamodel.ProcessorNode;
-import edu.nrao.difx.xmllib.difxmessage.ObjectFactory;
-import edu.nrao.difx.xmllib.difxmessage.Header;
-import edu.nrao.difx.xmllib.difxmessage.Body;
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
-import edu.nrao.difx.xmllib.difxmessage.DifxAlert;
 import edu.nrao.difx.difxutilities.DiFXCommand_mark5Control;
-import java.net.UnknownHostException;
 /**
  *
  * @author jspitzak

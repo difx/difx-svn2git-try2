@@ -728,7 +728,6 @@ public class QueueBrowserPanel extends TearOffPanel {
     protected JLabel _mainLabel;
     protected JButton _updateButton;
     DiFXDataModel  _dataModel;
-    DiFXController _controller;
     protected ExperimentNode _unaffiliated;
     protected PassNode _unknown;
     protected SystemSettings _systemSettings;
