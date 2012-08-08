@@ -34,11 +34,6 @@ public class ThreadManager {
       return mProcessThread;
    }
 
-   public ReadMessageThread getReadThread()
-   {
-      return mReadThread;
-   }
-
    public void startThreads() throws InterruptedException
    {
       System.out.println("Thread manager threads starting.");

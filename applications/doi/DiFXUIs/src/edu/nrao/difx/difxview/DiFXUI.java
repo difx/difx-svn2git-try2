@@ -77,7 +77,7 @@ public class DiFXUI extends JFrame implements WindowListener {
         
         //  Create a "data model" for processing incoming data transmissions
         _dataModel = new DiFXDataModel( _systemSettings );
-        _dataModel.messageDisplayPanel( _messageCenter );
+//        _dataModel.messageDisplayPanel( _messageCenter );
         
         //  The DiFX Controller runs threads (why, I'm not sure...)
         _difxController = new DiFXController( _systemSettings );

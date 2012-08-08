@@ -20,19 +20,13 @@ import javax.swing.event.EventListenerList;
  */
 public class DiFXDataModel {
 
-    private List<Module> mModules = new ArrayList<Module>();
     private List<Mark5Unit> mMark5Units = new ArrayList<Mark5Unit>(24);
     private List<ProcessorNode> mProcessorNodes = new ArrayList<ProcessorNode>(10);
     //  Listeners for different types of incoming data
     EventListenerList _hardwareMessageListeners;
     EventListenerList _jobMessageListeners;
-    // alert messages
-    private ArrayList<String> mAlerts = new ArrayList<String>();
-    private ArrayList<String> mErrors = new ArrayList<String>();
-    // private number of records read from the database
-    private int mRecCount = 0;
     // internal message collection/display
-    private MessageDisplayPanel _messageDisplayPanel;
+//    private MessageDisplayPanel _messageDisplayPanel;
     
     // Contains all settings used to run the GUI
     SystemSettings _systemSettings;
@@ -41,7 +35,6 @@ public class DiFXDataModel {
         _hardwareMessageListeners = new EventListenerList();
         _jobMessageListeners = new EventListenerList();
         _systemSettings = newSettings;
-//        updateFromSystemSettings();
     }
 
     public void addHardwareMessageListener( AttributedMessageListener a ) {
@@ -50,14 +43,6 @@ public class DiFXDataModel {
 
     public void addJobMessageListener( AttributedMessageListener a ) {
         _jobMessageListeners.add( AttributedMessageListener.class, a );
-    }
-
-    /**
-     * Appends an alert to the alert list
-     * @param alert the alert message to add
-     */
-    public void addAlert(String alert) {
-        mAlerts.add(alert);
     }
 
     /**
@@ -185,14 +170,6 @@ public class DiFXDataModel {
         } else if (header.getType().equalsIgnoreCase("DifxAlertMessage")) {
             //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DifxAlertMessage");
             processDifxAlertMessage(difxMsg);
-
-//        } else if (header.getType().equalsIgnoreCase("DOIMessage")) {
-//            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DOIMessage");
-//            processDOIMessage(difxMsg);
-//
-//        } else if (header.getType().equalsIgnoreCase("DoiErrorMessage")) {
-//            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DoiErrorMessage");
-//            processDOIMessage(difxMsg);
 
         } else {
             if ( !_systemSettings.suppressWarnings() ) {
@@ -387,14 +364,6 @@ public class DiFXDataModel {
         }
     }
 
-    public void messageDisplayPanel(MessageDisplayPanel newPanel) {
-        _messageDisplayPanel = newPanel;
-    }
-
-    public MessageDisplayPanel messageDisplayPanel() {
-        return _messageDisplayPanel;
-    }
-
     private synchronized void processDifxAlertMessage(DifxMessage difxMsg) {
         
         //  Dispatch a message to each of the listeners interested in alerts.  Most
@@ -420,59 +389,40 @@ public class DiFXDataModel {
             }
         }
         
-        // -- catch some exceptions and keep the program from terminating. . .
-        try {
-            // Just store the alert message, no need to create an object and call updateDataModel()
-            if ((difxMsg.getBody().getDifxAlert().getSeverity() >= 0)
-                    && (difxMsg.getBody().getDifxAlert().getSeverity() <= 4)) {
-                String alertString = DiFXSystemStatus.ConvertDiFXAlertIntoString(
-                        DiFXSystemStatus.DiFXAlerts.convert(difxMsg.getBody().getDifxAlert().getSeverity()));
-                Calendar cal = Calendar.getInstance();
-                SimpleDateFormat sdf = new SimpleDateFormat(DiFXSystemConfig.DATE_TIME_FORMAT);
-                String timeStamp = sdf.format(cal.getTime());
+        //  Send this alert to the internal messaging system, unless we don't
+        //  have access to it - in which case we simply use the logging
+        //  system.
+        if ((difxMsg.getBody().getDifxAlert().getSeverity() >= 0)
+                && (difxMsg.getBody().getDifxAlert().getSeverity() <= 4)) {
 
-                String strToAdd = timeStamp + " "
-                        + difxMsg.getHeader().getFrom() + " : "
-                        + difxMsg.getHeader().getIdentifier() + " : "
-                        + alertString + " : "
-                        + difxMsg.getBody().getDifxAlert().getAlertMessage().toString() + "\n";
-
-                // add check for high water mark, and clear text area if exceeded. . .
-                this.addAlert(strToAdd);
-
-                //  Send this alert to the internal messaging system, unless we don't
-                //  have access to it - in which case we simply use the logging
-                //  system.
-                if (_messageDisplayPanel != null) {
-                    if (difxMsg.getBody().getDifxAlert().getSeverity() < 3) {
-                        _messageDisplayPanel.error(0, difxMsg.getHeader().getFrom() + " : "
-                                + difxMsg.getHeader().getIdentifier(),
-                                difxMsg.getBody().getDifxAlert().getAlertMessage().toString());
-                    } else if (difxMsg.getBody().getDifxAlert().getSeverity() < 4) {
-                        _messageDisplayPanel.warning(0, difxMsg.getHeader().getFrom() + " : "
-                                + difxMsg.getHeader().getIdentifier(),
-                                difxMsg.getBody().getDifxAlert().getAlertMessage().toString());
-                    } else {
-                        _messageDisplayPanel.message(0, difxMsg.getHeader().getFrom() + " : "
-                                + difxMsg.getHeader().getIdentifier(),
-                                difxMsg.getBody().getDifxAlert().getAlertMessage().toString());
-                    }
+            if ( _systemSettings.messageCenter() != null) {
+                if (difxMsg.getBody().getDifxAlert().getSeverity() < 3) {
+                    _systemSettings.messageCenter().error(0, difxMsg.getHeader().getFrom() + " : "
+                            + difxMsg.getHeader().getIdentifier(),
+                            difxMsg.getBody().getDifxAlert().getAlertMessage().toString());
+                } else if (difxMsg.getBody().getDifxAlert().getSeverity() < 4) {
+                    _systemSettings.messageCenter().warning(0, difxMsg.getHeader().getFrom() + " : "
+                            + difxMsg.getHeader().getIdentifier(),
+                            difxMsg.getBody().getDifxAlert().getAlertMessage().toString());
                 } else {
-                    if (difxMsg.getBody().getDifxAlert().getSeverity() < 3) {
-                        java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE,
-                                difxMsg.getBody().getDifxAlert().getAlertMessage().toString());
-                    } else if (difxMsg.getBody().getDifxAlert().getSeverity() < 4) {
-                        java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.WARNING,
-                                difxMsg.getBody().getDifxAlert().getAlertMessage().toString());
-                    } else {
-                        java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO,
-                                difxMsg.getBody().getDifxAlert().getAlertMessage().toString());
-                    }
+                    _systemSettings.messageCenter().message(0, difxMsg.getHeader().getFrom() + " : "
+                            + difxMsg.getHeader().getIdentifier(),
+                            difxMsg.getBody().getDifxAlert().getAlertMessage().toString());
+                }
+            } else {
+                if (difxMsg.getBody().getDifxAlert().getSeverity() < 3) {
+                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE,
+                            difxMsg.getBody().getDifxAlert().getAlertMessage().toString());
+                } else if (difxMsg.getBody().getDifxAlert().getSeverity() < 4) {
+                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.WARNING,
+                            difxMsg.getBody().getDifxAlert().getAlertMessage().toString());
+                } else {
+                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO,
+                            difxMsg.getBody().getDifxAlert().getAlertMessage().toString());
                 }
             }
-        } catch (Exception e) {
-            System.err.println("uncaught exception: " + e);
         }
+            
     }
 
     public DifxMessage CreateDiFXAlertMessage(String message) {

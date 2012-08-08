@@ -119,33 +119,7 @@ public class DiFXController {
    {
       mThreadMgr.stopThreads();
    }
-   
-   public void writeToSocket( DifxMessage difxMsg )
-           throws java.net.UnknownHostException
-   {
-      //System.out.printf("***************** DiFX Controller write to socket. \n");
-
-      // Convert DiFX message into a XML string
-      JAXBDiFXProcessor xmlProc = new JAXBDiFXProcessor(difxMsg);
-      String xmlString = xmlProc.ConvertToXML();
-        
-      // Conversation succesful, so send the XML
-      if (xmlString != null)
-      {
-          SendMessage.writeToSocket( xmlString, _systemSettings );
-      }
-      else
-      {
-          System.out.printf("***************** DiFX Controller XML not defined or sent. \n");
-      }
-
-      // clean up
-      xmlString = null;
-      xmlProc   = null;
       
-      //System.out.printf("***************** DiFX Controller write to socket complete. \n");
-   }
-   
 }
 
 
