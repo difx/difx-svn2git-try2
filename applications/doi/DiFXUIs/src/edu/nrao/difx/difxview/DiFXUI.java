@@ -77,20 +77,15 @@ public class DiFXUI extends JFrame implements WindowListener {
         
         //  Create a "data model" for processing incoming data transmissions
         _dataModel = new DiFXDataModel( _systemSettings );
-//        _dataModel.messageDisplayPanel( _messageCenter );
         
-        //  The DiFX Controller runs threads (why, I'm not sure...)
-        _difxController = new DiFXController( _systemSettings );
-                try {
-                    _difxController.startController();
-                } catch (InterruptedException ex) {
-                    // threads failed so log an error
-                    java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex);
-                }
+        _threadManager = new ThreadManager( _systemSettings );
+        (_threadManager.getProcessThread()).difxDataModel( _dataModel );
+        try {
+            _threadManager.startThreads();
+        } catch (InterruptedException ex) {
+            java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex);
+        }
 
-                // initialize controller with model, view
-                _difxController.initialize( _dataModel, this );
-                
         _queueBrowser.dataModel( _dataModel );
         _hardwareMonitor.dataModel( _dataModel );
 
@@ -339,7 +334,7 @@ public class DiFXUI extends JFrame implements WindowListener {
      * need to make sure it is up to date on a bunch of settings.
      */
     private void exitOperation() {
-        _difxController.stopController();
+        _threadManager.stopThreads();
         _systemSettings.windowConfiguration().mainX = this.getLocation().x;
         _systemSettings.windowConfiguration().mainY = this.getLocation().y;
         _systemSettings.windowConfiguration().mainW = this.getSize().width;
@@ -519,5 +514,5 @@ public class DiFXUI extends JFrame implements WindowListener {
     protected SystemSettings _systemSettings;
 
     protected DiFXDataModel _dataModel;
-    protected DiFXController _difxController;
+    protected ThreadManager _threadManager;
 }

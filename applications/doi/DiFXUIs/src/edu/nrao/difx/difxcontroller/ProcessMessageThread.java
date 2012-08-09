@@ -4,16 +4,15 @@
  */
 package edu.nrao.difx.difxcontroller;
 
+import edu.nrao.difx.difxdatamodel.DiFXDataModel;
+
 import edu.nrao.difx.difxview.SystemSettings;
 import java.net.*;
-import java.util.*;
 
 import edu.nrao.difx.xmllib.difxmessage.*;
 import java.io.ByteArrayInputStream;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -27,7 +26,7 @@ public class ProcessMessageThread implements Runnable
 
    private BlockingQueue<ByteArrayInputStream> _messageQueue;
 
-   private DiFXController      mTheController;
+   private DiFXDataModel       _difxDataModel;
    private JAXBPacketProcessor mThePacketProcessor;
 
    // Constructor, give the thread a name
@@ -64,10 +63,9 @@ public class ProcessMessageThread implements Runnable
       return ( _messageQueue.take() );
    }
 
-   // Assign a controller, DiFX has a single GUI controller
-   public void setController(DiFXController controller)
+   public void difxDataModel( DiFXDataModel newDataModel )
    {
-      mTheController = controller;
+      _difxDataModel = newDataModel;
    }
 
    // Process a datagram - unmarshall into DifxMessage and send to controller.
@@ -82,7 +80,15 @@ public class ProcessMessageThread implements Runnable
       if (difxMsg != null)
       {
          // service data model - update the internal data
-         serviceDataModel(difxMsg);
+         //serviceDataModel(difxMsg);
+          if ( _difxDataModel != null)
+          {
+             _difxDataModel.serviceDataModel(difxMsg);
+          }
+          else
+          {
+             System.out.printf("**************** Process message queue DiFX Data Model not defined. \n");
+          }
 
       }
       else
@@ -96,25 +102,18 @@ public class ProcessMessageThread implements Runnable
       //System.out.println("**************** Process message queue process message packet complete. \n");
    }
 
-   // Service Data Model. . .send the message to be processed
-   protected synchronized void serviceDataModel(DifxMessage difxMsg)
-   {
-      //System.out.printf("**************** Process message service data model. \n");
-
-      // Process message through the data model
-      if (mTheController != null)
-      {
-         // have the controller process the message to service data model
-         mTheController.processMessage(difxMsg);
-
-      }
-      else
-      {
-         System.out.printf("**************** Process message queue DiFX Controller not defined. \n");
-      }
-
-      //System.out.println("**************** Process message service data model complete. \n");
-   }
+//   // Service Data Model. . .send the message to be processed
+//   protected synchronized void serviceDataModel(DifxMessage difxMsg)
+//   {
+//      if ( _difxDataModel != null)
+//      {
+//         _difxDataModel.serviceDataModel(difxMsg);
+//      }
+//      else
+//      {
+//         System.out.printf("**************** Process message queue DiFX Data Model not defined. \n");
+//      }
+//   }
 
    // Print a datagram packet to console
    public void printPacket(DatagramPacket packet)
@@ -176,20 +175,6 @@ public class ProcessMessageThread implements Runnable
                System.out.printf("**************** Process message %s caught interrupt - done. \n", mThreadName);
                mDone = true;
             }
-//            catch ( NoSuchElementException exception )
-//            {
-//               System.out.printf("**************** Process message queue empty exception - continue. \n", mThreadName);
-//               mDone = false;
-//               try
-//               {
-//                  Thread.sleep(3);
-//                  System.gc();
-//               }
-//               catch (InterruptedException ex)
-//               {
-//                  Logger.getLogger(ProcessMessageThread.class.getName()).log(Level.SEVERE, null, ex);
-//               }
-//            }
 
          } // -- while (!mDone)
 
