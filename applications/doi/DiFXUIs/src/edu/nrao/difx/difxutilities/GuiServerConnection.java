@@ -142,6 +142,7 @@ public class GuiServerConnection {
         throw new SocketTimeoutException();
     }
     
+    protected static int WARNING_SIZE = 1024 * 1024;
     /*
      * This thread recieves data packets of different types from the guiServer.
      */
@@ -153,44 +154,52 @@ public class GuiServerConnection {
                 try {
                     int packetId = _in.readInt();
                     int nBytes = _in.readInt();
-                    data = new byte[nBytes];
-                    _in.readFully( data );
-                    //  Sort out what to do with this packet.
-                    if ( packetId == RELAY_PACKET && data != null ) {
-                        _difxRelayData = data;
+                    if ( nBytes > WARNING_SIZE ) {
+                        java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.WARNING, 
+                                "trying to read " + nBytes + "of data - packetID is " + packetId );
+                        java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.WARNING, 
+                                "Message has NOT BEEN READ" );
                     }
-                    else if ( packetId == GUISERVER_VERSION ) {
-                        //  This is a report of the version of guiServer that is running.
-                        _settings.guiServerVersion( new String( data ) );
+                    else {
+                        data = new byte[nBytes];
+                        _in.readFully( data );
+                        //  Sort out what to do with this packet.
+                        if ( packetId == RELAY_PACKET && data != null ) {
+                            _difxRelayData = data;
+                        }
+                        else if ( packetId == GUISERVER_VERSION ) {
+                            //  This is a report of the version of guiServer that is running.
+                            _settings.guiServerVersion( new String( data ) );
+                        }
+                        else if ( packetId == GUISERVER_DIFX_VERSION ) {
+                            //  This is the difx version for which the guiServer was compiled.  At the
+                            //  moment this only changes the message parser (difxio).
+                            _settings.guiServerDifxVersion( new String( data ) );
+                            _settings.difxVersion( new String( data ), false );
+                        }
+                        else if ( packetId == AVAILABLE_DIFX_VERSION ) {
+                            //  Add an available DiFX version to the list in settings.
+                            _settings.addDifxVersion( new String( data ) );
+                            if ( _settings.guiServerDifxVersion() != null )
+                                _settings.difxVersion( _settings.guiServerDifxVersion(), false );
+                        }
+                        else if ( packetId == INFORMATION_PACKET ) {
+                            _settings.messageCenter().message( 0, "guiServer", new String( data ) );
+                        }
+                        else if ( packetId == WARNING_PACKET ) {
+                            _settings.messageCenter().warning( 0, "guiServer", new String( data ) );
+                        }
+                        else if ( packetId == ERROR_PACKET ) {
+                            _settings.messageCenter().error( 0, "guiServer", new String( data ) );
+                        }
+                        else if ( packetId == DIFX_BASE ) {
+                            //  The DiFX base is the path below which all "setup" files
+                            //  exist.
+                            _settings.clearDifxVersion();
+                            _settings.difxBase( new String( data ) );
+                        }
+                        receiveEvent( data.length );
                     }
-                    else if ( packetId == GUISERVER_DIFX_VERSION ) {
-                        //  This is the difx version for which the guiServer was compiled.  At the
-                        //  moment this only changes the message parser (difxio).
-                        _settings.guiServerDifxVersion( new String( data ) );
-                        _settings.difxVersion( new String( data ), false );
-                    }
-                    else if ( packetId == AVAILABLE_DIFX_VERSION ) {
-                        //  Add an available DiFX version to the list in settings.
-                        _settings.addDifxVersion( new String( data ) );
-                        if ( _settings.guiServerDifxVersion() != null )
-                            _settings.difxVersion( _settings.guiServerDifxVersion(), false );
-                    }
-                    else if ( packetId == INFORMATION_PACKET ) {
-                        _settings.messageCenter().message( 0, "guiServer", new String( data ) );
-                    }
-                    else if ( packetId == WARNING_PACKET ) {
-                        _settings.messageCenter().warning( 0, "guiServer", new String( data ) );
-                    }
-                    else if ( packetId == ERROR_PACKET ) {
-                        _settings.messageCenter().error( 0, "guiServer", new String( data ) );
-                    }
-                    else if ( packetId == DIFX_BASE ) {
-                        //  The DiFX base is the path below which all "setup" files
-                        //  exist.
-                        _settings.clearDifxVersion();
-                        _settings.difxBase( new String( data ) );
-                    }
-                    receiveEvent( data.length );
                 } catch ( SocketTimeoutException e ) {
                     //  Timeouts are actually expected and should not cause alarm.
                 } catch ( java.io.IOException e ) {

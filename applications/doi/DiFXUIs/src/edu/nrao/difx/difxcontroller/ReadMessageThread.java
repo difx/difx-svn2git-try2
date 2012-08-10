@@ -19,9 +19,8 @@ import java.awt.event.ActionEvent;
  *
  * @author mguerra
  */
-public class ReadMessageThread implements Runnable {
+public class ReadMessageThread extends Thread {
 
-    private String mThreadName;
     private boolean mDone = false;
     private boolean _settingsChange = true;
     // -- always start the process message thread before this thread.
@@ -29,8 +28,7 @@ public class ReadMessageThread implements Runnable {
     SystemSettings _settings;
 
     // Constructor, give the thread a name and a link to the system settings.
-    public ReadMessageThread( String name, SystemSettings systemSettings ) {
-        mThreadName = name;
+    public ReadMessageThread( SystemSettings systemSettings ) {
         _settings = systemSettings;
         //  Set up a callback for changes to broadcast items in the system settings.
         _settings.broadcastChangeListener( new ActionListener() {
@@ -52,21 +50,8 @@ public class ReadMessageThread implements Runnable {
     }
 
     // Methods specific to the message queue
-    public void addQueue(ProcessMessageThread queue) {
+    public void addQueue( ProcessMessageThread queue ) {
         _processMessageThread = queue;
-    }
-
-    public ProcessMessageThread getQueue() {
-        return _processMessageThread;
-    }
-
-    private void printPacket(DatagramPacket packet) {
-        System.out.println("******** Read message packet received data from: " + packet.getAddress().toString()
-                + ":" + packet.getPort() + " with length: "
-                + packet.getLength());
-
-        System.out.write(packet.getData(), 0, packet.getLength());
-        System.out.println();
     }
 
     // Implement the thread interface
@@ -141,7 +126,7 @@ public class ReadMessageThread implements Runnable {
                                 }
 
                             } else {
-                                System.out.printf("******** Read message empty null packet - continue. \n", mThreadName);
+                                System.out.println("******** Read message empty null packet - continue." );
                             }
 
                             // clean up  BLAT - recreating these each time is really strange...I guess the buffer
@@ -153,20 +138,20 @@ public class ReadMessageThread implements Runnable {
 
                         // catch an interrupt, stop thread
                         if (Thread.currentThread().isInterrupted() == true) {
-                            System.out.printf("******** Read message thread %s interrupted. \n", mThreadName);
+                            System.out.println("******** Read message thread interrupted. \n" );
                             mDone = true;
                         }
                         
                     } catch (OutOfMemoryError exception) {
-                        System.out.printf("******** Read message %s caught OutOfMemoryError(%s  %s) - done. \n",
-                                mThreadName, startDate, Calendar.getInstance().getTime().toString());
+                        System.out.printf("******** Read message thread caught OutOfMemoryError(%s  %s) - done.\n",
+                                startDate, Calendar.getInstance().getTime().toString());
                         mDone = true;
                         exception.printStackTrace();
                     }
 
                 } // -- while (!mDone)
 
-                System.out.printf("******** Read message thread %s done. \n", mThreadName);
+                System.out.println( "******** Read message thread done." );
             } catch ( IOException ex ) {
                 Logger.getLogger(ReadMessageThread.class.getName()).log(Level.SEVERE, null, ex);
             }

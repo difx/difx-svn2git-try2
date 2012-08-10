@@ -63,12 +63,16 @@ public class JAXBPacketProcessor
       }
       catch (javax.xml.bind.JAXBException ex)
       {
-          System.out.println( is );
+          System.out.println( "JAXBException");
+          System.out.println( is.toString() );
          // XXXTODO Handle exception
          java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex); //NOI18N
       }
       catch (Exception e)
       {
+          System.out.println( ">>>>PACKET ERROR");
+      System.out.println( is.toString() );
+      System.out.println( ">>>>>>>>>>>>>>>");
          e.printStackTrace();
       }
 

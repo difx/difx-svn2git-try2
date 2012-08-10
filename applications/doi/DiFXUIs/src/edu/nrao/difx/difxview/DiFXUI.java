@@ -72,19 +72,21 @@ public class DiFXUI extends JFrame implements WindowListener {
         //  restrictive names if you are perverse enough to delve into the Java
         //  logging system).
         _messageCenter.captureLogging( "global" );
-        
         _systemSettings.messageCenter( _messageCenter );
         
         //  Create a "data model" for processing incoming data transmissions
         _dataModel = new DiFXDataModel( _systemSettings );
         
-        _threadManager = new ThreadManager( _systemSettings );
-        (_threadManager.getProcessThread()).difxDataModel( _dataModel );
-        try {
-            _threadManager.startThreads();
-        } catch (InterruptedException ex) {
-            java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex);
-        }
+        //  Start the threads the read and process outside messages (either from the
+        //  guiServer or from the multicast network).  The read thread just reads and
+        //  queues stuff as fast as possible.  The process thread works its way through
+        //  the queue dealing with messages in order.
+        _readMessageThread = new ReadMessageThread( _systemSettings );
+        _processMessageThread = new ProcessMessageThread( _systemSettings );
+        _readMessageThread.addQueue( _processMessageThread );
+        _processMessageThread.difxDataModel( _dataModel );
+        _processMessageThread.start();
+        _readMessageThread.start();
 
         _queueBrowser.dataModel( _dataModel );
         _hardwareMonitor.dataModel( _dataModel );
@@ -334,7 +336,8 @@ public class DiFXUI extends JFrame implements WindowListener {
      * need to make sure it is up to date on a bunch of settings.
      */
     private void exitOperation() {
-        _threadManager.stopThreads();
+        _readMessageThread.shutDown();
+        _processMessageThread.shutDown();
         _systemSettings.windowConfiguration().mainX = this.getLocation().x;
         _systemSettings.windowConfiguration().mainY = this.getLocation().y;
         _systemSettings.windowConfiguration().mainW = this.getSize().width;
@@ -514,5 +517,6 @@ public class DiFXUI extends JFrame implements WindowListener {
     protected SystemSettings _systemSettings;
 
     protected DiFXDataModel _dataModel;
-    protected ThreadManager _threadManager;
+    protected ReadMessageThread _readMessageThread;
+    protected ProcessMessageThread _processMessageThread;
 }

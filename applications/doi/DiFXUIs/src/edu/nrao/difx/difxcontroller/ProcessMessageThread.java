@@ -18,21 +18,22 @@ import java.util.concurrent.LinkedBlockingQueue;
  *
  * @author mguerra
  */
-public class ProcessMessageThread implements Runnable
+public class ProcessMessageThread extends Thread //implements Runnable
 {
 
-   private String  mThreadName;
    private boolean mDone = false;
 
    private BlockingQueue<ByteArrayInputStream> _messageQueue;
 
    private DiFXDataModel       _difxDataModel;
    private JAXBPacketProcessor mThePacketProcessor;
+   
+   SystemSettings _settings;
 
    // Constructor, give the thread a name
-   public ProcessMessageThread(String name, SystemSettings systemSettings )
+   public ProcessMessageThread( SystemSettings systemSettings )
    {
-      mThreadName         = name;
+      _settings           = systemSettings;
       _messageQueue       = new LinkedBlockingQueue<ByteArrayInputStream>();
       mThePacketProcessor = new JAXBPacketProcessor( systemSettings.jaxbPackage() );
    }
@@ -40,7 +41,7 @@ public class ProcessMessageThread implements Runnable
    // Stop thread
    public void shutDown()
    {
-      mDone = true;
+        mDone = true;
    }
 
    // Methods specific to Queue
@@ -77,19 +78,51 @@ public class ProcessMessageThread implements Runnable
       
       // Process message into DiFXMessage
       DifxMessage difxMsg = mThePacketProcessor.ConvertToJAXB(packet);
-      if (difxMsg != null)
-      {
-         // service data model - update the internal data
-         //serviceDataModel(difxMsg);
-          if ( _difxDataModel != null)
-          {
-             _difxDataModel.serviceDataModel(difxMsg);
-          }
-          else
-          {
-             System.out.printf("**************** Process message queue DiFX Data Model not defined. \n");
-          }
+      if ( difxMsg != null ) {
+//          if ( _difxDataModel != null)
+//          {
+//             _difxDataModel.serviceDataModel(difxMsg);
+//          }
+//          else
+//          {
+//             System.out.printf("**************** Process message queue DiFX Data Model not defined. \n");
+//          }
 
+          
+                  Header header = difxMsg.getHeader();
+        //System.out.println( header.getFrom() );
+        //System.out.println( "         " + header.getType() );
+
+        if (header.getType().equalsIgnoreCase("DifxStatusMessage")) {
+            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DifxStatusMessage");
+            _difxDataModel.processDifxStatusMessage(difxMsg);
+
+        } else if (header.getType().equalsIgnoreCase("Mark5StatusMessage")) {
+            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "Mark5StatusMessage");
+            _difxDataModel.processMark5StatusMessage(difxMsg);
+
+        } else if (header.getType().equalsIgnoreCase("DifxLoadMessage")) {
+            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DifxLoadMessage");
+            _difxDataModel.processDifxLoadMessage(difxMsg);
+
+        } else if (header.getType().equalsIgnoreCase("DifxAlertMessage")) {
+            //java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.INFO, "DifxAlertMessage");
+            _difxDataModel.processDifxAlertMessage(difxMsg);
+
+        } else {
+            if ( !_settings.suppressWarnings() ) {
+                java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.WARNING, "unknown DiFX message: \""
+                        + header.getType() + "\"");
+            }
+        }
+
+        // clean up
+        header = null;
+
+          
+          
+          
+          
       }
       else
       {
@@ -101,19 +134,6 @@ public class ProcessMessageThread implements Runnable
 
       //System.out.println("**************** Process message queue process message packet complete. \n");
    }
-
-//   // Service Data Model. . .send the message to be processed
-//   protected synchronized void serviceDataModel(DifxMessage difxMsg)
-//   {
-//      if ( _difxDataModel != null)
-//      {
-//         _difxDataModel.serviceDataModel(difxMsg);
-//      }
-//      else
-//      {
-//         System.out.printf("**************** Process message queue DiFX Data Model not defined. \n");
-//      }
-//   }
 
    // Print a datagram packet to console
    public void printPacket(DatagramPacket packet)
@@ -153,7 +173,7 @@ public class ProcessMessageThread implements Runnable
                   }
                   else
                   {
-                     System.out.printf("******************************** Process message queue take returned null packet ==> Should never occur. \n");
+                     System.out.printf( "******************************** Process message queue take returned null packet ==> Should never occur. \n");
                   }
 
                   // no need to throttle the queue loop
@@ -163,7 +183,7 @@ public class ProcessMessageThread implements Runnable
 
                   if (Thread.currentThread().isInterrupted() == true)
                   {
-                     System.out.printf("**************** Process message thread %s interrupted. \n", mThreadName);
+                     System.out.println( "**************** Process message thread interrupted." );
                      mDone = true;
                   }
 
@@ -172,13 +192,13 @@ public class ProcessMessageThread implements Runnable
             catch (InterruptedException exception)
             {
                Thread.interrupted();
-               System.out.printf("**************** Process message %s caught interrupt - done. \n", mThreadName);
+               System.out.println( "**************** Process message thread caught interrupt - done." );
                mDone = true;
             }
 
          } // -- while (!mDone)
 
-         System.out.printf("**************** Process message thread %s done. \n", mThreadName);
+         System.out.println( "**************** Process message thread done. \n" );
       }
    }
 }
