@@ -12,6 +12,7 @@
 //==============================================================================
 #include <arpa/inet.h>
 #include <string.h>
+#include <pthread.h>
 #include <network/GenericSocket.h>
 
 namespace network {
@@ -27,6 +28,7 @@ namespace network {
         //----------------------------------------------------------------------------
         PacketExchange( GenericSocket* sock ) {
             _sock = sock;
+            pthread_mutex_init( &_sendPacketMutex, NULL );
         }
 
         //----------------------------------------------------------------------------
@@ -34,24 +36,34 @@ namespace network {
         //!  "ID" number.  The calling program/inheriting program defines the ID.
         //!  Data are not byte swapped (that is also the calling program's
         //!  responsibility).  This function returns the number of bytes sent,
-        //!  or a -1 if there is a failure.
+        //!  or a -1 if there is a failure.  It is mutex locked to assure that
+        //!  the entire packet is sent completely.
         //----------------------------------------------------------------------------
         virtual int sendPacket( const int packetId, char* data, const int nBytes ) {
             int swapped;
 
+            //  Lock the "packet" mutex.  This keeps other threads from trying to
+            //  write until we have completed sending the packet.
+            pthread_mutex_lock( &_sendPacketMutex );
+
             //  Our trivial packet protocol is to send the packetId first (network byte
             //  ordered)...
             swapped = htonl( packetId );
-            if ( _sock->writer( (char*)&swapped, sizeof( int ) ) == -1 )
-                return -1;
+            int ret = _sock->writer( (char*)&swapped, sizeof( int ) );
 
             //  ...then the size of the packet...
-            swapped = htonl( nBytes );
-            if ( _sock->writer( (char*)&swapped, sizeof( int ) ) == -1 )
-                return -1;
+            if ( ret != -1 ) {
+                swapped = htonl( nBytes );
+                ret = _sock->writer( (char*)&swapped, sizeof( int ) );
+            }
 
             //  ...then the data.
-            return( _sock->writer( data, nBytes ) );
+            if ( ret != -1 )
+                ret = _sock->writer( data, nBytes );
+            
+            //  Unlock the packet mutex and return.
+            pthread_mutex_unlock( &_sendPacketMutex );
+            return ret;
 
         }
 
@@ -121,6 +133,7 @@ namespace network {
     protected:
 
         GenericSocket* _sock;
+        pthread_mutex_t _sendPacketMutex;
 
     };
 
