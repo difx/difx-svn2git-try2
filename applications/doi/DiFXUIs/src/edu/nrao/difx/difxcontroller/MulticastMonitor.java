@@ -1,6 +1,15 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * This thread is used to monitor the network for DiFX multicast messages and
+ * queue them for the DiFX message processing thread.  The queueing is necessary
+ * to avoid missing a multicast broadcast - messages are collected and queued as
+ * fast as possible - the processing thread can take its time figuring out what
+ * to do with them.
+ * 
+ * The slightly strange structure of the "run()" function allows multicast messages
+ * to be optionally "relayed" from the guiServer (via TCP).  This permits us to collect
+ * the DiFX multicast broadcast even when we are beyond the reach of the
+ * messages themselves (guiServer inevitibly runs somewhere close to the DiFX message
+ * sources and thus can receive them).
  */
 package edu.nrao.difx.difxcontroller;
 
@@ -15,20 +24,16 @@ import java.util.logging.Logger;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
-/**
- *
- * @author mguerra
- */
-public class ReadMessageThread extends Thread {
+public class MulticastMonitor extends Thread {
 
-    private boolean mDone = false;
+    private boolean _done = false;
     private boolean _settingsChange = true;
     // -- always start the process message thread before this thread.
-    private ProcessMessageThread _processMessageThread;
+    private DiFXMessageProcessor _difxMessageProcessor;
     SystemSettings _settings;
 
     // Constructor, give the thread a name and a link to the system settings.
-    public ReadMessageThread( SystemSettings systemSettings ) {
+    public MulticastMonitor( SystemSettings systemSettings ) {
         _settings = systemSettings;
         //  Set up a callback for changes to broadcast items in the system settings.
         _settings.broadcastChangeListener( new ActionListener() {
@@ -44,17 +49,26 @@ public class ReadMessageThread extends Thread {
         _settingsChange = true;
     }
 
-    // Stop thread
     public void shutDown() {
-        mDone = true;
+        _done = true;
     }
 
     // Methods specific to the message queue
-    public void addQueue( ProcessMessageThread queue ) {
-        _processMessageThread = queue;
+    public void difxMessageProcessor( DiFXMessageProcessor newProcessor ) {
+        _difxMessageProcessor = newProcessor;
     }
 
-    // Implement the thread interface
+    /*
+     * Loop forever collecting multicast packets either directly (using a UDP connection)
+     * or via "relay" from guiServer (TCP connection).  Which we do depends on user
+     * settings (and the presence of a connection to guiServer).  The structure here
+     * makes the relayed packet collection look like the UDP packet collection.  Switching
+     * between the two methods (a single checkbox in the Settings window) will appear
+     * seamless.  
+     * 
+     * Both methods timeout and both report back the number of bytes they receive (a
+     * timeout generates 0 bytes, not an error).
+     */
     @Override
     public void run() {
 
@@ -66,20 +80,21 @@ public class ReadMessageThread extends Thread {
 
                 MulticastSocket socket = null;
                 
-                // loop forever, reading datagram packets
-                while ( !mDone ) {
+                //  Loop forever, reading multicast packets.
+                while ( !_done ) {
                     
                     try {
                         
                         //  We can get packets from either UDP or TCP.  
-                        //  TCP relay...
+                        //  This is the TCP relay...
                         if ( _settings.useTCPRelay() ) {
                             try {
-                                byte [] buffer = _settings.guiServerConnection().getRelay();
+                                byte [] buffer = _settings.guiServerConnection().getRelay( _settings.timeout() );
                                 if ( buffer != null ) {
                                     //  Feedback for the plot in the settings window
                                     _settings.gotPacket( buffer.length );
-                                    if ( !_processMessageThread.add( new ByteArrayInputStream( buffer, 0, buffer.length ) ) ) {
+                                    //  Add the packet to the processing queue.
+                                    if ( !_difxMessageProcessor.add( new ByteArrayInputStream( buffer, 0, buffer.length ) ) ) {
                                         System.out.printf("******** Read message thread packet FAILED to add into queue. \n");
                                     }
                                     buffer = null;
@@ -102,19 +117,17 @@ public class ReadMessageThread extends Thread {
                             }
 
                             // create buffer and datagram packet
-                            byte[] buffer = new byte[_settings.bufferSize()];    //1050
+                            byte[] buffer = new byte[_settings.bufferSize()];
                             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
-                            // Wait for datagram packet
+                            //  Do not process empty packets.
                             if ( packet != null ) {
-                                // do not process empty packets.
                                 try {
-                                    // Insert raw packet into the queue
                                     socket.receive(packet);
-                                    //  This allows the systems settings to show the packets as we receive them...very exciting.
+                                    //  Feedback for the plot in the settings window.
                                     _settings.gotPacket( packet.getLength() );
-//                                    if (!_processMessageThread.add(packet)) {
-                                    if ( !_processMessageThread.add( new ByteArrayInputStream( packet.getData(), 0, packet.getLength() ) ) ) {
+                                    //  Add the packet to the processing queue.
+                                    if ( !_difxMessageProcessor.add( new ByteArrayInputStream( packet.getData(), 0, packet.getLength() ) ) ) {
                                         System.out.printf("******** Read message thread packet FAILED to add into queue. \n");
                                     }
                                 } catch ( SocketTimeoutException exception ) {
@@ -139,13 +152,13 @@ public class ReadMessageThread extends Thread {
                         // catch an interrupt, stop thread
                         if (Thread.currentThread().isInterrupted() == true) {
                             System.out.println("******** Read message thread interrupted. \n" );
-                            mDone = true;
+                            _done = true;
                         }
                         
                     } catch (OutOfMemoryError exception) {
                         System.out.printf("******** Read message thread caught OutOfMemoryError(%s  %s) - done.\n",
                                 startDate, Calendar.getInstance().getTime().toString());
-                        mDone = true;
+                        _done = true;
                         exception.printStackTrace();
                     }
 
@@ -153,7 +166,7 @@ public class ReadMessageThread extends Thread {
 
                 System.out.println( "******** Read message thread done." );
             } catch ( IOException ex ) {
-                Logger.getLogger(ReadMessageThread.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(MulticastMonitor.class.getName()).log(Level.SEVERE, null, ex);
             }
 
         }

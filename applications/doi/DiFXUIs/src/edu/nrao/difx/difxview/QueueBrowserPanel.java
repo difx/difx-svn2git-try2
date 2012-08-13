@@ -4,10 +4,10 @@
  */
 package edu.nrao.difx.difxview;
 
+import edu.nrao.difx.difxcontroller.AttributedMessageListener;
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.BrowserNode;
 import mil.navy.usno.widgetlib.TearOffPanel;
-import mil.navy.usno.widgetlib.MessageDisplayPanel;
 import mil.navy.usno.widgetlib.ActivityMonitorLight;
 
 import javax.swing.JLabel;
@@ -230,14 +230,20 @@ public class QueueBrowserPanel extends TearOffPanel {
     }
 
     /*
-     * Set the data model, which provides us with data from DiFX.
+     * Request callbacks from the DiFX Message Processor for message types we are
+     * interested in.
      */
-    public void dataModel( DiFXDataModel newModel ) {
-        _dataModel = newModel;
-        _dataModel.addJobMessageListener( new AttributedMessageListener() {
+    public void difxMessageProcessor( DiFXMessageProcessor processor ) {
+        processor.addDifxStatusMessageListener(new AttributedMessageListener() {
             @Override
             public void update( DifxMessage difxMsg ) {
-                serviceUpdate( difxMsg );
+                processDifxStatusMessage( difxMsg );
+            }
+        } );
+        processor.addDifxAlertMessageListener(new AttributedMessageListener() {
+            @Override
+            public void update( DifxMessage difxMsg ) {
+                processDifxAlertMessage( difxMsg );
             }
         } );
     }
@@ -639,6 +645,25 @@ public class QueueBrowserPanel extends TearOffPanel {
     }
     
     /*
+     * Process a DiFX Status message.  These messages come from processors (usually the
+     * head node, seemingly) when jobs are running.
+     */
+    protected void processDifxStatusMessage( DifxMessage difxMsg ) {
+        serviceUpdate( difxMsg );
+    }
+    
+    /*
+     * Process a DiFX Alert message.  Here we are only interested in the "alerts" that
+     * appear to emerge from jobs.  For the moment I'm assuming any alert that does
+     * not come from mk5daemon is a job-related message (this is possibly not true in
+     * all cases).
+     */
+    protected void processDifxAlertMessage( DifxMessage difxMsg ) {
+        if ( !difxMsg.getHeader().getIdentifier().trim().equals( "mk5daemon" ) )
+            serviceUpdate( difxMsg );
+    }
+    
+    /*
      * Parse a difx message relayed to us from the data model.  This (presumably)
      * contains some information about a job.
      */
@@ -727,7 +752,6 @@ public class QueueBrowserPanel extends TearOffPanel {
     protected NodeBrowserScrollPane _headerPane;
     protected JLabel _mainLabel;
     protected JButton _updateButton;
-    DiFXDataModel  _dataModel;
     protected ExperimentNode _unaffiliated;
     protected PassNode _unknown;
     protected SystemSettings _systemSettings;

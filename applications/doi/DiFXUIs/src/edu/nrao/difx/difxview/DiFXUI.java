@@ -11,8 +11,8 @@ import java.awt.event.WindowEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-import edu.nrao.difx.difxdatamodel.*;
-import edu.nrao.difx.difxcontroller.*;
+import edu.nrao.difx.difxcontroller.MulticastMonitor;
+import edu.nrao.difx.difxcontroller.DiFXMessageProcessor;
 
 import java.awt.event.ComponentEvent;
 
@@ -74,22 +74,18 @@ public class DiFXUI extends JFrame implements WindowListener {
         _messageCenter.captureLogging( "global" );
         _systemSettings.messageCenter( _messageCenter );
         
-        //  Create a "data model" for processing incoming data transmissions
-        _dataModel = new DiFXDataModel( _systemSettings );
-        
         //  Start the threads the read and process outside messages (either from the
         //  guiServer or from the multicast network).  The read thread just reads and
         //  queues stuff as fast as possible.  The process thread works its way through
         //  the queue dealing with messages in order.
-        _readMessageThread = new ReadMessageThread( _systemSettings );
-        _processMessageThread = new ProcessMessageThread( _systemSettings );
-        _readMessageThread.addQueue( _processMessageThread );
-        _processMessageThread.difxDataModel( _dataModel );
-        _processMessageThread.start();
-        _readMessageThread.start();
+        _multicastMonitor = new MulticastMonitor( _systemSettings );
+        _difxMessageProcessor = new DiFXMessageProcessor( _systemSettings );
+        _multicastMonitor.difxMessageProcessor( _difxMessageProcessor );
+        _difxMessageProcessor.start();
+        _multicastMonitor.start();
 
-        _queueBrowser.dataModel( _dataModel );
-        _hardwareMonitor.dataModel( _dataModel );
+        _queueBrowser.difxMessageProcessor( _difxMessageProcessor );
+        _hardwareMonitor.difxMessageProcessor( _difxMessageProcessor );
 
         this.setLocation( _systemSettings.windowConfiguration().mainX, _systemSettings.windowConfiguration().mainY );
 
@@ -336,8 +332,8 @@ public class DiFXUI extends JFrame implements WindowListener {
      * need to make sure it is up to date on a bunch of settings.
      */
     private void exitOperation() {
-        _readMessageThread.shutDown();
-        _processMessageThread.shutDown();
+        _multicastMonitor.shutDown();
+        _difxMessageProcessor.shutDown();
         _systemSettings.windowConfiguration().mainX = this.getLocation().x;
         _systemSettings.windowConfiguration().mainY = this.getLocation().y;
         _systemSettings.windowConfiguration().mainW = this.getSize().width;
@@ -516,7 +512,6 @@ public class DiFXUI extends JFrame implements WindowListener {
     
     protected SystemSettings _systemSettings;
 
-    protected DiFXDataModel _dataModel;
-    protected ReadMessageThread _readMessageThread;
-    protected ProcessMessageThread _processMessageThread;
+    protected MulticastMonitor _multicastMonitor;
+    protected DiFXMessageProcessor _difxMessageProcessor;
 }

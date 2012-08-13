@@ -11,7 +11,6 @@ public abstract class DiFXObject
    private String        objName;
    private String        msgSrcId;           // sender of last message
    private long          statusTimeStampUTC; //time stamp of last status received
-   private DiFXDataModel dataModel;          // Provide call back into the model, just in case
 
    public DiFXObject()
    {
@@ -20,7 +19,6 @@ public abstract class DiFXObject
       objName   = "";
       msgSrcId  = "";
       statusTimeStampUTC = 0l;
-      dataModel = null;
    }
 
    public String getObjType()
@@ -90,16 +88,6 @@ public abstract class DiFXObject
       return ( (statusTimeStampUTC + 20000l) > System.currentTimeMillis() );
    }
 
-   public DiFXDataModel getDataModel()
-   {
-      return dataModel;
-   }
-
-   public void setDataModel(DiFXDataModel model)
-   {
-      this.dataModel = model;
-   }
-
    public void updateObject(DiFXObject newData)
    {
       this.objType   = newData.getObjType();
@@ -107,7 +95,6 @@ public abstract class DiFXObject
       this.objName   = newData.getObjName();
       this.msgSrcId  = newData.getMsgSrcId();
       this.statusTimeStampUTC = newData.getStatusTimeStampUTC();
-      this.dataModel = newData.getDataModel();
    }
 
    public boolean isEqual(DiFXObject objToCompare)
@@ -117,8 +104,7 @@ public abstract class DiFXObject
                this.objName.equals(objToCompare.getObjName())   &&
                this.msgSrcId.equals(objToCompare.getMsgSrcId()) &&
                this.statusTimeStampUTC == 
-                           objToCompare.getStatusTimeStampUTC() &&
-               this.dataModel == objToCompare.getDataModel());
+                           objToCompare.getStatusTimeStampUTC() );
    }
 
    public boolean isVerified()

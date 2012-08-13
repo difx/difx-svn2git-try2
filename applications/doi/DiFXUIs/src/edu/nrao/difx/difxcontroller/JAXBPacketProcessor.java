@@ -64,17 +64,23 @@ public class JAXBPacketProcessor
       catch (javax.xml.bind.JAXBException ex)
       {
           System.out.println( "JAXBException");
+          Reader r = new InputStreamReader( is );  
+            StringWriter sw = new StringWriter();  
+            char[] buffer = new char[1024];  
+            try {
+            for (int n; (n = r.read(buffer)) != -1; )  
+                sw.write(buffer, 0, n);  
+            }
+            catch ( Exception e ) {}
+            String str = sw.toString();
+            System.out.println( str );
           System.out.println( is.toString() );
          // XXXTODO Handle exception
          java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null, ex); //NOI18N
       }
-      catch (Exception e)
-      {
-          System.out.println( ">>>>PACKET ERROR");
-      System.out.println( is.toString() );
-      System.out.println( ">>>>>>>>>>>>>>>");
-         e.printStackTrace();
-      }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
 
       // return unmarshalled message to client
       return difxMsg;

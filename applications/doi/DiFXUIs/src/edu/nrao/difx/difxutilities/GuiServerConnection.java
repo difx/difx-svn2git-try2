@@ -128,9 +128,9 @@ public class GuiServerConnection {
      * a socket message from difx of a specific type - left over from when the ONLY
      * type of message difx sent was a relay.
      */
-    public byte[] getRelay() throws SocketTimeoutException {
+    public byte[] getRelay( int timeout ) throws SocketTimeoutException {
         int counter = 0;
-        while ( counter < _settings.timeout() ) {
+        while ( counter < timeout ) {
             if ( _difxRelayData != null ) {
                 byte [] returnData = _difxRelayData;
                 _difxRelayData = null;
@@ -142,7 +142,8 @@ public class GuiServerConnection {
         throw new SocketTimeoutException();
     }
     
-    protected static int WARNING_SIZE = 1024 * 1024;
+    protected static int WARNING_SIZE = 10 * 1024 * 1024;
+
     /*
      * This thread recieves data packets of different types from the guiServer.
      */
@@ -156,7 +157,7 @@ public class GuiServerConnection {
                     int nBytes = _in.readInt();
                     if ( nBytes > WARNING_SIZE ) {
                         java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.WARNING, 
-                                "trying to read " + nBytes + "of data - packetID is " + packetId );
+                                "trying to read (" + nBytes + " of data) - packetID is " + packetId );
                         java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.WARNING, 
                                 "Message has NOT BEEN READ" );
                     }

@@ -8,18 +8,11 @@ import javax.swing.Timer;
 import javax.swing.Action;
 import javax.swing.AbstractAction;
 
-import edu.nrao.difx.difxutilities.SendMessage;
 import edu.nrao.difx.difxutilities.DiFXCommand;
-import edu.nrao.difx.xmllib.difxmessage.ObjectFactory;
-import edu.nrao.difx.xmllib.difxmessage.Header;
-import edu.nrao.difx.xmllib.difxmessage.Body;
-import edu.nrao.difx.xmllib.difxmessage.DifxStart;
-import edu.nrao.difx.xmllib.difxmessage.DifxStop;
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 import edu.nrao.difx.xmllib.difxmessage.DifxMachinesDefinition;
-
-import edu.nrao.difx.difxcontroller.JAXBDiFXProcessor;
-import edu.nrao.difx.xmllib.difxmessage.*;
+import edu.nrao.difx.xmllib.difxmessage.DifxStart;
+import edu.nrao.difx.xmllib.difxmessage.DifxStatus;
 
 import javax.swing.JFrame;
 import javax.swing.JMenuBar;
@@ -1265,39 +1258,39 @@ public class JobEditorMonitor extends JFrame {
     public void pauseJob() {}
     
     public void stopJob() {
-        ObjectFactory factory = new ObjectFactory();
-
-        // Create header
-        Header header = factory.createHeader();
-        header.setFrom( "doi" );
-        header.setTo( _settings.difxControlAddress() );
-        header.setMpiProcessId( "0" );
-        header.setIdentifier( _jobNode.name() );
-        header.setType( "DifxStop" );
-
-        // Create start job command
-        DifxStop jobStop = factory.createDifxStop();
-        jobStop.setInput( _jobNode.inputFile() );
-
-        // -- Create the XML defined messages and process through the system
-        Body body = factory.createBody();
-        body.setDifxStop( jobStop );
-
-        DifxMessage difxMsg = factory.createDifxMessage();
-        difxMsg.setHeader( header );
-        difxMsg.setBody( body );
-
-        JAXBDiFXProcessor xmlProc = new JAXBDiFXProcessor(difxMsg);
-        String xmlString = xmlProc.ConvertToXML();
-        
-        if ( xmlString != null )
-            try {
-            SendMessage.writeToSocket( xmlString, _settings );
-            }
-            catch ( Exception e ) {
-               java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
-                       e.getMessage() );  //BLAT should be a pop-up
-            }
+//        ObjectFactory factory = new ObjectFactory();
+//
+//        // Create header
+//        Header header = factory.createHeader();
+//        header.setFrom( "doi" );
+//        header.setTo( _settings.difxControlAddress() );
+//        header.setMpiProcessId( "0" );
+//        header.setIdentifier( _jobNode.name() );
+//        header.setType( "DifxStop" );
+//
+//        // Create start job command
+//        DifxStop jobStop = factory.createDifxStop();
+//        jobStop.setInput( _jobNode.inputFile() );
+//
+//        // -- Create the XML defined messages and process through the system
+//        Body body = factory.createBody();
+//        body.setDifxStop( jobStop );
+//
+//        DifxMessage difxMsg = factory.createDifxMessage();
+//        difxMsg.setHeader( header );
+//        difxMsg.setBody( body );
+//
+//        JAXBDiFXProcessor xmlProc = new JAXBDiFXProcessor(difxMsg);
+//        String xmlString = xmlProc.ConvertToXML();
+//        
+//        if ( xmlString != null )
+//            try {
+//            SendMessage.writeToSocket( xmlString, _settings );
+//            }
+//            catch ( Exception e ) {
+//               java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
+//                       e.getMessage() );  //BLAT should be a pop-up
+//            }
     }
     
     /*
