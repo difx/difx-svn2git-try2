@@ -32,9 +32,9 @@
       Files required to run DiFX and directories for data products are
       all created according to user specifications, and jobs are
       organized in "Experiments" and "Passes", all of which can be
-      stored using a database.&nbsp; These jobs can then be run through
-      DiFX and their progress and data products can be monitored in
-      detail.<br>
+      stored using a database.&nbsp; The GUI can then instruct DiFX to
+      process these jobs, and will then monitor their progress and data
+      products in detail.<br>
       <br>
     </p>
     <h3>Running the GUI</h3>
@@ -42,11 +42,12 @@
     the application <span style="font-style: italic;">guiServer</span>
     runs on one of the processing nodes in the DiFX cluster.&nbsp; The
     processor running <span style="font-style: italic;">guiServer</span>
-    is often referred to in the documentation as the "DiFX Host" node or
-    "DiFX Control" node.&nbsp; Itshould have read and write permission
-    over all data directories used by DiFX and must be able to start
-    processes on all other nodes using <span style="font-style:
-      italic;">mpirun</span>.<br>
+    is often referred to in the documentation as the "DiFX Host" or
+    the&nbsp; "DiFX head node".&nbsp; GuiServer must by run by a user
+    (not root for security reasons) that has read and write permissions
+    over all data directories used by DiFX.&nbsp; This user must also be
+    able to start processes on all other nodes using <span
+      style="font-style: italic;">mpirun</span>.<br>
     <br>
     The GUI itself is a Java program, currently called <span
       style="font-style: italic;">DiFXUIs</span> (this name is

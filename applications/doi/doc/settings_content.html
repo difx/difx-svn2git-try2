@@ -18,11 +18,45 @@
       <li>Settings File</li>
       <li><a href="#DiFX_Control_Connection">DiFX Control Connection</a><br>
       </li>
-      <li><a href="#Broadcast_Network">Broadcast Network</a></li>
+      <li><a href="#Broadcast_Network">DiFX Mulitcast Messages</a></li>
       <li><a href="#Database_Configuration">Database Configuration</a></li>
       <li>Documentation Locations</li>
     </ul>
     <h2><a name="DiFX_Control_Connection"></a>DiFX Control Connection</h2>
+    <p>The DiFX Control Connection settings determine how the GUI
+      communicates with and controls DiFX.&nbsp; In normal operation the
+      GUI makes a TCP connection with the <span style="font-style:
+        italic;">guiServer</span> process running on the DiFX "head
+      node" (sometimes called the "DiFX host" in this
+      documentation).&nbsp; To complicate matters however, there are
+      actually three ways the GUI and DiFX can interact:<br>
+    </p>
+    <ol>
+      <li>The connection between the GUI and <span style="font-style:
+          italic;">guiServer</span> is used for all controls and data
+        exchanges.&nbsp; DiFX multicast message traffic is collected by
+        <span style="font-style: italic;">guiServer</span> and relayed
+        over the TCP socket to the GUI (for more information about
+        message traffic, see the <a href="#Broadcast_Network">DiFX
+          Multicast Messages</a> section below).&nbsp; This
+        configuration is used when the GUI is running outside the LAN on
+        which the multicast messages can be received directly.</li>
+      <li>The connection between the GUI and <span style="font-style:
+          italic;">guiServer</span> is used for controls and all data
+        from <span style="font-style: italic;">guiServer</span> itself,
+        however DiFX multicast messages are received directly using a
+        UDP socket.&nbsp; For multicast messaging to work, the GUI must
+        be running on the multicast LAN.</li>
+      <li>No connection is made to guiServer.&nbsp; DiFX multicast
+        messages are received directly using a UDP socket.&nbsp; The GUI
+        can also issue commands directly to DiFX using its own multicast
+        messages, however the command set available is limited and in
+        the long run this capability will not be supported.<br>
+      </li>
+    </ol>
+    <div style="text-align: center;"><img style=" width: 902px; height:
+        243px;" alt="" src="images/settings/DifxControlConnection.png"><br>
+    </div>
     The DiFX Control Connection setting determine how commands are sent
     to DiFX.&nbsp; Processing and data nodes should all be running <span
       style="font-style: italic;">mk5daemon</span> to send and receive
@@ -170,6 +204,31 @@
     messages over time:<br>
     <img style=" width: 302px; height: 124px;" alt=""
       src="images/settings/good_packet_traffic_plot.gif"><br>
+    <br>
+    <h4>Suppress "Unknown Message" Warnings</h4>
+    <p>This check box was put in place to avoid annoying error messages
+      during development and is largely obsolete.&nbsp; It will probably
+      be removed in the near future.<br>
+    </p>
+    <h4>Identify Mark5 Unit Names by Pattern</h4>
+    <p>This check box and text field cause the GUI (primarily in the
+      Hardware Monitor Window) to determine whether multicast messages
+      are from Mark 5 Modules or Processor Nodes based on machine
+      names.&nbsp; If the box is checked the machine name of the source
+      of each message is compared to a list of comma-separated "regular
+      expressions" contained in the text field.&nbsp; If it matches any
+      one of them, the message is assumed to be from a Mark 5 unit and
+      is sorted accordingly.<br>
+    </p>
+    <p>Regular expressions are extremely useful for pattern matching,
+      but if you haven't used them before they can be less than 100%
+      intuitive.&nbsp; There are many online resources that explain them
+      in excruciating detail.&nbsp; The default value for patterns
+      "mark5.*" matches the NRAO practice (duplicated at USNO) of naming
+      all Mark 5 machines such that they start with the five characters
+      "mark5", as in "mark5-101.foo.edu".<br>
+      <br>
+    </p>
     <ul>
     </ul>
     <h2><a name="Database_Configuration"></a>Database Configuration</h2>
@@ -325,6 +384,8 @@
 
 
 
+
+
       the Database Configuration</h2>
     A number of things can go wrong when trying to access the DiFX
     database remotely.&nbsp; The Database Configuration panel contains a
@@ -419,6 +480,8 @@
 
 
 
+
+
     Then remote log into that host and see if the mySQL server is
     runing:<br>
     <ul style="margin-left: 40px;">
@@ -477,6 +540,8 @@
     <br>
     <br>
     <h6> <span style="font-weight: bold; font-family: monospace;">&nbsp;&nbsp;&nbsp;
+
+
 
 
         Database contains 0 jobs.</span></h6>
