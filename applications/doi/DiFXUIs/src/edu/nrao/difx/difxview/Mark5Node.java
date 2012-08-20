@@ -20,7 +20,7 @@ import java.awt.Color;
  *
  * @author jspitzak
  */
-public class Mark5Node extends ClusterNode {
+public class Mark5Node extends ProcessorNode {
     
     public Mark5Node( String name, SystemSettings settings ) {
         super( name, settings );

@@ -30,9 +30,9 @@ import mil.navy.usno.plotlib.Track2D;
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 import edu.nrao.difx.difxutilities.DiFXCommand_mark5Control;
 
-public class ClusterNode extends BrowserNode {
+public class ProcessorNode extends BrowserNode {
     
-    public ClusterNode( String name, SystemSettings settings ) {
+    public ProcessorNode( String name, SystemSettings settings ) {
         super( name );
         _settings = settings;
         _columnColor = new Color( 204, 204, 255 );

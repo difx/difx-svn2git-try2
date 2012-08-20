@@ -42,6 +42,7 @@ namespace network {
         virtual int sendPacket( const int packetId, char* data, const int nBytes ) {
             int swapped;
 
+printf( "sending packet ID %d (%d bytes)\n", packetId, nBytes );
             //  Lock the "packet" mutex.  This keeps other threads from trying to
             //  write until we have completed sending the packet.
             pthread_mutex_lock( &_sendPacketMutex );

@@ -556,10 +556,10 @@ public class JobEditorMonitor extends JFrame {
     
     public void calcFileName( String newName ) { _calcFileName.setText( newName ); }
     
-    public ProcessorNode processorNodeByName( String name ) {
+    public PaneProcessorNode processorNodeByName( String name ) {
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
-            ProcessorNode thisNode = (ProcessorNode)(iter.next());
+            PaneProcessorNode thisNode = (PaneProcessorNode)(iter.next());
             if ( thisNode.name().contentEquals( name ) )
                 return thisNode;
         }
@@ -607,7 +607,7 @@ public class JobEditorMonitor extends JFrame {
         //  tests.
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
-            ( (ProcessorNode)(iter.next()) ).clearTest();
+            ( (PaneProcessorNode)(iter.next()) ).clearTest();
         }
         
         // Create machines definition command
@@ -650,7 +650,7 @@ public class JobEditorMonitor extends JFrame {
         String processNodeNames = "";
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
-            ProcessorNode thisNode = (ProcessorNode)(iter.next());
+            PaneProcessorNode thisNode = (PaneProcessorNode)(iter.next());
             if ( thisNode.selected() ) {
                 DifxMachinesDefinition.Process process = command.factory().createDifxMachinesDefinitionProcess();
                 process.setNodes( thisNode.name() );
@@ -867,7 +867,7 @@ public class JobEditorMonitor extends JFrame {
                             _messageDisplayPanel.error( 0, "machines monitor", "Popen failed on DiFX host: " + new String( data ) );
                         }
                         else if ( packetType == FAILURE_MPIRUN ) {
-                            ProcessorNode node = processorNodeByName( new String( data ) );
+                            PaneProcessorNode node = processorNodeByName( new String( data ) );
                             if ( node != null )
                                 node.mpiTest( false, _eliminateNonrespondingProcessors.isSelected() );
                             if ( _eliminateNonrespondingProcessors.isSelected() )
@@ -876,7 +876,7 @@ public class JobEditorMonitor extends JFrame {
                                 _messageDisplayPanel.warning( 0, "machines monitor", "Processing node " + new String( data ) + " failed mpirun test" );
                         }
                         else if ( packetType == SUCCESS_MPIRUN ) {
-                            ProcessorNode node = processorNodeByName( new String( data ) );
+                            PaneProcessorNode node = processorNodeByName( new String( data ) );
                             if ( node != null )
                                 node.mpiTest( true, true );
                         }
@@ -915,7 +915,7 @@ public class JobEditorMonitor extends JFrame {
     public void changeBusyProcessorsSettings() {
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
-            ProcessorNode thisNode = (ProcessorNode)(iter.next());
+            PaneProcessorNode thisNode = (PaneProcessorNode)(iter.next());
             boolean keepIt = thisNode.cpuTest( (float)_busyPercentage.value(),
                     _eliminateBusyProcessors.isSelected()  );
         }
@@ -1001,7 +1001,7 @@ public class JobEditorMonitor extends JFrame {
         String processNodeNames = "";
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
-            ProcessorNode thisNode = (ProcessorNode)(iter.next());
+            PaneProcessorNode thisNode = (PaneProcessorNode)(iter.next());
             if ( thisNode.selected() ) {
                 DifxStart.Process process = command.factory().createDifxStartProcess();
                 process.setNodes( thisNode.name() );
@@ -1414,9 +1414,9 @@ public class JobEditorMonitor extends JFrame {
      * the user to use the processor as the "head node" and tracks the number of
      * cores available.
      */
-    protected class ProcessorNode extends BrowserNode {
+    protected class PaneProcessorNode extends BrowserNode {
         
-        public ProcessorNode( String name ) {
+        public PaneProcessorNode( String name ) {
             super( name );
         }
         
@@ -1543,13 +1543,13 @@ public class JobEditorMonitor extends JFrame {
         //  "found" flag for each.
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); )
-            ( (ProcessorNode)(iter.next()) ).foundIt = false;        
+            ( (PaneProcessorNode)(iter.next()) ).foundIt = false;        
         //  These are all of the processing nodes that the hardware monitor knows
         //  about.  See if they are in the list.
-        for ( Iterator<BrowserNode> iter = _settings.hardwareMonitor().clusterNodes().children().iterator();
+        for ( Iterator<BrowserNode> iter = _settings.hardwareMonitor().processorNodes().children().iterator();
                 iter.hasNext(); ) {
             BrowserNode thisModule = iter.next();
-            if ( !( (ClusterNode)(thisModule) ).ignore() ) {
+            if ( !( (ProcessorNode)(thisModule) ).ignore() ) {
                 BrowserNode foundNode = null;
                 //  Is this processor in our list?
                 for ( Iterator<BrowserNode> iter2 = _processorsPane.browserTopNode().children().iterator();
@@ -1557,15 +1557,15 @@ public class JobEditorMonitor extends JFrame {
                     BrowserNode testNode = iter2.next();
                     if ( testNode.name() == thisModule.name() ) {
                         foundNode = testNode;
-                        ( (ProcessorNode)(testNode) ).foundIt = true;
+                        ( (PaneProcessorNode)(testNode) ).foundIt = true;
                     }
                 }
                 //  New node?  Then add it to the list.
                 if ( foundNode == null ) {
-                    ProcessorNode newNode = new ProcessorNode( thisModule.name() );
-                    newNode.cores( ((ClusterNode)(thisModule)).numCores() );
-                    newNode.threads( ((ClusterNode)(thisModule)).numCores() );
-                    newNode.cpu( ((ClusterNode)(thisModule)).cpuUsage() );
+                    PaneProcessorNode newNode = new PaneProcessorNode( thisModule.name() );
+                    newNode.cores( ((ProcessorNode)(thisModule)).numCores() );
+                    newNode.threads( ((ProcessorNode)(thisModule)).numCores() );
+                    newNode.cpu( ((ProcessorNode)(thisModule)).cpuUsage() );
                     newNode.cpuTest( (float)_busyPercentage.value(),
                             _eliminateBusyProcessors.isSelected() );
                     newNode.foundIt = true;
@@ -1573,8 +1573,8 @@ public class JobEditorMonitor extends JFrame {
                     _processorsPane.addNode( newNode );
                 }
                 else {
-                    ( (ProcessorNode)foundNode ).cpu( ((ClusterNode)(thisModule)).cpuUsage() );
-                    ( (ProcessorNode)foundNode ).cpuTest( (float)_busyPercentage.value(),
+                    ( (PaneProcessorNode)foundNode ).cpu( ((ProcessorNode)(thisModule)).cpuUsage() );
+                    ( (PaneProcessorNode)foundNode ).cpuTest( (float)_busyPercentage.value(),
                             _eliminateBusyProcessors.isSelected() );
                 }
             }
@@ -1582,7 +1582,7 @@ public class JobEditorMonitor extends JFrame {
         //  Now purge the list of any items that were not "found"....
         for ( Iterator<BrowserNode> iter = _processorsPane.browserTopNode().children().iterator();
                 iter.hasNext(); ) {
-            ProcessorNode testNode = (ProcessorNode)(iter.next());
+            PaneProcessorNode testNode = (PaneProcessorNode)(iter.next());
             if ( !testNode.foundIt )
                 _processorsPane.browserTopNode().removeChild( testNode );
             else {

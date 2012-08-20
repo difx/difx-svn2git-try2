@@ -164,7 +164,7 @@ public class MessageDisplayPanel extends JPanel {
         _clearAll = new JMenuItem( "Errors, Warnings and Messages" );
         _clearAll.addActionListener( new java.awt.event.ActionListener() {
             public void actionPerformed( java.awt.event.ActionEvent e ) {
-                clearAllAction( e );
+                clearAllAction();
             }
         });
         _clearMenu.add( _clearAll );
@@ -192,15 +192,7 @@ public class MessageDisplayPanel extends JPanel {
         super.setBounds( x, y, w, h );
     }
     
-    /*
-     * The clear button generates submenus that can be used to clear specific
-     * items.
-     */
-    protected void clearButtonAction( java.awt.event.ActionEvent e ) {
-        _clearMenu.setVisible( true );
-    }
-        
-    protected void clearAllAction( java.awt.event.ActionEvent e ) {
+    protected void clearAllAction() {
         _messageBrowser.clear();
     }
     

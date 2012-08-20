@@ -48,7 +48,7 @@ public class HardwareMonitorPanel extends TearOffPanel {
         _mainLabel.setBounds( 5, 0, 150, 20 );
         _mainLabel.setFont( new Font( "Dialog", Font.BOLD, 14 ) );
         add( _mainLabel );
-        _clusterNodes = new ClusterNodesHeader( "Processor Nodes" );
+        _clusterNodes = new ProcessorNodesHeader( "Processor Nodes" );
         _clusterNodes.backgroundColor( new Color( 255, 204, 153 ) );
         _browserPane.addNode( _clusterNodes );
         _mk5Modules = new Mark5NodesHeader( "Mark5 Modules" );
@@ -110,14 +110,14 @@ public class HardwareMonitorPanel extends TearOffPanel {
         } else {
 
             //  Mark5 status messages may actually be from processors.
-            ClusterNode processor = null;
+            ProcessorNode processor = null;
             for ( Iterator<BrowserNode> iter = _clusterNodes.children().iterator(); iter.hasNext() && processor == null; ) {
                 BrowserNode thisModule = iter.next();
                 if ( thisModule.name().contentEquals( difxMsg.getHeader().getFrom() ) )
-                    processor = (ClusterNode)thisModule;
+                    processor = (ProcessorNode)thisModule;
             }
             if ( processor == null ) {
-                processor = new ClusterNode( difxMsg.getHeader().getFrom(), _settings );
+                processor = new ProcessorNode( difxMsg.getHeader().getFrom(), _settings );
                 _clusterNodes.addChild( processor );
             }
             processor.statusMessage( difxMsg ); 
@@ -144,14 +144,14 @@ public class HardwareMonitorPanel extends TearOffPanel {
             
         } else {
 
-            ClusterNode processor = null;
+            ProcessorNode processor = null;
             for ( Iterator<BrowserNode> iter = _clusterNodes.children().iterator(); iter.hasNext() && processor == null; ) {
                 BrowserNode thisModule = iter.next();
                 if ( thisModule.name().contentEquals( difxMsg.getHeader().getFrom() ) )
-                    processor = (ClusterNode)thisModule;
+                    processor = (ProcessorNode)thisModule;
             }
             if ( processor == null ) {
-                processor = new ClusterNode( difxMsg.getHeader().getFrom(), _settings );
+                processor = new ProcessorNode( difxMsg.getHeader().getFrom(), _settings );
                 _clusterNodes.addChild( processor );
             }
             processor.loadMessage( difxMsg ); 
@@ -167,10 +167,11 @@ public class HardwareMonitorPanel extends TearOffPanel {
      * name.  Anything that is not a Mark5 is assumed to be a cluster node.
      */
     public boolean isFromMark5( DifxMessage difxMsg ) {
-        return difxMsg.getHeader().getFrom().substring(0, 5).equalsIgnoreCase( "mark5" );
+        return _settings.isMark5Name( difxMsg.getHeader().getFrom() );
+        //return difxMsg.getHeader().getFrom().substring(0, 5).equalsIgnoreCase( "mark5" );
     }
     
-    public BrowserNode clusterNodes() { return _clusterNodes; }
+    public BrowserNode processorNodes() { return _clusterNodes; }
     public BrowserNode mk5Modules() { return _mk5Modules; }
     
     private NodeBrowserScrollPane _browserPane;

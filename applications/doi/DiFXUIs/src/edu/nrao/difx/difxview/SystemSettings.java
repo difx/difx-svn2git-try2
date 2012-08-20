@@ -392,7 +392,7 @@ public class SystemSettings extends JFrame {
         difxControlPanel.add( difxBaseLabel );
         
         IndexedPanel networkPanel = new IndexedPanel( "DiFX Multicast Messages" );
-        networkPanel.openHeight( 210 );
+        networkPanel.openHeight( 240 );
         networkPanel.closedHeight( 20 );
         _scrollPane.addNode( networkPanel );
         _useTCPRelayCheck = new JCheckBox( "Relay Using guiServer Connection" );
@@ -472,6 +472,17 @@ public class SystemSettings extends JFrame {
         _suppressWarningsCheck = new JCheckBox( "Suppress \"Unknown Message\" Warnings" );
         _suppressWarningsCheck.setBounds( 165, 175, 450, 25 );
         networkPanel.add( _suppressWarningsCheck );
+        _identifyMark5sCheck = new JCheckBox( "Identify Mark5 Unit Names by Pattern: " );
+        _identifyMark5sCheck.setBounds( 165, 205, 305, 25 );
+        networkPanel.add( _identifyMark5sCheck );
+        _mark5Pattern = new SaneTextField();
+        _mark5Pattern.setToolTipText( "Comma separated list of patterns that match all names of Mark5 units.");
+        _mark5Pattern.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                generateMark5PatternList();
+            }
+        } );
+        networkPanel.add( _mark5Pattern );
         
         IndexedPanel databasePanel = new IndexedPanel( "Database Configuration" );
         databasePanel.openHeight( 305 );
@@ -864,6 +875,7 @@ public class SystemSettings extends JFrame {
             _bufferSize.setBounds( 165, 115, 300, 25 );
             _timeout.setBounds( 165, 145, 300, 25 );
             _plotWindow.setBounds( 470, 33, w - 495, 140 );
+            _mark5Pattern.setBounds( 480, 205, w - 510, 25 );
             //  Database Configuration
             _dbHost.setBounds( 165, 55, 300, 25 );
             _dbPort.setBounds( 165, 85, 300, 25 );
@@ -1330,6 +1342,9 @@ public class SystemSettings extends JFrame {
         _loggingEnabled = false;
         _statusValidDuration = 2000l;
         _useTCPRelayCheck.setSelected( false );
+        _identifyMark5sCheck.setSelected( true );
+        _mark5Pattern.setText( "mark5.*" );
+        generateMark5PatternList();
         _ipAddress.setText( "224.2.2.1" );
         _port.intValue( 52525 );
         _bufferSize.intValue( 1500 );
@@ -1439,6 +1454,15 @@ public class SystemSettings extends JFrame {
         _autoUpdateEOP.setSelected( false );
         //  Set up the communications based on current settings.
         changeDifxControlConnection();
+    }
+    
+    /*
+     * Use the string of Mark5 name-matching patterns to generate a list of individual
+     * patterns.
+     */
+    protected void generateMark5PatternList() {
+        //  List is a single comma-separated string.
+        _mark5PatternList = _mark5Pattern.getText().split( "[,\\s]+" );
     }
     
     /*
@@ -1834,6 +1858,10 @@ public class SystemSettings extends JFrame {
             if ( doiConfig.getBufferSize() != 0 )
                 this.bufferSize( doiConfig.getBufferSize() );
             _suppressWarningsCheck.setSelected( doiConfig.isSuppressUnknownMessageWarnings() );
+            //  Double negative to make checked a default.
+            _identifyMark5sCheck.setSelected( !doiConfig.isDontIdentifyMark5SByPattern() );
+            if ( doiConfig.getMark5Pattern() != null )
+                _mark5Pattern.setText( doiConfig.getMark5Pattern() );
             this.loggingEnabled( doiConfig.isLoggingEnabled() );
             if ( doiConfig.getStatusValidDuration() != 0 )
                 this.statusValidDuration( doiConfig.getStatusValidDuration() );
@@ -2016,6 +2044,8 @@ public class SystemSettings extends JFrame {
         doiConfig.setPort( this.port() );
         doiConfig.setBufferSize( this.bufferSize() );
         doiConfig.setSuppressUnknownMessageWarnings( _suppressWarningsCheck.isSelected() );
+        doiConfig.setDontIdentifyMark5SByPattern( !_identifyMark5sCheck.isSelected() );
+        doiConfig.setMark5Pattern( _mark5Pattern.getText() );
         doiConfig.setLoggingEnabled( this.loggingEnabled() );
         doiConfig.setStatusValidDuration( this.statusValidDuration() );
         
@@ -2693,6 +2723,16 @@ public class SystemSettings extends JFrame {
         return _guiServerDifxVersion.getText();
     }
     
+    public boolean isMark5Name( String newName ) {
+        if ( _identifyMark5sCheck.isSelected() && _mark5PatternList != null ) {
+            for ( int i = 0; i < _mark5PatternList.length; ++i ) {
+                if ( newName.matches( _mark5PatternList[i] ) )
+                    return true;
+            }
+        }
+        return false;
+    }
+    
     protected SystemSettings _this;
     
     protected boolean _allObjectsBuilt;
@@ -2728,6 +2768,8 @@ public class SystemSettings extends JFrame {
     Track2D _broadcastTrack;
     int _broadcastTrackSize;
     protected JCheckBox _suppressWarningsCheck;
+    protected JCheckBox _identifyMark5sCheck;
+    protected SaneTextField _mark5Pattern;
     //  Database configuration
     protected JCheckBox _dbUseDataBase;
     protected JFormattedTextField _dbVersion;
@@ -2903,6 +2945,9 @@ public class SystemSettings extends JFrame {
         String type;
         String source;
     }
+    
+    //  List of pattens used to match Mark5 names
+    protected String[] _mark5PatternList;
     
     //  Our list of the above class types.
     protected ArrayList<DataSource> _dataSourceList;

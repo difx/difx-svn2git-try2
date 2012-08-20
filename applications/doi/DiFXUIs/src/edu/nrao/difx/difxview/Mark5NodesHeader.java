@@ -16,7 +16,7 @@ import java.util.Iterator;
  *
  * @author jspitzak
  */
-public class Mark5NodesHeader extends ClusterNodesHeader {
+public class Mark5NodesHeader extends ProcessorNodesHeader {
     
     public Mark5NodesHeader( String name ) {
         super( name );

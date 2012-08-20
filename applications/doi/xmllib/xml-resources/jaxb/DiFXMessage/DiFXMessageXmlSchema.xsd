@@ -173,6 +173,8 @@
                 <xsd:element ref="defaultNamesVSNFormat"/>
                 
                 <xsd:element ref="suppressUnknownMessageWarnings"/>
+                <xsd:element ref="dontIdentifyMark5sByPattern"/>
+                <xsd:element ref="mark5Pattern"/>
 
                 <xsd:element ref="eopURL"/>
                 <xsd:element ref="leapSecondsURL"/>
@@ -280,6 +282,8 @@
     <xsd:element name="defaultNamesVSNFormat" type="xsd:string"></xsd:element>
 
     <xsd:element name="suppressUnknownMessageWarnings" type="xsd:boolean"></xsd:element>
+    <xsd:element name="dontIdentifyMark5sByPattern" type="xsd:boolean"></xsd:element>
+    <xsd:element name="mark5Pattern" type="xsd:string"></xsd:element>
 
     <xsd:element name="eopURL" type="xsd:string"></xsd:element>
     <xsd:element name="leapSecondsURL" type="xsd:string"></xsd:element>

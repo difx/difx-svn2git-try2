@@ -23,9 +23,9 @@ import java.awt.RenderingHints;
 
 import java.util.Iterator;
 
-public class ClusterNodesHeader extends BrowserNode {
+public class ProcessorNodesHeader extends BrowserNode {
     
-    public ClusterNodesHeader( String name ) {
+    public ProcessorNodesHeader( String name ) {
         super( name );
         _normalCursor = this.getCursor();
         _columnAdjustCursor = new Cursor( Cursor.W_RESIZE_CURSOR );
@@ -488,7 +488,7 @@ public class ClusterNodesHeader extends BrowserNode {
      */
     public void setChildColumnWidths() {
         for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
-            ClusterNode thisNode = (ClusterNode)(iter.next());
+            ProcessorNode thisNode = (ProcessorNode)(iter.next());
             //  Change the settings on these items to match our current specifications.
             thisNode.widthNumCPUs( _widthNumCPUs );
             thisNode.widthNumCores( _widthNumCores );
@@ -747,7 +747,7 @@ public class ClusterNodesHeader extends BrowserNode {
         //  Run through the list of all "child" nodes, which are all of the listed
         //  cluster nodes.
         for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
-            ClusterNode thisNode = (ClusterNode)(iter.next());
+            ProcessorNode thisNode = (ProcessorNode)(iter.next());
             //  Change the settings on these items to match our current specifications.
             thisNode.showIgnored( _showIgnored.getState() );
             thisNode.showNetworkActivity( _broadcastMonitor.getState() );
