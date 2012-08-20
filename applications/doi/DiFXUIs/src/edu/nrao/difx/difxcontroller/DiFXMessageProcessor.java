@@ -92,13 +92,13 @@ public class DiFXMessageProcessor extends Thread
             if ( header.getType().equalsIgnoreCase( "DifxStatusMessage" ) ) {
                 processDifxStatusMessage( difxMsg );
 
-            } else if (header.getType().equalsIgnoreCase("Mark5StatusMessage")) {
+            } else if ( header.getType().equalsIgnoreCase( "Mark5StatusMessage" ) ) {
                 processMark5StatusMessage( difxMsg );
 
-            } else if (header.getType().equalsIgnoreCase("DifxLoadMessage")) {
+            } else if ( header.getType().equalsIgnoreCase( "DifxLoadMessage" ) ) {
                 processDifxLoadMessage( difxMsg );
 
-            } else if (header.getType().equalsIgnoreCase("DifxAlertMessage")) {
+            } else if ( header.getType().equalsIgnoreCase( "DifxAlertMessage" ) ) {
                 processDifxAlertMessage( difxMsg );
 
             } else {

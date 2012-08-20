@@ -27,13 +27,9 @@ import mil.navy.usno.plotlib.PlotWindow;
 import mil.navy.usno.plotlib.Plot2DObject;
 import mil.navy.usno.plotlib.Track2D;
 
-import edu.nrao.difx.difxdatamodel.ProcessorNode;
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 import edu.nrao.difx.difxutilities.DiFXCommand_mark5Control;
-/**
- *
- * @author jspitzak
- */
+
 public class ClusterNode extends BrowserNode {
     
     public ClusterNode( String name, SystemSettings settings ) {
@@ -437,59 +433,67 @@ public class ClusterNode extends BrowserNode {
     public void widthNetTxRate( int newVal ) { _widthNetTxRate = newVal; }
 
     /*
-     * Use the data contained in a "ProcessorNode" (from the difxdatamodel) to
-     * set fields here.  These are all individually formatted.
+     * Absorb the data from a Mark5 status message.  These are used from time to time to convey
+     * the "state" of a processor - "rebooting", "error", etc.  These messages are used even 
+     * though the processor isn't technically a Mark5.  Beyond the "state" there isn't anything
+     * particularly interesting in the message for us.
      */
-    public void setData( ProcessorNode dataNode ) {
+    public void statusMessage( DifxMessage difxMsg ) {
+        _state.setText( difxMsg.getBody().getMark5Status().getState() );
+    }
+    
+    public void loadMessage( DifxMessage difxMsg ) {
         _networkActivity.data();
-        _numCPUs.setText( "" + dataNode.getNumCPUs() );
-        _numCores.setText( "" + dataNode.getNumCores() );
-        _bogusGHz.setText( "" + dataNode.getBogusGHz() );
-        _type.setText( "" + dataNode.getType() );
-        _typeString.setText( "" + dataNode.getTypeString() );
-        if ( dataNode.isStatusCurrent() )
-            _state.setText( "" + dataNode.getState() );
-        else
-            _state.setText( "Lost" );
-        _cpuLoad.setText( String.format( "%10.1f", 100.0 * dataNode.getCpuLoad() ) );
+        _numCPUs.setText( "0" );
+        _numCores.setText( "" + difxMsg.getBody().getDifxLoad().getNCore() );
+        _bogusGHz.setText( "0" );
+        _type.setText( "0" );
+        _typeString.setText( "processor" );
+        _state.setText( "Online" );
+        _cpuLoad.setText( String.format( "%10.1f", 100.0 * difxMsg.getBody().getDifxLoad().getCpuLoad()
+                    / ( (float)(difxMsg.getBody().getDifxLoad().getNCore() ) ) ) );
         _cpuPlot.limits( (double)(_cpuTrackSize - 100), (double)(_cpuTrackSize), 0.0, 100.0 );
-        _cpuTrack.add( (double)(_cpuTrackSize), 100.0 * dataNode.getCpuLoad() );
+        _cpuTrack.add( (double)(_cpuTrackSize), 100.0 * difxMsg.getBody().getDifxLoad().getCpuLoad()
+                    / ( (float)(difxMsg.getBody().getDifxLoad().getNCore() ) ) );
         _cpuTrackSize += 1;
         _cpuLoadPlot.updateUI();
-        _enabledLight.on( dataNode.getEnabled() );
-        _memLoad.setText( String.format( "%10.1f", 100.0 * dataNode.getMemLoad() ) );
+        _enabledLight.on( false );
+        _memLoad.setText( String.format( "%10.1f", 100.0 * (float) difxMsg.getBody().getDifxLoad().getUsedMemory()
+                    / difxMsg.getBody().getDifxLoad().getTotalMemory() ) );
         _memPlot.limits( (double)(_memTrackSize - 100), (double)(_memTrackSize), 0.0, 100.0 );
-        _memTrack.add( (double)(_memTrackSize), 100.0 * dataNode.getMemLoad() );
+        _memTrack.add( (double)(_memTrackSize), 100.0 * (float) difxMsg.getBody().getDifxLoad().getUsedMemory()
+                    / difxMsg.getBody().getDifxLoad().getTotalMemory() );
         _memTrackSize += 1;
         _memLoadPlot.updateUI();
-        _totalMem.setText( String.format( "%10d", dataNode.getTotalMem() ) );
-        _usedMem.setText( String.format( "%10d", dataNode.getUsedMem() ) );
+        _totalMem.setText( String.format( "%10d", difxMsg.getBody().getDifxLoad().getTotalMemory() ) );
+        _usedMem.setText( String.format( "%10d", difxMsg.getBody().getDifxLoad().getUsedMemory() ) );
         //  Convert transmit and receive rates to Mbits/second (instead of Bytes/sec).
-        double newRx = 8.0 * (double)(dataNode.getNetRxRate()) / 1024.0 / 1024.0;
-        double newTx = 8.0 * (double)(dataNode.getNetTxRate()) / 1024.0 / 1024.0;
+        double newRx = 8.0 * (double)(difxMsg.getBody().getDifxLoad().getNetRXRate()) / 1024.0 / 1024.0;
+        double newTx = 8.0 * (double)(difxMsg.getBody().getDifxLoad().getNetTXRate()) / 1024.0 / 1024.0;
         _netRxRate.setText( String.format( "%10.3f", newRx ) );
         _netTxRate.setText( String.format( "%10.3f", newTx ) );
         //  Use the same data to update the monitor window.
         if ( _monitor != null ) {
-            _monitor.setNumCPUs( dataNode.getNumCPUs() );
-            _monitor.setNumCores( dataNode.getNumCores() );
-            _monitor.setBogusGHz( dataNode.getBogusGHz() );
-            _monitor.setType( dataNode.getType() );
-            _monitor.setTypeString( dataNode.getTypeString() );
-            if ( dataNode.isStatusCurrent() )
-                    _monitor.setState( dataNode.getState() );
-            else
-                    _monitor.setState( "Lost" );
-            _monitor.setCpuLoad( (float)100.0 * dataNode.getCpuLoad() );
-            _monitor.setSysEnabled( dataNode.getEnabled() );
-            _monitor.setMemLoad( (float)100.0 * dataNode.getMemLoad() );
-            _monitor.setTotalMem( dataNode.getTotalMem() );
-            _monitor.setUsedMem( dataNode.getUsedMem() );
+            _monitor.setNumCPUs( 0 );
+            _monitor.setNumCores( difxMsg.getBody().getDifxLoad().getNCore() );
+            _monitor.setBogusGHz( 0 );
+            _monitor.setType( 0 );
+            _monitor.setTypeString( "processor" );
+            //if ( dataNode.isStatusCurrent() )
+                _monitor.setState( "Online" );
+            //else
+            //    _monitor.setState( "Lost" );
+            _monitor.setCpuLoad( (float)100.0 * difxMsg.getBody().getDifxLoad().getCpuLoad() );
+            _monitor.setSysEnabled( false );
+            _monitor.setMemLoad( (float)100.0 * (float) difxMsg.getBody().getDifxLoad().getUsedMemory()
+                    / difxMsg.getBody().getDifxLoad().getTotalMemory() );
+            _monitor.setTotalMem( difxMsg.getBody().getDifxLoad().getTotalMemory() );
+            _monitor.setUsedMem( difxMsg.getBody().getDifxLoad().getUsedMemory() );
             _monitor.setNetRxRate( newRx );
             _monitor.setNetTxRate( newTx );
         }
     }
-    
+
     public void newAlert( DifxMessage difxMsg ) {
         _alertWindow.messagePanel().message( 0, 
                 ( difxMsg.getHeader().getFrom() + 

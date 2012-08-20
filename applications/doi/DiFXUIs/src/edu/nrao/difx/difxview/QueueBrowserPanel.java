@@ -31,8 +31,7 @@ import java.text.SimpleDateFormat;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-import edu.nrao.difx.difxdatamodel.*;
-import edu.nrao.difx.difxcontroller.*;
+import edu.nrao.difx.difxcontroller.DiFXMessageProcessor;
 
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 

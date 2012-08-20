@@ -5,7 +5,8 @@
 package edu.nrao.difx.difxview;
 
 import mil.navy.usno.widgetlib.ActivityMonitorLight;
-import edu.nrao.difx.difxdatamodel.Mark5Unit;
+
+import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 
 import javax.swing.JSeparator;
 import javax.swing.JMenuItem;
@@ -211,29 +212,29 @@ public class Mark5Node extends ClusterNode {
         _currentJob.setVisible( newVal );            
     }
     
-    public void setData( Mark5Unit newData ) {
-        super.setData( newData );
-        _stateChanged.on( newData.isStateChanged() );
-        _bankAVSN.setText( newData.getBankAVSN() );
+    @Override
+    public void statusMessage( DifxMessage difxMsg ) {
+        super.statusMessage( difxMsg );
+        _bankAVSN.setText( difxMsg.getBody().getMark5Status().getBankAVSN() );
         //  Add this module to our list of modules (if its not there already).
-        if ( !_settings.dataSourceInList( newData.getBankAVSN(), "VSN" ) ) {
-            if ( newData.getBankAVSN().length() > 0 && !newData.getBankAVSN().equalsIgnoreCase( "NONE" ) )
-                _settings.addDataSource( newData.getBankAVSN(), "VSN", "hardware" );
+        if ( !_settings.dataSourceInList( difxMsg.getBody().getMark5Status().getBankAVSN(), "VSN" ) ) {
+            if ( difxMsg.getBody().getMark5Status().getBankAVSN().length() > 0 && !difxMsg.getBody().getMark5Status().getBankAVSN().equalsIgnoreCase( "NONE" ) )
+                _settings.addDataSource( difxMsg.getBody().getMark5Status().getBankAVSN(), "VSN", "hardware" );
         }
-        _bankBVSN.setText( newData.getBankBVSN() );
+        _bankBVSN.setText( difxMsg.getBody().getMark5Status().getBankBVSN() );
         //  Add this module to our list of modules (if its not there already).
-        if ( !_settings.dataSourceInList( newData.getBankBVSN(), "VSN" ) ) {
-            if ( newData.getBankBVSN().length() > 0 && !newData.getBankBVSN().equalsIgnoreCase( "NONE" ) )
-                _settings.addDataSource( newData.getBankBVSN(), "VSN", "hardware" );
+        if ( !_settings.dataSourceInList( difxMsg.getBody().getMark5Status().getBankBVSN(), "VSN" ) ) {
+            if ( difxMsg.getBody().getMark5Status().getBankBVSN().length() > 0 && !difxMsg.getBody().getMark5Status().getBankBVSN().equalsIgnoreCase( "NONE" ) )
+                _settings.addDataSource( difxMsg.getBody().getMark5Status().getBankBVSN(), "VSN", "hardware" );
         }
-        _statusWord.setText( newData.getStatusWord() );
-        _activeBank.setText( newData.getActiveBank() );
-        _scanNumber.setText( String.format( "%10d", newData.getScanNumber() ) );
-        _scanName.setText( newData.getScanName() );
-        _position.setText( String.format( "%10d", newData.getPosition() ) );
-        _playRate.setText( String.format( "%10.3f", newData.getPlayRate() ) );
-        _dataMJD.setText( newData.getDataMJD().toString() );
-        _currentJob.setText( newData.getCurrentJob() );
+        _statusWord.setText( difxMsg.getBody().getMark5Status().getStatusWord() );
+        _activeBank.setText( difxMsg.getBody().getMark5Status().getActiveBank() );
+        _scanNumber.setText( String.format( "%10d", difxMsg.getBody().getMark5Status().getScanNumber() ) );
+        _scanName.setText( difxMsg.getBody().getMark5Status().getScanName() );
+        _position.setText( String.format( "%10d", difxMsg.getBody().getMark5Status().getPosition() ) );
+        _playRate.setText( String.format( "%10.3f", difxMsg.getBody().getMark5Status().getPlayRate() ) );
+        _dataMJD.setText( difxMsg.getBody().getMark5Status().getDataMJD().trim() );
+        _currentJob.setText( difxMsg.getHeader().getIdentifier() );
     }
     
     public void widthStateChanged( int newVal ) { _widthStateChanged = newVal; }
