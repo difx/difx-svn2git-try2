@@ -7,6 +7,7 @@ package edu.nrao.difx.difxview;
 
 import mil.navy.usno.widgetlib.BrowserNode;
 import javax.swing.JMenuItem;
+import javax.swing.JMenu;
 import javax.swing.JPopupMenu;
 import javax.swing.JSeparator;
 import javax.swing.JCheckBoxMenuItem;
@@ -16,7 +17,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.Cursor;
 import java.awt.Component;
-import java.awt.Container;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -158,6 +158,69 @@ public class ProcessorNodesHeader extends BrowserNode {
         this.add( _netTxRate );
         //  Create a popup menu that allows us to turn things on and off
         _popup = new JPopupMenu();
+        JMenuItem selectAllItem = new JMenuItem( "Select All" );
+        selectAllItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                selectAll( true );
+            }
+        });
+        _popup.add( selectAllItem );
+        JMenuItem unselectAllItem = new JMenuItem( "Unselect All" );
+        unselectAllItem.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                selectAll( false );
+            }
+        });
+        _popup.add( unselectAllItem );
+        JMenu rebootMenu = new JMenu( "Reboot" );
+        _popup.add( rebootMenu );
+        JMenuItem rebootSelected = new JMenuItem( "Selected" );
+        rebootSelected.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                rebootSelected();
+            }
+        });
+        rebootMenu.add( rebootSelected );
+        JMenuItem rebootAll = new JMenuItem( "All" );
+        rebootAll.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                rebootAll();
+            }
+        });
+        rebootMenu.add( rebootAll );
+        JMenu resetMenu = new JMenu( "Reset" );
+        _popup.add( resetMenu );
+        JMenuItem resetSelected = new JMenuItem( "Selected" );
+        resetSelected.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                resetSelected();
+            }
+        });
+        resetMenu.add( resetSelected );
+        JMenuItem resetAll = new JMenuItem( "All" );
+        resetAll.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                resetAll();
+            }
+        });
+        resetMenu.add( resetAll );
+        JMenu powerOffMenu = new JMenu( "Power Off" );
+        _popup.add( powerOffMenu );
+        JMenuItem powerOffSelected = new JMenuItem( "Selected" );
+        powerOffSelected.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                powerOffSelected();
+            }
+        });
+        powerOffMenu.add( powerOffSelected );
+        JMenuItem powerOffAll = new JMenuItem( "All" );
+        powerOffAll.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                powerOffAll();
+            }
+        });
+        powerOffMenu.add( powerOffAll );
+        _popup.add( new JSeparator() );
         JMenuItem menuItem;
         menuItem = new JMenuItem( _label.getText() + " Display Options:" );
         _popup.add( menuItem );
@@ -514,6 +577,55 @@ public class ProcessorNodesHeader extends BrowserNode {
         super.addChild( newNode );
         setChildColumnWidths();
         updateDisplayedData();
+    }
+    
+    /*
+     * Set the selection on all children.
+     */
+    public void selectAll( boolean selection ) {
+        for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
+            ((ProcessorNode)(iter.next())).selected( selection );
+        }
+    }
+    
+    /*
+     * Perform various actions on all or selected children.
+     */
+    public void rebootAll() {
+        for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
+            ((ProcessorNode)(iter.next())).sendDiFXCommandMessage( "Reboot" );
+        }
+    }
+    public void rebootSelected() {
+        for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
+            BrowserNode thisNode = iter.next();
+            if ( thisNode.selected() )
+                ((ProcessorNode)(thisNode)).sendDiFXCommandMessage( "Reboot" );
+        }
+    }
+    public void resetAll() {
+        for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
+            ((ProcessorNode)(iter.next())).sendDiFXCommandMessage( "ResetMark5" );
+        }
+    }
+    public void resetSelected() {
+        for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
+            BrowserNode thisNode = iter.next();
+            if ( thisNode.selected() )
+                ((ProcessorNode)(thisNode)).sendDiFXCommandMessage( "ResetMark5" );
+        }
+    }
+    public void powerOffAll() {
+        for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
+            ((ProcessorNode)(iter.next())).sendDiFXCommandMessage( "Power Off" );
+        }
+    }
+    public void powerOffSelected() {
+        for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
+            BrowserNode thisNode = iter.next();
+            if ( thisNode.selected() )
+                ((ProcessorNode)(thisNode)).sendDiFXCommandMessage( "Power Off" );
+        }
     }
     
     /*

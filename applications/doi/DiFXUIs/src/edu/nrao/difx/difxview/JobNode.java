@@ -42,16 +42,11 @@ import java.awt.Font;
 
 import edu.nrao.difx.difxdatabase.QueueDBConnection;
 
-/**
- *
- * @author jspitzak
- */
 public class JobNode extends QueueBrowserNode {
     
     public JobNode( String name, SystemSettings settings ) {
         super( name );
         this.setHeight( 20 );
-        //this.visiblePopupButton( false );
         _columnColor = Color.LIGHT_GRAY;
         _settings = settings;
         _editorMonitor = new JobEditorMonitor( this, _settings );
@@ -59,27 +54,7 @@ public class JobNode extends QueueBrowserNode {
     
     @Override
     public void createAdditionalItems() {
-        _selectedButton = new JButton( "\u2606" );
-        _selectedButton.setBorderPainted( false );
-        _selectedButton.setContentAreaFilled( false );
-        _selectedButton.setMargin( new Insets( 0, 0, 2, 0 ) );
-        _selectedButton.setForeground( Color.BLACK );
-        _selectedButton.setFont( new Font( "Dialog", Font.BOLD, 14 ) );
-        _selectedButton.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                selectedButtonAction();
-            }
-        });
-        this.add( _selectedButton );
-//        _startButton = new JButton( "Start" );
-//        this.add( _startButton );
-//        _editButton = new JButton( "Edit" );
-//        _editButton.addActionListener(new ActionListener() {
-//            public void actionPerformed( ActionEvent e ) {
-//                editAction( e );
-//            }
-//        });
-//        this.add( _editButton );
+        addSelectionButton( null, null );
         //  Create a popup menu appropriate to a "job".
         _networkActivity = new ActivityMonitorLight();
         _networkActivity.warningTime( 0 );
@@ -198,13 +173,13 @@ public class JobNode extends QueueBrowserNode {
         });
         _popup.add( _monitorMenuItem );
         _popup.add( new JSeparator() );
-        _selectMenuItem = new JMenuItem( "Select Job" );
-        _selectMenuItem.addActionListener(new ActionListener() {
+        JMenuItem selectMenuItem = new JMenuItem( "Toggle Selection" );
+        selectMenuItem.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                selectedButtonAction();
+                selectionButtonAction();
             }
         });
-        _popup.add( _selectMenuItem );
+        _popup.add( selectMenuItem );
         JMenuItem deleteItem = new JMenuItem( "Delete" );
         deleteItem.setToolTipText( "Delete this experiment.  Deletions also apply to the database (if used)." );
         deleteItem.addActionListener(new ActionListener() {
@@ -245,7 +220,6 @@ public class JobNode extends QueueBrowserNode {
     
     @Override
     public void positionItems() {
-        _selectedButton.setBounds( 0, 2, 20, 20 );
         _colorColumn = false;
         _xOff = _level * 30;
         _networkActivity.setBounds( _xOff, 6, 10, 10 );
@@ -355,36 +329,6 @@ public class JobNode extends QueueBrowserNode {
         g2.setRenderingHint( RenderingHints.KEY_ANTIALIASING,
                      RenderingHints.VALUE_ANTIALIAS_ON );
         super.paintComponent( g );
-    }
-    
-    /*
-     * Select or unselect this item.  This is the callback for the button.
-     */
-    public void selectedButtonAction() {
-        _selected = !_selected;
-        checkSelectionSetting();
-    }
-    
-    public void checkSelectionSetting() {
-        if ( _selected ) {
-            _selectedButton.setText( "\u2605" );
-            _selectedButton.setForeground( new Color( 200, 100, 0 ) );
-            _selectMenuItem.setText( "Unselect Job" );
-        }
-        else {
-            _selectedButton.setText( "\u2606" );
-            _selectedButton.setForeground( Color.BLACK );
-            _selectMenuItem.setText( "Select Job" );
-        }
-    }
-    
-    /*
-     * Set or get the selected value from the outside.
-     */
-    public boolean selected() { return _selected; }
-    public void selected( boolean newVal ) {
-        _selected = newVal;
-        checkSelectionSetting();
     }
     
     /*
@@ -867,10 +811,7 @@ public class JobNode extends QueueBrowserNode {
 //    protected Track2D[] _weightTrack;
     protected int[] _weightTrackSize;
     
-    protected JButton _selectedButton;
-    protected boolean _selected;
     protected JMenuItem _monitorMenuItem;
-    protected JMenuItem _selectMenuItem;
     
     protected boolean _colorColumn;
     protected Color _columnColor;

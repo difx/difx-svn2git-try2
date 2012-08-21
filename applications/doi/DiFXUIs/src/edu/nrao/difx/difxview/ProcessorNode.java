@@ -42,6 +42,8 @@ public class ProcessorNode extends BrowserNode {
     
     @Override
     public void createAdditionalItems() {
+        addSelectionButton( null, null );
+        selectedColor( Color.BLUE );
         //  This is the data monitor light.
         _networkActivity = new ActivityMonitorLight();
         this.add( _networkActivity );
@@ -119,7 +121,7 @@ public class ProcessorNode extends BrowserNode {
         this.add( _netTxRate );
         //  Create a popup menu appropriate to a "job".
         _popup = new JPopupMenu();
-        JMenuItem headerItem = new JMenuItem( "Cotrols for \"" + _label.getText() + "\"" );
+        JMenuItem headerItem = new JMenuItem( "Controls for \"" + _label.getText() + "\"" );
         _popup.add( headerItem );
         _popup.add( new JSeparator() );
         _ignoreItem = new JCheckBoxMenuItem( "Ignore This Node" );

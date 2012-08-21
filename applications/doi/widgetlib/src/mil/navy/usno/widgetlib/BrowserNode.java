@@ -28,8 +28,6 @@ import javax.swing.JPanel;
 import javax.swing.JLabel;
 import javax.swing.JButton;
 import javax.swing.JPopupMenu;
-import javax.swing.JMenuItem;
-import javax.swing.JComponent;
 
 import java.awt.Graphics;
 import java.awt.Dimension;
@@ -88,6 +86,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
         _backgroundColor = Color.WHITE;
         _arrowColor = Color.GRAY;
         _levelOffset = 30;
+        _selected = false;
     }
     
     /*
@@ -95,6 +94,85 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
      * and popup menus, etc).
      */
     public void createAdditionalItems() {
+    }
+    
+    /*
+     * Add a "selection" button to this browser node.  The selection button has 
+     * "selected" and "unselected" String labels (specified in the command line).  When
+     * a browser item is "selected" the selected label will be drawn, otherwise the
+     * unselected label will be drawn.  Selected and unselected items also have colors
+     * associated with them.  The displayed string is the ONLY part of the button that
+     * is visible (i.e. no outline).  Clicking on the button selects or deselects the
+     * browser node.  Functions do this too.  Other functions can be used to determine
+     * whether the node has been selected.
+     */
+    public void addSelectionButton( String unselectedLabel, String selectedLabel ) {
+        if ( unselectedLabel == null )
+            _unselectedLabel = "\u2606";  //  empty star
+        else
+            _unselectedLabel = unselectedLabel;
+        if ( selectedLabel == null )
+            _selectedLabel = "\u2605";  //  filled star
+        else
+            _selectedLabel = selectedLabel;
+        _selectedButton = new JButton( _unselectedLabel );
+        _selectedButton.setBorderPainted( false );
+        _selectedButton.setContentAreaFilled( false );
+        _selectedButton.setMargin( new Insets( 0, 0, 2, 0 ) );
+        _selectedButton.setForeground( Color.BLACK );
+        _selectedButton.setFont( new Font( "Dialog", Font.BOLD, 14 ) );
+        _selectedButton.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                selectionButtonAction();
+            }
+        });
+        this.add( _selectedButton );
+        _selectedColor = new Color( 200, 100, 0 );  //  default selection color - kind of brownish orange
+        _unselectedColor = Color.BLACK;
+        //  By default the button is located at the upper right corner of the browser - it can
+        //  be repositioned anywhere of course.
+        _selectedButton.setBounds( 0, 2, 20, 20 );
+    }
+    
+    /*
+     * Set the bounds for the selected button.  Slightly messy way to do this.
+     */
+    public void selectionButtonBounds( int x, int y, int w, int h ) {
+        _selectedButton.setBounds( x, y, w, h );
+    }
+    
+    /*
+     * Set the colors for selected, unselected.
+     */
+    public void selectedColor( Color newColor ) { _selectedColor = newColor; }
+    public void unselectedColor( Color newColor ) { _unselectedColor = newColor; }
+    
+    /*
+     * Select or unselect this item.  This is the callback for the button.
+     */
+    public void selectionButtonAction() {
+        _selected = !_selected;
+        checkSelectionSetting();
+    }
+    
+    public void checkSelectionSetting() {
+        if ( _selected ) {
+            _selectedButton.setText( _selectedLabel );
+            _selectedButton.setForeground( _selectedColor );
+        }
+        else {
+            _selectedButton.setText( _unselectedLabel );
+            _selectedButton.setForeground( _unselectedColor );
+        }
+    }
+    
+    /*
+     * Set or get the selected value from the outside.
+     */
+    public boolean selected() { return _selected; }
+    public void selected( boolean newVal ) {
+        _selected = newVal;
+        checkSelectionSetting();
     }
     
     /*
@@ -435,5 +513,12 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
     protected Integer _yLevelOffset;
     protected boolean _resizeOnTopBar;
     protected int _resizeTopBarSize;
+    
+    protected boolean _selected;
+    protected JButton _selectedButton;
+    protected String _selectedLabel;
+    protected String _unselectedLabel;
+    protected Color _selectedColor;
+    protected Color _unselectedColor;
 
 }
