@@ -193,7 +193,7 @@ public class QueueBrowserPanel extends TearOffPanel {
         });
         
         //  Create a header line of all jobs.
-        _header = new JobNodesHeader();
+        _header = new JobNodesHeader( _systemSettings );
         _headerPane.addNode( _header );
 
         //  Add a listener for automatic database updates.  When these occur,

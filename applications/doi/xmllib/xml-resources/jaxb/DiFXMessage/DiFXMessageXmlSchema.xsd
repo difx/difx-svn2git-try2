@@ -83,6 +83,13 @@
         </xsd:sequence>
     </xsd:complexType>       
 
+    <xsd:complexType name="columnSpec">
+        <xsd:sequence>
+            <xsd:element name="show" type="xsd:boolean"></xsd:element>
+            <xsd:element name="width" type="xsd:int"></xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
     <xsd:element name="doiSystemConfig">
         <xsd:complexType>
             <xsd:sequence>
@@ -191,6 +198,63 @@
                 <xsd:element ref="correlationNFFTChan" />
                 <xsd:element ref="correlationSubintNS" />
     
+                <xsd:element ref="jobNetworkActivity" />
+                <xsd:element ref="jobName" />
+                <xsd:element ref="jobProgressBar" />
+                <xsd:element ref="jobState" />
+                <xsd:element ref="jobExperiment" />
+                <xsd:element ref="jobPass" />
+                <xsd:element ref="jobPriority" />
+                <xsd:element ref="jobQueueTime" />
+                <xsd:element ref="jobCorrelationStart" />
+                <xsd:element ref="jobCorrelationEnd" />
+                <xsd:element ref="jobJobStart" />
+                <xsd:element ref="jobJobDuration" />
+                <xsd:element ref="jobInputFile" />
+                <xsd:element ref="jobOutputFile" />
+                <xsd:element ref="jobOutputSize" />
+                <xsd:element ref="jobDifxVersion" />
+                <xsd:element ref="jobSpeedUpFactor" />
+                <xsd:element ref="jobNumAntennas" />
+                <xsd:element ref="jobNumForeignAntennas" />
+                <xsd:element ref="jobDutyCycle" />
+                <xsd:element ref="jobStatus" />
+                <xsd:element ref="jobActive" />
+                <xsd:element ref="jobStatusId" />
+                <xsd:element ref="jobWeights" />
+                <xsd:element ref="jobWeightsAsPlots" />
+                <xsd:element ref="jobWeightsAsNumbers" />
+                
+                <xsd:element ref="hardwareIgnored" />
+                <xsd:element ref="hardwareBroadcastMonitor" />
+                <xsd:element ref="hardwareNumCPUs" />
+                <xsd:element ref="hardwareNumCores" />
+                <xsd:element ref="hardwareBogusGHz" />
+                <xsd:element ref="hardwareType" />
+                <xsd:element ref="hardwareTypeString" />
+                <xsd:element ref="hardwareState" />
+                <xsd:element ref="hardwareEnabled" />
+                <xsd:element ref="hardwareCpuLoad" />
+                <xsd:element ref="hardwareCpuLoadPlot" />
+                <xsd:element ref="hardwareUsedMem" />
+                <xsd:element ref="hardwareTotalMem" />
+                <xsd:element ref="hardwareMemLoad" />
+                <xsd:element ref="hardwareMemLoadPlot" />
+                <xsd:element ref="hardwareNetRxRate" />
+                <xsd:element ref="hardwareNetTxRate" />
+                <xsd:element ref="hardwareStateChanged" />
+                <xsd:element ref="hardwareBankAVSN" />
+                <xsd:element ref="hardwareBankBVSN" />
+                <xsd:element ref="hardwareStatusWord" />
+                <xsd:element ref="hardwareActiveBank" />
+                <xsd:element ref="hardwareScanNumber" />
+                <xsd:element ref="hardwareScanName" />
+                <xsd:element ref="hardwarePosition" />
+                <xsd:element ref="hardwarePlayRate" />
+                <xsd:element ref="hardwareDataMJD" />
+                <xsd:element ref="hardwareCurrentJob" />
+                
+                
             </xsd:sequence>
         </xsd:complexType>
     </xsd:element>
@@ -300,6 +364,62 @@
     <xsd:element name="correlationNFFTChan" type="xsd:int"></xsd:element>
     <xsd:element name="correlationSubintNS" type="xsd:int"></xsd:element>
     
+    <xsd:element name="jobNetworkActivity" type="columnSpec"></xsd:element>
+    <xsd:element name="jobName" type="columnSpec"></xsd:element>
+    <xsd:element name="jobProgressBar" type="columnSpec"></xsd:element>
+    <xsd:element name="jobState" type="columnSpec"></xsd:element>
+    <xsd:element name="jobExperiment" type="columnSpec"></xsd:element>
+    <xsd:element name="jobPass" type="columnSpec"></xsd:element>
+    <xsd:element name="jobPriority" type="columnSpec"></xsd:element>
+    <xsd:element name="jobQueueTime" type="columnSpec"></xsd:element>
+    <xsd:element name="jobCorrelationStart" type="columnSpec"></xsd:element>
+    <xsd:element name="jobCorrelationEnd" type="columnSpec"></xsd:element>
+    <xsd:element name="jobJobStart" type="columnSpec"></xsd:element>
+    <xsd:element name="jobJobDuration" type="columnSpec"></xsd:element>
+    <xsd:element name="jobInputFile" type="columnSpec"></xsd:element>
+    <xsd:element name="jobOutputFile" type="columnSpec"></xsd:element>
+    <xsd:element name="jobOutputSize" type="columnSpec"></xsd:element>
+    <xsd:element name="jobDifxVersion" type="columnSpec"></xsd:element>
+    <xsd:element name="jobSpeedUpFactor" type="columnSpec"></xsd:element>
+    <xsd:element name="jobNumAntennas" type="columnSpec"></xsd:element>
+    <xsd:element name="jobNumForeignAntennas" type="columnSpec"></xsd:element>
+    <xsd:element name="jobDutyCycle" type="columnSpec"></xsd:element>
+    <xsd:element name="jobStatus" type="columnSpec"></xsd:element>
+    <xsd:element name="jobActive" type="columnSpec"></xsd:element>
+    <xsd:element name="jobStatusId" type="columnSpec"></xsd:element>
+    <xsd:element name="jobWeights" type="columnSpec"></xsd:element>
+    <xsd:element name="jobWeightsAsPlots" type="columnSpec"></xsd:element>
+    <xsd:element name="jobWeightsAsNumbers" type="columnSpec"></xsd:element>
+                
+    <xsd:element name="hardwareIgnored" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareBroadcastMonitor" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareNumCPUs" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareNumCores" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareBogusGHz" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareType" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareTypeString" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareState" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareEnabled" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareCpuLoad" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareCpuLoadPlot" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareUsedMem" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareTotalMem" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareMemLoad" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareMemLoadPlot" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareNetRxRate" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareNetTxRate" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareStateChanged" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareBankAVSN" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareBankBVSN" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareStatusWord" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareActiveBank" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareScanNumber" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareScanName" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwarePosition" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwarePlayRate" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareDataMJD" type="columnSpec"></xsd:element>
+    <xsd:element name="hardwareCurrentJob" type="columnSpec"></xsd:element>
+                
     <xsd:complexType name="mark5Status">
         <xsd:sequence>
             <xsd:element name="bankAVSN" type="xsd:string"></xsd:element>

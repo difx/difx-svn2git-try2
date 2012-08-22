@@ -614,6 +614,7 @@ public class JobNode extends QueueBrowserNode {
         _directoryPath = tryFile.getParent();
         //  Request the contents of this input file from mk5daemon.
         requestInputFile();
+        updateUI();
     }
     public String inputFile() { return _inputFile.getText(); }
     public void calcFile( String newVal ) {

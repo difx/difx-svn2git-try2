@@ -8,6 +8,9 @@ import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.BrowserNode;
 import mil.navy.usno.widgetlib.TearOffPanel;
 
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
+
 import javax.swing.JLabel;
 
 import java.awt.Font;
@@ -48,10 +51,24 @@ public class HardwareMonitorPanel extends TearOffPanel {
         _mainLabel.setBounds( 5, 0, 150, 20 );
         _mainLabel.setFont( new Font( "Dialog", Font.BOLD, 14 ) );
         add( _mainLabel );
-        _clusterNodes = new ProcessorNodesHeader( "Processor Nodes" );
+        _clusterNodes = new ProcessorNodesHeader( "Processor Nodes", _settings );
+        _clusterNodes.addColumnChangeListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _mk5Modules.initializeDisplaySettings();
+                _mk5Modules.updateDisplayedData();
+                _mk5Modules.setChildColumnWidths();
+            }
+        } );
         _clusterNodes.backgroundColor( new Color( 255, 204, 153 ) );
         _browserPane.addNode( _clusterNodes );
-        _mk5Modules = new Mark5NodesHeader( "Mark5 Modules" );
+        _mk5Modules = new Mark5NodesHeader( "Mark5 Modules", _settings );
+        _mk5Modules.addColumnChangeListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                _clusterNodes.initializeDisplaySettings();
+                _clusterNodes.updateDisplayedData();
+                _clusterNodes.setChildColumnWidths();
+            }
+        } );
         _mk5Modules.backgroundColor( new Color( 255, 204, 153 ) );
         _browserPane.addNode( _mk5Modules );
     }
@@ -175,8 +192,8 @@ public class HardwareMonitorPanel extends TearOffPanel {
     public BrowserNode mk5Modules() { return _mk5Modules; }
     
     private NodeBrowserScrollPane _browserPane;
-    protected BrowserNode _clusterNodes;
-    protected BrowserNode _mk5Modules;
+    protected ProcessorNodesHeader _clusterNodes;
+    protected Mark5NodesHeader _mk5Modules;
     private JLabel _mainLabel;
     protected SystemSettings _settings;
     

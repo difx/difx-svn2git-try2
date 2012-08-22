@@ -25,12 +25,12 @@ import java.util.ArrayDeque;
 
 public class JobNodesHeader extends BrowserNode {
     
-    public JobNodesHeader() {
+    public JobNodesHeader( SystemSettings settings ) {
         super( "" );
+        _settings = settings;
         _normalCursor = this.getCursor();
         _columnAdjustCursor = new Cursor( Cursor.W_RESIZE_CURSOR );
         initializeDisplaySettings();
-        setColumnWidths();
         _popupButton.setVisible( true );
     }
     
@@ -473,139 +473,139 @@ public class JobNodesHeader extends BrowserNode {
             _xOff += 14;
         _popupButton.setBounds( _xOff - 20, 0, 18, _ySize - 2 );
         if ( _showName.getState() ) {
-            setTextArea( _nameArea, _widthName );
+            setTextArea( _nameArea, _settings.jobColumnSpecs().name.width );
             _positionName = _xOff;
         }
         else
             _positionName = -100;
         if ( _showState.getState() ) {
-            setTextArea( _state, _widthState );
+            setTextArea( _state, _settings.jobColumnSpecs().state.width );
             _positionState = _xOff;
         }
         else
             _positionState = -100;
         if ( _showProgressBar.getState() ) {
-            setTextArea( _progressBar, _widthProgressBar );
+            setTextArea( _progressBar, _settings.jobColumnSpecs().progressBar.width );
             _positionProgressBar = _xOff;
         }
         else
             _positionProgressBar = -100;
         if ( _showWeights.getState() ) {
-            setTextArea( _weights, _widthWeights );
+            setTextArea( _weights, _settings.jobColumnSpecs().weights.width );
             _positionWeights = _xOff;
         }
         else
             _positionWeights = -100;
         if ( _showExperiment.getState() ) {
-            setTextArea( _experiment, _widthExperiment );
+            setTextArea( _experiment, _settings.jobColumnSpecs().experiment.width );
             _positionExperiment = _xOff;
         }
         else
             _positionExperiment = -100;
         if ( _showPass.getState() ) {
-            setTextArea( _pass, _widthPass );
+            setTextArea( _pass, _settings.jobColumnSpecs().pass.width );
             _positionPass = _xOff;
         }
         else
             _positionPass = -100;
         if ( _showPriority.getState() ) {
-            setTextArea( _priority, _widthPriority );
+            setTextArea( _priority, _settings.jobColumnSpecs().priority.width );
             _positionPriority = _xOff;
         }
         else
             _positionPriority = -100;
         if ( _showQueueTime.getState() ) {
-            setTextArea( _queueTime, _widthQueueTime );
+            setTextArea( _queueTime, _settings.jobColumnSpecs().queueTime.width );
             _positionQueueTime = _xOff;
         }
         else
             _positionQueueTime = -100;
         if ( _showCorrelationStart.getState() ) {
-            setTextArea( _correlationStart, _widthCorrelationStart );
+            setTextArea( _correlationStart, _settings.jobColumnSpecs().correlationStart.width );
             _positionCorrelationStart = _xOff;
         }
         else
             _positionCorrelationStart = -100;
         if ( _showCorrelationEnd.getState() ) {
-            setTextArea( _correlationEnd, _widthCorrelationEnd );
+            setTextArea( _correlationEnd, _settings.jobColumnSpecs().correlationEnd.width );
             _positionCorrelationEnd = _xOff;
         }
         else
             _positionCorrelationEnd = -100;
         if ( _showJobStart.getState() ) {
-            setTextArea( _jobStart, _widthJobStart );
+            setTextArea( _jobStart, _settings.jobColumnSpecs().jobStart.width );
             _positionJobStart = _xOff;
         }
         else
             _positionJobStart = -100;
         if ( _showJobDuration.getState() ) {
-            setTextArea( _jobDuration, _widthJobDuration );
+            setTextArea( _jobDuration, _settings.jobColumnSpecs().jobDuration.width );
             _positionJobDuration = _xOff;
         }
         else
             _positionJobDuration = -100;
         if ( _showInputFile.getState() ) {
-            setTextArea( _inputFile, _widthInputFile );
+            setTextArea( _inputFile, _settings.jobColumnSpecs().inputFile.width );
             _positionInputFile = _xOff;
         }
         else
             _positionInputFile = -100;
         if ( _showOutputFile.getState() ) {
-            setTextArea( _outputFile, _widthOutputFile );
+            setTextArea( _outputFile, _settings.jobColumnSpecs().outputFile.width );
             _positionOutputFile = _xOff;
         }
         else
             _positionOutputFile = -100;
         if ( _showOutputSize.getState() ) {
-            setTextArea( _outputSize, _widthOutputSize );
+            setTextArea( _outputSize, _settings.jobColumnSpecs().outputSize.width );
             _positionOutputSize = _xOff;
         }
         else
             _positionOutputSize = -100;
         if ( _showDifxVersion.getState() ) {
-            setTextArea( _difxVersion, _widthDifxVersion );
+            setTextArea( _difxVersion, _settings.jobColumnSpecs().difxVersion.width );
             _positionDifxVersion = _xOff;
         }
         else
             _positionDifxVersion = -100;
         if ( _showSpeedUpFactor.getState() ) {
-            setTextArea( _speedUpFactor, _widthSpeedUpFactor );
+            setTextArea( _speedUpFactor, _settings.jobColumnSpecs().speedUpFactor.width );
             _positionSpeedUpFactor = _xOff;
         }
         else
             _positionSpeedUpFactor = -100;
         if ( _showNumAntennas.getState() ) {
-            setTextArea( _numAntennas, _widthNumAntennas );
+            setTextArea( _numAntennas, _settings.jobColumnSpecs().numAntennas.width );
             _positionNumAntennas = _xOff;
         }
         else
             _positionNumAntennas = -100;
         if ( _showNumForeignAntennas.getState() ) {
-            setTextArea( _numForeignAntennas, _widthNumForeignAntennas );
+            setTextArea( _numForeignAntennas, _settings.jobColumnSpecs().numForeignAntennas.width );
             _positionNumForeignAntennas = _xOff;
         }
         else
             _positionNumForeignAntennas = -100;
         if ( _showDutyCycle.getState() ) {
-            setTextArea( _dutyCycle, _widthDutyCycle );
+            setTextArea( _dutyCycle, _settings.jobColumnSpecs().dutyCycle.width );
             _positionDutyCycle = _xOff;
         }
         else
             _positionDutyCycle = -100;
         if ( _showStatus.getState() ) {
-            setTextArea( _status, _widthStatus );
+            setTextArea( _status, _settings.jobColumnSpecs().status.width );
             _positionStatus = _xOff;
         }
         else
             _positionStatus = -100;
         if ( _showActive.getState() ) {
-            setTextArea( _active, _widthActive );
+            setTextArea( _active, _settings.jobColumnSpecs().active.width );
             _positionActive = _xOff;
         }
         else
             _positionActive = -100;
         if ( _showStatusId.getState() ) {
-            setTextArea( _statusId, _widthStatusId );
+            setTextArea( _statusId, _settings.jobColumnSpecs().statusId.width );
             _positionStatusId = _xOff;
         }
         else
@@ -628,63 +628,32 @@ public class JobNodesHeader extends BrowserNode {
     }
     
     public void initializeDisplaySettings() {
-        _showNetworkActivity.setState( true );
-        _showName.setState( true );
-        _showProgressBar.setState( true );
-        _showState.setState( true );
-        _showExperiment.setState( false );
-        _showPass.setState( false );
-        _showPriority.setState( false );
-        _showQueueTime.setState( false );
-        _showCorrelationStart.setState( false );
-        _showCorrelationEnd.setState( false );
-        _showJobStart.setState( false );
-        _showJobDuration.setState( false );
-        _showInputFile.setState( true );
-        _showOutputFile.setState( false );
-        _showOutputSize.setState( false );
-        _showDifxVersion.setState( false );
-        _showSpeedUpFactor.setState( false );
-        _showNumAntennas.setState( false );
-        _showNumForeignAntennas.setState( false );
-        _showDutyCycle.setState( false );
-        _showStatus.setState( false );
-        _showActive.setState( false );
-        _showStatusId.setState( false );
-        _showWeights.setState( false );
-//        _showWeightsAsPlots.setState( true );
-//        _showWeightsAsNumbers.setState( false );
-    }
-    
-    /*
-     * Set the widths of the various columns.  These are all default widths
-     * now, but in theory a settings structure could be handed to this function
-     * to set widths specified by users.
-     */
-    public void setColumnWidths() {
-        _widthName = 150;
-        _widthProgressBar = 200;
-        _widthState = 100;
-        _widthExperiment = 100;
-        _widthPass = 100;
-        _widthPriority = 100;
-        _widthQueueTime = 170;
-        _widthCorrelationStart = 100;
-        _widthCorrelationEnd = 100;
-        _widthJobStart = 100;
-        _widthJobDuration = 100;
-        _widthInputFile = 400;
-        _widthOutputFile = 100;
-        _widthOutputSize = 100;
-        _widthDifxVersion = 100;
-        _widthSpeedUpFactor = 100;
-        _widthNumAntennas = 100;
-        _widthNumForeignAntennas = 100;
-        _widthDutyCycle = 100;
-        _widthStatus = 100;
-        _widthActive = 100;
-        _widthStatusId = 100;
-        _widthWeights = 200;
+        _showNetworkActivity.setState( _settings.jobColumnSpecs().networkActivity.show );
+        _showName.setState( _settings.jobColumnSpecs().name.show );
+        _showProgressBar.setState( _settings.jobColumnSpecs().progressBar.show );
+        _showState.setState( _settings.jobColumnSpecs().state.show );
+        _showExperiment.setState( _settings.jobColumnSpecs().experiment.show );
+        _showPass.setState( _settings.jobColumnSpecs().pass.show );
+        _showPriority.setState( _settings.jobColumnSpecs().priority.show );
+        _showQueueTime.setState( _settings.jobColumnSpecs().queueTime.show );
+        _showCorrelationStart.setState( _settings.jobColumnSpecs().correlationStart.show );
+        _showCorrelationEnd.setState( _settings.jobColumnSpecs().correlationEnd.show );
+        _showJobStart.setState( _settings.jobColumnSpecs().jobStart.show );
+        _showJobDuration.setState( _settings.jobColumnSpecs().jobDuration.show );
+        _showInputFile.setState( _settings.jobColumnSpecs().inputFile.show );
+        _showOutputFile.setState( _settings.jobColumnSpecs().outputFile.show );
+        _showOutputSize.setState( _settings.jobColumnSpecs().outputSize.show );
+        _showDifxVersion.setState( _settings.jobColumnSpecs().difxVersion.show );
+        _showSpeedUpFactor.setState( _settings.jobColumnSpecs().speedUpFactor.show );
+        _showNumAntennas.setState( _settings.jobColumnSpecs().numAntennas.show );
+        _showNumForeignAntennas.setState( _settings.jobColumnSpecs().numForeignAntennas.show );
+        _showDutyCycle.setState( _settings.jobColumnSpecs().dutyCycle.show );
+        _showStatus.setState( _settings.jobColumnSpecs().status.show );
+        _showActive.setState( _settings.jobColumnSpecs().active.show );
+        _showStatusId.setState( _settings.jobColumnSpecs().statusId.show );
+        _showWeights.setState( _settings.jobColumnSpecs().weights.show );
+//        _showWeightsAsPlots.setState( _settings.jobColumnSpecs().weightsAsPlots.show );
+//        _showWeightsAsNumbers.setState( _settings.jobColumnSpecs().weightsAsNumbers.show );
     }
     
     /*
@@ -694,29 +663,29 @@ public class JobNodesHeader extends BrowserNode {
         for ( Iterator<JobNode> iter = _jobs.iterator(); iter.hasNext(); ) {
             JobNode thisJob = iter.next();
             //  Change the settings on these items to match our current specifications.
-            thisJob.widthName( _widthName );
-            thisJob.widthProgressBar( _widthProgressBar );
-            thisJob.widthState( _widthState );
-            thisJob.widthExperiment( _widthExperiment );
-            thisJob.widthPass( _widthPass );
-            thisJob.widthPriority( _widthPriority );
-            thisJob.widthQueueTime( _widthQueueTime );
-            thisJob.widthCorrelationStart( _widthCorrelationStart );
-            thisJob.widthCorrelationEnd( _widthCorrelationEnd );
-            thisJob.widthJobStart( _widthJobStart );
-            thisJob.widthJobDuration( _widthJobDuration );
-            thisJob.widthInputFile( _widthInputFile );
-            thisJob.widthOutputFile( _widthOutputFile );
-            thisJob.widthOutputSize( _widthOutputSize );
-            thisJob.widthDifxVersion( _widthDifxVersion );
-            thisJob.widthSpeedUpFactor( _widthSpeedUpFactor );
-            thisJob.widthNumAntennas( _widthNumAntennas );
-            thisJob.widthNumForeignAntennas( _widthNumForeignAntennas );
-            thisJob.widthDutyCycle( _widthDutyCycle );
-            thisJob.widthStatus( _widthStatus );
-            thisJob.widthActive( _widthActive );
-            thisJob.widthStatusId( _widthStatusId );
-            thisJob.widthWeights( _widthWeights );
+            thisJob.widthName( _settings.jobColumnSpecs().name.width );
+            thisJob.widthProgressBar( _settings.jobColumnSpecs().progressBar.width );
+            thisJob.widthState( _settings.jobColumnSpecs().state.width );
+            thisJob.widthExperiment( _settings.jobColumnSpecs().experiment.width );
+            thisJob.widthPass( _settings.jobColumnSpecs().pass.width );
+            thisJob.widthPriority( _settings.jobColumnSpecs().priority.width );
+            thisJob.widthQueueTime( _settings.jobColumnSpecs().queueTime.width );
+            thisJob.widthCorrelationStart( _settings.jobColumnSpecs().correlationStart.width );
+            thisJob.widthCorrelationEnd( _settings.jobColumnSpecs().correlationEnd.width );
+            thisJob.widthJobStart( _settings.jobColumnSpecs().jobStart.width );
+            thisJob.widthJobDuration( _settings.jobColumnSpecs().jobDuration.width );
+            thisJob.widthInputFile( _settings.jobColumnSpecs().inputFile.width );
+            thisJob.widthOutputFile( _settings.jobColumnSpecs().outputFile.width );
+            thisJob.widthOutputSize( _settings.jobColumnSpecs().outputSize.width );
+            thisJob.widthDifxVersion( _settings.jobColumnSpecs().difxVersion.width );
+            thisJob.widthSpeedUpFactor( _settings.jobColumnSpecs().speedUpFactor.width );
+            thisJob.widthNumAntennas( _settings.jobColumnSpecs().numAntennas.width );
+            thisJob.widthNumForeignAntennas( _settings.jobColumnSpecs().numForeignAntennas.width );
+            thisJob.widthDutyCycle( _settings.jobColumnSpecs().dutyCycle.width );
+            thisJob.widthStatus( _settings.jobColumnSpecs().status.width );
+            thisJob.widthActive( _settings.jobColumnSpecs().active.width );
+            thisJob.widthStatusId( _settings.jobColumnSpecs().statusId.width );
+            thisJob.widthWeights( _settings.jobColumnSpecs().weights.width );
             thisJob.updateUI();
         }
     }
@@ -862,95 +831,95 @@ public class JobNodesHeader extends BrowserNode {
     @Override
     public void mousePressed( MouseEvent e ) {
         if ( _adjustName ) {
-            _startWidth = _widthName;
+            _startWidth = _settings.jobColumnSpecs().name.width;
             _startX = e.getX();
         }
         else if ( _adjustProgressBar ) {
-            _startWidth = _widthProgressBar;
+            _startWidth = _settings.jobColumnSpecs().progressBar.width;
             _startX = e.getX();
         }
         else if ( _adjustState ) {
-            _startWidth = _widthState;
+            _startWidth = _settings.jobColumnSpecs().state.width;
             _startX = e.getX();
         }
         else if ( _adjustExperiment ) {
-            _startWidth = _widthExperiment;
+            _startWidth = _settings.jobColumnSpecs().experiment.width;
             _startX = e.getX();
         }
         else if ( _adjustPass ) {
-            _startWidth = _widthPass;
+            _startWidth = _settings.jobColumnSpecs().pass.width;
             _startX = e.getX();
         }
         else if ( _adjustPriority ) {
-            _startWidth = _widthPriority;
+            _startWidth = _settings.jobColumnSpecs().priority.width;
             _startX = e.getX();
         }
         else if ( _adjustQueueTime ) {
-            _startWidth = _widthQueueTime;
+            _startWidth = _settings.jobColumnSpecs().queueTime.width;
             _startX = e.getX();
         }
         else if ( _adjustCorrelationStart ) {
-            _startWidth = _widthCorrelationStart;
+            _startWidth = _settings.jobColumnSpecs().correlationStart.width;
             _startX = e.getX();
         }
         else if ( _adjustCorrelationEnd ) {
-            _startWidth = _widthCorrelationEnd;
+            _startWidth = _settings.jobColumnSpecs().correlationEnd.width;
             _startX = e.getX();
         }
         else if ( _adjustJobStart ) {
-            _startWidth = _widthJobStart;
+            _startWidth = _settings.jobColumnSpecs().jobStart.width;
             _startX = e.getX();
         }
         else if ( _adjustJobDuration ) {
-            _startWidth = _widthJobDuration;
+            _startWidth = _settings.jobColumnSpecs().jobDuration.width;
             _startX = e.getX();
         }
         else if ( _adjustInputFile ) {
-            _startWidth = _widthInputFile;
+            _startWidth = _settings.jobColumnSpecs().inputFile.width;
             _startX = e.getX();
         }
         else if ( _adjustOutputFile ) {
-            _startWidth = _widthOutputFile;
+            _startWidth = _settings.jobColumnSpecs().outputFile.width;
             _startX = e.getX();
         }
         else if ( _adjustOutputSize ) {
-            _startWidth = _widthOutputSize;
+            _startWidth = _settings.jobColumnSpecs().outputSize.width;
             _startX = e.getX();
         }
         else if ( _adjustDifxVersion ) {
-            _startWidth = _widthDifxVersion;
+            _startWidth = _settings.jobColumnSpecs().difxVersion.width;
             _startX = e.getX();
         }
         else if ( _adjustSpeedUpFactor ) {
-            _startWidth = _widthSpeedUpFactor;
+            _startWidth = _settings.jobColumnSpecs().speedUpFactor.width;
             _startX = e.getX();
         }
         else if ( _adjustNumAntennas ) {
-            _startWidth = _widthNumAntennas;
+            _startWidth = _settings.jobColumnSpecs().numAntennas.width;
             _startX = e.getX();
         }
         else if ( _adjustNumForeignAntennas ) {
-            _startWidth = _widthNumForeignAntennas;
+            _startWidth = _settings.jobColumnSpecs().numForeignAntennas.width;
             _startX = e.getX();
         }
         else if ( _adjustDutyCycle ) {
-            _startWidth = _widthDutyCycle;
+            _startWidth = _settings.jobColumnSpecs().dutyCycle.width;
             _startX = e.getX();
         }
         else if ( _adjustStatus ) {
-            _startWidth = _widthStatus;
+            _startWidth = _settings.jobColumnSpecs().status.width;
             _startX = e.getX();
         }
         else if ( _adjustActive ) {
-            _startWidth = _widthActive;
+            _startWidth = _settings.jobColumnSpecs().active.width;
             _startX = e.getX();
         }
         else if ( _adjustStatusId ) {
-            _startWidth = _widthStatusId;
+            _startWidth = _settings.jobColumnSpecs().statusId.width;
             _startX = e.getX();
         }
         else if ( _adjustWeights ) {
-            _startWidth = _widthWeights;
+            _startWidth = _settings.jobColumnSpecs().weights.width;
             _startX = e.getX();
         }
         else
@@ -964,95 +933,95 @@ public class JobNodesHeader extends BrowserNode {
     public void mouseDragged( MouseEvent e ) {
         if ( _adjustName ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthName = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().name.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustProgressBar ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthProgressBar = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().progressBar.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustState ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthState = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().state.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustExperiment ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthExperiment = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().experiment.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustPass ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthPass = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().pass.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustPriority ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthPriority = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().priority.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustQueueTime ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthQueueTime = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().queueTime.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustCorrelationStart ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthCorrelationStart = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().correlationStart.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustCorrelationEnd ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthCorrelationEnd = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().correlationEnd.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustJobStart ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthJobStart = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().jobStart.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustJobDuration ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthJobDuration = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().jobDuration.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustInputFile ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthInputFile = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().inputFile.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustOutputFile ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthOutputFile = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().outputFile.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustOutputSize ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthOutputSize = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().outputSize.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustDifxVersion ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthDifxVersion = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().difxVersion.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustSpeedUpFactor ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthSpeedUpFactor = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().speedUpFactor.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustNumAntennas ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthNumAntennas = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().numAntennas.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustNumForeignAntennas ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthNumForeignAntennas = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().numForeignAntennas.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustDutyCycle ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthDutyCycle = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().dutyCycle.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustStatus ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthStatus = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().status.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustActive ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthActive = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().active.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustStatusId ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthStatusId = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().statusId.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustWeights ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthWeights = _startWidth + e.getX() - _startX;
+                _settings.jobColumnSpecs().weights.width = _startWidth + e.getX() - _startX;
         }
         setJobColumnWidths();
     }
@@ -1114,6 +1083,30 @@ public class JobNodesHeader extends BrowserNode {
         _active.setVisible( _showActive.getState() );
         _statusId.setVisible( _showStatusId.getState() );
         _weights.setVisible( _showWeights.getState() );
+        //  And the system settings.
+        _settings.jobColumnSpecs().name.show = _showName.getState();
+        _settings.jobColumnSpecs().progressBar.show = _showProgressBar.getState();
+        _settings.jobColumnSpecs().state.show = _showState.getState();
+        _settings.jobColumnSpecs().experiment.show = _showExperiment.getState();
+        _settings.jobColumnSpecs().pass.show = _showPass.getState();
+        _settings.jobColumnSpecs().priority.show = _showPriority.getState();
+        _settings.jobColumnSpecs().queueTime.show = _showQueueTime.getState();
+        _settings.jobColumnSpecs().correlationStart.show = _showCorrelationStart.getState();
+        _settings.jobColumnSpecs().correlationEnd.show = _showCorrelationEnd.getState();
+        _settings.jobColumnSpecs().jobStart.show = _showJobStart.getState();
+        _settings.jobColumnSpecs().jobDuration.show = _showJobDuration.getState();
+        _settings.jobColumnSpecs().inputFile.show = _showInputFile.getState();
+        _settings.jobColumnSpecs().outputFile.show = _showOutputFile.getState();
+        _settings.jobColumnSpecs().outputSize.show = _showOutputSize.getState();
+        _settings.jobColumnSpecs().difxVersion.show = _showDifxVersion.getState();
+        _settings.jobColumnSpecs().speedUpFactor.show = _showSpeedUpFactor.getState();
+        _settings.jobColumnSpecs().numAntennas.show = _showNumAntennas.getState();
+        _settings.jobColumnSpecs().numForeignAntennas.show = _showNumForeignAntennas.getState();
+        _settings.jobColumnSpecs().dutyCycle.show = _showDutyCycle.getState();
+        _settings.jobColumnSpecs().status.show = _showStatus.getState();
+        _settings.jobColumnSpecs().active.show = _showActive.getState();
+        _settings.jobColumnSpecs().statusId.show = _showStatusId.getState();
+        _settings.jobColumnSpecs().weights.show = _showWeights.getState();
         this.updateUI();
         
     }
@@ -1121,144 +1114,123 @@ public class JobNodesHeader extends BrowserNode {
     protected JCheckBoxMenuItem _showNetworkActivity;
     
     protected ColumnTextArea _nameArea;
-    protected int _widthName;
     protected JCheckBoxMenuItem _showName;
     protected int _positionName;
     protected boolean _adjustName;
     
     protected ColumnTextArea _progressBar;
-    protected int _widthProgressBar;
     protected JCheckBoxMenuItem _showProgressBar;
     protected int _positionProgressBar;
     protected boolean _adjustProgressBar;
     
     protected ColumnTextArea _state;
-    protected int _widthState;
     protected JCheckBoxMenuItem _showState;
     protected int _positionState;
     protected boolean _adjustState;
     
     protected ColumnTextArea _experiment;
-    protected int _widthExperiment;
     protected JCheckBoxMenuItem _showExperiment;
     protected int _positionExperiment;
     protected boolean _adjustExperiment;
     
     protected ColumnTextArea _pass;
-    protected int _widthPass;
     protected JCheckBoxMenuItem _showPass;
     protected int _positionPass;
     protected boolean _adjustPass;
     
     protected ColumnTextArea _priority;
-    protected int _widthPriority;
     protected JCheckBoxMenuItem _showPriority;
     protected int _positionPriority;
     protected boolean _adjustPriority;
     
     protected ColumnTextArea _queueTime;
-    protected int _widthQueueTime;
     protected JCheckBoxMenuItem _showQueueTime;
     protected int _positionQueueTime;
     protected boolean _adjustQueueTime;
     
     protected ColumnTextArea _correlationStart;
-    protected int _widthCorrelationStart;
     protected JCheckBoxMenuItem _showCorrelationStart;
     protected int _positionCorrelationStart;
     protected boolean _adjustCorrelationStart;
     
     protected ColumnTextArea _correlationEnd;
-    protected int _widthCorrelationEnd;
     protected JCheckBoxMenuItem _showCorrelationEnd;
     protected int _positionCorrelationEnd;
     protected boolean _adjustCorrelationEnd;
     
     protected ColumnTextArea _jobStart;
-    protected int _widthJobStart;
     protected JCheckBoxMenuItem _showJobStart;
     protected int _positionJobStart;
     protected boolean _adjustJobStart;
     
     protected ColumnTextArea _jobDuration;
-    protected int _widthJobDuration;
     protected JCheckBoxMenuItem _showJobDuration;
     protected int _positionJobDuration;
     protected boolean _adjustJobDuration;
     
     protected ColumnTextArea _inputFile;
-    protected int _widthInputFile;
     protected JCheckBoxMenuItem _showInputFile;
     protected int _positionInputFile;
     protected boolean _adjustInputFile;
     
     protected ColumnTextArea _outputFile;
-    protected int _widthOutputFile;
     protected JCheckBoxMenuItem _showOutputFile;
     protected int _positionOutputFile;
     protected boolean _adjustOutputFile;
     
     protected ColumnTextArea _outputSize;
-    protected int _widthOutputSize;
     protected JCheckBoxMenuItem _showOutputSize;
     protected int _positionOutputSize;
     protected boolean _adjustOutputSize;
     
     protected ColumnTextArea _difxVersion;
-    protected int _widthDifxVersion;
     protected JCheckBoxMenuItem _showDifxVersion;
     protected int _positionDifxVersion;
     protected boolean _adjustDifxVersion;
     
     protected ColumnTextArea _speedUpFactor;
-    protected int _widthSpeedUpFactor;
     protected JCheckBoxMenuItem _showSpeedUpFactor;
     protected int _positionSpeedUpFactor;
     protected boolean _adjustSpeedUpFactor;
     
     protected ColumnTextArea _numAntennas;
-    protected int _widthNumAntennas;
     protected JCheckBoxMenuItem _showNumAntennas;
     protected int _positionNumAntennas;
     protected boolean _adjustNumAntennas;
     
     protected ColumnTextArea _numForeignAntennas;
-    protected int _widthNumForeignAntennas;
     protected JCheckBoxMenuItem _showNumForeignAntennas;
     protected int _positionNumForeignAntennas;
     protected boolean _adjustNumForeignAntennas;
     
     protected ColumnTextArea _dutyCycle;
-    protected int _widthDutyCycle;
     protected JCheckBoxMenuItem _showDutyCycle;
     protected int _positionDutyCycle;
     protected boolean _adjustDutyCycle;
     
     protected ColumnTextArea _status;
-    protected int _widthStatus;
     protected JCheckBoxMenuItem _showStatus;
     protected int _positionStatus;
     protected boolean _adjustStatus;
     
     protected ColumnTextArea _active;
-    protected int _widthActive;
     protected JCheckBoxMenuItem _showActive;
     protected int _positionActive;
     protected boolean _adjustActive;
     
     protected ColumnTextArea _statusId;
-    protected int _widthStatusId;
     protected JCheckBoxMenuItem _showStatusId;
     protected int _positionStatusId;
     protected boolean _adjustStatusId;
     
     protected ColumnTextArea _weights;
-    protected int _widthWeights;
     protected JCheckBoxMenuItem _showWeights;
     protected int _positionWeights;
     protected boolean _adjustWeights;
 //    JCheckBoxMenuItem _showWeightsAsNumbers;
 //    JCheckBoxMenuItem _showWeightsAsPlots;
+    
+    SystemSettings _settings;
     
     protected int _xOff;
     

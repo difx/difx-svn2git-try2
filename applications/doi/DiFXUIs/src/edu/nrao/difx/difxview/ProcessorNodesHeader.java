@@ -23,15 +23,19 @@ import java.awt.RenderingHints;
 
 import java.util.Iterator;
 
+import javax.swing.event.EventListenerList;
+
 public class ProcessorNodesHeader extends BrowserNode {
     
-    public ProcessorNodesHeader( String name ) {
+    public ProcessorNodesHeader( String name, SystemSettings settings ) {
         super( name );
         _normalCursor = this.getCursor();
         _columnAdjustCursor = new Cursor( Cursor.W_RESIZE_CURSOR );
+        _settings = settings;
         initializeDisplaySettings();
         setChildColumnWidths();
         _popupButton.setVisible( true );
+        _columnChangeListeners = new EventListenerList();
     }
     
     @Override
@@ -40,7 +44,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _numCPUs.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showNumCPUs.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _numCPUs );
@@ -48,7 +52,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _numCores.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showNumCores.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _numCores );
@@ -56,7 +60,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _bogusGHz.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showBogusGHz.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _bogusGHz );
@@ -64,7 +68,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _type.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showType.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _type );
@@ -72,7 +76,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _typeString.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showTypeString.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _typeString );
@@ -80,7 +84,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _state.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showState.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _state );
@@ -88,7 +92,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _enabled.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showEnabled.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _enabled );
@@ -96,7 +100,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _cpuLoad.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showCpuLoad.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _cpuLoad );
@@ -104,7 +108,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _cpuLoadPlot.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showCpuLoadPlot.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _cpuLoadPlot );
@@ -112,7 +116,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _usedMem.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showUsedMem.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _usedMem );
@@ -120,7 +124,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _totalMem.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showTotalMem.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _totalMem );
@@ -128,7 +132,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _memLoad.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showMemLoad.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _memLoad );
@@ -136,7 +140,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _memLoadPlot.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showMemLoadPlot.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _memLoadPlot );
@@ -144,7 +148,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _netRxRate.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showNetRxRate.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _netRxRate );
@@ -152,7 +156,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _netTxRate.addKillButton(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _showNetTxRate.setState( false );
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         this.add( _netTxRate );
@@ -228,7 +232,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _showIgnored = new JCheckBoxMenuItem( "Show \"Ignored\" Nodes" );
         _showIgnored.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showIgnored );
@@ -242,112 +246,112 @@ public class ProcessorNodesHeader extends BrowserNode {
         _broadcastMonitor = new JCheckBoxMenuItem( "Broadcast Monitor" );
         _broadcastMonitor.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _broadcastMonitor );
         _showNumCPUs = new JCheckBoxMenuItem( "CPUs" );
         _showNumCPUs.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showNumCPUs );
         _showNumCores = new JCheckBoxMenuItem( "Cores" );
         _showNumCores.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showNumCores );
         _showBogusGHz = new JCheckBoxMenuItem( "GHz" );
         _showBogusGHz.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showBogusGHz );
         _showType = new JCheckBoxMenuItem( "Type (Numeric)" );
         _showType.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showType );
         _showTypeString = new JCheckBoxMenuItem( "Type" );
         _showTypeString.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showTypeString );
         _showState = new JCheckBoxMenuItem( "State" );
         _showState.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showState );
         _showEnabled = new JCheckBoxMenuItem( "Enabled" );
         _showEnabled.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showEnabled );
         _showCpuLoad = new JCheckBoxMenuItem( "CPU Usage" );
         _showCpuLoad.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showCpuLoad );
         _showCpuLoadPlot = new JCheckBoxMenuItem( "CPU Usage Plot" );
         _showCpuLoadPlot.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showCpuLoadPlot );
         _showUsedMem = new JCheckBoxMenuItem( "Used Memory" );
         _showUsedMem.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showUsedMem );
         _showTotalMem = new JCheckBoxMenuItem( "Total Memory" );
         _showTotalMem.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showTotalMem );
         _showMemLoad = new JCheckBoxMenuItem( "Memory Usage" );
         _showMemLoad.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showMemLoad );
         _showMemLoadPlot = new JCheckBoxMenuItem( "Memory Usage Plot" );
         _showMemLoadPlot.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showMemLoadPlot );
         _showNetRxRate = new JCheckBoxMenuItem( "Net Receive Rate" );
         _showNetRxRate.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showNetRxRate );
         _showNetTxRate = new JCheckBoxMenuItem( "Net Transmit Rate" );
         _showNetTxRate.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
-                updateDisplayedData();
+                columnChangeActivity();
             }
         });
         _popup.add( _showNetTxRate );
@@ -373,7 +377,7 @@ public class ProcessorNodesHeader extends BrowserNode {
         _showMemLoadPlot.setState( true );
         _showNetRxRate.setState( true );
         _showNetTxRate.setState( true );
-        updateDisplayedData();
+        columnChangeActivity();
     }
 
     @Override
@@ -385,49 +389,49 @@ public class ProcessorNodesHeader extends BrowserNode {
         _popupButton.setBounds( _xOff + 2, 2, 16, _ySize - 4 );
         _xOff += 20;
         if ( _showNumCPUs.getState() ) {
-            setTextArea( _numCPUs, _widthNumCPUs );
+            setTextArea( _numCPUs, _settings.hardwareColumnSpecs().NumCPUs.width );
             _positionNumCPUs = _xOff;
         }
         else
             _positionNumCPUs = -100;
         if ( _showNumCores.getState() ) {
-            setTextArea( _numCores, _widthNumCores );
+            setTextArea( _numCores, _settings.hardwareColumnSpecs().NumCores.width );
             _positionNumCores = _xOff;
         }
         else
             _positionNumCores = -100;
         if ( _showBogusGHz.getState() ) {
-            setTextArea( _bogusGHz, _widthBogusGHz );
+            setTextArea( _bogusGHz, _settings.hardwareColumnSpecs().BogusGHz.width );
             _positionBogusGHz = _xOff;
         }
         else
             _positionBogusGHz = -100;
         if ( _showType.getState() ) {
-            setTextArea( _type, _widthType );
+            setTextArea( _type, _settings.hardwareColumnSpecs().Type.width );
             _positionType = _xOff;
         }
         else
             _positionType = -100;
         if ( _showTypeString.getState() ) {
-            setTextArea( _typeString, _widthTypeString );
+            setTextArea( _typeString, _settings.hardwareColumnSpecs().TypeString.width );
             _positionTypeString = _xOff;
         }
         else
             _positionTypeString = -100;
         if ( _showState.getState() ) {
-            setTextArea( _state, _widthState );
+            setTextArea( _state, _settings.hardwareColumnSpecs().State.width );
             _positionState = _xOff;
         }
         else
             _positionState = -100;
         if ( _showEnabled.getState() ) {
-            setTextArea( _enabled, _widthEnabled );
+            setTextArea( _enabled, _settings.hardwareColumnSpecs().Enabled.width );
             _positionEnabled = _xOff;
         }
         else
             _positionEnabled = -100;
         if ( _showCpuLoad.getState() ) {
-            setTextArea( _cpuLoad, _widthCpuLoad );
+            setTextArea( _cpuLoad, _settings.hardwareColumnSpecs().CpuLoad.width );
             _positionCpuLoad = _xOff;
         }
         else
@@ -439,25 +443,25 @@ public class ProcessorNodesHeader extends BrowserNode {
                 _cpuLoadPlot.setText( "" );
             else
                 _cpuLoadPlot.setText( "CPU Usage" );
-            setTextArea( _cpuLoadPlot, _widthCpuLoadPlot );
+            setTextArea( _cpuLoadPlot, _settings.hardwareColumnSpecs().CpuLoadPlot.width );
             _positionCpuLoadPlot = _xOff;
         }
         else
             _positionCpuLoadPlot = -100;
         if ( _showUsedMem.getState() ) {
-            setTextArea( _usedMem, _widthUsedMem );
+            setTextArea( _usedMem, _settings.hardwareColumnSpecs().UsedMem.width );
             _positionUsedMem = _xOff;
         }
         else
             _positionUsedMem = -100;
         if ( _showTotalMem.getState() ) {
-            setTextArea( _totalMem, _widthTotalMem );
+            setTextArea( _totalMem, _settings.hardwareColumnSpecs().TotalMem.width );
             _positionTotalMem = _xOff;
         }
         else
             _positionTotalMem = -100;
         if ( _showMemLoad.getState() ) {
-            setTextArea( _memLoad, _widthMemLoad );
+            setTextArea( _memLoad, _settings.hardwareColumnSpecs().MemLoad.width );
             _positionMemLoad = _xOff;
         }
         else
@@ -469,19 +473,19 @@ public class ProcessorNodesHeader extends BrowserNode {
                 _memLoadPlot.setText( "" );
             else
                 _memLoadPlot.setText( "Mem Usage" );
-            setTextArea( _memLoadPlot, _widthMemLoadPlot );
+            setTextArea( _memLoadPlot, _settings.hardwareColumnSpecs().MemLoadPlot.width );
             _positionMemLoadPlot = _xOff;
         }
         else
             _positionMemLoadPlot = -100;
         if ( _showNetRxRate.getState() ) {
-            setTextArea( _netRxRate, _widthNetRxRate );
+            setTextArea( _netRxRate, _settings.hardwareColumnSpecs().NetRxRate.width );
             _positionNetRxRate = _xOff;
         }
         else
             _positionNetRxRate = -100;
         if ( _showNetTxRate.getState() ) {
-            setTextArea( _netTxRate, _widthNetTxRate );
+            setTextArea( _netTxRate, _settings.hardwareColumnSpecs().NetTxRate.width );
             _positionNetTxRate = _xOff;
         }
         else
@@ -503,47 +507,23 @@ public class ProcessorNodesHeader extends BrowserNode {
     }
     
     public void initializeDisplaySettings() {
-        _showIgnored.setState( false );
-        _broadcastMonitor.setState( true );
-        _showNumCPUs.setState( false );
-        _showNumCores.setState( false );
-        _showBogusGHz.setState( false );
-        _showType.setState( false );
-        _showTypeString.setState( false );
-        _showState.setState( true );
-        _showEnabled.setState( false );
-        _showCpuLoad.setState( false );
-        _showCpuLoadPlot.setState( true );
-        _showUsedMem.setState( false );
-        _showTotalMem.setState( false );
-        _showMemLoad.setState( false );
-        _showMemLoadPlot.setState( true );
-        _showNetRxRate.setState( true );
-        _showNetTxRate.setState( true );
-        setColumnWidths();
-    }
-    
-    /*
-     * Set the widths of the various columns.  These are all default widths
-     * now, but in theory a settings structure could be handed to this function
-     * to set widths specified by users.
-     */
-    public void setColumnWidths() {
-        _widthNumCPUs = 70;
-        _widthNumCores = 70;
-        _widthBogusGHz = 70;
-        _widthType = 70;
-        _widthTypeString = 70;
-        _widthState = 100;
-        _widthEnabled = 70;
-        _widthCpuLoad = 70;
-        _widthCpuLoadPlot = 70;
-        _widthUsedMem = 70;
-        _widthTotalMem = 70;
-        _widthMemLoad = 70;
-        _widthMemLoadPlot = 70;
-        _widthNetRxRate = 70;
-        _widthNetTxRate = 70;
+        _showIgnored.setState( _settings.hardwareColumnSpecs().Ignored.show );
+        _broadcastMonitor.setState( _settings.hardwareColumnSpecs().broadcastMonitor.show );
+        _showNumCPUs.setState( _settings.hardwareColumnSpecs().NumCPUs.show );
+        _showNumCores.setState( _settings.hardwareColumnSpecs().NumCores.show );
+        _showBogusGHz.setState( _settings.hardwareColumnSpecs().BogusGHz.show );
+        _showType.setState( _settings.hardwareColumnSpecs().Type.show );
+        _showTypeString.setState( _settings.hardwareColumnSpecs().TypeString.show );
+        _showState.setState( _settings.hardwareColumnSpecs().State.show );
+        _showEnabled.setState( _settings.hardwareColumnSpecs().Enabled.show );
+        _showCpuLoad.setState( _settings.hardwareColumnSpecs().CpuLoad.show );
+        _showCpuLoadPlot.setState( _settings.hardwareColumnSpecs().CpuLoadPlot.show );
+        _showUsedMem.setState( _settings.hardwareColumnSpecs().UsedMem.show );
+        _showTotalMem.setState( _settings.hardwareColumnSpecs().TotalMem.show );
+        _showMemLoad.setState( _settings.hardwareColumnSpecs().MemLoad.show );
+        _showMemLoadPlot.setState( _settings.hardwareColumnSpecs().MemLoadPlot.show );
+        _showNetRxRate.setState( _settings.hardwareColumnSpecs().NetRxRate.show );
+        _showNetTxRate.setState( _settings.hardwareColumnSpecs().NetTxRate.show );
     }
     
     /*
@@ -553,21 +533,21 @@ public class ProcessorNodesHeader extends BrowserNode {
         for ( Iterator<BrowserNode> iter = _children.iterator(); iter.hasNext(); ) {
             ProcessorNode thisNode = (ProcessorNode)(iter.next());
             //  Change the settings on these items to match our current specifications.
-            thisNode.widthNumCPUs( _widthNumCPUs );
-            thisNode.widthNumCores( _widthNumCores );
-            thisNode.widthBogusGHz( _widthBogusGHz );
-            thisNode.widthType( _widthType );
-            thisNode.widthTypeString( _widthTypeString );
-            thisNode.widthState( _widthState );
-            thisNode.widthEnabled( _widthEnabled );
-            thisNode.widthCpuLoad( _widthCpuLoad );
-            thisNode.widthCpuLoadPlot( _widthCpuLoadPlot );
-            thisNode.widthUsedMem( _widthUsedMem );
-            thisNode.widthTotalMem( _widthTotalMem );
-            thisNode.widthMemLoad( _widthMemLoad );
-            thisNode.widthMemLoadPlot( _widthMemLoadPlot );
-            thisNode.widthNetRxRate( _widthNetRxRate );
-            thisNode.widthNetTxRate( _widthNetTxRate );
+            thisNode.widthNumCPUs( _settings.hardwareColumnSpecs().NumCPUs.width );
+            thisNode.widthNumCores( _settings.hardwareColumnSpecs().NumCores.width );
+            thisNode.widthBogusGHz( _settings.hardwareColumnSpecs().BogusGHz.width );
+            thisNode.widthType( _settings.hardwareColumnSpecs().Type.width );
+            thisNode.widthTypeString( _settings.hardwareColumnSpecs().TypeString.width );
+            thisNode.widthState( _settings.hardwareColumnSpecs().State.width );
+            thisNode.widthEnabled( _settings.hardwareColumnSpecs().Enabled.width );
+            thisNode.widthCpuLoad( _settings.hardwareColumnSpecs().CpuLoad.width );
+            thisNode.widthCpuLoadPlot( _settings.hardwareColumnSpecs().CpuLoadPlot.width );
+            thisNode.widthUsedMem( _settings.hardwareColumnSpecs().UsedMem.width );
+            thisNode.widthTotalMem( _settings.hardwareColumnSpecs().TotalMem.width );
+            thisNode.widthMemLoad( _settings.hardwareColumnSpecs().MemLoad.width );
+            thisNode.widthMemLoadPlot( _settings.hardwareColumnSpecs().MemLoadPlot.width );
+            thisNode.widthNetRxRate( _settings.hardwareColumnSpecs().NetRxRate.width );
+            thisNode.widthNetTxRate( _settings.hardwareColumnSpecs().NetTxRate.width );
             thisNode.updateUI();
         }
     }
@@ -576,7 +556,7 @@ public class ProcessorNodesHeader extends BrowserNode {
     public void addChild( BrowserNode newNode ) {
         super.addChild( newNode );
         setChildColumnWidths();
-        updateDisplayedData();
+        columnChangeActivity();
     }
     
     /*
@@ -723,63 +703,63 @@ public class ProcessorNodesHeader extends BrowserNode {
     @Override
     public void mousePressed( MouseEvent e ) {
         if ( _adjustNumCPUs ) {
-            _startWidth = _widthNumCPUs;
+            _startWidth = _settings.hardwareColumnSpecs().NumCPUs.width;
             _startX = e.getX();
         }
         else if ( _adjustNumCores ) {
-            _startWidth = _widthNumCores;
+            _startWidth = _settings.hardwareColumnSpecs().NumCores.width;
             _startX = e.getX();
         }
         else if ( _adjustBogusGHz ) {
-            _startWidth = _widthBogusGHz;
+            _startWidth = _settings.hardwareColumnSpecs().BogusGHz.width;
             _startX = e.getX();
         }
         else if ( _adjustType ) {
-            _startWidth = _widthType;
+            _startWidth = _settings.hardwareColumnSpecs().Type.width;
             _startX = e.getX();
         }
         else if ( _adjustTypeString ) {
-            _startWidth = _widthTypeString;
+            _startWidth = _settings.hardwareColumnSpecs().TypeString.width;
             _startX = e.getX();
         }
         else if ( _adjustState ) {
-            _startWidth = _widthState;
+            _startWidth = _settings.hardwareColumnSpecs().State.width;
             _startX = e.getX();
         }
         else if ( _adjustEnabled ) {
-            _startWidth = _widthEnabled;
+            _startWidth = _settings.hardwareColumnSpecs().Enabled.width;
             _startX = e.getX();
         }
         else if ( _adjustCpuLoad ) {
-            _startWidth = _widthCpuLoad;
+            _startWidth = _settings.hardwareColumnSpecs().CpuLoad.width;
             _startX = e.getX();
         }
         else if ( _adjustCpuLoadPlot ) {
-            _startWidth = _widthCpuLoadPlot;
+            _startWidth = _settings.hardwareColumnSpecs().CpuLoadPlot.width;
             _startX = e.getX();
         }
         else if ( _adjustUsedMem ) {
-            _startWidth = _widthUsedMem;
+            _startWidth = _settings.hardwareColumnSpecs().UsedMem.width;
             _startX = e.getX();
         }
         else if ( _adjustTotalMem ) {
-            _startWidth = _widthTotalMem;
+            _startWidth = _settings.hardwareColumnSpecs().TotalMem.width;
             _startX = e.getX();
         }
         else if ( _adjustMemLoad ) {
-            _startWidth = _widthMemLoad;
+            _startWidth = _settings.hardwareColumnSpecs().MemLoad.width;
             _startX = e.getX();
         }
         else if ( _adjustMemLoadPlot ) {
-            _startWidth = _widthMemLoadPlot;
+            _startWidth = _settings.hardwareColumnSpecs().MemLoadPlot.width;
             _startX = e.getX();
         }
         else if ( _adjustNetRxRate ) {
-            _startWidth = _widthNetRxRate;
+            _startWidth = _settings.hardwareColumnSpecs().NetRxRate.width;
             _startX = e.getX();
         }
         else if ( _adjustNetTxRate ) {
-            _startWidth = _widthNetTxRate;
+            _startWidth = _settings.hardwareColumnSpecs().NetTxRate.width;
             _startX = e.getX();
         }
         else
@@ -793,67 +773,86 @@ public class ProcessorNodesHeader extends BrowserNode {
     public void mouseDragged( MouseEvent e ) {
         if ( _adjustNumCPUs ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthNumCPUs = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().NumCPUs.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustNumCores ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthNumCores = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().NumCores.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustBogusGHz ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthBogusGHz = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().BogusGHz.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustType ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthType = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().Type.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustTypeString ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthTypeString = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().TypeString.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustState ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthState = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().State.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustEnabled ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthEnabled = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().Enabled.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustCpuLoad ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthCpuLoad = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().CpuLoad.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustCpuLoadPlot ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthCpuLoadPlot = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().CpuLoadPlot.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustUsedMem ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthUsedMem = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().UsedMem.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustTotalMem ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthTotalMem = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().TotalMem.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustMemLoad ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthMemLoad = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().MemLoad.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustMemLoadPlot ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthMemLoadPlot = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().MemLoadPlot.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustNetRxRate ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthNetRxRate = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().NetRxRate.width = _startWidth + e.getX() - _startX;
         }
         else if ( _adjustNetTxRate ) {
             if ( e.getX() - _startX + _startWidth > 5 )
-                _widthNetTxRate = _startWidth + e.getX() - _startX;
+                _settings.hardwareColumnSpecs().NetTxRate.width = _startWidth + e.getX() - _startX;
         }
         setChildColumnWidths();
+        Object[] listeners = _columnChangeListeners.getListenerList();
+        int numListeners = listeners.length;
+        for ( int i = 0; i < numListeners; i+=2 ) {
+            if ( listeners[i] == ActionListener.class )
+                ((ActionListener)listeners[i+1]).actionPerformed( new ActionEvent( this, ActionEvent.ACTION_PERFORMED, "" ) );
+        }
     }
     
+    public void addColumnChangeListener( ActionListener a ) {
+        _columnChangeListeners.add( ActionListener.class, a );
+    }
+
+    public void columnChangeActivity() {
+        updateDisplayedData();
+        Object[] listeners = _columnChangeListeners.getListenerList();
+        int numListeners = listeners.length;
+        for ( int i = 0; i < numListeners; i+=2 ) {
+            if ( listeners[i] == ActionListener.class )
+                ((ActionListener)listeners[i+1]).actionPerformed( new ActionEvent( this, ActionEvent.ACTION_PERFORMED, "" ) );
+        }
+    }
    
     public void updateDisplayedData() {
         //  Run through the list of all "child" nodes, which are all of the listed
@@ -897,7 +896,24 @@ public class ProcessorNodesHeader extends BrowserNode {
         _netRxRate.setVisible( _showNetRxRate.getState() );
         _netTxRate.setVisible( _showNetTxRate.getState() );
         this.updateUI();
-        
+        //  And the saved settings.
+        _settings.hardwareColumnSpecs().Ignored.show = _showIgnored.getState();
+        _settings.hardwareColumnSpecs().broadcastMonitor.show = _broadcastMonitor.getState();
+        _settings.hardwareColumnSpecs().NumCPUs.show = _showNumCPUs.getState();
+        _settings.hardwareColumnSpecs().NumCores.show = _showNumCores.getState();
+        _settings.hardwareColumnSpecs().BogusGHz.show = _showBogusGHz.getState();
+        _settings.hardwareColumnSpecs().Type.show = _showType.getState();
+        _settings.hardwareColumnSpecs().TypeString.show = _showTypeString.getState();
+        _settings.hardwareColumnSpecs().State.show = _showState.getState();
+        _settings.hardwareColumnSpecs().Enabled.show = _showEnabled.getState();
+        _settings.hardwareColumnSpecs().CpuLoad.show = _showCpuLoad.getState();
+        _settings.hardwareColumnSpecs().CpuLoadPlot.show = _showCpuLoadPlot.getState();
+        _settings.hardwareColumnSpecs().UsedMem.show = _showUsedMem.getState();
+        _settings.hardwareColumnSpecs().TotalMem.show = _showTotalMem.getState();
+        _settings.hardwareColumnSpecs().MemLoad.show = _showMemLoad.getState();
+        _settings.hardwareColumnSpecs().MemLoadPlot.show = _showMemLoadPlot.getState();
+        _settings.hardwareColumnSpecs().NetRxRate.show = _showNetRxRate.getState();
+        _settings.hardwareColumnSpecs().NetTxRate.show = _showNetTxRate.getState();        
     }
     
     protected JCheckBoxMenuItem _showIgnored;
@@ -933,22 +949,6 @@ public class ProcessorNodesHeader extends BrowserNode {
     ColumnTextArea _memLoadPlot;
     ColumnTextArea _netRxRate;
     ColumnTextArea _netTxRate;
-
-    int _widthNumCPUs;
-    int _widthNumCores;
-    int _widthBogusGHz;
-    int _widthType;
-    int _widthTypeString;
-    int _widthState;
-    int _widthEnabled;
-    int _widthCpuLoad;
-    int _widthCpuLoadPlot;
-    int _widthUsedMem;
-    int _widthTotalMem;
-    int _widthMemLoad;
-    int _widthMemLoadPlot;
-    int _widthNetRxRate;
-    int _widthNetTxRate;
 
     int _positionNumCPUs;
     int _positionNumCores;
@@ -989,5 +989,8 @@ public class ProcessorNodesHeader extends BrowserNode {
     
     protected int _startWidth;
     protected int _startX;
+    
+    protected SystemSettings _settings;
+    protected EventListenerList _columnChangeListeners;
     
 }

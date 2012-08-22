@@ -104,6 +104,8 @@ public class SystemSettings extends JFrame {
         _queueBrowserSettings = new QueueBrowserSettings();
         _windowConfiguration = new WindowConfiguration();
         _defaultNames = new DefaultNames();
+        _jobColumnSpecs = new JobColumnSpecs();
+        _hardwareColumnSpecs = new HardwareColumnSpecs();
         
         //  Create all of the components of the user interface (long, messy function).
         createGUIComponents();
@@ -1429,7 +1431,117 @@ public class SystemSettings extends JFrame {
         _defaultNames.correlationSubintNS = 160000000;
         _defaultNames.toneSelection = "smart";
         _defaultNames.vsnFormat = "Mark5B";
+        _jobColumnSpecs.networkActivity.show = true;
+        _jobColumnSpecs.name.show = true;
+        _jobColumnSpecs.progressBar.show = true;
+        _jobColumnSpecs.state.show = true;
+        _jobColumnSpecs.experiment.show = false;
+        _jobColumnSpecs.pass.show = false;
+        _jobColumnSpecs.priority.show = false;
+        _jobColumnSpecs.queueTime.show = false;
+        _jobColumnSpecs.correlationStart.show = false;
+        _jobColumnSpecs.correlationEnd.show = false;
+        _jobColumnSpecs.jobStart.show = false;
+        _jobColumnSpecs.jobDuration.show = false;
+        _jobColumnSpecs.inputFile.show = true;
+        _jobColumnSpecs.outputFile.show = false;
+        _jobColumnSpecs.outputSize.show = false;
+        _jobColumnSpecs.difxVersion.show = false;
+        _jobColumnSpecs.speedUpFactor.show = false;
+        _jobColumnSpecs.numAntennas.show = false;
+        _jobColumnSpecs.numForeignAntennas.show = false;
+        _jobColumnSpecs.dutyCycle.show = false;
+        _jobColumnSpecs.status.show = false;
+        _jobColumnSpecs.active.show = false;
+        _jobColumnSpecs.statusId.show = false;
+        _jobColumnSpecs.weights.show = false;
+        _jobColumnSpecs.weightsAsPlots.show = true;
+        _jobColumnSpecs.weightsAsNumbers.show = false;
         
+        _jobColumnSpecs.networkActivity.width = 20;
+        _jobColumnSpecs.name.width = 150;
+        _jobColumnSpecs.progressBar.width = 200;
+        _jobColumnSpecs.state.width = 100;
+        _jobColumnSpecs.experiment.width = 100;
+        _jobColumnSpecs.pass.width = 100;
+        _jobColumnSpecs.priority.width = 100;
+        _jobColumnSpecs.queueTime.width = 170;
+        _jobColumnSpecs.correlationStart.width = 100;
+        _jobColumnSpecs.correlationEnd.width = 100;
+        _jobColumnSpecs.jobStart.width = 100;
+        _jobColumnSpecs.jobDuration.width = 100;
+        _jobColumnSpecs.inputFile.width = 400;
+        _jobColumnSpecs.outputFile.width = 100;
+        _jobColumnSpecs.outputSize.width = 100;
+        _jobColumnSpecs.difxVersion.width = 100;
+        _jobColumnSpecs.speedUpFactor.width = 100;
+        _jobColumnSpecs.numAntennas.width = 100;
+        _jobColumnSpecs.numForeignAntennas.width = 100;
+        _jobColumnSpecs.dutyCycle.width = 100;
+        _jobColumnSpecs.status.width = 100;
+        _jobColumnSpecs.active.width = 100;
+        _jobColumnSpecs.statusId.width = 100;
+        _jobColumnSpecs.weights.width = 200;
+        _jobColumnSpecs.weightsAsPlots.width = 100;
+        _jobColumnSpecs.weightsAsNumbers.width = 100;
+        
+        _hardwareColumnSpecs.Ignored.show = false;
+        _hardwareColumnSpecs.broadcastMonitor.show = true;
+        _hardwareColumnSpecs.NumCPUs.show = false;
+        _hardwareColumnSpecs.NumCores.show = false;
+        _hardwareColumnSpecs.BogusGHz.show = false;
+        _hardwareColumnSpecs.Type.show = false;
+        _hardwareColumnSpecs.TypeString.show = false;
+        _hardwareColumnSpecs.State.show = true;
+        _hardwareColumnSpecs.Enabled.show = false;
+        _hardwareColumnSpecs.CpuLoad.show = false;
+        _hardwareColumnSpecs.CpuLoadPlot.show = true;
+        _hardwareColumnSpecs.UsedMem.show = false;
+        _hardwareColumnSpecs.TotalMem.show = false;
+        _hardwareColumnSpecs.MemLoad.show = false;
+        _hardwareColumnSpecs.MemLoadPlot.show = true;
+        _hardwareColumnSpecs.NetRxRate.show = true;
+        _hardwareColumnSpecs.NetTxRate.show = true;
+        _hardwareColumnSpecs.StateChanged.show = false;
+        _hardwareColumnSpecs.BankAVSN.show = true;
+        _hardwareColumnSpecs.BankBVSN.show = true;
+        _hardwareColumnSpecs.StatusWord.show = false;
+        _hardwareColumnSpecs.ActiveBank.show = false;
+        _hardwareColumnSpecs.ScanNumber.show = true;
+        _hardwareColumnSpecs.ScanName.show = true;
+        _hardwareColumnSpecs.Position.show = false;
+        _hardwareColumnSpecs.PlayRate.show = false;
+        _hardwareColumnSpecs.DataMJD.show = false;
+        _hardwareColumnSpecs.CurrentJob.show = true;
+
+        _hardwareColumnSpecs.broadcastMonitor.width = 70;
+        _hardwareColumnSpecs.NumCPUs.width = 70;
+        _hardwareColumnSpecs.NumCores.width = 70;
+        _hardwareColumnSpecs.BogusGHz.width = 70;
+        _hardwareColumnSpecs.Type.width = 70;
+        _hardwareColumnSpecs.TypeString.width = 70;
+        _hardwareColumnSpecs.State.width = 100;
+        _hardwareColumnSpecs.Enabled.width = 70;
+        _hardwareColumnSpecs.CpuLoad.width = 70;
+        _hardwareColumnSpecs.CpuLoadPlot.width = 70;
+        _hardwareColumnSpecs.UsedMem.width = 70;
+        _hardwareColumnSpecs.TotalMem.width = 70;
+        _hardwareColumnSpecs.MemLoad.width = 70;
+        _hardwareColumnSpecs.MemLoadPlot.width = 70;
+        _hardwareColumnSpecs.NetRxRate.width = 70;
+        _hardwareColumnSpecs.NetTxRate.width = 70;
+        _hardwareColumnSpecs.StateChanged.width = 70;
+        _hardwareColumnSpecs.BankAVSN.width = 70;
+        _hardwareColumnSpecs.BankBVSN.width = 70;
+        _hardwareColumnSpecs.StatusWord.width = 70;
+        _hardwareColumnSpecs.ActiveBank.width = 70;
+        _hardwareColumnSpecs.ScanNumber.width = 70;
+        _hardwareColumnSpecs.ScanName.width = 180;
+        _hardwareColumnSpecs.Position.width = 70;
+        _hardwareColumnSpecs.PlayRate.width = 70;
+        _hardwareColumnSpecs.DataMJD.width = 70;
+        _hardwareColumnSpecs.CurrentJob.width = 200;
+
         _moduleFormatList = new ArrayList<String>();
         addModuleFormat( "Mark5B" );
         addModuleFormat( "MKIV" );
@@ -2014,6 +2126,222 @@ public class SystemSettings extends JFrame {
             _autoUpdateEOP.setSelected( doiConfig.isAutoUpdateEOP() );
             if ( doiConfig.getAutoUpdateSeconds() != 0 )
                 _autoUpdateSeconds.value( doiConfig.getAutoUpdateSeconds() );
+            if ( doiConfig.getJobNetworkActivity() != null ) {
+                _jobColumnSpecs.networkActivity.show = doiConfig.getJobNetworkActivity().isShow();
+                _jobColumnSpecs.networkActivity.width = doiConfig.getJobNetworkActivity().getWidth();                
+            }
+            if ( doiConfig.getJobName() != null ) {
+                _jobColumnSpecs.name.show = doiConfig.getJobName().isShow();
+                _jobColumnSpecs.name.width = doiConfig.getJobName().getWidth();                
+            }
+            if ( doiConfig.getJobProgressBar() != null ) {
+                _jobColumnSpecs.progressBar.show = doiConfig.getJobProgressBar().isShow();
+                _jobColumnSpecs.progressBar.width = doiConfig.getJobProgressBar().getWidth();                
+            }
+            if ( doiConfig.getJobState() != null ) {
+                _jobColumnSpecs.state.show = doiConfig.getJobState().isShow();
+                _jobColumnSpecs.state.width = doiConfig.getJobState().getWidth();                
+            }
+            if ( doiConfig.getJobExperiment() != null ) {
+                _jobColumnSpecs.experiment.show = doiConfig.getJobExperiment().isShow();
+                _jobColumnSpecs.experiment.width = doiConfig.getJobExperiment().getWidth();                
+            }
+            if ( doiConfig.getJobPass() != null ) {
+                _jobColumnSpecs.pass.show = doiConfig.getJobPass().isShow();
+                _jobColumnSpecs.pass.width = doiConfig.getJobPass().getWidth();                
+            }
+            if ( doiConfig.getJobPriority() != null ) {
+                _jobColumnSpecs.priority.show = doiConfig.getJobPriority().isShow();
+                _jobColumnSpecs.priority.width = doiConfig.getJobPriority().getWidth();                
+            }
+            if ( doiConfig.getJobQueueTime() != null ) {
+                _jobColumnSpecs.queueTime.show = doiConfig.getJobQueueTime().isShow();
+                _jobColumnSpecs.queueTime.width = doiConfig.getJobQueueTime().getWidth();                
+            }
+            if ( doiConfig.getJobCorrelationStart() != null ) {
+                _jobColumnSpecs.correlationStart.show = doiConfig.getJobCorrelationStart().isShow();
+                _jobColumnSpecs.correlationStart.width = doiConfig.getJobCorrelationStart().getWidth();                
+            }
+            if ( doiConfig.getJobCorrelationEnd() != null ) {
+                _jobColumnSpecs.correlationEnd.show = doiConfig.getJobCorrelationEnd().isShow();
+                _jobColumnSpecs.correlationEnd.width = doiConfig.getJobCorrelationEnd().getWidth();                
+            }
+            if ( doiConfig.getJobJobStart() != null ) {
+                _jobColumnSpecs.jobStart.show = doiConfig.getJobJobStart().isShow();
+                _jobColumnSpecs.jobStart.width = doiConfig.getJobJobStart().getWidth();                
+            }
+            if ( doiConfig.getJobJobDuration() != null ) {
+                _jobColumnSpecs.jobDuration.show = doiConfig.getJobJobDuration().isShow();
+                _jobColumnSpecs.jobDuration.width = doiConfig.getJobJobDuration().getWidth();                
+            }
+            if ( doiConfig.getJobInputFile() != null ) {
+                _jobColumnSpecs.inputFile.show = doiConfig.getJobInputFile().isShow();
+                _jobColumnSpecs.inputFile.width = doiConfig.getJobInputFile().getWidth();                
+            }
+            if ( doiConfig.getJobOutputFile() != null ) {
+                _jobColumnSpecs.outputFile.show = doiConfig.getJobOutputFile().isShow();
+                _jobColumnSpecs.outputFile.width = doiConfig.getJobOutputFile().getWidth();                
+            }
+            if ( doiConfig.getJobOutputSize() != null ) {
+                _jobColumnSpecs.outputSize.show = doiConfig.getJobOutputSize().isShow();
+                _jobColumnSpecs.outputSize.width = doiConfig.getJobOutputSize().getWidth();                
+            }
+            if ( doiConfig.getJobDifxVersion() != null ) {
+                _jobColumnSpecs.difxVersion.show = doiConfig.getJobDifxVersion().isShow();
+                _jobColumnSpecs.difxVersion.width = doiConfig.getJobDifxVersion().getWidth();                
+            }
+            if ( doiConfig.getJobSpeedUpFactor() != null ) {
+                _jobColumnSpecs.speedUpFactor.show = doiConfig.getJobSpeedUpFactor().isShow();
+                _jobColumnSpecs.speedUpFactor.width = doiConfig.getJobSpeedUpFactor().getWidth();                
+            }
+            if ( doiConfig.getJobNumAntennas() != null ) {
+                _jobColumnSpecs.numAntennas.show = doiConfig.getJobNumAntennas().isShow();
+                _jobColumnSpecs.numAntennas.width = doiConfig.getJobNumAntennas().getWidth();                
+            }
+            if ( doiConfig.getJobNumForeignAntennas() != null ) {
+                _jobColumnSpecs.numForeignAntennas.show = doiConfig.getJobNumForeignAntennas().isShow();
+                _jobColumnSpecs.numForeignAntennas.width = doiConfig.getJobNumForeignAntennas().getWidth();                
+            }
+            if ( doiConfig.getJobDutyCycle() != null ) {
+                _jobColumnSpecs.dutyCycle.show = doiConfig.getJobDutyCycle().isShow();
+                _jobColumnSpecs.dutyCycle.width = doiConfig.getJobDutyCycle().getWidth();                
+            }
+            if ( doiConfig.getJobStatus() != null ) {
+                _jobColumnSpecs.status.show = doiConfig.getJobStatus().isShow();
+                _jobColumnSpecs.status.width = doiConfig.getJobStatus().getWidth();                
+            }
+            if ( doiConfig.getJobActive() != null ) {
+                _jobColumnSpecs.active.show = doiConfig.getJobActive().isShow();
+                _jobColumnSpecs.active.width = doiConfig.getJobActive().getWidth();                
+            }
+            if ( doiConfig.getJobStatusId() != null ) {
+                _jobColumnSpecs.statusId.show = doiConfig.getJobStatusId().isShow();
+                _jobColumnSpecs.statusId.width = doiConfig.getJobStatusId().getWidth();                
+            }
+            if ( doiConfig.getJobWeights() != null ) {
+                _jobColumnSpecs.weights.show = doiConfig.getJobWeights().isShow();
+                _jobColumnSpecs.weights.width = doiConfig.getJobWeights().getWidth();                
+            }
+            if ( doiConfig.getJobWeightsAsPlots() != null ) {
+                _jobColumnSpecs.weightsAsPlots.show = doiConfig.getJobWeightsAsPlots().isShow();
+                _jobColumnSpecs.weightsAsPlots.width = doiConfig.getJobWeightsAsPlots().getWidth();                
+            }
+            if ( doiConfig.getJobWeightsAsNumbers() != null ) {
+                _jobColumnSpecs.weightsAsNumbers.show = doiConfig.getJobWeightsAsNumbers().isShow();
+                _jobColumnSpecs.weightsAsNumbers.width = doiConfig.getJobWeightsAsNumbers().getWidth();                
+            }
+            if ( doiConfig.getHardwareIgnored() != null ) {
+                _hardwareColumnSpecs.Ignored.show = doiConfig.getHardwareIgnored().isShow();
+                _hardwareColumnSpecs.Ignored.width = doiConfig.getHardwareIgnored().getWidth();
+            }
+            if ( doiConfig.getHardwareBroadcastMonitor() != null ) {
+                _hardwareColumnSpecs.broadcastMonitor.show = doiConfig.getHardwareBroadcastMonitor().isShow();
+                _hardwareColumnSpecs.broadcastMonitor.width = doiConfig.getHardwareBroadcastMonitor().getWidth();
+            }
+            if ( doiConfig.getHardwareNumCPUs() != null ) {
+                _hardwareColumnSpecs.NumCPUs.show = doiConfig.getHardwareNumCPUs().isShow();
+                _hardwareColumnSpecs.NumCPUs.width = doiConfig.getHardwareNumCPUs().getWidth();
+            }
+            if ( doiConfig.getHardwareNumCores() != null ) {
+                _hardwareColumnSpecs.NumCores.show = doiConfig.getHardwareNumCores().isShow();
+                _hardwareColumnSpecs.NumCores.width = doiConfig.getHardwareNumCores().getWidth();
+            }
+            if ( doiConfig.getHardwareBogusGHz() != null ) {
+                _hardwareColumnSpecs.BogusGHz.show = doiConfig.getHardwareBogusGHz().isShow();
+                _hardwareColumnSpecs.BogusGHz.width = doiConfig.getHardwareBogusGHz().getWidth();
+            }
+            if ( doiConfig.getHardwareType() != null ) {
+                _hardwareColumnSpecs.Type.show = doiConfig.getHardwareType().isShow();
+                _hardwareColumnSpecs.Type.width = doiConfig.getHardwareType().getWidth();
+            }
+            if ( doiConfig.getHardwareTypeString() != null ) {
+                _hardwareColumnSpecs.TypeString.show = doiConfig.getHardwareTypeString().isShow();
+                _hardwareColumnSpecs.TypeString.width = doiConfig.getHardwareTypeString().getWidth();
+            }
+            if ( doiConfig.getHardwareState() != null ) {
+                _hardwareColumnSpecs.State.show = doiConfig.getHardwareState().isShow();
+                _hardwareColumnSpecs.State.width = doiConfig.getHardwareState().getWidth();
+            }
+            if ( doiConfig.getHardwareEnabled() != null ) {
+                _hardwareColumnSpecs.Enabled.show = doiConfig.getHardwareEnabled().isShow();
+                _hardwareColumnSpecs.Enabled.width = doiConfig.getHardwareEnabled().getWidth();
+            }
+            if ( doiConfig.getHardwareCpuLoad() != null ) {
+                _hardwareColumnSpecs.CpuLoad.show = doiConfig.getHardwareCpuLoad().isShow();
+                _hardwareColumnSpecs.CpuLoad.width = doiConfig.getHardwareCpuLoad().getWidth();
+            }
+            if ( doiConfig.getHardwareCpuLoadPlot() != null ) {
+                _hardwareColumnSpecs.CpuLoadPlot.show = doiConfig.getHardwareCpuLoadPlot().isShow();
+                _hardwareColumnSpecs.CpuLoadPlot.width = doiConfig.getHardwareCpuLoadPlot().getWidth();
+            }
+            if ( doiConfig.getHardwareUsedMem() != null ) {
+                _hardwareColumnSpecs.UsedMem.show = doiConfig.getHardwareUsedMem().isShow();
+                _hardwareColumnSpecs.UsedMem.width = doiConfig.getHardwareUsedMem().getWidth();
+            }
+            if ( doiConfig.getHardwareTotalMem() != null ) {
+                _hardwareColumnSpecs.TotalMem.show = doiConfig.getHardwareTotalMem().isShow();
+                _hardwareColumnSpecs.TotalMem.width = doiConfig.getHardwareTotalMem().getWidth();
+            }
+            if ( doiConfig.getHardwareMemLoad() != null ) {
+                _hardwareColumnSpecs.MemLoad.show = doiConfig.getHardwareMemLoad().isShow();
+                _hardwareColumnSpecs.MemLoad.width = doiConfig.getHardwareMemLoad().getWidth();
+            }
+            if ( doiConfig.getHardwareMemLoadPlot() != null ) {
+                _hardwareColumnSpecs.MemLoadPlot.show = doiConfig.getHardwareMemLoadPlot().isShow();
+                _hardwareColumnSpecs.MemLoadPlot.width = doiConfig.getHardwareMemLoadPlot().getWidth();
+            }
+            if ( doiConfig.getHardwareNetRxRate() != null ) {
+                _hardwareColumnSpecs.NetRxRate.show = doiConfig.getHardwareNetRxRate().isShow();
+                _hardwareColumnSpecs.NetRxRate.width = doiConfig.getHardwareNetRxRate().getWidth();
+            }
+            if ( doiConfig.getHardwareNetTxRate() != null ) {
+                _hardwareColumnSpecs.NetTxRate.show = doiConfig.getHardwareNetTxRate().isShow();
+                _hardwareColumnSpecs.NetTxRate.width = doiConfig.getHardwareNetTxRate().getWidth();
+            }
+            if ( doiConfig.getHardwareStateChanged() != null ) {
+                _hardwareColumnSpecs.StateChanged.show = doiConfig.getHardwareStateChanged().isShow();
+                _hardwareColumnSpecs.StateChanged.width = doiConfig.getHardwareStateChanged().getWidth();
+            }
+            if ( doiConfig.getHardwareBankAVSN() != null ) {
+                _hardwareColumnSpecs.BankAVSN.show = doiConfig.getHardwareBankAVSN().isShow();
+                _hardwareColumnSpecs.BankAVSN.width = doiConfig.getHardwareBankAVSN().getWidth();
+            }
+            if ( doiConfig.getHardwareBankBVSN() != null ) {
+                _hardwareColumnSpecs.BankBVSN.show = doiConfig.getHardwareBankBVSN().isShow();
+                _hardwareColumnSpecs.BankBVSN.width = doiConfig.getHardwareBankBVSN().getWidth();
+            }
+            if ( doiConfig.getHardwareStatusWord() != null ) {
+                _hardwareColumnSpecs.StatusWord.show = doiConfig.getHardwareStatusWord().isShow();
+                _hardwareColumnSpecs.StatusWord.width = doiConfig.getHardwareStatusWord().getWidth();
+            }
+            if ( doiConfig.getHardwareActiveBank() != null ) {
+                _hardwareColumnSpecs.ActiveBank.show = doiConfig.getHardwareActiveBank().isShow();
+                _hardwareColumnSpecs.ActiveBank.width = doiConfig.getHardwareActiveBank().getWidth();
+            }
+            if ( doiConfig.getHardwareScanNumber() != null ) {
+                _hardwareColumnSpecs.ScanNumber.show = doiConfig.getHardwareScanNumber().isShow();
+                _hardwareColumnSpecs.ScanNumber.width = doiConfig.getHardwareScanNumber().getWidth();
+            }
+            if ( doiConfig.getHardwareScanName() != null ) {
+                _hardwareColumnSpecs.ScanName.show = doiConfig.getHardwareScanName().isShow();
+                _hardwareColumnSpecs.ScanName.width = doiConfig.getHardwareScanName().getWidth();
+            }
+            if ( doiConfig.getHardwarePosition() != null ) {
+                _hardwareColumnSpecs.Position.show = doiConfig.getHardwarePosition().isShow();
+                _hardwareColumnSpecs.Position.width = doiConfig.getHardwarePosition().getWidth();
+            }
+            if ( doiConfig.getHardwarePlayRate() != null ) {
+                _hardwareColumnSpecs.PlayRate.show = doiConfig.getHardwarePlayRate().isShow();
+                _hardwareColumnSpecs.PlayRate.width = doiConfig.getHardwarePlayRate().getWidth();
+            }
+            if ( doiConfig.getHardwareDataMJD() != null ) {
+                _hardwareColumnSpecs.DataMJD.show = doiConfig.getHardwareDataMJD().isShow();
+                _hardwareColumnSpecs.DataMJD.width = doiConfig.getHardwareDataMJD().getWidth();
+            }
+            if ( doiConfig.getHardwareCurrentJob() != null ) {
+                _hardwareColumnSpecs.CurrentJob.show = doiConfig.getHardwareCurrentJob().isShow();
+                _hardwareColumnSpecs.CurrentJob.width = doiConfig.getHardwareCurrentJob().getWidth();
+            }
             updateEOPNow();
             changeDifxControlConnection();
             generateDatabaseChangeEvent();
@@ -2136,6 +2464,170 @@ public class SystemSettings extends JFrame {
         doiConfig.setAutoUpdateEOP( _autoUpdateEOP.isSelected() );
         doiConfig.setAutoUpdateSeconds( _autoUpdateSeconds.intValue() );
         
+        doiConfig.setJobNetworkActivity( factory.createColumnSpec() );
+        doiConfig.getJobNetworkActivity().setShow( _jobColumnSpecs.networkActivity.show );
+        doiConfig.getJobNetworkActivity().setWidth( _jobColumnSpecs.networkActivity.width );                
+        doiConfig.setJobName( factory.createColumnSpec() );
+        doiConfig.getJobName().setShow( _jobColumnSpecs.name.show );
+        doiConfig.getJobName().setWidth( _jobColumnSpecs.name.width );                
+        doiConfig.setJobProgressBar( factory.createColumnSpec() );
+        doiConfig.getJobProgressBar().setShow( _jobColumnSpecs.progressBar.show );
+        doiConfig.getJobProgressBar().setWidth( _jobColumnSpecs.progressBar.width );                
+        doiConfig.setJobState( factory.createColumnSpec() );
+        doiConfig.getJobState().setShow( _jobColumnSpecs.state.show );
+        doiConfig.getJobState().setWidth( _jobColumnSpecs.state.width );                
+        doiConfig.setJobExperiment( factory.createColumnSpec() );
+        doiConfig.getJobExperiment().setShow( _jobColumnSpecs.experiment.show );
+        doiConfig.getJobExperiment().setWidth( _jobColumnSpecs.experiment.width );                
+        doiConfig.setJobPass( factory.createColumnSpec() );
+        doiConfig.getJobPass().setShow( _jobColumnSpecs.pass.show );
+        doiConfig.getJobPass().setWidth( _jobColumnSpecs.pass.width );                
+        doiConfig.setJobPriority( factory.createColumnSpec() );
+        doiConfig.getJobPriority().setShow( _jobColumnSpecs.priority.show );
+        doiConfig.getJobPriority().setWidth( _jobColumnSpecs.priority.width );                
+        doiConfig.setJobQueueTime( factory.createColumnSpec() );
+        doiConfig.getJobQueueTime().setShow( _jobColumnSpecs.queueTime.show );
+        doiConfig.getJobQueueTime().setWidth( _jobColumnSpecs.queueTime.width );                
+        doiConfig.setJobCorrelationStart( factory.createColumnSpec() );
+        doiConfig.getJobCorrelationStart().setShow( _jobColumnSpecs.correlationStart.show );
+        doiConfig.getJobCorrelationStart().setWidth( _jobColumnSpecs.correlationStart.width );                
+        doiConfig.setJobCorrelationEnd( factory.createColumnSpec() );
+        doiConfig.getJobCorrelationEnd().setShow( _jobColumnSpecs.correlationEnd.show );
+        doiConfig.getJobCorrelationEnd().setWidth( _jobColumnSpecs.correlationEnd.width );                
+        doiConfig.setJobJobStart( factory.createColumnSpec() );
+        doiConfig.getJobJobStart().setShow( _jobColumnSpecs.jobStart.show );
+        doiConfig.getJobJobStart().setWidth( _jobColumnSpecs.jobStart.width );                
+        doiConfig.setJobJobDuration( factory.createColumnSpec() );
+        doiConfig.getJobJobDuration().setShow( _jobColumnSpecs.jobDuration.show );
+        doiConfig.getJobJobDuration().setWidth( _jobColumnSpecs.jobDuration.width );                
+        doiConfig.setJobInputFile( factory.createColumnSpec() );
+        doiConfig.getJobInputFile().setShow( _jobColumnSpecs.inputFile.show );
+        doiConfig.getJobInputFile().setWidth( _jobColumnSpecs.inputFile.width );                
+        doiConfig.setJobOutputFile( factory.createColumnSpec() );
+        doiConfig.getJobOutputFile().setShow( _jobColumnSpecs.outputFile.show );
+        doiConfig.getJobOutputFile().setWidth( _jobColumnSpecs.outputFile.width );                
+        doiConfig.setJobOutputSize( factory.createColumnSpec() );
+        doiConfig.getJobOutputSize().setShow( _jobColumnSpecs.outputSize.show );
+        doiConfig.getJobOutputSize().setWidth( _jobColumnSpecs.outputSize.width );                
+        doiConfig.setJobDifxVersion( factory.createColumnSpec() );
+        doiConfig.getJobDifxVersion().setShow( _jobColumnSpecs.difxVersion.show );
+        doiConfig.getJobDifxVersion().setWidth( _jobColumnSpecs.difxVersion.width );                
+        doiConfig.setJobSpeedUpFactor( factory.createColumnSpec() );
+        doiConfig.getJobSpeedUpFactor().setShow( _jobColumnSpecs.speedUpFactor.show );
+        doiConfig.getJobSpeedUpFactor().setWidth( _jobColumnSpecs.speedUpFactor.width );                
+        doiConfig.setJobNumAntennas( factory.createColumnSpec() );
+        doiConfig.getJobNumAntennas().setShow( _jobColumnSpecs.numAntennas.show );
+        doiConfig.getJobNumAntennas().setWidth( _jobColumnSpecs.numAntennas.width );                
+        doiConfig.setJobNumForeignAntennas( factory.createColumnSpec() );
+        doiConfig.getJobNumForeignAntennas().setShow( _jobColumnSpecs.numForeignAntennas.show );
+        doiConfig.getJobNumForeignAntennas().setWidth( _jobColumnSpecs.numForeignAntennas.width );                
+        doiConfig.setJobDutyCycle( factory.createColumnSpec() );
+        doiConfig.getJobDutyCycle().setShow( _jobColumnSpecs.dutyCycle.show );
+        doiConfig.getJobDutyCycle().setWidth( _jobColumnSpecs.dutyCycle.width );                
+        doiConfig.setJobStatus( factory.createColumnSpec() );
+        doiConfig.getJobStatus().setShow( _jobColumnSpecs.status.show );
+        doiConfig.getJobStatus().setWidth( _jobColumnSpecs.status.width );                
+        doiConfig.setJobActive( factory.createColumnSpec() );
+        doiConfig.getJobActive().setShow( _jobColumnSpecs.active.show );
+        doiConfig.getJobActive().setWidth( _jobColumnSpecs.active.width );                
+        doiConfig.setJobStatusId( factory.createColumnSpec() );
+        doiConfig.getJobStatusId().setShow( _jobColumnSpecs.statusId.show );
+        doiConfig.getJobStatusId().setWidth( _jobColumnSpecs.statusId.width );                
+        doiConfig.setJobWeights( factory.createColumnSpec() );
+        doiConfig.getJobWeights().setShow( _jobColumnSpecs.weights.show );
+        doiConfig.getJobWeights().setWidth( _jobColumnSpecs.weights.width );                
+        doiConfig.setJobWeightsAsPlots( factory.createColumnSpec() );
+        doiConfig.getJobWeightsAsPlots().setShow( _jobColumnSpecs.weightsAsPlots.show );
+        doiConfig.getJobWeightsAsPlots().setWidth( _jobColumnSpecs.weightsAsPlots.width );                
+        doiConfig.setJobWeightsAsNumbers( factory.createColumnSpec() );
+        doiConfig.getJobWeightsAsNumbers().setShow( _jobColumnSpecs.weightsAsNumbers.show );
+        doiConfig.getJobWeightsAsNumbers().setWidth( _jobColumnSpecs.weightsAsNumbers.width );                
+
+        doiConfig.setHardwareIgnored( factory.createColumnSpec() );
+        doiConfig.getHardwareIgnored().setShow( _hardwareColumnSpecs.Ignored.show );
+        doiConfig.getHardwareIgnored().setWidth( _hardwareColumnSpecs.Ignored.width );
+        doiConfig.setHardwareBroadcastMonitor( factory.createColumnSpec() );
+        doiConfig.getHardwareBroadcastMonitor().setShow( _hardwareColumnSpecs.broadcastMonitor.show );
+        doiConfig.getHardwareBroadcastMonitor().setWidth( _hardwareColumnSpecs.broadcastMonitor.width );
+        doiConfig.setHardwareNumCPUs( factory.createColumnSpec() );
+        doiConfig.getHardwareNumCPUs().setShow( _hardwareColumnSpecs.NumCPUs.show );
+        doiConfig.getHardwareNumCPUs().setWidth( _hardwareColumnSpecs.NumCPUs.width );
+        doiConfig.setHardwareNumCores( factory.createColumnSpec() );
+        doiConfig.getHardwareNumCores().setShow( _hardwareColumnSpecs.NumCores.show );
+        doiConfig.getHardwareNumCores().setWidth( _hardwareColumnSpecs.NumCores.width );
+        doiConfig.setHardwareBogusGHz( factory.createColumnSpec() );
+        doiConfig.getHardwareBogusGHz().setShow( _hardwareColumnSpecs.BogusGHz.show );
+        doiConfig.getHardwareBogusGHz().setWidth( _hardwareColumnSpecs.BogusGHz.width );
+        doiConfig.setHardwareType( factory.createColumnSpec() );
+        doiConfig.getHardwareType().setShow( _hardwareColumnSpecs.Type.show );
+        doiConfig.getHardwareType().setWidth( _hardwareColumnSpecs.Type.width );
+        doiConfig.setHardwareTypeString( factory.createColumnSpec() );
+        doiConfig.getHardwareTypeString().setShow( _hardwareColumnSpecs.TypeString.show );
+        doiConfig.getHardwareTypeString().setWidth( _hardwareColumnSpecs.TypeString.width );
+        doiConfig.setHardwareState( factory.createColumnSpec() );
+        doiConfig.getHardwareState().setShow( _hardwareColumnSpecs.State.show );
+        doiConfig.getHardwareState().setWidth( _hardwareColumnSpecs.State.width );
+        doiConfig.setHardwareEnabled( factory.createColumnSpec() );
+        doiConfig.getHardwareEnabled().setShow( _hardwareColumnSpecs.Enabled.show );
+        doiConfig.getHardwareEnabled().setWidth( _hardwareColumnSpecs.Enabled.width );
+        doiConfig.setHardwareCpuLoad( factory.createColumnSpec() );
+        doiConfig.getHardwareCpuLoad().setShow( _hardwareColumnSpecs.CpuLoad.show );
+        doiConfig.getHardwareCpuLoad().setWidth( _hardwareColumnSpecs.CpuLoad.width );
+        doiConfig.setHardwareCpuLoadPlot( factory.createColumnSpec() );
+        doiConfig.getHardwareCpuLoadPlot().setShow( _hardwareColumnSpecs.CpuLoadPlot.show );
+        doiConfig.getHardwareCpuLoadPlot().setWidth( _hardwareColumnSpecs.CpuLoadPlot.width );
+        doiConfig.setHardwareUsedMem( factory.createColumnSpec() );
+        doiConfig.getHardwareUsedMem().setShow( _hardwareColumnSpecs.UsedMem.show );
+        doiConfig.getHardwareUsedMem().setWidth( _hardwareColumnSpecs.UsedMem.width );
+        doiConfig.setHardwareTotalMem( factory.createColumnSpec() );
+        doiConfig.getHardwareTotalMem().setShow( _hardwareColumnSpecs.TotalMem.show );
+        doiConfig.getHardwareTotalMem().setWidth( _hardwareColumnSpecs.TotalMem.width );
+        doiConfig.setHardwareMemLoad( factory.createColumnSpec() );
+        doiConfig.getHardwareMemLoad().setShow( _hardwareColumnSpecs.MemLoad.show );
+        doiConfig.getHardwareMemLoad().setWidth( _hardwareColumnSpecs.MemLoad.width );
+        doiConfig.setHardwareMemLoadPlot( factory.createColumnSpec() );
+        doiConfig.getHardwareMemLoadPlot().setShow( _hardwareColumnSpecs.MemLoadPlot.show );
+        doiConfig.getHardwareMemLoadPlot().setWidth( _hardwareColumnSpecs.MemLoadPlot.width );
+        doiConfig.setHardwareNetRxRate( factory.createColumnSpec() );
+        doiConfig.getHardwareNetRxRate().setShow( _hardwareColumnSpecs.NetRxRate.show );
+        doiConfig.getHardwareNetRxRate().setWidth( _hardwareColumnSpecs.NetRxRate.width );
+        doiConfig.setHardwareNetTxRate( factory.createColumnSpec() );
+        doiConfig.getHardwareNetTxRate().setShow( _hardwareColumnSpecs.NetTxRate.show );
+        doiConfig.getHardwareNetTxRate().setWidth( _hardwareColumnSpecs.NetTxRate.width );
+        doiConfig.setHardwareStateChanged( factory.createColumnSpec() );
+        doiConfig.getHardwareStateChanged().setShow( _hardwareColumnSpecs.StateChanged.show );
+        doiConfig.getHardwareStateChanged().setWidth( _hardwareColumnSpecs.StateChanged.width );
+        doiConfig.setHardwareBankAVSN( factory.createColumnSpec() );
+        doiConfig.getHardwareBankAVSN().setShow( _hardwareColumnSpecs.BankAVSN.show );
+        doiConfig.getHardwareBankAVSN().setWidth( _hardwareColumnSpecs.BankAVSN.width );
+        doiConfig.setHardwareBankBVSN( factory.createColumnSpec() );
+        doiConfig.getHardwareBankBVSN().setShow( _hardwareColumnSpecs.BankBVSN.show );
+        doiConfig.getHardwareBankBVSN().setWidth( _hardwareColumnSpecs.BankBVSN.width );
+        doiConfig.setHardwareStatusWord( factory.createColumnSpec() );
+        doiConfig.getHardwareStatusWord().setShow( _hardwareColumnSpecs.StatusWord.show );
+        doiConfig.getHardwareStatusWord().setWidth( _hardwareColumnSpecs.StatusWord.width );
+        doiConfig.setHardwareActiveBank( factory.createColumnSpec() );
+        doiConfig.getHardwareActiveBank().setShow( _hardwareColumnSpecs.ActiveBank.show );
+        doiConfig.getHardwareActiveBank().setWidth( _hardwareColumnSpecs.ActiveBank.width );
+        doiConfig.setHardwareScanNumber( factory.createColumnSpec() );
+        doiConfig.getHardwareScanNumber().setShow( _hardwareColumnSpecs.ScanNumber.show );
+        doiConfig.getHardwareScanNumber().setWidth( _hardwareColumnSpecs.ScanNumber.width );
+        doiConfig.setHardwareScanName( factory.createColumnSpec() );
+        doiConfig.getHardwareScanName().setShow( _hardwareColumnSpecs.ScanName.show );
+        doiConfig.getHardwareScanName().setWidth( _hardwareColumnSpecs.ScanName.width );
+        doiConfig.setHardwarePosition( factory.createColumnSpec() );
+        doiConfig.getHardwarePosition().setShow( _hardwareColumnSpecs.Position.show );
+        doiConfig.getHardwarePosition().setWidth( _hardwareColumnSpecs.Position.width );
+        doiConfig.setHardwarePlayRate( factory.createColumnSpec() );
+        doiConfig.getHardwarePlayRate().setShow( _hardwareColumnSpecs.PlayRate.show );
+        doiConfig.getHardwarePlayRate().setWidth( _hardwareColumnSpecs.PlayRate.width );
+        doiConfig.setHardwareDataMJD( factory.createColumnSpec() );
+        doiConfig.getHardwareDataMJD().setShow( _hardwareColumnSpecs.DataMJD.show );
+        doiConfig.getHardwareDataMJD().setWidth( _hardwareColumnSpecs.DataMJD.width );
+        doiConfig.setHardwareCurrentJob( factory.createColumnSpec() );
+        doiConfig.getHardwareCurrentJob().setShow( _hardwareColumnSpecs.CurrentJob.show );
+        doiConfig.getHardwareCurrentJob().setWidth( _hardwareColumnSpecs.CurrentJob.width );
+                
         try {
             javax.xml.bind.JAXBContext jaxbCtx = javax.xml.bind.JAXBContext.newInstance( doiConfig.getClass().getPackage().getName() );
             javax.xml.bind.Marshaller marshaller = jaxbCtx.createMarshaller();
@@ -2267,6 +2759,8 @@ public class SystemSettings extends JFrame {
     public QueueBrowserSettings queueBrowserSettings() { return _queueBrowserSettings; }
     public WindowConfiguration windowConfiguration() { return _windowConfiguration; }
     public DefaultNames defaultNames() { return _defaultNames; }
+    public JobColumnSpecs jobColumnSpecs() { return _jobColumnSpecs; }
+    public HardwareColumnSpecs hardwareColumnSpecs() { return _hardwareColumnSpecs; }
     
     /*
      * Return the current list of experiment status types.  If the list is empty and
@@ -2890,6 +3384,73 @@ public class SystemSettings extends JFrame {
         String vsnFormat;
     }
     protected DefaultNames _defaultNames;
+    
+    public class ColumnSpec {
+        boolean show;
+        int width;
+    }
+    
+    public class JobColumnSpecs {
+        ColumnSpec networkActivity = new ColumnSpec();
+        ColumnSpec name = new ColumnSpec();
+        ColumnSpec progressBar = new ColumnSpec();
+        ColumnSpec state = new ColumnSpec();
+        ColumnSpec experiment = new ColumnSpec();
+        ColumnSpec pass = new ColumnSpec();
+        ColumnSpec priority = new ColumnSpec();
+        ColumnSpec queueTime = new ColumnSpec();
+        ColumnSpec correlationStart = new ColumnSpec();
+        ColumnSpec correlationEnd = new ColumnSpec();
+        ColumnSpec jobStart = new ColumnSpec();
+        ColumnSpec jobDuration = new ColumnSpec();
+        ColumnSpec inputFile = new ColumnSpec();
+        ColumnSpec outputFile = new ColumnSpec();
+        ColumnSpec outputSize = new ColumnSpec();
+        ColumnSpec difxVersion = new ColumnSpec();
+        ColumnSpec speedUpFactor = new ColumnSpec();
+        ColumnSpec numAntennas = new ColumnSpec();
+        ColumnSpec numForeignAntennas = new ColumnSpec();
+        ColumnSpec dutyCycle = new ColumnSpec();
+        ColumnSpec status = new ColumnSpec();
+        ColumnSpec active = new ColumnSpec();
+        ColumnSpec statusId = new ColumnSpec();
+        ColumnSpec weights = new ColumnSpec();
+        ColumnSpec weightsAsPlots = new ColumnSpec();
+        ColumnSpec weightsAsNumbers = new ColumnSpec();
+    }
+    protected JobColumnSpecs _jobColumnSpecs;
+    
+    public class HardwareColumnSpecs {
+        ColumnSpec Ignored = new ColumnSpec();
+        ColumnSpec broadcastMonitor = new ColumnSpec();
+        ColumnSpec NumCPUs = new ColumnSpec();
+        ColumnSpec NumCores = new ColumnSpec();
+        ColumnSpec BogusGHz = new ColumnSpec();
+        ColumnSpec Type = new ColumnSpec();
+        ColumnSpec TypeString = new ColumnSpec();
+        ColumnSpec State = new ColumnSpec();
+        ColumnSpec Enabled = new ColumnSpec();
+        ColumnSpec CpuLoad = new ColumnSpec();
+        ColumnSpec CpuLoadPlot = new ColumnSpec();
+        ColumnSpec UsedMem = new ColumnSpec();
+        ColumnSpec TotalMem = new ColumnSpec();
+        ColumnSpec MemLoad = new ColumnSpec();
+        ColumnSpec MemLoadPlot = new ColumnSpec();
+        ColumnSpec NetRxRate = new ColumnSpec();
+        ColumnSpec NetTxRate = new ColumnSpec();
+        ColumnSpec StateChanged = new ColumnSpec();
+        ColumnSpec BankAVSN = new ColumnSpec();
+        ColumnSpec BankBVSN = new ColumnSpec();
+        ColumnSpec StatusWord = new ColumnSpec();
+        ColumnSpec ActiveBank = new ColumnSpec();
+        ColumnSpec ScanNumber = new ColumnSpec();
+        ColumnSpec ScanName = new ColumnSpec();
+        ColumnSpec Position = new ColumnSpec();
+        ColumnSpec PlayRate = new ColumnSpec();
+        ColumnSpec DataMJD = new ColumnSpec();
+        ColumnSpec CurrentJob = new ColumnSpec();
+    }
+    protected HardwareColumnSpecs _hardwareColumnSpecs;
     
     //  Different lists of event listeners.  Other classes can be informed of
     //  setting changes by adding themselves to these lists.

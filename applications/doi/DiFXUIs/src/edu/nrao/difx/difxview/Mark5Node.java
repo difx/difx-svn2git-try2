@@ -235,6 +235,7 @@ public class Mark5Node extends ProcessorNode {
         _playRate.setText( String.format( "%10.3f", difxMsg.getBody().getMark5Status().getPlayRate() ) );
         _dataMJD.setText( difxMsg.getBody().getMark5Status().getDataMJD().trim() );
         _currentJob.setText( difxMsg.getHeader().getIdentifier() );
+        updateUI();
     }
     
     public void widthStateChanged( int newVal ) { _widthStateChanged = newVal; }

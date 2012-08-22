@@ -494,6 +494,7 @@ public class ProcessorNode extends BrowserNode {
             _monitor.setNetRxRate( newRx );
             _monitor.setNetTxRate( newTx );
         }
+        updateUI();
     }
 
     public void newAlert( DifxMessage difxMsg ) {
