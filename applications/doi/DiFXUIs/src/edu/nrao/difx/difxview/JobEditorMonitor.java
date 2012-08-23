@@ -436,16 +436,8 @@ public class JobEditorMonitor extends JFrame {
         _allObjectsBuilt = true;
         
         //  Start a thread that can be used to trigger repeated updates.
-        Action timeoutAction = new AbstractAction() {
-            @Override
-            public void actionPerformed( ActionEvent e ) {
-                timeoutIntervalEvent();
-            }
-        };
-        _timeoutTimer = new Timer( 1000, timeoutAction );
-        _timeoutTimer.setRepeats( false );
-//        _updateThread = new UpdateThread( 1000 );
-//        _updateThread.start();
+        _updateThread = new UpdateThread( 1000 );
+        _updateThread.start();
         
         this.newSize();
 
@@ -1555,7 +1547,7 @@ public class JobEditorMonitor extends JFrame {
                 for ( Iterator<BrowserNode> iter2 = _processorsPane.browserTopNode().children().iterator();
                         iter2.hasNext() && foundNode == null; ) {
                     BrowserNode testNode = iter2.next();
-                    if ( testNode.name() == thisModule.name() ) {
+                    if ( testNode.name().contentEquals( thisModule.name() ) ) {
                         foundNode = testNode;
                         ( (PaneProcessorNode)(testNode) ).foundIt = true;
                     }
