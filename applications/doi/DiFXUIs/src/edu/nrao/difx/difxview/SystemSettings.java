@@ -1408,6 +1408,8 @@ public class SystemSettings extends JFrame {
         this.setSize( _windowConfiguration.settingsWindowW, _windowConfiguration.settingsWindowH );
         _windowConfiguration.jobEditorMonitorWindowW = 900;
         _windowConfiguration.jobEditorMonitorWindowH = 500;
+        _windowConfiguration.smartDisplayW = 600;
+        _windowConfiguration.smartDisplayH = 300;
         _defaultNames.vexFileSource = "";
         _defaultNames.viaHttpLocation = "";
         _defaultNames.viaFtpLocation = "";
@@ -1564,6 +1566,40 @@ public class SystemSettings extends JFrame {
         _autoUpdateSeconds.value( 3600 );
         leapSecondChoice( _useLeapSecondsURL );
         _autoUpdateEOP.setSelected( false );
+        
+        //  Add a bunch of SMART Attribute information.  SMART attributes are identified
+        //  by ID number.  In addition to the ID number they have a name, a boolean indicating
+        //  whether high values are good, and a limiting value (whether high or low depends
+        //  on the boolean).  Following the limit is a String that explains what going beyond
+        //  the limits means - these are used as tooltips for bad values in tables.  Each of 
+        //  these fields can be null.
+        //  SMART attributes are standardized.  The items here are those produced by "getsmart"
+        //  requests to Mark V units, but they represent only a subset of all possible values.
+        //  These data are swiped verbatim from http://en.wikipedia.org/wiki/S.M.A.R.T. where 
+        //  a complete list can be found.
+        addSMARTAttribute( 1, "Read Error Rate", false, null, null );
+        addSMARTAttribute( 2, "Throughput Performance", true, null, null );
+        addSMARTAttribute( 3, "Spin-Up Time (millisec)", false, null, null );
+        addSMARTAttribute( 4, "Start/Stop Count", null, null, null );
+        addSMARTAttribute( 5, "Reallocated Sectors Count", false, 0, "A read/write/verification error causes a sector to be \"reallocated\". The raw value represents a count of the bad sectors. A drive which has had any reallocations at all is significantly more likely to fail in the near future." );
+        addSMARTAttribute( 6, "Read Channel Margin", null, null, null );
+        addSMARTAttribute( 7, "Seek Error Rate", null, null, null );
+        addSMARTAttribute( 8, "Seek Time Performance", true, null, null );
+        addSMARTAttribute( 9, "Power-On Hours", null, null, null );
+        addSMARTAttribute( 10, "Spin Retry Count", false, null, null );
+        addSMARTAttribute( 11, "Calibration Retry Count", false, null, null );
+        addSMARTAttribute( 12, "Power Cycle Count", null, null, null );
+        addSMARTAttribute( 13, "Soft Read Error Rate", false, null, null );
+        addSMARTAttribute( 192, "Power-Off Retract Count", false, null, null );
+        addSMARTAttribute( 193, "Load Cycle Count", false, null, null );
+        addSMARTAttribute( 194, "Temperature", false, null, null );
+        addSMARTAttribute( 195, "Hardware ECC Recovered", null, null, null );
+        addSMARTAttribute( 196, "Reallocation Event Count", false, 0, "The raw value of this attribute shows the total count of attempts to transfer data from reallocated sectors to a spare area. Both successful & unsuccessful attempts are counted.[" );
+        addSMARTAttribute( 197, "Current Pending Sector Count", false, null, null );
+        addSMARTAttribute( 198, "Uncorrectable Sector Count", false, null, null );
+        addSMARTAttribute( 199, "UltraDMA CRC Error Count", false, null, null );
+        addSMARTAttribute( 200, "Multi-Zone Error Rate", false, null, null );
+        
         //  Set up the communications based on current settings.
         changeDifxControlConnection();
     }
@@ -2073,6 +2109,10 @@ public class SystemSettings extends JFrame {
                 _windowConfiguration.jobEditorMonitorWindowW = doiConfig.getWindowConfigJobEditorMonitorWindowW();
             if ( doiConfig.getWindowConfigJobEditorMonitorWindowH() != 0 )
                 _windowConfiguration.jobEditorMonitorWindowH = doiConfig.getWindowConfigJobEditorMonitorWindowH();
+            if ( doiConfig.getWindowConfigSmartDisplayW() != 0 )
+                _windowConfiguration.smartDisplayW = doiConfig.getWindowConfigSmartDisplayW();
+            if ( doiConfig.getWindowConfigSmartDisplayH() != 0 )
+                _windowConfiguration.smartDisplayH = doiConfig.getWindowConfigSmartDisplayH();
             if ( doiConfig.getDefaultNamesVexFileSource() != null )
                 _defaultNames.vexFileSource = doiConfig.getDefaultNamesVexFileSource();
             if ( doiConfig.getDefaultNamesViaHttpLocation() != null )
@@ -2431,6 +2471,8 @@ public class SystemSettings extends JFrame {
         doiConfig.setWindowConfigSettingsWindowH( this.getHeight() );
         doiConfig.setWindowConfigJobEditorMonitorWindowW( _windowConfiguration.jobEditorMonitorWindowW );
         doiConfig.setWindowConfigJobEditorMonitorWindowH( _windowConfiguration.jobEditorMonitorWindowH );
+        doiConfig.setWindowConfigSmartDisplayW( _windowConfiguration.smartDisplayW );
+        doiConfig.setWindowConfigSmartDisplayH( _windowConfiguration.smartDisplayH );
         
         doiConfig.setDefaultNamesVexFileSource( _defaultNames.vexFileSource );
         doiConfig.setDefaultNamesViaHttpLocation( _defaultNames.viaHttpLocation );
@@ -3352,6 +3394,8 @@ public class SystemSettings extends JFrame {
         int settingsWindowH;
         int jobEditorMonitorWindowW;
         int jobEditorMonitorWindowH;
+        int smartDisplayW;
+        int smartDisplayH;
     }
     protected WindowConfiguration _windowConfiguration;
     
@@ -3535,4 +3579,50 @@ public class SystemSettings extends JFrame {
     protected JTextField _guiServerVersion;
     protected JTextField _guiServerDifxVersion;
     
+    //  Used to store information about a specific SMART attribute type.
+    //  This includes...
+    //   - the name
+    //   - whether higher values are better
+    //   - a limiting value above or below which the value should be flagged as bad
+    //   - a tool tip string that is used when bad values are found
+    public class SMARTAttribute {
+        String name;
+        Boolean highIsGood;
+        Integer badValue;
+        String toolTip;
+    }
+    
+    //  This is a map of the above, indexed by ID.
+    protected Map<Integer, SMARTAttribute> _smartAttributeList;
+    
+    //  Function to add data to the SMART Attribute list (will change data if the
+    //  given ID is already in the list).
+    protected void addSMARTAttribute( int id, SMARTAttribute newAtt ) {
+        //  If there is no list, create one.
+        if ( _smartAttributeList == null )
+            _smartAttributeList = new HashMap<Integer, SMARTAttribute>();
+        //  Otherwise, find the new ID in the list and delete it if it exists.
+        else 
+            _smartAttributeList.remove( id );
+        //  And make a new entry.
+        _smartAttributeList.put( id, newAtt );
+    }
+    protected void addSMARTAttribute( int id, String name, Boolean highIsGood, Integer badValue, String toolTip ) {
+        SMARTAttribute newAtt = new SMARTAttribute();
+        newAtt.name = name;
+        newAtt.highIsGood = highIsGood;
+        newAtt.badValue = badValue;
+        newAtt.toolTip = toolTip;
+        addSMARTAttribute( id, newAtt );
+    }
+    
+    /*
+     * Public function to return a SMARTAttribute structure based on ID.
+     */
+    public SMARTAttribute smartAttribute( int id ) {
+        if ( _smartAttributeList == null )
+            return null;
+        return _smartAttributeList.get( id );
+    }
+        
 }

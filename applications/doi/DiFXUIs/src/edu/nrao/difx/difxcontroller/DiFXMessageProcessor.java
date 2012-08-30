@@ -29,6 +29,7 @@ public class DiFXMessageProcessor extends Thread
     protected EventListenerList _difxAlertMessageListeners;
     protected EventListenerList _difxLoadMessageListeners;
     protected EventListenerList _mark5StatusMessageListeners;
+    protected EventListenerList _difxSmartMessageListeners;
 
     public DiFXMessageProcessor( SystemSettings systemSettings )
     {
@@ -39,6 +40,7 @@ public class DiFXMessageProcessor extends Thread
         _difxAlertMessageListeners = new EventListenerList();
         _difxLoadMessageListeners = new EventListenerList();
         _mark5StatusMessageListeners = new EventListenerList();
+        _difxSmartMessageListeners = new EventListenerList();
     }
 
     public void addDifxStatusMessageListener( AttributedMessageListener a ) {
@@ -55,6 +57,10 @@ public class DiFXMessageProcessor extends Thread
 
     public void addMark5StatusMessageListener( AttributedMessageListener a ) {
         _mark5StatusMessageListeners.add( AttributedMessageListener.class, a );
+    }
+
+    public void addDifxSmartMessageListener( AttributedMessageListener a ) {
+        _difxSmartMessageListeners.add( AttributedMessageListener.class, a );
     }
 
     public void shutDown() {
@@ -100,6 +106,9 @@ public class DiFXMessageProcessor extends Thread
 
             } else if ( header.getType().equalsIgnoreCase( "DifxAlertMessage" ) ) {
                 processDifxAlertMessage( difxMsg );
+
+            } else if ( header.getType().equalsIgnoreCase( "DifxSmartMessage" ) ) {
+                processDifxSmartMessage( difxMsg );
 
             } else {
                 if ( !_settings.suppressWarnings() ) {
@@ -226,6 +235,15 @@ public class DiFXMessageProcessor extends Thread
 
     protected void processMark5StatusMessage( DifxMessage difxMsg ) {
         Object[] listeners = _mark5StatusMessageListeners.getListenerList();
+        int numListeners = listeners.length;
+        for ( int i = 0; i < numListeners; i+=2 ) {
+            if ( listeners[i] == AttributedMessageListener.class )
+                ((AttributedMessageListener)listeners[i+1]).update( difxMsg );
+        }
+    }
+
+    protected void processDifxSmartMessage( DifxMessage difxMsg ) {
+        Object[] listeners = _difxSmartMessageListeners.getListenerList();
         int numListeners = listeners.length;
         for ( int i = 0; i < numListeners; i+=2 ) {
             if ( listeners[i] == AttributedMessageListener.class )

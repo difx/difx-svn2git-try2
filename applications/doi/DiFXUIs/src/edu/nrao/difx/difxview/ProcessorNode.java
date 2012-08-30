@@ -119,15 +119,25 @@ public class ProcessorNode extends BrowserNode {
         _netTxRate = new ColumnTextArea();
         _netTxRate.justify( ColumnTextArea.RIGHT );
         this.add( _netTxRate );
+        _alertWindow = new MessageWindow( "" );
+        _alertWindow.setTitle( "Alerts for " + _label.getText() );
+        _alertWindow.setBounds( 200, 200, 700, 300 );
         //  Create a popup menu appropriate to a "job".
         _popup = new JPopupMenu();
+        generatePopupMenu();
+    }
+    
+    @Override
+    public void generatePopupMenu() {
+        _popup.removeAll();
         JMenuItem headerItem = new JMenuItem( "Controls for \"" + _label.getText() + "\"" );
         _popup.add( headerItem );
         _popup.add( new JSeparator() );
         _ignoreItem = new JCheckBoxMenuItem( "Ignore This Node" );
-        _ignoreItem.setState( false );
+        _ignoreItem.setState( _ignoreState );
         _ignoreItem.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
+                _ignoreState = !_ignoreState;
                 changeIgnoreState();
             }
         });
@@ -169,9 +179,6 @@ public class ProcessorNode extends BrowserNode {
             }
         });
         _popup.add( powerOffItem );
-        _alertWindow = new MessageWindow( "" );
-        _alertWindow.setTitle( "Alerts for " + _label.getText() );
-        _alertWindow.setBounds( 200, 200, 700, 300 );
     }
     
     @Override
@@ -563,6 +570,8 @@ public class ProcessorNode extends BrowserNode {
     boolean _showNetRxRate;
     ColumnTextArea _netTxRate;
     boolean _showNetTxRate;
+    
+    boolean _ignoreState;
     
     protected JCheckBoxMenuItem _ignoreItem;
     protected boolean _showIgnored;

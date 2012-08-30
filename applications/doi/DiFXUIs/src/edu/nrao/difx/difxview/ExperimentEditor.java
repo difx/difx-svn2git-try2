@@ -69,19 +69,12 @@ import javax.swing.event.EventListenerList;
 
 import java.sql.ResultSet;
 
-/**
- *
- * @author jspitzak
- */
-public class ExperimentEditor extends JFrame { //JDialog {
+public class ExperimentEditor extends JFrame {
         
-    public ExperimentEditor( int x, int y, SystemSettings settings ) { //Frame frame, int x, int y, SystemSettings settings ) {
-        //super( frame, "", true );
+    public ExperimentEditor( int x, int y, SystemSettings settings ) {
         _settings = settings;
-        //  new!
         _settings.setLookAndFeel();
         this.setLayout( null );
-        //
         this.setBounds( x, y, _settings.windowConfiguration().experimentEditorW,
                 _settings.windowConfiguration().experimentEditorH );
         this.getContentPane().setLayout( null );

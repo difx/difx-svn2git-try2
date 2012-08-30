@@ -21,6 +21,8 @@ import java.util.Iterator;
 import edu.nrao.difx.difxcontroller.DiFXMessageProcessor;
 import edu.nrao.difx.difxcontroller.AttributedMessageListener;
 
+import edu.nrao.difx.difxutilities.SMARTMonitor;
+
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 
 public class HardwareMonitorPanel extends TearOffPanel {
@@ -96,6 +98,8 @@ public class HardwareMonitorPanel extends TearOffPanel {
                 processMark5StatusMessage( difxMsg );
             }
         } );
+        _smartMonitor = new SMARTMonitor( _settings );
+        _smartMonitor.difxMessageProcessor( processor );
     }
     
     protected void processDifxAlertMessage( DifxMessage difxMsg ) {
@@ -104,8 +108,8 @@ public class HardwareMonitorPanel extends TearOffPanel {
         if ( difxMsg.getHeader().getIdentifier().trim().equals( "mk5daemon" ) ) {
             //serviceUpdate( difxMsg );
         }
-        else
-            System.out.println( "Hardware Monitor Panel received DiFX Alert from " + difxMsg.getHeader().getIdentifier() + " - no idea what to do with this!" );
+//        else
+//            System.out.println( "Hardware Monitor Panel received DiFX Alert from " + difxMsg.getHeader().getIdentifier() + " - no idea what to do with this!" );
     }
     
     public synchronized void processMark5StatusMessage( DifxMessage difxMsg ) {
@@ -119,7 +123,7 @@ public class HardwareMonitorPanel extends TearOffPanel {
                     mk5Module = (Mark5Node)thisModule;
             }
             if ( mk5Module == null ) {
-                mk5Module = new Mark5Node( difxMsg.getHeader().getFrom(), _settings );
+                mk5Module = new Mark5Node( difxMsg.getHeader().getFrom(), _settings, _smartMonitor );
                 _mk5Modules.addChild( mk5Module );
             }
             mk5Module.statusMessage( difxMsg );
@@ -154,7 +158,7 @@ public class HardwareMonitorPanel extends TearOffPanel {
                     mk5Module = (Mark5Node)thisModule;
             }
             if ( mk5Module == null ) {
-                mk5Module = new Mark5Node( difxMsg.getHeader().getFrom(), _settings );
+                mk5Module = new Mark5Node( difxMsg.getHeader().getFrom(), _settings, _smartMonitor );
                 _mk5Modules.addChild( mk5Module );
             }
             mk5Module.loadMessage( difxMsg );
@@ -196,5 +200,6 @@ public class HardwareMonitorPanel extends TearOffPanel {
     protected Mark5NodesHeader _mk5Modules;
     private JLabel _mainLabel;
     protected SystemSettings _settings;
+    protected SMARTMonitor _smartMonitor;
     
 }

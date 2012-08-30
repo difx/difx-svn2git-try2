@@ -10,11 +10,21 @@ import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 
 import javax.swing.JSeparator;
 import javax.swing.JMenuItem;
+import javax.swing.JMenu;
+import javax.swing.JButton;
+import javax.swing.JPopupMenu;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
 import java.awt.Color;
+import java.awt.Insets;
+import java.awt.MouseInfo;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+
+import edu.nrao.difx.difxutilities.SMARTMonitor;
 
 /**
  *
@@ -22,8 +32,10 @@ import java.awt.Color;
  */
 public class Mark5Node extends ProcessorNode {
     
-    public Mark5Node( String name, SystemSettings settings ) {
+    public Mark5Node( String name, SystemSettings settings, SMARTMonitor smartMonitor ) {
         super( name, settings );
+        _smartMonitor = smartMonitor;
+        _smartDisplayList = new ArrayList<SMARTDisplay>();
     }
     
     @Override
@@ -31,11 +43,30 @@ public class Mark5Node extends ProcessorNode {
         super.createAdditionalItems();
         _stateChanged = new ActivityMonitorLight();
         this.add( _stateChanged );
-        _bankAVSN = new ColumnTextArea();
-        _bankAVSN.justify( ColumnTextArea.RIGHT );
+        //  VSN banks are buttons the trigger a popup menu of options.
+        _bankAVSN = new JButton();
+        _bankAVSN.setMargin( new Insets( 0, 0, 2, 0 ) );
+        _bankAVSN.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                if ( _bankAVSN != null && _bankAVSN.getText() != null &&
+                _bankAVSN.getText().length() > 0 && !_bankAVSN.getText().trim().contentEquals( "none") ) {
+                    VSNPopupMenu vsnMenu = new VSNPopupMenu( _bankAVSN.getText().trim() );
+                    vsnMenu.show( _bankAVSN, 0, 0 );
+                }
+            }
+        });
         this.add( _bankAVSN );
-        _bankBVSN = new ColumnTextArea();
-        _bankBVSN.justify( ColumnTextArea.RIGHT );
+        _bankBVSN = new JButton();
+        _bankBVSN.setMargin( new Insets( 0, 0, 2, 0 ) );
+        _bankBVSN.addActionListener(new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                if ( _bankBVSN != null && _bankBVSN.getText() != null &&
+                _bankBVSN.getText().length() > 0 && !_bankBVSN.getText().trim().contentEquals( "none") ) {
+                    VSNPopupMenu vsnMenu = new VSNPopupMenu( _bankBVSN.getText().trim() );
+                    vsnMenu.show( _bankBVSN, 0, 0 );
+                }
+            }
+        });
         this.add( _bankBVSN );
         _statusWord = new ColumnTextArea();
         _statusWord.justify( ColumnTextArea.RIGHT );
@@ -61,6 +92,11 @@ public class Mark5Node extends ProcessorNode {
         _currentJob = new ColumnTextArea();
         _currentJob.justify( ColumnTextArea.RIGHT );
         this.add( _currentJob );
+    }
+    
+    @Override
+    public void generatePopupMenu() {
+        super.generatePopupMenu();
         _popup.add( new JSeparator() );
         JMenuItem startItem = new JMenuItem( "Start" );
         startItem.addActionListener(new ActionListener() {
@@ -76,41 +112,148 @@ public class Mark5Node extends ProcessorNode {
             }
         });
         _popup.add( stopItem );
-        JMenuItem clearItem = new JMenuItem( "Clear" );
-        clearItem.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                sendDiFXCommandMessage( "Clear" );
-            }
-        });
-        _popup.add( clearItem );
-        JMenuItem copyItem = new JMenuItem( "Copy" );
-        copyItem.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                sendDiFXCommandMessage( "Copy" );
-            }
-        });
-        _popup.add( copyItem );
-        JMenuItem getVSNItem = new JMenuItem( "Get VSN" );
-        getVSNItem.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                sendDiFXCommandMessage( "GetVSN" );
-            }
-        });
-        _popup.add( getVSNItem );
-        JMenuItem getLoadItem = new JMenuItem( "Get Load" );
-        getLoadItem.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                sendDiFXCommandMessage( "GetLoad" );
-            }
-        });
-        _popup.add( getLoadItem );
-        JMenuItem getDirItem = new JMenuItem( "Get Directory" );
-        getDirItem.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                sendDiFXCommandMessage( "GetDir" );
-            }
-        });
-        _popup.add( getDirItem );
+//        JMenuItem clearItem = new JMenuItem( "Clear" );
+//        clearItem.addActionListener(new ActionListener() {
+//            public void actionPerformed( ActionEvent e ) {
+//                sendDiFXCommandMessage( "Clear" );
+//            }
+//        });
+//        _popup.add( clearItem );
+//        JMenuItem copyItem = new JMenuItem( "Copy" );
+//        copyItem.addActionListener(new ActionListener() {
+//            public void actionPerformed( ActionEvent e ) {
+//                sendDiFXCommandMessage( "Copy" );
+//            }
+//        });
+//        _popup.add( copyItem );
+//        JMenuItem getVSNItem = new JMenuItem( "Get VSN" );
+//        getVSNItem.addActionListener(new ActionListener() {
+//            public void actionPerformed( ActionEvent e ) {
+//                sendDiFXCommandMessage( "GetVSN" );
+//            }
+//        });
+//        _popup.add( getVSNItem );
+//        JMenuItem getLoadItem = new JMenuItem( "Get Load" );
+//        getLoadItem.addActionListener(new ActionListener() {
+//            public void actionPerformed( ActionEvent e ) {
+//                sendDiFXCommandMessage( "GetLoad" );
+//            }
+//        });
+//        _popup.add( getLoadItem );
+        //  Add options for existing VSNs.
+        if ( _bankAVSN != null && _bankAVSN.getText() != null &&
+                _bankAVSN.getText().length() > 0 && !_bankAVSN.getText().trim().contentEquals( "none") ) {
+            VSNMenu vsnMenu = new VSNMenu( _bankAVSN.getText().trim() );
+            _popup.add( vsnMenu );
+        }
+        if ( _bankBVSN != null && _bankBVSN.getText() != null &&
+                _bankBVSN.getText().length() > 0 && !_bankBVSN.getText().trim().contentEquals( "none") ) {
+            VSNMenu vsnMenu = new VSNMenu( _bankBVSN.getText().trim() );
+            _popup.add( vsnMenu );
+        }
+    }
+    
+    /*
+     * This is a sub-menu showing things that can be run on a particular VSN.
+     */
+    protected class VSNMenu extends JMenu {
+        
+        protected String _vsn;
+
+        public VSNMenu( String vsn ) {
+            super( vsn );
+            _vsn = vsn;
+            JMenuItem smartItem = new JMenuItem( "SMART Monitor" );
+            smartItem.addActionListener(new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    showSMARTDisplay( _vsn );
+                }
+            });
+            add( smartItem );
+            JMenuItem getDirItem = new JMenuItem( "Generate Directory" );
+            getDirItem.addActionListener(new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    generateDirectory( _vsn );
+                }
+            });
+            add( getDirItem );
+            JMenuItem viewDirItem = new JMenuItem( "View/Edit Directory" );
+            getDirItem.addActionListener(new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    displayDirectory( _vsn );
+                }
+            });
+            add( viewDirItem );
+        }
+        
+    }
+    
+    /*
+     * The popup menu shows the same items as the above sub-menu, but it is triggered
+     * by clicking on one of the VSNs themselves (they are buttons).
+     */
+    protected class VSNPopupMenu extends JPopupMenu {
+
+        protected String _vsn;
+        
+        public VSNPopupMenu( String vsn ) {
+            super( vsn );
+            _vsn = vsn;
+            JMenuItem title = new JMenuItem( vsn + " Controls" );
+            add( title );
+            add( new JSeparator() );
+            JMenuItem smartItem = new JMenuItem( "SMART Monitor" );
+            smartItem.addActionListener(new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    showSMARTDisplay( _vsn );
+                }
+            });
+            add( smartItem );
+            JMenuItem getDirItem = new JMenuItem( "Generate Directory" );
+            getDirItem.addActionListener(new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    generateDirectory( _vsn );
+                }
+            });
+            add( getDirItem );
+            JMenuItem viewDirItem = new JMenuItem( "View/Edit Directory" );
+            getDirItem.addActionListener(new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    displayDirectory( _vsn );
+                }
+            });
+            add( viewDirItem );
+        }
+        
+    }
+    
+    /*
+     * Functions in commmon called by both menu types.
+     */
+    public void showSMARTDisplay( String vsn ) {
+        //  Check the list of SMARTDisplays we have generated already to see if this one
+        //  is available.    
+        SMARTDisplay smartDisplay = null;
+        for ( Iterator<SMARTDisplay> iter = _smartDisplayList.iterator(); iter.hasNext(); ) {
+            SMARTDisplay thisDisplay = iter.next();
+            if ( vsn.contentEquals( thisDisplay.vsn() ) && name().contentEquals( thisDisplay.host() ) )
+                smartDisplay = thisDisplay;
+        }
+        //  If the display isn't available, create a new one.
+        if ( smartDisplay == null ) {
+            smartDisplay = new SMARTDisplay( MouseInfo.getPointerInfo().getLocation().x, 
+                MouseInfo.getPointerInfo().getLocation().y, _smartMonitor, _settings, name(), vsn );
+            _smartDisplayList.add( smartDisplay );
+        }
+        smartDisplay.setVisible( true );
+    }
+    
+    public void generateDirectory( String vsn ) {
+        
+    }
+    
+    public void displayDirectory( String vsn ) {
+        
     }
     
     @Override
@@ -165,7 +308,6 @@ public class Mark5Node extends ProcessorNode {
         if ( _showCurrentJob )
             setTextArea( _currentJob, _widthCurrentJob );
     }
-    
     
     public void showStateChanged( boolean newVal ) {
         _showStateChanged = newVal;
@@ -255,9 +397,9 @@ public class Mark5Node extends ProcessorNode {
     
     protected ActivityMonitorLight _stateChanged;
     protected boolean _showStateChanged;
-    protected ColumnTextArea _bankAVSN;
+    protected JButton _bankAVSN;
     protected boolean _showBankAVSN;
-    protected ColumnTextArea _bankBVSN;
+    protected JButton _bankBVSN;
     protected boolean _showBankBVSN;
     protected ColumnTextArea _statusWord;
     protected boolean _showStatusWord;
@@ -287,5 +429,8 @@ public class Mark5Node extends ProcessorNode {
     protected int _widthPlayRate;
     protected int _widthDataMJD;
     protected int _widthCurrentJob;
+    
+    protected SMARTMonitor _smartMonitor;
+    protected ArrayList<SMARTDisplay> _smartDisplayList;
     
 }

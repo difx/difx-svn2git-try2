@@ -21,6 +21,7 @@
     <xsd:element name="difxWeight" type="difxWeight"></xsd:element>
     <xsd:element name="difxStart" type="difxStart"></xsd:element>
     <xsd:element name="difxStop" type="difxStop"></xsd:element>
+    <xsd:element name="difxSmart" type="difxSmart"></xsd:element>
     <xsd:element name="difxMachinesDefinition" type="difxMachinesDefinition"></xsd:element>
     <xsd:element name="difxFileTransfer" type="difxFileTransfer"></xsd:element>
     <xsd:element name="difxFileOperation" type="difxFileOperation"></xsd:element>
@@ -64,6 +65,7 @@
                 <xsd:element ref="difxFileTransfer"/>
                 <xsd:element ref="difxFileOperation"/>
                 <xsd:element ref="difxVex2difxRun"/>
+                <xsd:element ref="difxSmart"/>
                 <xsd:element ref="difxMachinesDefinition"/>
                 <xsd:element ref="difxCommand"/>
                 <xsd:element ref="doiSystemConfig"/>
@@ -162,6 +164,8 @@
                 <xsd:element ref="windowConfigSettingsWindowH"/>
                 <xsd:element ref="windowConfigJobEditorMonitorWindowW"/>
                 <xsd:element ref="windowConfigJobEditorMonitorWindowH"/>
+                <xsd:element ref="windowConfigSmartDisplayW"/>
+                <xsd:element ref="windowConfigSmartDisplayH"/>
 
                 <xsd:element ref="defaultNamesVexFileSource"/>
                 <xsd:element ref="defaultNamesViaHttpLocation"/>
@@ -328,6 +332,8 @@
     <xsd:element name="windowConfigSettingsWindowH" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigJobEditorMonitorWindowW" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigJobEditorMonitorWindowH" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigSmartDisplayW" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigSmartDisplayH" type="xsd:int"></xsd:element>
                 
     <xsd:element name="defaultNamesVexFileSource" type="xsd:string"></xsd:element>
     <xsd:element name="defaultNamesViaHttpLocation" type="xsd:string"></xsd:element>
@@ -464,6 +470,20 @@
                 <xsd:complexType>
                     <xsd:attribute name="ant" type="xsd:string"/>
                     <xsd:attribute name="wt" type="xsd:string"/>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="difxSmart">
+        <xsd:sequence>
+            <xsd:element name="mjd" type="xsd:float"></xsd:element>
+            <xsd:element name="vsn" type="xsd:string"></xsd:element>
+            <xsd:element name="slot" type="xsd:int"></xsd:element>
+            <xsd:element name="smart" maxOccurs="unbounded">
+                <xsd:complexType>
+                    <xsd:attribute name="id" type="xsd:int"/>
+                    <xsd:attribute name="value" type="xsd:int"/>
                 </xsd:complexType>
             </xsd:element>
         </xsd:sequence>

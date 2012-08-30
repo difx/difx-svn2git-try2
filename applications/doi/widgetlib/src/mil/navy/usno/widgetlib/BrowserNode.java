@@ -76,6 +76,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
         _popupButton.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 if ( _popup != null )
+                    generatePopupMenu();
                     _popup.show( _popupButton, 0, 0 );
             }
         });
@@ -94,6 +95,16 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
      * and popup menus, etc).
      */
     public void createAdditionalItems() {
+    }
+    
+    /*
+     * Also meant to be inherited - create the popup menu on the fly (when the button
+     * that raises it is pushed).  This is optional, basically.  If you have a static
+     * popup menu it can be created once in "createAdditionalItems()".  Note that if
+     * you create the popup dynamically the first thing you should do is "clear()"
+     * it.
+     */
+    public void generatePopupMenu() {
     }
     
     /*
@@ -405,6 +416,7 @@ public class BrowserNode extends JPanel implements MouseListener, MouseMotionLis
     @Override
     public void mousePressed( MouseEvent e ) {
         if ( e.getButton() == MouseEvent.BUTTON3 && _popup != null ) {
+            generatePopupMenu();
             _popup.show( e.getComponent(), e.getX(), e.getY() );
         }
         else {
