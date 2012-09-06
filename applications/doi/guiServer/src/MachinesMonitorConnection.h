@@ -8,11 +8,11 @@
 //!  while threads and machines files are created.
 //
 //=============================================================================
-#include <PacketExchange.h>
+#include <network/ActivePacketExchange.h>
 
 namespace guiServer {
 
-    class MachinesMonitorConnection : public PacketExchange {
+    class MachinesMonitorConnection : public network::ActivePacketExchange {
     
     public:
 
@@ -44,7 +44,7 @@ namespace guiServer {
         static const int LOW_THREAD_COUNT                    = 121;
         static const int RUNNING_MPIRUN_TESTS                = 122;
     
-        MachinesMonitorConnection( network::GenericSocket* sock ) : PacketExchange( sock ) {
+        MachinesMonitorConnection( network::GenericSocket* sock ) : network::ActivePacketExchange( sock ) {
         }
         
         ~MachinesMonitorConnection() {

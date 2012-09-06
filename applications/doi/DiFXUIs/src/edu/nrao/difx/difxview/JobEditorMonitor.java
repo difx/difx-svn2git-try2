@@ -12,6 +12,7 @@ import edu.nrao.difx.difxutilities.DiFXCommand;
 import edu.nrao.difx.xmllib.difxmessage.DifxMessage;
 import edu.nrao.difx.xmllib.difxmessage.DifxMachinesDefinition;
 import edu.nrao.difx.xmllib.difxmessage.DifxStart;
+import edu.nrao.difx.xmllib.difxmessage.DifxStop;
 import edu.nrao.difx.xmllib.difxmessage.DifxStatus;
 
 import javax.swing.JFrame;
@@ -1060,6 +1061,8 @@ public class JobEditorMonitor extends JFrame {
         protected final int DIFX_WARNING                     = 115;
         protected final int DIFX_ERROR                       = 116;
         protected final int DIFX_COMPLETE                    = 117;
+        protected final int DATA_FILE_SIZE                   = 118;
+        protected final int JOB_FAILED                       = 119;
                 
         @Override
         public void run() {
@@ -1106,11 +1109,25 @@ public class JobEditorMonitor extends JFrame {
 //                        _inString += new String( Arrays.copyOfRange( data, 0, n ) );
 //                        incrementalCallback();
                         //  Interpret the packet type.
-                        if ( packetType == JOB_TERMINATED ) {
-                            _messageDisplayPanel.warning( 0, "job monitor", "Job terminated prematurely." );
-                            statusWarning( "job terminated prematurely" );
-                            statusPanelColor( Color.RED );
+                        if ( packetType == JOB_FAILED ) {
+                            _messageDisplayPanel.error( 0, "job monitor", "Job failed to complete." );
+                            statusError( "job failed to complete" );
+                            statusPanelColor( _statusPanelBackground.darker()  );
                             connected = false;
+                            _state.setText( "FAILED" );
+                            _state.setBackground( Color.RED );
+                            _jobNode.state().setText( "FAILED" );
+                            _jobNode.state().setBackground( Color.RED );
+                        }
+                        else if ( packetType == JOB_TERMINATED ) {
+                            _messageDisplayPanel.warning( 0, "job monitor", "Job terminated by user." );
+                            statusWarning( "job terminated by user" );
+                            statusPanelColor( _statusPanelBackground.darker() );
+                            connected = false;
+                            _state.setText( "TERMINATED" );
+                            _state.setBackground( Color.RED );
+                            _jobNode.state().setText( "TERMINATED" );
+                            _jobNode.state().setBackground( Color.RED );
                         }
                         else if ( packetType == JOB_ENDED_GRACEFULLY ) {
                             _messageDisplayPanel.warning( 0, "job monitor", "Job finished gracefully." );
@@ -1226,8 +1243,9 @@ public class JobEditorMonitor extends JFrame {
             }
             else if ( _state.getText().equalsIgnoreCase( "running" ) )
                 _state.setBackground( Color.YELLOW );
-            else
-                _state.setBackground( Color.LIGHT_GRAY ); 
+            else {
+                _state.setBackground( Color.LIGHT_GRAY );
+            }
             List<DifxStatus.Weight> weightList = difxMsg.getBody().getDifxStatus().getWeight();
             //  Create a new list of antennas/weights if one hasn't been created yet.
 //            if ( _weights == null )
@@ -1250,39 +1268,25 @@ public class JobEditorMonitor extends JFrame {
     public void pauseJob() {}
     
     public void stopJob() {
-//        ObjectFactory factory = new ObjectFactory();
-//
-//        // Create header
-//        Header header = factory.createHeader();
-//        header.setFrom( "doi" );
-//        header.setTo( _settings.difxControlAddress() );
-//        header.setMpiProcessId( "0" );
-//        header.setIdentifier( _jobNode.name() );
-//        header.setType( "DifxStop" );
-//
-//        // Create start job command
-//        DifxStop jobStop = factory.createDifxStop();
-//        jobStop.setInput( _jobNode.inputFile() );
-//
-//        // -- Create the XML defined messages and process through the system
-//        Body body = factory.createBody();
-//        body.setDifxStop( jobStop );
-//
-//        DifxMessage difxMsg = factory.createDifxMessage();
-//        difxMsg.setHeader( header );
-//        difxMsg.setBody( body );
-//
-//        JAXBDiFXProcessor xmlProc = new JAXBDiFXProcessor(difxMsg);
-//        String xmlString = xmlProc.ConvertToXML();
-//        
-//        if ( xmlString != null )
-//            try {
-//            SendMessage.writeToSocket( xmlString, _settings );
-//            }
-//            catch ( Exception e ) {
-//               java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
-//                       e.getMessage() );  //BLAT should be a pop-up
-//            }
+        DiFXCommand command = new DiFXCommand( _settings );
+        command.header().setType( "DifxStop" );
+        command.mpiProcessId( "-1" );
+        command.identifier( _jobNode.name() );
+
+        // Create start job command
+        DifxStop jobStop = command.factory().createDifxStop();
+        jobStop.setInput( _jobNode.inputFile() );
+        jobStop.setDifxVersion( _settings.difxVersion() );
+
+        // -- Create the XML defined messages and process through the system
+        command.body().setDifxStop( jobStop );
+        try {
+            //command.sendPacket( _settings.guiServerConnection().COMMAND_PACKET );
+            command.send();
+        } catch ( java.net.UnknownHostException e ) {
+            java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
+                    e.getMessage() );  //BLAT should be a pop-up
+        }
     }
     
     /*

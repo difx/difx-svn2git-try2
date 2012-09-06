@@ -8,11 +8,11 @@
 //!  diagnostics and to respond to some instructions.
 //
 //=============================================================================
-#include <PacketExchange.h>
+#include <network/ActivePacketExchange.h>
 
 namespace guiServer {
 
-    class JobMonitorConnection : public PacketExchange {
+    class JobMonitorConnection : public network::ActivePacketExchange {
     
     public:
 
@@ -40,8 +40,9 @@ namespace guiServer {
         static const int DIFX_ERROR                         = 116;
         static const int DIFX_COMPLETE                      = 117;
         static const int DATA_FILE_SIZE                     = 118;
+        static const int JOB_FAILED                         = 119;
     
-        JobMonitorConnection( network::GenericSocket* sock ) : PacketExchange( sock ) {
+        JobMonitorConnection( network::GenericSocket* sock ) : network::ActivePacketExchange( sock ) {
         }
         
         ~JobMonitorConnection() {

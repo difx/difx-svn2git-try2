@@ -53,6 +53,7 @@ public class GuiServerConnection {
     public final int GUISERVER_DIFX_VERSION         = 9;
     public final int AVAILABLE_DIFX_VERSION         = 10;
     public final int DIFX_BASE                      = 11;
+    public final int GUISERVER_ENVIRONMENT          = 12;
 
     
     public GuiServerConnection( SystemSettings settings, String IP, int port, int timeout ) {
@@ -171,6 +172,9 @@ public class GuiServerConnection {
                         else if ( packetId == GUISERVER_VERSION ) {
                             //  This is a report of the version of guiServer that is running.
                             _settings.guiServerVersion( new String( data ) );
+                            //  Assuming the above message indicates a new connection, clear the
+                            //  list of guiServer environment variables - we will get new ones.
+                            _settings.clearGuiServerEnvironment();
                         }
                         else if ( packetId == GUISERVER_DIFX_VERSION ) {
                             //  This is the difx version for which the guiServer was compiled.  At the
@@ -198,6 +202,10 @@ public class GuiServerConnection {
                             //  exist.
                             _settings.clearDifxVersion();
                             _settings.difxBase( new String( data ) );
+                        }
+                        else if ( packetId == GUISERVER_ENVIRONMENT ) {
+                            //  These are environment variables from the guiServer
+                            _settings.addGuiServerEnvironment( new String( data ) );
                         }
                         receiveEvent( data.length );
                     }

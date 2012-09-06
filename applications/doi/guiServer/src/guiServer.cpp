@@ -60,7 +60,7 @@ void* connectionMonitor( void* arg ) {
 //-----------------------------------------------------------------------------
 //!  main
 //-----------------------------------------------------------------------------
-main( int argc, char **argv ) {
+main( int argc, char **argv, char **envp ) {
 
     char* endptr;
     
@@ -153,7 +153,7 @@ main( int argc, char **argv ) {
         printf( "guiServer: client connection from address %s\n", server->lastClientIP() );
 
         //  Open a packet exchange mechanism to deal with this connection as a server.
-        guiServer::ServerSideConnection* newClient = new guiServer::ServerSideConnection( newClientSocket, server->lastClientIP(), difxBase );
+        guiServer::ServerSideConnection* newClient = new guiServer::ServerSideConnection( newClientSocket, server->lastClientIP(), difxBase, envp );
         
         //  Set the (default) multicast information for this client to match our defaults.
         newClient->multicast( multicastGroup, multicastPort );

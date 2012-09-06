@@ -74,10 +74,10 @@ public class JulianCalendar extends GregorianCalendar {
         int year  = (int)( 100L * ( n - 49L ) + m + k );
 
         this.clear();
+        this.setTimeInMillis( (long)( MILLISEC_IN_DAY * ( dayFraction ) ) );
         this.set( Calendar.YEAR, year );
         this.set( Calendar.MONTH, month - 1 );
         this.set( Calendar.DAY_OF_MONTH, day );
-        this.setTimeInMillis( this.getTimeInMillis() + (long)( MILLISEC_IN_DAY * ( dayFraction ) ) );
     }
     
     public double mjd() {

@@ -166,6 +166,8 @@
                 <xsd:element ref="windowConfigJobEditorMonitorWindowH"/>
                 <xsd:element ref="windowConfigSmartDisplayW"/>
                 <xsd:element ref="windowConfigSmartDisplayH"/>
+                <xsd:element ref="windowConfigEnvironmentVariableDisplayW"/>
+                <xsd:element ref="windowConfigEnvironmentVariableDisplayH"/>
 
                 <xsd:element ref="defaultNamesVexFileSource"/>
                 <xsd:element ref="defaultNamesViaHttpLocation"/>
@@ -334,6 +336,8 @@
     <xsd:element name="windowConfigJobEditorMonitorWindowH" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigSmartDisplayW" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigSmartDisplayH" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigEnvironmentVariableDisplayW" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigEnvironmentVariableDisplayH" type="xsd:int"></xsd:element>
                 
     <xsd:element name="defaultNamesVexFileSource" type="xsd:string"></xsd:element>
     <xsd:element name="defaultNamesViaHttpLocation" type="xsd:string"></xsd:element>
@@ -534,6 +538,8 @@
 
     <xsd:complexType name="difxStop">
         <xsd:sequence>
+            <xsd:element name="mpiWrapper" type="xsd:string"></xsd:element>
+            <xsd:element name="difxVersion" type="xsd:string" minOccurs="0" maxOccurs="1" default="unknown"></xsd:element>
             <xsd:element name="input" type="xsd:string"></xsd:element>
         </xsd:sequence>
     </xsd:complexType>

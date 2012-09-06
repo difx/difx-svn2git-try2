@@ -42,10 +42,9 @@ namespace network {
         virtual int sendPacket( const int packetId, char* data, const int nBytes ) {
             int swapped;
 
-printf( "sending packet ID %d (%d bytes)\n", packetId, nBytes );
-            //  Lock the "packet" mutex.  This keeps other threads from trying to
-            //  write until we have completed sending the packet.
-            pthread_mutex_lock( &_sendPacketMutex );
+            //  Lock writing on the socket.  This makes certain this packet can't be 
+            //  broken up by calls to this function from other threads.
+            _sock->writeLock();
 
             //  Our trivial packet protocol is to send the packetId first (network byte
             //  ordered)...
@@ -61,13 +60,14 @@ printf( "sending packet ID %d (%d bytes)\n", packetId, nBytes );
             //  ...then the data.
             if ( ret != -1 )
                 ret = _sock->writer( data, nBytes );
+                
+            //  Unlock the socket.
+            _sock->writeUnlock();
             
-            //  Unlock the packet mutex and return.
-            pthread_mutex_unlock( &_sendPacketMutex );
             return ret;
 
         }
-
+        
         //----------------------------------------------------------------------------
         //!  This function reads packets send by the sendPacket function, following
         //!  the same protocol.  The number of bytes read is returned if all goes

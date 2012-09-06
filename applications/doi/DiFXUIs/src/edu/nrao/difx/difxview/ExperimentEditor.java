@@ -422,7 +422,7 @@ public class ExperimentEditor extends JFrame {
             public void actionPerformed(  ActionEvent e ) {
                 _settings.defaultNames().correlationNFFTChan = _fftNChan.intValue();
                 _fftSpecRes.value( _bandwidth / _fftNChan.value() );
-                _settings.defaultNames().correlationFFTSpecRes = _specRes.value();
+                _settings.defaultNames().correlationFFTSpecRes = _fftSpecRes.value();
                 produceV2dFile();
             }
         });

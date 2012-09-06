@@ -747,6 +747,8 @@ public class JobNode extends QueueBrowserNode {
         _running = newVal;
     }
     
+    public ColumnTextArea state() { return _state; }
+    
     protected PassNode _passNode;
     
     protected JButton _startButton;

@@ -18,20 +18,38 @@
 #include <pthread.h>
 #include <string>
 #include <network/UDPSocket.h>
-#include <PacketExchange.h>
+#include <network/ActivePacketExchange.h>
 #include <difxmessage.h>
 #include <JobMonitorConnection.h>
+#include <list>
+#include <string>
 #include <glob.h>
 
 namespace guiServer {
 
-    class ServerSideConnection : public PacketExchange {
+    class ServerSideConnection : public network::ActivePacketExchange {
     
         static const int MAX_COMMAND_SIZE = 1024;
         
+        //---------------------------------------------------------------------
+        //!  These are the packet types recognized and/or sent by this protocol.
+        //---------------------------------------------------------------------
+        static const int RELAY_PACKET                   = 1;
+        static const int RELAY_COMMAND_PACKET           = 2;
+        static const int COMMAND_PACKET                 = 3;
+        static const int INFORMATION_PACKET             = 4;
+        static const int WARNING_PACKET                 = 5;
+        static const int ERROR_PACKET                   = 6;
+        static const int MULTICAST_SETTINGS_PACKET      = 7;
+        static const int GUISERVER_VERSION              = 8;
+        static const int GUISERVER_DIFX_VERSION         = 9;
+        static const int AVAILABLE_DIFX_VERSION         = 10;
+        static const int DIFX_BASE                      = 11;
+        static const int GUISERVER_ENVIRONMENT          = 12;
+
     public:
 
-        ServerSideConnection( network::GenericSocket* sock, const char* clientIP, const char* difxBase ) : PacketExchange( sock ) {
+        ServerSideConnection( network::GenericSocket* sock, const char* clientIP, const char* difxBase, char** envp ) : network::ActivePacketExchange( sock ) {
             _commandSocket = NULL;
             _monitorSocket = NULL;
             _multicastGroup[0] = 0;
@@ -42,6 +60,8 @@ namespace guiServer {
             _diagnosticPacketsOn = true;
             snprintf( _clientIP, 16, "%s", clientIP );
             strncpy( _difxBase, difxBase, DIFX_MESSAGE_LENGTH );
+            _envp = envp;
+            pthread_mutex_init( &_runningJobsMutex, NULL );
         }
         
         ~ServerSideConnection() {
@@ -98,28 +118,60 @@ namespace guiServer {
                 }
                 else {
                     //  Decide what to do with this message.
-                    /*
                     DifxMessageGeneric G;
                     if ( !difxMessageParse( &G, message ) ) {
-                        switch( G.type ) {
-                        case DIFX_MESSAGE_STATUS:
-                            break;
-                        case DIFX_MESSAGE_DIAGNOSTIC:
-                            break;
-                        case DIFX_MESSAGE_ALERT:
-                            break;
-                        default:
-                            break;
-                        }
-                    }
-                    */
+//                        switch( G.type ) {
+//                        case DIFX_MESSAGE_STATUS:
+//                            break;
+//                        case DIFX_MESSAGE_DIAGNOSTIC:
+//                            break;
+//                        case DIFX_MESSAGE_ALERT:
+//                            break;
+//                        default:
+//                            break;
+//                        }
                     if ( _relayDifxMulticasts )
                         sendPacket( RELAY_PACKET, message, ret );
+                    }
+//                    if ( _relayDifxMulticasts )
+//                        sendPacket( RELAY_PACKET, message, ret );
                 }
                 sched_yield();
             }
         }
 
+        //---------------------------------------------------------------------
+        //!  Thread to receive all incoming data on the socket.  Each recognized
+        //!  type spawns a do-nothing function that should be overridden by
+        //!  inheriting classes to actually accomplish something.  Some of the
+        //!  packet types (defined above) are used only for SENDING information,
+        //!  and thus don't appear here.  If for some reason they ARE received,
+        //!  the "newPacket()" function will be called with the packet type,
+        //!  data, and size.  This can be overridden by inheriting functions.
+        //---------------------------------------------------------------------
+        void newPacket( int packetId, char* data, const int nBytes ) {
+            printf( "ServerSideConnection: packet id is %d size is %d\n", packetId, nBytes );
+            switch( packetId ) {
+                case RELAY_PACKET:
+                    relay( data, nBytes );
+                    break;
+                case RELAY_COMMAND_PACKET:
+                    relayCommand( data, nBytes );
+                    break;
+                case COMMAND_PACKET:
+                    command( data, nBytes );
+                    break;
+                case MULTICAST_SETTINGS_PACKET:
+                    multicastSettings( data, nBytes );
+                    break;
+                case GUISERVER_VERSION:
+                    guiServerVersionRequest();
+                    break;
+                default:
+                    break;
+            }
+        }
+        
         //---------------------------------------------------------------------
         //!  The GUI has requested all known version information for this
         //!  guiServer instance.  This includes the guiServer version itself,
@@ -164,6 +216,12 @@ namespace guiServer {
             }
             globfree( &globbuf );
             
+            //  Send all of the environment variables for this guiServer.  Most of these are
+            //  useless to the client, but there is little harm in sending them all.
+            char** env;
+            for ( env = _envp; *env != 0; ++env )
+                sendPacket( GUISERVER_ENVIRONMENT, *env, strlen( *env ) );
+                
         }
 
         //---------------------------------------------------------------------
@@ -223,6 +281,9 @@ namespace guiServer {
                 case DIFX_MESSAGE_START:
                     startDifx( &G );
                     break;
+    			case DIFX_MESSAGE_STOP:
+    				stopDifx( &G );
+    				break;
     			case DIFX_MESSAGE_FILETRANSFER:
     				difxFileTransfer( &G );
     				break;
@@ -234,6 +295,9 @@ namespace guiServer {
     				break;
     			case DIFX_MESSAGE_MACHINESDEFINITION:
     				machinesDefinition( &G );
+    				break;
+    			case DIFX_MESSAGE_GETDIRECTORY:
+    				//getDirectory( &G );
     				break;
     		    case DIFX_MESSAGE_COMMAND:
     		        relayCommand( data, nBytes );
@@ -319,7 +383,9 @@ namespace guiServer {
             char startCommand[MAX_COMMAND_SIZE];
             char jobName[MAX_COMMAND_SIZE];
             char filebase[MAX_COMMAND_SIZE];
-            int runThread;
+            char inputFile[DIFX_MESSAGE_FILENAME_LENGTH];
+            char difxProgram[DIFX_MESSAGE_FILENAME_LENGTH];
+            int runMonitor;
         };
 
         //-----------------------------------------------------------------------------
@@ -328,9 +394,57 @@ namespace guiServer {
         static void* staticRunDifxThread( void* a ) {
             DifxStartInfo* startInfo = (DifxStartInfo*)a;
             startInfo->ssc->runDifxThread( startInfo );
+            return NULL;
+        }
+        
+        //-----------------------------------------------------------------------------
+        //!  Static function called to start the DiFX monitor thread.
+        //-----------------------------------------------------------------------------	
+        static void* staticRunDifxMonitor( void* a ) {
+            DifxStartInfo* startInfo = (DifxStartInfo*)a;
+            startInfo->ssc->runDifxMonitor( startInfo );
             printf( "thread is done - delete the startInfo structure\n" );
             delete startInfo;
             return NULL;
+        }
+        
+        //---------------------------------------------------------------------
+        //!  Add a job to the list of running jobs.  Jobs are identified by input
+        //!  file name (full path).  These should be unique.
+        //---------------------------------------------------------------------
+        void addRunningJob( std::string inputFile ) {
+            pthread_mutex_lock( &_runningJobsMutex );
+            _runningJobs.push_back( inputFile );
+            pthread_mutex_unlock( &_runningJobsMutex );
+        }
+        
+        //---------------------------------------------------------------------
+        //!  Remove a job from the list of running jobs.
+        //---------------------------------------------------------------------
+        void removeRunningJob( std::string inputFile ) {
+            pthread_mutex_lock( &_runningJobsMutex );
+            bool found = false;
+            for ( std::list<std::string>::iterator i = _runningJobs.begin(); i != _runningJobs.end() && !found; ++i ) {
+                if ( !( i->compare( inputFile ) ) ) {
+                    found = true;
+                    _runningJobs.erase( i );
+                }
+            }
+            pthread_mutex_unlock( &_runningJobsMutex );
+        }
+        
+        //---------------------------------------------------------------------
+        //!  Return whether a job exists in the list.
+        //---------------------------------------------------------------------
+        bool runningJobExists( std::string inputFile ) {
+            pthread_mutex_lock( &_runningJobsMutex );
+            bool found = false;
+            for ( std::list<std::string>::iterator i = _runningJobs.begin(); i != _runningJobs.end() && !found; ++i ) {
+                if ( !( i->compare( inputFile ) ) )
+                    found = true;
+            }
+            pthread_mutex_unlock( &_runningJobsMutex );
+            return found;
         }
 
         //---------------------------------------------------------------------
@@ -338,9 +452,12 @@ namespace guiServer {
         //!  unless otherwise noted.
         //---------------------------------------------------------------------
         void startDifx( DifxMessageGeneric* G );
+        void stopDifx( DifxMessageGeneric* G );
+        void runDifxMonitor( DifxStartInfo* startInfo );  //  in startDifx.cpp
         void runDifxThread( DifxStartInfo* startInfo );  //  in startDifx.cpp
         void difxFileTransfer( DifxMessageGeneric* G );
         void difxFileOperation( DifxMessageGeneric* G );
+        void getDirectory( DifxMessageGeneric* G );
         void vex2difxRun( DifxMessageGeneric* G );
         void machinesDefinition( DifxMessageGeneric* G );
         void diagnostic( const int severity, const char *fmt, ... );
@@ -353,6 +470,8 @@ namespace guiServer {
         network::UDPSocket* _commandSocket;
         pthread_attr_t _monitorAttr;
         pthread_t _monitorId;
+        pthread_attr_t _runAttr;
+        pthread_t _runId;
         bool _relayDifxMulticasts;
         bool _difxAlertsOn;
         bool _diagnosticPacketsOn;
@@ -361,6 +480,9 @@ namespace guiServer {
         int _multicastPort;
         char _clientIP[16];
         char _difxBase[DIFX_MESSAGE_LENGTH];
+        char** _envp;
+        std::list<std::string> _runningJobs;
+        pthread_mutex_t _runningJobsMutex;
         
     };
 

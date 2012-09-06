@@ -28,6 +28,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.ComponentEvent;
 import java.awt.Color;
 import java.awt.Point;
+import java.awt.MouseInfo;
 import java.util.Calendar;
 
 import java.io.BufferedWriter;
@@ -55,6 +56,10 @@ import javax.swing.JPasswordField;
 import javax.swing.JCheckBox;
 import javax.swing.JTextField;
 import javax.swing.JComboBox;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.IndexedPanel;
@@ -355,6 +360,18 @@ public class SystemSettings extends JFrame {
         _guiServerDifxVersion.setBackground( this.getBackground() );
         _guiServerDifxVersion.setBounds( 365, 145, 100, 25 );
         difxControlPanel.add( _guiServerDifxVersion );
+        JButton viewEnvironmentVars = new JButton( "Environment Vars" );
+        viewEnvironmentVars.setBounds( 475, 145, 150, 25 );
+        viewEnvironmentVars.setToolTipText( "Show the environment variables on the DiFX host (as seen by guiServer)." );
+        viewEnvironmentVars.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                if ( _environmentVariablesDisplay == null )
+                    _environmentVariablesDisplay = new EnvironmentVariablesDisplay( MouseInfo.getPointerInfo().getLocation().x, 
+                        MouseInfo.getPointerInfo().getLocation().y );
+                _environmentVariablesDisplay.setVisible( true );
+            }
+        } );
+        difxControlPanel.add( viewEnvironmentVars );
         JLabel guiServerDifxVersionLabel = new JLabel( "built w/DiFX:" );
         guiServerDifxVersionLabel.setBounds( 210, 145, 150, 25 );
         guiServerDifxVersionLabel.setHorizontalAlignment( JLabel.RIGHT );
@@ -1410,6 +1427,8 @@ public class SystemSettings extends JFrame {
         _windowConfiguration.jobEditorMonitorWindowH = 500;
         _windowConfiguration.smartDisplayW = 600;
         _windowConfiguration.smartDisplayH = 300;
+        _windowConfiguration.environmentVariableDisplayW = 600;
+        _windowConfiguration.environmentVariableDisplayH = 300;
         _defaultNames.vexFileSource = "";
         _defaultNames.viaHttpLocation = "";
         _defaultNames.viaFtpLocation = "";
@@ -1594,7 +1613,7 @@ public class SystemSettings extends JFrame {
         addSMARTAttribute( 193, "Load Cycle Count", false, null, null );
         addSMARTAttribute( 194, "Temperature", false, null, null );
         addSMARTAttribute( 195, "Hardware ECC Recovered", null, null, null );
-        addSMARTAttribute( 196, "Reallocation Event Count", false, 0, "The raw value of this attribute shows the total count of attempts to transfer data from reallocated sectors to a spare area. Both successful & unsuccessful attempts are counted.[" );
+        addSMARTAttribute( 196, "Reallocation Event Count", false, 0, "The total count of attempts to transfer data from reallocated sectors to a spare area. Both successful & unsuccessful attempts are counted." );
         addSMARTAttribute( 197, "Current Pending Sector Count", false, null, null );
         addSMARTAttribute( 198, "Uncorrectable Sector Count", false, null, null );
         addSMARTAttribute( 199, "UltraDMA CRC Error Count", false, null, null );
@@ -2113,6 +2132,10 @@ public class SystemSettings extends JFrame {
                 _windowConfiguration.smartDisplayW = doiConfig.getWindowConfigSmartDisplayW();
             if ( doiConfig.getWindowConfigSmartDisplayH() != 0 )
                 _windowConfiguration.smartDisplayH = doiConfig.getWindowConfigSmartDisplayH();
+            if ( doiConfig.getWindowConfigEnvironmentVariableDisplayW() != 0 )
+                _windowConfiguration.environmentVariableDisplayW = doiConfig.getWindowConfigEnvironmentVariableDisplayW();
+            if ( doiConfig.getWindowConfigEnvironmentVariableDisplayH() != 0 )
+                _windowConfiguration.environmentVariableDisplayH = doiConfig.getWindowConfigEnvironmentVariableDisplayH();
             if ( doiConfig.getDefaultNamesVexFileSource() != null )
                 _defaultNames.vexFileSource = doiConfig.getDefaultNamesVexFileSource();
             if ( doiConfig.getDefaultNamesViaHttpLocation() != null )
@@ -2473,6 +2496,8 @@ public class SystemSettings extends JFrame {
         doiConfig.setWindowConfigJobEditorMonitorWindowH( _windowConfiguration.jobEditorMonitorWindowH );
         doiConfig.setWindowConfigSmartDisplayW( _windowConfiguration.smartDisplayW );
         doiConfig.setWindowConfigSmartDisplayH( _windowConfiguration.smartDisplayH );
+        doiConfig.setWindowConfigEnvironmentVariableDisplayW( _windowConfiguration.environmentVariableDisplayW );
+        doiConfig.setWindowConfigEnvironmentVariableDisplayH( _windowConfiguration.environmentVariableDisplayH );
         
         doiConfig.setDefaultNamesVexFileSource( _defaultNames.vexFileSource );
         doiConfig.setDefaultNamesViaHttpLocation( _defaultNames.viaHttpLocation );
@@ -3396,6 +3421,8 @@ public class SystemSettings extends JFrame {
         int jobEditorMonitorWindowH;
         int smartDisplayW;
         int smartDisplayH;
+        int environmentVariableDisplayW;
+        int environmentVariableDisplayH;
     }
     protected WindowConfiguration _windowConfiguration;
     
@@ -3624,5 +3651,130 @@ public class SystemSettings extends JFrame {
             return null;
         return _smartAttributeList.get( id );
     }
+    
+    //  This is a list of environment variables for the guiServer.  They are sent
+    //  when the guiServer is connected.
+    protected Map<String, String> _guiServerEnvironment;
+    
+    /*
+     * Clear all guiServer environment variables.
+     */
+    public void clearGuiServerEnvironment() {
+        if ( _guiServerEnvironment != null )
+            _guiServerEnvironment.clear();
+    }
+    
+    /*
+     * Add a guiServer environment variable.  These are stored in a single string
+     * that needs to be parsed.
+     */
+    public void addGuiServerEnvironment( String newEnv ) {
+        if ( _guiServerEnvironment == null )
+            _guiServerEnvironment = new HashMap<String, String>();
+        int eq = newEnv.indexOf( "=" );
+        String name = newEnv.substring( 0, eq );
+        String val = newEnv.substring( eq + 1, newEnv.length() );
+        _guiServerEnvironment.put( name, val );
+    }
+    
+    /*
+     * Return the String value of an environment variable.
+     */
+    public String getGuiServerEnvironmentVariable( String name ) {
+        return _guiServerEnvironment.get( name );
+    }
+    
+    /*
+     * Class to display a table of environment variables.
+     */
+    public class EnvironmentVariablesDisplay extends JFrame {
+
+        public EnvironmentVariablesDisplay( int x, int y ) {
+            setLookAndFeel();
+            this.setLayout( null );
+            this.setBounds( x, y, windowConfiguration().environmentVariableDisplayW,
+                windowConfiguration().environmentVariableDisplayH );
+            this.getContentPane().setLayout( null );
+            this.setTitle( "DiFX Host Environment Variables" );
+            _this = this;
+            this.addComponentListener( new java.awt.event.ComponentAdapter() {
+                public void componentResized( ComponentEvent e ) {
+                    windowConfiguration().environmentVariableDisplayW = _this.getWidth();
+                    windowConfiguration().environmentVariableDisplayH = _this.getHeight();
+                    newSize();
+                }
+            });
+            _tableModel = new DefaultTableModel();
+            _table = new JTable( _tableModel );
+            _scrollPane = new JScrollPane( _table );
+            this.add( _scrollPane );
+            _tableModel.addColumn( "Variable" );        
+            _tableModel.addColumn( "Setting" );
+            _difxOnly = new JCheckBox( "DIFX" );
+            _difxOnly.setSelected( true );
+            _difxOnly.addActionListener( new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    _difxOnly.setSelected( true );
+                    _all.setSelected( false );
+                    getData();
+                }
+            } );
+            _difxOnly.setBounds( 20, 20, 100, 25 );
+            this.add( _difxOnly );
+            _all = new JCheckBox( "All" );
+            _all.setSelected( true );
+            _all.addActionListener( new ActionListener() {
+                public void actionPerformed( ActionEvent e ) {
+                    _difxOnly.setSelected( false );
+                    _all.setSelected( true );
+                    getData();
+                }
+            } );
+            _all.setBounds( 140, 20, 100, 25 );
+            this.add( _all );
+            getData();
+        }
+
+        @Override
+        public void setBounds( int x, int y, int w, int h ) {
+            super.setBounds( x, y, w, h );
+            newSize();
+        }
+
+        public void newSize() {
+            if ( _scrollPane != null ) {
+                int w = this.getContentPane().getSize().width;
+                int h = this.getContentPane().getSize().height;
+                _scrollPane.setBounds( 0, 60, w, h - 60 );
+            }
+        }
+        
+        public void getData() {
+            while ( _tableModel.getRowCount() > 0 )
+                _tableModel.removeRow( 0 );
+            for ( Iterator<String> iter = _guiServerEnvironment.keySet().iterator(); iter.hasNext(); ) {
+                String key = iter.next();
+                boolean useIt = true;
+                if ( _difxOnly.isSelected() ) {
+                    if ( key.length() > 4 && key.substring( 0, 4 ).contentEquals( "DIFX" ) )
+                        useIt = true;
+                    else
+                        useIt = false;
+                }
+                if ( useIt )
+                    _tableModel.addRow( new Object[]{ key, _guiServerEnvironment.get( key ) } );
+            }
+        }
+        
+        protected EnvironmentVariablesDisplay _this;
+        protected JScrollPane _scrollPane;
+        protected JTable _table;
+        protected DefaultTableModel _tableModel;
+        protected JCheckBox _difxOnly;
+        protected JCheckBox _all;
+
+    }
+    
+    protected EnvironmentVariablesDisplay _environmentVariablesDisplay;
         
 }
