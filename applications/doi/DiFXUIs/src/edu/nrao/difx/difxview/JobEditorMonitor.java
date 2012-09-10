@@ -589,7 +589,7 @@ public class JobEditorMonitor extends JFrame {
      * Send the current machines and thread settings to guiServer to produce .machines
      * and .threads files.
      */
-    public void applyMachinesAction() {
+    public MachinesDefinitionMonitor applyMachinesAction() {
         DiFXCommand command = new DiFXCommand( _settings );
         command.header().setType( "DifxMachinesDefinition" );
         command.mpiProcessId( "-1" );
@@ -667,8 +667,9 @@ public class JobEditorMonitor extends JFrame {
 
         //  Set up a monitor thread to collect and interpret diagnostic messages from
         //  guiServer as it sets up the threads and machine files.
+        MachinesDefinitionMonitor monitor = null;
         if ( _settings.sendCommandsViaTCP() ) {
-            MachinesDefinitionMonitor monitor = new MachinesDefinitionMonitor( monitorPort );
+            monitor = new MachinesDefinitionMonitor( monitorPort );
             monitor.start();
         }
         
@@ -682,7 +683,8 @@ public class JobEditorMonitor extends JFrame {
         } catch ( java.net.UnknownHostException e ) {
             java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
                     e.getMessage() );  //BLAT should be a pop-up
-        }        
+        }    
+        return monitor;
     }
     
     /*
@@ -926,6 +928,21 @@ public class JobEditorMonitor extends JFrame {
     public void headNode( String newVal ) { _headNode.setText( newVal ); }
     
     /*
+     * Simple class to run and monitor the machines files generation routine in
+     * a thread.
+     */
+    protected class ApplyMachinesThenStart extends Thread {
+        @Override
+        public void run() {
+            MachinesDefinitionMonitor machines = applyMachinesAction();
+            while ( machines.isAlive() )
+                try { Thread.sleep( 100 ); } catch ( Exception e ) {}
+            _machinesAppliedByHand = true;
+            startJob();
+        }
+    }
+    
+    /*
      * This function runs the job based on all current settings.  Jobs can be
      * run using a TCP connection to guiServer, or through mk5daemon via UDP.  If
      * using the former, a thread is started to monitor the job progress via a
@@ -933,13 +950,21 @@ public class JobEditorMonitor extends JFrame {
      * instruction is more of a "set and forget" kind of operation.
      */
     public void startJob() {
+        _jobNode.running( true );
+        setState( "Initializing", Color.YELLOW );
+        setProgress( 0 );
+        _jobNode.lockState( false );
         //  Has the user already generated .threads and .machines files (which is
         //  done when the "Apply" button in the Machines List settings is pushed)?
         //  Alternatively, has the use edited and uploaded .machines and .threads
         //  files by hand?  If these things have not been done, the files need to
-        //  be generated before running.
-        if ( !_machinesAppliedByHand )
-            applyMachinesAction();
+        //  be generated before running.  The thread we create will do this and then
+        //  restart the job.
+        if ( !_machinesAppliedByHand ) {
+            ApplyMachinesThenStart applyMachinesThread = new ApplyMachinesThenStart();
+            applyMachinesThread.start();
+            return;
+        }
         DiFXCommand command = new DiFXCommand( _settings );
         command.header().setType( "DifxStart" );
         command.mpiProcessId( "-1" );
@@ -1026,6 +1051,7 @@ public class JobEditorMonitor extends JFrame {
         } catch ( java.net.UnknownHostException e ) {
             java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
                     e.getMessage() );  //BLAT should be a pop-up
+            setState( "Failed Start", Color.RED );
         }
     }
     
@@ -1066,7 +1092,6 @@ public class JobEditorMonitor extends JFrame {
                 
         @Override
         public void run() {
-            _jobNode.running( true );
             //  Open a new server socket and await a connection.  The connection
             //  will timeout after a given number of seconds (nominally 10).
             try {
@@ -1074,7 +1099,6 @@ public class JobEditorMonitor extends JFrame {
                 ssock.setSoTimeout( 10000 );  //  timeout is in millisec
                 try {
                     Socket sock = ssock.accept();
-                    System.out.println( "got socket connection" );
 //                    acceptCallback();
                     //  Turn the socket into a "data stream", which has useful
                     //  functions.
@@ -1085,7 +1109,6 @@ public class JobEditorMonitor extends JFrame {
                     //  by a data length, then data.
                     boolean connected = true;
                     while ( connected ) {
-                        System.out.println( "getting next packet" );
                         //  Read the packet type as an integer.  The packet types
                         //  are defined above (within this class).
                         int packetType = in.readInt();
@@ -1114,20 +1137,16 @@ public class JobEditorMonitor extends JFrame {
                             statusError( "job failed to complete" );
                             statusPanelColor( _statusPanelBackground.darker()  );
                             connected = false;
-                            _state.setText( "FAILED" );
-                            _state.setBackground( Color.RED );
-                            _jobNode.state().setText( "FAILED" );
-                            _jobNode.state().setBackground( Color.RED );
+                            setState( "Failed", Color.RED );
+                            _jobNode.lockState( true );
                         }
                         else if ( packetType == JOB_TERMINATED ) {
                             _messageDisplayPanel.warning( 0, "job monitor", "Job terminated by user." );
                             statusWarning( "job terminated by user" );
                             statusPanelColor( _statusPanelBackground.darker() );
                             connected = false;
-                            _state.setText( "TERMINATED" );
-                            _state.setBackground( Color.RED );
-                            _jobNode.state().setText( "TERMINATED" );
-                            _jobNode.state().setBackground( Color.RED );
+                            setState( "Terminated", Color.RED );
+                            _jobNode.lockState( true );
                         }
                         else if ( packetType == JOB_ENDED_GRACEFULLY ) {
                             _messageDisplayPanel.warning( 0, "job monitor", "Job finished gracefully." );
@@ -1175,6 +1194,7 @@ public class JobEditorMonitor extends JFrame {
                             statusInfo( "DiFX running!" );
                             _messageDisplayPanel.warning( 0, "job monitor", "DiFX started!" );
                             statusPanelColor( Color.GREEN );                            //  turn the frame green!!!!
+                            setState( "Starting", Color.YELLOW );
                         }
                         else if ( packetType == DIFX_MESSAGE ) {
                             if ( data != null )
@@ -1194,6 +1214,7 @@ public class JobEditorMonitor extends JFrame {
                             else
                                 _messageDisplayPanel.error( 0, "job monitor", "" );
                             statusPanelColor( Color.RED );
+                            setState( "DiFX Error", Color.RED );
                         }
                         else if ( packetType == DIFX_COMPLETE ) {
                             statusInfo( "DiFX compete!" );
@@ -1214,11 +1235,35 @@ public class JobEditorMonitor extends JFrame {
 //                _error = "IOException : " + e.toString();
 //                _fileSize = -11;
             }
+            //  We keep the state of this job "running" for a little bit so that we properly
+            //  process any late messages.
+            try { Thread.sleep( 1000 ); } catch ( Exception e ) {}
             _jobNode.running( false );
         }
         
         protected int _port;
         
+    }
+    
+    /*
+     * Set the "state" of this job.  The state appears on both the editor/monitor
+     * and the queue browser line.  It has a background color.
+     */
+    public void setState( String newState, Color newColor ) {
+        _state.setText( newState );
+        _state.setBackground( newColor );
+        _jobNode.state().setText( newState );
+        _jobNode.state().setBackground( newColor );
+        _jobNode.state().updateUI();
+    }
+    
+    /*
+     * Set the "progress" of this job.  Progress appears on both the editor/monitor
+     * and the queue browser line.
+     */
+    public void setProgress( int i ) {
+        _progress.setValue( i );
+        _jobNode.progress().setValue( i );
     }
     
     //  Consume a message for this job.  The source of these messages is mk5daemon
@@ -1234,17 +1279,26 @@ public class JobEditorMonitor extends JFrame {
                         Double.valueOf( difxMsg.getBody().getDifxStatus().getJobstartMJD() ) ) /
                         ( Double.valueOf( difxMsg.getBody().getDifxStatus().getJobstopMJD() ) -
                         Double.valueOf( difxMsg.getBody().getDifxStatus().getJobstartMJD() ) ) ) );
-            else
+            else if ( !difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase( "ending" ) )
                 _progress.setValue( 0 );
-            _state.setText( difxMsg.getBody().getDifxStatus().getState() );
-            if ( _state.getText().equalsIgnoreCase( "done" ) || _state.getText().equalsIgnoreCase( "mpidone" ) ) {
-                _state.setBackground( Color.GREEN );
-                _progress.setValue( 100 );  
-            }
-            else if ( _state.getText().equalsIgnoreCase( "running" ) )
-                _state.setBackground( Color.YELLOW );
-            else {
-                _state.setBackground( Color.LIGHT_GRAY );
+            //  Only change the "state" of this job if it hasn't been "locked" by the GUI.  This
+            //  happens when the GUI detects an error.  If this job is "starting" the state should
+            //  be unlocked - it means another attempt is being made to run it.
+            if ( difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase( "starting" ) )
+                _jobNode.lockState( false );
+            if ( !_jobNode.lockState() ) {
+                _state.setText( difxMsg.getBody().getDifxStatus().getState() );
+                if ( _state.getText().equalsIgnoreCase( "done" ) || _state.getText().equalsIgnoreCase( "mpidone" ) ) {
+                    _state.setBackground( Color.GREEN );
+                    _progress.setValue( 100 );  
+                }
+                else if ( _state.getText().equalsIgnoreCase( "running" ) || _state.getText().equalsIgnoreCase( "starting" )
+                         || _state.getText().equalsIgnoreCase( "ending" ) )
+                    _state.setBackground( Color.YELLOW );
+                else {
+                    _state.setBackground( Color.LIGHT_GRAY );
+                }
+                _state.updateUI();
             }
             List<DifxStatus.Weight> weightList = difxMsg.getBody().getDifxStatus().getWeight();
             //  Create a new list of antennas/weights if one hasn't been created yet.
@@ -1268,6 +1322,8 @@ public class JobEditorMonitor extends JFrame {
     public void pauseJob() {}
     
     public void stopJob() {
+        setState( "Terminated", Color.RED );
+        _jobNode.lockState( true );
         DiFXCommand command = new DiFXCommand( _settings );
         command.header().setType( "DifxStop" );
         command.mpiProcessId( "-1" );

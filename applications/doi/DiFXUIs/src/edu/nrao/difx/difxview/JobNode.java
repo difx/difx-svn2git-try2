@@ -171,6 +171,7 @@ public class JobNode extends QueueBrowserNode {
                 _editorMonitor.setVisible( true );
             }
         });
+        _monitorMenuItem.setEnabled( false );
         _popup.add( _monitorMenuItem );
         _popup.add( new JSeparator() );
         JMenuItem selectMenuItem = new JMenuItem( "Toggle Selection" );
@@ -189,33 +190,35 @@ public class JobNode extends QueueBrowserNode {
         });
         _popup.add( deleteItem );
         _popup.add( new JSeparator() );
-        JMenuItem menuItem8 = new JMenuItem( "Queue" );
-        menuItem8.setToolTipText( "Put this job in the runnable queue." );
-        _popup.add( menuItem8 );
-        JMenuItem menuItem5 = new JMenuItem( "Start" );
-        menuItem5.addActionListener(new ActionListener() {
+//        JMenuItem menuItem8 = new JMenuItem( "Queue" );
+//        menuItem8.setToolTipText( "Put this job in the runnable queue." );
+//        _popup.add( menuItem8 );
+        _startJobItem = new JMenuItem( "Start" );
+        _startJobItem.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 updateEditorMonitor();
                 _editorMonitor.startJob();
             }
         });
-        _popup.add( menuItem5 );
-        JMenuItem menuItem6 = new JMenuItem( "Pause" );
-        menuItem6.addActionListener(new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                updateEditorMonitor();
-                _editorMonitor.pauseJob();
-            }
-        });
-        _popup.add( menuItem6 );
-        JMenuItem menuItem7 = new JMenuItem( "Stop" );
-        menuItem7.addActionListener(new ActionListener() {
+        _startJobItem.setEnabled( false );
+        _popup.add( _startJobItem );
+//        JMenuItem menuItem6 = new JMenuItem( "Pause" );
+//        menuItem6.addActionListener(new ActionListener() {
+//            public void actionPerformed( ActionEvent e ) {
+//                updateEditorMonitor();
+//                _editorMonitor.pauseJob();
+//            }
+//        });
+//        _popup.add( menuItem6 );
+        _stopJobItem = new JMenuItem( "Stop" );
+        _stopJobItem.addActionListener(new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 updateEditorMonitor();
                 _editorMonitor.stopJob();
             }
         });
-        _popup.add( menuItem7 );
+        _stopJobItem.setEnabled( false );
+        _popup.add( _stopJobItem );
     }
     
     @Override
@@ -437,6 +440,9 @@ public class JobNode extends QueueBrowserNode {
                         if ( ext.contentEquals( "input" ) ) {
                             _editorMonitor.inputFileName( fileStr );
                             _editorMonitor.parseInputFile( fileGet.inString() );
+                            _startJobItem.setEnabled( true );
+                            _stopJobItem.setEnabled( true );
+                            _monitorMenuItem.setEnabled( true );
                         }
                         else if ( ext.contentEquals( "calc" ) ) {
                             _editorMonitor.calcFileName( fileStr );
@@ -512,17 +518,26 @@ public class JobNode extends QueueBrowserNode {
                         Double.valueOf( difxMsg.getBody().getDifxStatus().getJobstartMJD() ) ) /
                         ( Double.valueOf( difxMsg.getBody().getDifxStatus().getJobstopMJD() ) -
                         Double.valueOf( difxMsg.getBody().getDifxStatus().getJobstartMJD() ) ) ) );
-            else
+            else if ( !difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase( "ending" ) )
                 _progress.setValue( 0 );
-            _state.setText( difxMsg.getBody().getDifxStatus().getState() );
-            if ( _state.getText().equalsIgnoreCase( "done" ) || _state.getText().equalsIgnoreCase( "mpidone" ) ) {
-                _state.setBackground( Color.GREEN );
-                _progress.setValue( 100 );  
+            //  Only change the "state" of this job if it hasn't been "locked" by the GUI.  This
+            //  happens when the GUI detects an error.  If this job is "starting" the state should
+            //  be unlocked - it means another attempt is being made to run it.
+            if ( difxMsg.getBody().getDifxStatus().getState().equalsIgnoreCase( "starting" ) )
+                lockState( false );
+            if ( !lockState() ) {
+                _state.setText( difxMsg.getBody().getDifxStatus().getState() );
+                if ( _state.getText().equalsIgnoreCase( "done" ) || _state.getText().equalsIgnoreCase( "mpidone" ) ) {
+                    _state.setBackground( Color.GREEN );
+                    _progress.setValue( 100 );  
+                }
+                else if ( _state.getText().equalsIgnoreCase( "running" ) || _state.getText().equalsIgnoreCase( "Starting" ) 
+                        || _state.getText().equalsIgnoreCase( "ending" ) )
+                    _state.setBackground( Color.YELLOW );
+                else
+                    _state.setBackground( Color.LIGHT_GRAY );
+                _state.updateUI();
             }
-            else if ( _state.getText().equalsIgnoreCase( "running" ) )
-                _state.setBackground( Color.YELLOW );
-            else
-                _state.setBackground( Color.LIGHT_GRAY ); 
             List<DifxStatus.Weight> weightList = difxMsg.getBody().getDifxStatus().getWeight();
             //  Create a new list of antennas/weights if one hasn't been created yet.
             if ( _weights == null )
@@ -747,7 +762,15 @@ public class JobNode extends QueueBrowserNode {
         _running = newVal;
     }
     
+    public boolean lockState() {
+        return _lockState;
+    }
+    public void lockState( boolean newVal ) {
+        _lockState = newVal;
+    }
+    
     public ColumnTextArea state() { return _state; }
+    public JProgressBar progress() { return _progress; }
     
     protected PassNode _passNode;
     
@@ -826,5 +849,10 @@ public class JobNode extends QueueBrowserNode {
     protected SystemSettings _settings;
     
     protected boolean _running;
+    protected boolean _lockState;
 //    protected Integer _databaseJobId;
+    
+    protected JMenuItem _startJobItem;
+    protected JMenuItem _stopJobItem;
+
 }

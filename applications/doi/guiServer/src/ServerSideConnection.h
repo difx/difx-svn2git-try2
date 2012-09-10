@@ -29,8 +29,6 @@ namespace guiServer {
 
     class ServerSideConnection : public network::ActivePacketExchange {
     
-        static const int MAX_COMMAND_SIZE = 1024;
-        
         //---------------------------------------------------------------------
         //!  These are the packet types recognized and/or sent by this protocol.
         //---------------------------------------------------------------------
@@ -49,6 +47,8 @@ namespace guiServer {
 
     public:
 
+        static const int MAX_COMMAND_SIZE = 1024;
+        
         ServerSideConnection( network::GenericSocket* sock, const char* clientIP, const char* difxBase, char** envp ) : network::ActivePacketExchange( sock ) {
             _commandSocket = NULL;
             _monitorSocket = NULL;
