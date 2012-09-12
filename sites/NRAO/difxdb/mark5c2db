@@ -9,8 +9,8 @@ from os import getenv, environ, popen, umask, getcwd, system
 
 program = 'mark5c2db'
 author = 'Walter Brisken'
-version = '0.2'
-verdate = '20120706'
+version = '0.4'
+verdate = '20120911'
 
 # Name of the Oracle VLBA legacy database
 databaseName = getenv("VLBA_DB")
@@ -18,9 +18,8 @@ databaseName = getenv("VLBA_DB")
 # Name of the Postgres VLBA database based on EVLA
 newDatabaseName = getenv("VLBAMPTS_DB")
 
-newDb = psycopg2.connect(newDatabaseName)
-
-db = cx_Oracle.connect(databaseName)
+# Name of the Postgres EVLA database
+evlaDatabaseName = getenv("EVLAMPTS_DB")
 
 mjd0 = datetime.datetime(1858, 11, 17, 0, 0)
 
@@ -28,6 +27,10 @@ def usage(pgm):
 	print '%s ver %s  %s  %s\n' % (program, version, author, verdate)
 	print 'A program to populate the legacy VLBA database with Mark5C information.\n'
 	print 'Usage: %s [options] <vex file>\n'
+	print 'Options can be:'
+	print '  -h  or  --help           print help information and quit.'
+	print '  -p  or  --pretend        run in pretend mode (don\'t update the database).'
+	print '  --force                  force insertion even if previous values exist already.'
 	print 'Note! Avoid running this program multiple times for the same experiment.\n'
 	print 'Example: %s bl175s.vex\n' % pgm
 
@@ -101,9 +104,9 @@ def process(monData):
 			s = ''
 
 		if mpt == 'VSN':
-			if dev == 'BANK0':
+			if dev in ['BANK0', 'BANKA']:
 				b = 0
-			elif dev == 'BANK1':
+			elif dev in ['BANK1', 'BANKB']:
 				b = 1
 			else:
 				b = -1
@@ -157,18 +160,19 @@ def process(monData):
 
 	return blocks
 
-def queryMark5C(newDb, startMJD, stopMJD, station, verbose):
+def queryMark5C(db, startMJD, stopMJD, station, verbose):
 	
-	cursor = newDb.cursor()
-	
+	cursor = db.cursor()
+
 	stn = lower(station)
 	if stn == 'y':
 		stn = 'ea'
+
 	hostlist = "'%s-mark5c-1', '%s-mark5c-2'" % (stn, stn)
 	query = "select * from mcdata where hostname IN (%s) and timestamp > %10.4f and timestamp < %10.4f order by timestamp" % (hostlist, startMJD, stopMJD)
-	query = "SELECT devicename,monpointname,timestamp,monpointvalue,monpointstr FROM mcdata WHERE hostname IN (%s) AND ((devicename IN ('BANK0', 'BANK1') AND monpointname='VSN') OR (devicename = 'MARK5C' AND monpointname IN ('ScanLabel', 'RecordingRate', 'ActiveBank', 'RecordState'))) AND timestamp BETWEEN %10.4f AND %10.4f ORDER BY timestamp" % (hostlist, startMJD, stopMJD)
+	query = "SELECT devicename,monpointname,timestamp,monpointvalue,monpointstr FROM mcdata WHERE hostname IN (%s) AND ((devicename IN ('BANK0', 'BANK1', 'BANKA', 'BANKB') AND monpointname='VSN') OR (devicename = 'MARK5C' AND monpointname IN ('ScanLabel', 'RecordingRate', 'ActiveBank', 'RecordState'))) AND timestamp BETWEEN %10.4f AND %10.4f ORDER BY timestamp" % (hostlist, startMJD, stopMJD)
 
-	print 'Executing: %s', query
+	print 'Executing: %s' % query
 
 	cursor.execute(query)
 	monData = cursor.fetchall()
@@ -182,20 +186,58 @@ def queryMark5C(newDb, startMJD, stopMJD, station, verbose):
 
 	return monData
 	
-if len(argv) != 2:
-	print 'Invalid comamnd line.  See help information below.\n'
+# --------------------
+
+if len(argv) < 2:
+	print 'Invalid comamnd line: at least one argument is required.\nSee help information below.\n'
 	usage(argv[0])
 	exit(0)
 
-if argv[1] in ['--help', '-h']:
+vexFile = None
+doForce = False
+doPretend = False
+
+for a in argv[1:]:
+	if a in ['--help', '-h']:
+		usage(argv[0])
+		exit(0)
+	elif a in ['--force']:
+		doForce = True
+	elif a in ['--pretend', '-p']:
+		doPretend = True
+	elif vexFile == None:
+		vexFile = a
+	else:
+		print 'Invalid comamnd line: only one vex file can be supplied.\nSee help information below.\n'
+		usage(argv[0])
+		exit(0)
+
+if vexFile == None:
+	print 'Invalid comamnd line: no vex file supplied.\nSee help information below.\n'
 	usage(argv[0])
 	exit(0)
-	
 
-obsCode, obsSeg, stationTimes = vexPeek(argv[1], 1)
+print 'Connecting to the new database:'
+newDb = psycopg2.connect(newDatabaseName)
+print 'Connecting to the legacy database:'
+db = cx_Oracle.connect(databaseName)
+
+
+
+obsCode, obsSeg, stationTimes = vexPeek(vexFile, 1)
+
+if len(obsSeg) == 0:
+	obsSeg = '  '	# yes : two spaces!
 
 stns = stationTimes.keys()
 stns.sort()
+
+if 'Y' in stns:
+	print 'Connecting to the EVLA database:'
+	if evlaDatabaseName == None:
+		print 'Error: evlaDatabaseName not set.  Please check for env. var. EVLAMPTS_DB'
+		exit(0);
+	evlaDb = psycopg2.connect(evlaDatabaseName)
 
 cursor = db.cursor()
 
@@ -203,7 +245,13 @@ for s in stns:
 	print '\nProcessing station %s' % s
 	startMJD = stationTimes[s][0]
 	stopMJD = stationTimes[s][1]
-	monData = queryMark5C(newDb, startMJD-0.1, stopMJD+0.1, s, 1)
+
+	if s == 'Y':
+		db = evlaDb
+	else:
+		db = newDb
+
+	monData = queryMark5C(db, startMJD-0.1, stopMJD+0.1, s, 1)
 
 	blocks = process(monData)
 
@@ -215,8 +263,18 @@ for s in stns:
 
 		vsn = zero2oh(b[2])
 
+		if doForce:
+			cmd = "DELETE from TAPE WHERE PROPOSAL='%s' and SEGMENT='%s' and STAID='%s' and EPOCH=to_date('%d/%02d/%02d:%02d:%02d:%02d', 'yyyy/mm/dd:hh24:mi:ss')" % (obsCode, obsSeg, upper(s), dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+			print cmd
+			if not doPretend:
+				cursor.execute(cmd)
+
 		cmd = "INSERT into TAPE VALUES ('%s', '%s', '%s', to_date('%d/%02d/%02d:%02d:%02d:%02d', 'yyyy/mm/dd:hh24:mi:ss'), '%s', '%d')" % (obsCode, obsSeg, upper(s), dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, vsn, b[3]+2)
 		print cmd
-		cursor.execute(cmd)
+		if not doPretend:
+			cursor.execute(cmd)
 
-db.commit()
+if not doPretend:
+	db.commit()
+else:
+	print 'None of this actually happened because pretend mode was used.'
