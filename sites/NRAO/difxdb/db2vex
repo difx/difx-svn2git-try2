@@ -17,8 +17,8 @@ except:
 
 program = 'db2vex'
 author = 'Walter Brisken'
-version = '0.14'
-verdate = '20120708'
+version = '0.15'
+verdate = '20120912'
 
 tsysFile = 'tsys'
 
@@ -253,73 +253,6 @@ def getTapesFromDBbyTime(db, startMJD, stopMJD, stn, verbose):
 	tapes = cursor.fetchall()
 	return tapes
 
-def getTapesFromNewDBbyTime(newDb, startMJD, stopMJD, isMark5C, stations, verbose):
-
-	# select time range that encompases a bit more than the whole experiment
-	# better to be overly inclusive here!
-	unitName = ['A', '1', '2', 'usno'][isMark5C]
-	
-	start = startMJD - 0.1
-	stop  = stopMJD  + 0.1
-
-	tapes = []
-	
-	cursor = newDb.cursor()
-	for station in stations:
-		stn = lower(station)
-		if stn == 'y':
-			stn = 'ea'
-		if isMark5C == 3:
-			hostlist = "'%s-mark5c-usno'" % stn
-		else:
-			hostlist = "'%s-mark5c-1', '%s-mark5c-2'" % (stn, stn)
-		query = "select * from mcdata where hostname IN (%s) and monpointname='VSN' and devicename IN ('BANK0', 'BANK1') and timestamp > %10.4f and timestamp < %10.4f order by timestamp" % (hostlist, start, stop)
-		if verbose > 0:
-			print 'Executing database query: %s' % query
-		cursor.execute(query)
-		list = cursor.fetchall()
-		if verbose > 0:
-			print '%d rows found' % len(list)
-		nbad = 0
-		for l in list:
-			if verbose > 1:
-				print l
-			if l[1] == 'BANK0':
-				unit = 0
-			elif l[1] == 'BANK1':
-				unit = 1
-			else:
-				nbad += 1;
-				continue
-			s = split(l[0], '-')
-			if len(s) != 3:		# hostname should look something like nl-mark5c-1
-				nbad += 1
-				continue
-			stn = s[0]
-
-	# below here: implement the 1-6 bank system.  Maybe use this in the future
-	#		if s[2] == '1':
-	#			pass
-	#		elif s[2] == '2':
-	#			unit += 2
-	#		elif lower(s[2]) == 'usno':
-	#			unit += 4
-	#		else:
-	#			nbad += 1
-	#			continue
-			
-	# for now, just assign 0 or 1, but only look at relevant units
-			if s[2] != unitName:
-				continue
-
-			# make old database entry look like a new one
-			row = ['', '', upper(station), l[3], l[6], unit + 4]	# add 4 to match old nomenclature
-			tapes.append(row)
-
-	if nbad > 0:
-		print 'Warning: getTapesFromNewDBbyTime: %d records had something wrong with them!' % nbad
-	
-	return tapes
 
 def getActiveBankFromNewDB(newDb, startMJD, stopMJD, isMark5C, stations, verbose):
 	unitName = ['A', '1', '2', 'usno'][isMark5C]
@@ -392,9 +325,9 @@ def processMark5C(monData):
 			s = ''
 
 		if mpt == 'VSN':
-			if dev == 'BANK0':
+			if dev in ['BANK0', 'BANKA']:
 				b = 0
-			elif dev == 'BANK1':
+			elif dev in ['BANK1', 'BANKB']:
 				b = 1
 			else:
 				b = -1
@@ -448,15 +381,15 @@ def processMark5C(monData):
 
 	return blocks
 
-def queryMark5C(newDb, startMJD, stopMJD, station, verbose):
+def queryMark5C(db, startMJD, stopMJD, station, verbose):
 	
-	cursor = newDb.cursor()
+	cursor = db.cursor()
 	
 	stn = lower(station)
 	if stn == 'y':
 		stn = 'ea'
 	hostlist = "'%s-mark5c-1', '%s-mark5c-2'" % (stn, stn)
-	query = "SELECT devicename,monpointname,timestamp,monpointvalue,monpointstr FROM mcdata WHERE hostname IN (%s) AND ((devicename IN ('BANK0', 'BANK1') AND monpointname='VSN') OR (devicename = 'MARK5C' AND monpointname IN ('ScanLabel', 'RecordingRate', 'ActiveBank', 'RecordState'))) AND timestamp BETWEEN %10.4f AND %10.4f ORDER BY timestamp" % (hostlist, startMJD, stopMJD)
+	query = "SELECT devicename,monpointname,timestamp,monpointvalue,monpointstr FROM mcdata WHERE hostname IN (%s) AND ((devicename IN ('BANK0', 'BANK1', 'BANKA', 'BANKB') AND monpointname='VSN') OR (devicename = 'MARK5C' AND monpointname IN ('ScanLabel', 'RecordingRate', 'ActiveBank', 'RecordState'))) AND timestamp BETWEEN %10.4f AND %10.4f ORDER BY timestamp" % (hostlist, startMJD, stopMJD)
 
 	if verbose > 1:
 		print 'Executing: %s' % query
@@ -811,6 +744,8 @@ def processVexFile(vexFile, force, verbose, preobs, vsnProjectCode, isMark5C, fs
 
 	if isMark5C and newDB:
 		newDb = psycopg2.connect(newDatabaseName)
+
+	vlaDb = None
 	
 	# fetch a bunch of stuff from the database
 	if vsnProjectCode != None:
@@ -838,10 +773,16 @@ def processVexFile(vexFile, force, verbose, preobs, vsnProjectCode, isMark5C, fs
 			stn = upper(s)
 			blocks = []
 			if stn in ['EA', 'Y', 'Y1', 'Y27']:
+				if vlaDatabaseName == None:
+					print 'Error: need to access VLA database, but environment variable EVLAMPTS_DB is not set.'
+					exit(0)
 				stn = 'Y'
-				# FIXME: access EVLA database here
+				if vlaDb == None:
+					vlaDb = psycopg2.connect(vlaDatabaseName)
+				monData = queryMark5C(vlaDb, experTimes[0]-0.1, experTimes[1]+0.1, stn, verbose)
+				blocks = processMark5C(monData)
 			elif isMark5C:
-				monData = queryMark5C(newDb, experTimes[0]-0.1, experTimes[1]+0.1, stn, 1)
+				monData = queryMark5C(newDb, experTimes[0]-0.1, experTimes[1]+0.1, stn, verbose)
 				blocks = processMark5C(monData)
 			else:
 				tapes = getTapesFromDBbyTime(db, experTimes[0], experTimes[1], stn, verbose)
