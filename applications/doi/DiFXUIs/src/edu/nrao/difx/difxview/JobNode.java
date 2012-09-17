@@ -64,6 +64,7 @@ public class JobNode extends QueueBrowserNode {
         _state = new ColumnTextArea();
         _state.justify( ColumnTextArea.CENTER );
         _state.setText( "not started" );
+        _state.setToolTipText( "" );
         this.add( _state );
         _progress = new JProgressBar( 0, 100 );
         _progress.setValue( 0 );
@@ -494,10 +495,17 @@ public class JobNode extends QueueBrowserNode {
      */
     static boolean testJobMessage( DifxMessage difxMsg ) {
         if ( ( difxMsg.getBody().getDifxStatus() != null ) ||
-             ( difxMsg.getBody().getDifxAlert() != null ) )
+             ( difxMsg.getBody().getDifxAlert() != null ) ) {
+            //  Eliminate some identifiers that are not jobs.  The only trouble with this is
+            //  a user theoretically *can* name their jobs one of these things, but if they do
+            //  do they get what they deserve.
+            if ( difxMsg.getHeader().getIdentifier().equalsIgnoreCase( "mk5dir" ) )
+                return false;
+            if ( difxMsg.getHeader().getIdentifier().equalsIgnoreCase( "mk5cp" ) )
+                return false;
             return true;
-        else
-            return false;
+        }
+        return false;
     }
     
     public void consumeMessage( DifxMessage difxMsg ) {
@@ -528,14 +536,26 @@ public class JobNode extends QueueBrowserNode {
             if ( !lockState() ) {
                 _state.setText( difxMsg.getBody().getDifxStatus().getState() );
                 if ( _state.getText().equalsIgnoreCase( "done" ) || _state.getText().equalsIgnoreCase( "mpidone" ) ) {
-                    _state.setBackground( Color.GREEN );
+                    if ( _editorMonitor.doneWithErrors() ) {
+                        _state.setBackground( Color.ORANGE );
+                        _state.setText( "complete w/errors");
+                        _state.setToolTipText( "The job completed with some errors." );
+                    }
+                    else {
+                        _state.setBackground( Color.GREEN );
+                        _state.setToolTipText( "The job completed gracefully." );
+                    }
                     _progress.setValue( 100 );  
                 }
                 else if ( _state.getText().equalsIgnoreCase( "running" ) || _state.getText().equalsIgnoreCase( "Starting" ) 
-                        || _state.getText().equalsIgnoreCase( "ending" ) )
+                        || _state.getText().equalsIgnoreCase( "ending" ) ) {
                     _state.setBackground( Color.YELLOW );
-                else
+                    _state.setToolTipText( "" );
+                }
+                else {
                     _state.setBackground( Color.LIGHT_GRAY );
+                    _state.setToolTipText( "" );
+                }
                 _state.updateUI();
             }
             List<DifxStatus.Weight> weightList = difxMsg.getBody().getDifxStatus().getWeight();

@@ -25,6 +25,7 @@
     <xsd:element name="difxMachinesDefinition" type="difxMachinesDefinition"></xsd:element>
     <xsd:element name="difxFileTransfer" type="difxFileTransfer"></xsd:element>
     <xsd:element name="difxFileOperation" type="difxFileOperation"></xsd:element>
+    <xsd:element name="difxGetDirectory" type="difxGetDirectory"></xsd:element>
     <xsd:element name="difxVex2difxRun" type="difxVex2difxRun"></xsd:element>
     <xsd:element name="difxCommand" type="difxCommand"></xsd:element>
     <xsd:element name="doiResourceConfig" type="doiResourceConfig"></xsd:element>
@@ -64,6 +65,7 @@
                 <xsd:element ref="difxStop"/>
                 <xsd:element ref="difxFileTransfer"/>
                 <xsd:element ref="difxFileOperation"/>
+                <xsd:element ref="difxGetDirectory"/>
                 <xsd:element ref="difxVex2difxRun"/>
                 <xsd:element ref="difxSmart"/>
                 <xsd:element ref="difxMachinesDefinition"/>
@@ -168,6 +170,8 @@
                 <xsd:element ref="windowConfigSmartDisplayH"/>
                 <xsd:element ref="windowConfigEnvironmentVariableDisplayW"/>
                 <xsd:element ref="windowConfigEnvironmentVariableDisplayH"/>
+                <xsd:element ref="windowConfigDirectoryDisplayW"/>
+                <xsd:element ref="windowConfigDirectoryDisplayH"/>
 
                 <xsd:element ref="defaultNamesVexFileSource"/>
                 <xsd:element ref="defaultNamesViaHttpLocation"/>
@@ -183,7 +187,7 @@
                 <xsd:element ref="defaultNamesChooseBasedOnModule"/>
                 <xsd:element ref="defaultNamesPhaseCalInt"/>
                 <xsd:element ref="defaultNamesToneSelection"/>
-                <xsd:element ref="defaultNamesVSNFormat"/>
+                <xsd:element ref="defaultNamesDataFormat"/>
                 
                 <xsd:element ref="suppressUnknownMessageWarnings"/>
                 <xsd:element ref="dontIdentifyMark5sByPattern"/>
@@ -338,6 +342,8 @@
     <xsd:element name="windowConfigSmartDisplayH" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigEnvironmentVariableDisplayW" type="xsd:int"></xsd:element>
     <xsd:element name="windowConfigEnvironmentVariableDisplayH" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigDirectoryDisplayW" type="xsd:int"></xsd:element>
+    <xsd:element name="windowConfigDirectoryDisplayH" type="xsd:int"></xsd:element>
                 
     <xsd:element name="defaultNamesVexFileSource" type="xsd:string"></xsd:element>
     <xsd:element name="defaultNamesViaHttpLocation" type="xsd:string"></xsd:element>
@@ -353,7 +359,7 @@
     <xsd:element name="defaultNamesChooseBasedOnModule" type="xsd:boolean"></xsd:element>
     <xsd:element name="defaultNamesPhaseCalInt" type="xsd:int"></xsd:element>
     <xsd:element name="defaultNamesToneSelection" type="xsd:string"></xsd:element>
-    <xsd:element name="defaultNamesVSNFormat" type="xsd:string"></xsd:element>
+    <xsd:element name="defaultNamesDataFormat" type="xsd:string"></xsd:element>
 
     <xsd:element name="suppressUnknownMessageWarnings" type="xsd:boolean"></xsd:element>
     <xsd:element name="dontIdentifyMark5sByPattern" type="xsd:boolean"></xsd:element>
@@ -593,6 +599,17 @@
             <xsd:element name="arg" type="xsd:string"></xsd:element>
             <xsd:element name="address" type="xsd:string"></xsd:element>
             <xsd:element name="port" type="xsd:int"></xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="difxGetDirectory">
+        <xsd:sequence>
+            <xsd:element name="difxVersion" type="xsd:string"></xsd:element>
+            <xsd:element name="mark5" type="xsd:string"></xsd:element>
+            <xsd:element name="vsn" type="xsd:string"></xsd:element>
+            <xsd:element name="address" type="xsd:string"></xsd:element>
+            <xsd:element name="port" type="xsd:int"></xsd:element>
+            <xsd:element name="generateNew" type="xsd:int"></xsd:element>
         </xsd:sequence>
     </xsd:complexType>
 

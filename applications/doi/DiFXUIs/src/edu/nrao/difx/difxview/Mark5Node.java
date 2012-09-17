@@ -36,6 +36,7 @@ public class Mark5Node extends ProcessorNode {
         super( name, settings );
         _smartMonitor = smartMonitor;
         _smartDisplayList = new ArrayList<SMARTDisplay>();
+        _directoryDisplayList = new ArrayList<DirectoryDisplay>();
     }
     
     @Override
@@ -170,15 +171,8 @@ public class Mark5Node extends ProcessorNode {
                 }
             });
             add( smartItem );
-            JMenuItem getDirItem = new JMenuItem( "Generate Directory" );
-            getDirItem.addActionListener(new ActionListener() {
-                public void actionPerformed( ActionEvent e ) {
-                    generateDirectory( _vsn );
-                }
-            });
-            add( getDirItem );
-            JMenuItem viewDirItem = new JMenuItem( "View/Edit Directory" );
-            getDirItem.addActionListener(new ActionListener() {
+            JMenuItem viewDirItem = new JMenuItem( "Module Directory" );
+            viewDirItem.addActionListener(new ActionListener() {
                 public void actionPerformed( ActionEvent e ) {
                     displayDirectory( _vsn );
                 }
@@ -209,15 +203,8 @@ public class Mark5Node extends ProcessorNode {
                 }
             });
             add( smartItem );
-            JMenuItem getDirItem = new JMenuItem( "Generate Directory" );
-            getDirItem.addActionListener(new ActionListener() {
-                public void actionPerformed( ActionEvent e ) {
-                    generateDirectory( _vsn );
-                }
-            });
-            add( getDirItem );
-            JMenuItem viewDirItem = new JMenuItem( "View/Edit Directory" );
-            getDirItem.addActionListener(new ActionListener() {
+            JMenuItem viewDirItem = new JMenuItem( "Module Directory" );
+            viewDirItem.addActionListener(new ActionListener() {
                 public void actionPerformed( ActionEvent e ) {
                     displayDirectory( _vsn );
                 }
@@ -248,12 +235,26 @@ public class Mark5Node extends ProcessorNode {
         smartDisplay.setVisible( true );
     }
     
-    public void generateDirectory( String vsn ) {
-        
-    }
-    
+    /*
+     * Display the directory for a VSN.  This window will also allow the user to
+     * regenerate it.
+     */
     public void displayDirectory( String vsn ) {
-        
+        //  Check the list of DirectoryDisplays we have generated already to see if this one
+        //  is available.    
+        DirectoryDisplay directoryDisplay = null;
+        for ( Iterator<DirectoryDisplay> iter = _directoryDisplayList.iterator(); iter.hasNext(); ) {
+            DirectoryDisplay thisDisplay = iter.next();
+            if ( vsn.contentEquals( thisDisplay.vsn() ) )
+                directoryDisplay = thisDisplay;
+        }
+        //  If the display isn't available, create a new one.
+        if ( directoryDisplay == null ) {
+            directoryDisplay = new DirectoryDisplay( MouseInfo.getPointerInfo().getLocation().x, 
+                MouseInfo.getPointerInfo().getLocation().y, _settings, this, vsn );
+            _directoryDisplayList.add( directoryDisplay );
+        }
+        directoryDisplay.setVisible( true );
     }
     
     @Override
@@ -432,5 +433,6 @@ public class Mark5Node extends ProcessorNode {
     
     protected SMARTMonitor _smartMonitor;
     protected ArrayList<SMARTDisplay> _smartDisplayList;
+    protected ArrayList<DirectoryDisplay> _directoryDisplayList;
     
 }

@@ -1824,13 +1824,13 @@ public class ExperimentEditor extends JFrame {
                     str += "{\n";
                     str += "   phaseCalInt = " + antenna.phaseCalInt() + "\n";
                     str += "   toneSelection = " + antenna.toneSelection() + "\n";
+                    str += "   format = " + antenna.dataFormat() + "\n";
                     if ( antenna.useVsn() ) {
                         if ( antenna.vsnSource() != null && antenna.vsnSource().length() > 0 )
                             str += "   vsn = " + antenna.vsnSource() + "\n";
                         else {
                             // Warning, perhaps?
                         }
-                        str += "   format = " + antenna.vsnFormat() + "\n";
                     }
                     else if ( antenna.useFile() ) {
                         ArrayList<String> fileList = antenna.fileList();
@@ -2009,7 +2009,7 @@ public class ExperimentEditor extends JFrame {
                                 if ( antenna.useVsn() ) {
                                     if ( antenna.vsnSource() != null && antenna.vsnSource().length() > 0 ) {
                                         //  Try to locate the directory list.  If it does not
-                                        //  exist, see if the use wants to continue.
+                                        //  exist, see if the user wants to continue.
                                         try {
                                             int exs = DiFXCommand_ls.fileExists( 4, antenna.dirListLocation(), _settings );
                                             if ( exs == DiFXCommand_ls.FILE_DOESNT_EXIST ) {

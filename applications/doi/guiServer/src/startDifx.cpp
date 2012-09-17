@@ -304,13 +304,15 @@ void ServerSideConnection::runDifxThread( DifxStartInfo* startInfo ) {
     diagnostic( WARNING, "executing: %s\n", startInfo->startCommand );
     printf( "%s\n", startInfo->startCommand );
 	startInfo->jobMonitor->sendPacket( JobMonitorConnection::STARTING_DIFX, NULL, 0 );
-	bool noErrors = true;
+	bool noErrors = true;  //  track whether any errors occured
+	bool stillGoing = true;  //  track whether job still ran despite errors
     ExecuteSystem* executor = new ExecuteSystem( startInfo->startCommand );
     if ( executor->pid() > -1 ) {
         while ( int ret = executor->nextOutput( message, DIFX_MESSAGE_LENGTH ) ) {
             if ( ret == 1 ) { // stdout
                 diagnostic( INFORMATION, "%s... %s", startInfo->difxProgram, message );
                 startInfo->jobMonitor->sendPacket( JobMonitorConnection::DIFX_MESSAGE, message, strlen( message ) );
+                stillGoing = true;
             }
             else {            // stderr
                 //  Only report errors if this is still a running job!
@@ -322,9 +324,10 @@ void ServerSideConnection::runDifxThread( DifxStartInfo* startInfo ) {
                         startInfo->jobMonitor->sendPacket( JobMonitorConnection::DIFX_WARNING, message, strlen( message ) );
                     }
                     else {
-                            diagnostic( ERROR, "%s... %s", startInfo->difxProgram, message );
-    	                    startInfo->jobMonitor->sendPacket( JobMonitorConnection::DIFX_ERROR, message, strlen( message ) );
-    	                    noErrors = false;
+                        diagnostic( ERROR, "%s... %s", startInfo->difxProgram, message );
+	                    startInfo->jobMonitor->sendPacket( JobMonitorConnection::DIFX_ERROR, message, strlen( message ) );
+	                    noErrors = false;
+	                    stillGoing = false;
                     }
                 }
             }
@@ -335,6 +338,17 @@ void ServerSideConnection::runDifxThread( DifxStartInfo* startInfo ) {
                 difxMessageSendDifxStatus2( startInfo->jobName, DIFX_STATE_MPIDONE, "" );
         		startInfo->jobMonitor->sendPacket( JobMonitorConnection::DIFX_COMPLETE, NULL, 0 );
                 startInfo->jobMonitor->sendPacket( JobMonitorConnection::JOB_ENDED_GRACEFULLY, NULL, 0 );
+            } else {
+                diagnostic( WARNING, "%s terminated by user", startInfo->difxProgram );
+                startInfo->jobMonitor->sendPacket( JobMonitorConnection::JOB_TERMINATED, NULL, 0 );
+            }
+		}
+        else if ( stillGoing ) {
+            if ( runningJobExists( startInfo->inputFile ) ) {
+                diagnostic( WARNING, "%s complete", startInfo->difxProgram );
+                difxMessageSendDifxStatus2( startInfo->jobName, DIFX_STATE_MPIDONE, "" );
+        		startInfo->jobMonitor->sendPacket( JobMonitorConnection::DIFX_COMPLETE, NULL, 0 );
+                startInfo->jobMonitor->sendPacket( JobMonitorConnection::JOB_ENDED_WITH_ERRORS, NULL, 0 );
             } else {
                 diagnostic( WARNING, "%s terminated by user", startInfo->difxProgram );
                 startInfo->jobMonitor->sendPacket( JobMonitorConnection::JOB_TERMINATED, NULL, 0 );

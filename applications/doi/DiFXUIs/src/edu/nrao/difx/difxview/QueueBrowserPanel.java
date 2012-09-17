@@ -645,7 +645,7 @@ public class QueueBrowserPanel extends TearOffPanel {
     
     /*
      * Process a DiFX Status message.  These messages come from processors (usually the
-     * head node, seemingly) when jobs are running.
+     * head node, seemingly) when jobs are running.  
      */
     protected void processDifxStatusMessage( DifxMessage difxMsg ) {
         serviceUpdate( difxMsg );
@@ -664,7 +664,9 @@ public class QueueBrowserPanel extends TearOffPanel {
     
     /*
      * Parse a difx message relayed to us from the data model.  This (presumably)
-     * contains some information about a job.
+     * contains some information about a job.  Some difx messages are caused by actions
+     * not related to job processing - file copying, building directories, etc.  These
+     * we ignore.
      */
     public void serviceUpdate( DifxMessage difxMsg ) {
         

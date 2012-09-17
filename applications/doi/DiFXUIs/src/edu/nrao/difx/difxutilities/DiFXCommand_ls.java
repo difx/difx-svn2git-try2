@@ -37,7 +37,7 @@ public class DiFXCommand_ls extends DiFXCommand {
         DifxFileOperation ls = this.factory().createDifxFileOperation();
         ls.setPath( filter );
         ls.setOperation( "ls" );
-        ls.setArg( "-d -p" );
+        ls.setArg( "-d -p --dereference-command-line-symlink-to-dir" );
         //  The "data" node is assumed to be the same as the DiFX "control" node
         //  (at least for now).
         ls.setDataNode( settings.difxControlAddress() );

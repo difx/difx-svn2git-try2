@@ -79,6 +79,7 @@ import javax.swing.JFrame;
 
 import edu.nrao.difx.difxdatabase.QueueDBConnection;
 import edu.nrao.difx.difxutilities.GuiServerConnection;
+import edu.nrao.difx.difxcontroller.DiFXMessageProcessor;
 
 import java.sql.ResultSet;
 
@@ -1429,6 +1430,8 @@ public class SystemSettings extends JFrame {
         _windowConfiguration.smartDisplayH = 300;
         _windowConfiguration.environmentVariableDisplayW = 600;
         _windowConfiguration.environmentVariableDisplayH = 300;
+        _windowConfiguration.directoryDisplayW = 600;
+        _windowConfiguration.directoryDisplayH = 500;
         _defaultNames.vexFileSource = "";
         _defaultNames.viaHttpLocation = "";
         _defaultNames.viaFtpLocation = "";
@@ -1451,7 +1454,7 @@ public class SystemSettings extends JFrame {
         _defaultNames.phaseCalInt = 1;
         _defaultNames.correlationSubintNS = 160000000;
         _defaultNames.toneSelection = "smart";
-        _defaultNames.vsnFormat = "Mark5B";
+        _defaultNames.dataFormat = "Mark5B";
         _jobColumnSpecs.networkActivity.show = true;
         _jobColumnSpecs.name.show = true;
         _jobColumnSpecs.progressBar.show = true;
@@ -1821,8 +1824,8 @@ public class SystemSettings extends JFrame {
     public void phaseCalInt( int newVal ) { _defaultNames.phaseCalInt = newVal; }
     public String toneSelection() { return _defaultNames.toneSelection; }
     public void toneSelection( String newVal ) { _defaultNames.toneSelection = newVal; }
-    public String vsnFormat() { return _defaultNames.vsnFormat; }
-    public void vsnFormat( String newVal ) { _defaultNames.vsnFormat = newVal; }
+    public String dataFormat() { return _defaultNames.dataFormat; }
+    public void dataFormat( String newVal ) { _defaultNames.dataFormat = newVal; }
     
     /*
      * Set the look and feel for a new JFrame.  This needs to be called before any
@@ -2136,6 +2139,10 @@ public class SystemSettings extends JFrame {
                 _windowConfiguration.environmentVariableDisplayW = doiConfig.getWindowConfigEnvironmentVariableDisplayW();
             if ( doiConfig.getWindowConfigEnvironmentVariableDisplayH() != 0 )
                 _windowConfiguration.environmentVariableDisplayH = doiConfig.getWindowConfigEnvironmentVariableDisplayH();
+            if ( doiConfig.getWindowConfigDirectoryDisplayW() != 0 )
+                _windowConfiguration.directoryDisplayW = doiConfig.getWindowConfigDirectoryDisplayW();
+            if ( doiConfig.getWindowConfigDirectoryDisplayH() != 0 )
+                _windowConfiguration.directoryDisplayH = doiConfig.getWindowConfigDirectoryDisplayH();
             if ( doiConfig.getDefaultNamesVexFileSource() != null )
                 _defaultNames.vexFileSource = doiConfig.getDefaultNamesVexFileSource();
             if ( doiConfig.getDefaultNamesViaHttpLocation() != null )
@@ -2172,8 +2179,8 @@ public class SystemSettings extends JFrame {
             _defaultNames.phaseCalInt = doiConfig.getDefaultNamesPhaseCalInt();
             if ( doiConfig.getDefaultNamesToneSelection() != null )
                 _defaultNames.toneSelection = doiConfig.getDefaultNamesToneSelection();
-            if ( doiConfig.getDefaultNamesVSNFormat() != null )
-                _defaultNames.vsnFormat = doiConfig.getDefaultNamesVSNFormat();
+            if ( doiConfig.getDefaultNamesDataFormat() != null )
+                _defaultNames.dataFormat = doiConfig.getDefaultNamesDataFormat();
             
             if ( doiConfig.getEopURL() != null )
                 _eopURL.setText( doiConfig.getEopURL() );
@@ -2498,6 +2505,8 @@ public class SystemSettings extends JFrame {
         doiConfig.setWindowConfigSmartDisplayH( _windowConfiguration.smartDisplayH );
         doiConfig.setWindowConfigEnvironmentVariableDisplayW( _windowConfiguration.environmentVariableDisplayW );
         doiConfig.setWindowConfigEnvironmentVariableDisplayH( _windowConfiguration.environmentVariableDisplayH );
+        doiConfig.setWindowConfigDirectoryDisplayW( _windowConfiguration.directoryDisplayW );
+        doiConfig.setWindowConfigDirectoryDisplayH( _windowConfiguration.directoryDisplayH );
         
         doiConfig.setDefaultNamesVexFileSource( _defaultNames.vexFileSource );
         doiConfig.setDefaultNamesViaHttpLocation( _defaultNames.viaHttpLocation );
@@ -2522,7 +2531,7 @@ public class SystemSettings extends JFrame {
         
         doiConfig.setDefaultNamesPhaseCalInt( _defaultNames.phaseCalInt );
         doiConfig.setDefaultNamesToneSelection( _defaultNames.toneSelection );
-        doiConfig.setDefaultNamesVSNFormat( _defaultNames.vsnFormat );
+        doiConfig.setDefaultNamesDataFormat( _defaultNames.dataFormat );
             
         doiConfig.setEopURL( _eopURL.getText() );
         doiConfig.setLeapSecondsURL( _leapSecondsURL.getText() );
@@ -2822,6 +2831,12 @@ public class SystemSettings extends JFrame {
     }
     public QueueBrowserPanel queueBrowser() {
         return _queueBrowser;
+    }
+    public void difxMessageProcessor( DiFXMessageProcessor newProcessor ) {
+        _difxMessageProcessor = newProcessor;
+    }
+    public DiFXMessageProcessor difxMessageProcessor() {
+        return _difxMessageProcessor;
     }
     public QueueBrowserSettings queueBrowserSettings() { return _queueBrowserSettings; }
     public WindowConfiguration windowConfiguration() { return _windowConfiguration; }
@@ -3423,6 +3438,8 @@ public class SystemSettings extends JFrame {
         int smartDisplayH;
         int environmentVariableDisplayW;
         int environmentVariableDisplayH;
+        int directoryDisplayW;
+        int directoryDisplayH;
     }
     protected WindowConfiguration _windowConfiguration;
     
@@ -3452,7 +3469,7 @@ public class SystemSettings extends JFrame {
         int phaseCalInt;
         int correlationSubintNS;
         String toneSelection;
-        String vsnFormat;
+        String dataFormat;
     }
     protected DefaultNames _defaultNames;
     
@@ -3540,6 +3557,7 @@ public class SystemSettings extends JFrame {
     HardwareMonitorPanel _hardwareMonitor;
     QueueBrowserPanel _queueBrowser;
     MessageDisplayPanel _messageCenter;
+    DiFXMessageProcessor _difxMessageProcessor;
     
     //  These lists contain "status" values that can be applied to different things.
     //  Nominally they come from the database, but in the absense of the database the

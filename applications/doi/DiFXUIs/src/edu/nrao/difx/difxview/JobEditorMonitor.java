@@ -1089,6 +1089,7 @@ public class JobEditorMonitor extends JFrame {
         protected final int DIFX_COMPLETE                    = 117;
         protected final int DATA_FILE_SIZE                   = 118;
         protected final int JOB_FAILED                       = 119;
+        protected final int JOB_ENDED_WITH_ERRORS            = 120;
                 
         @Override
         public void run() {
@@ -1155,8 +1156,12 @@ public class JobEditorMonitor extends JFrame {
                             statusPanelColor( _statusPanelBackground.darker() );
                         }
                         else if ( packetType == JOB_STARTED ) {
+                            _doneWithErrors = false;
                             _messageDisplayPanel.message( 0, "job monitor", "Job started by guiServer." );
                             statusInfo( "job started" );
+                        }
+                        else if ( packetType == JOB_ENDED_WITH_ERRORS ) {
+                            _doneWithErrors = true;
                         }
                         else if ( packetType == PARAMETER_CHECK_IN_PROGRESS ) {
                             _messageDisplayPanel.message( 0, "job monitor", "Checking parameters." );
@@ -1289,7 +1294,12 @@ public class JobEditorMonitor extends JFrame {
             if ( !_jobNode.lockState() ) {
                 _state.setText( difxMsg.getBody().getDifxStatus().getState() );
                 if ( _state.getText().equalsIgnoreCase( "done" ) || _state.getText().equalsIgnoreCase( "mpidone" ) ) {
-                    _state.setBackground( Color.GREEN );
+                    if ( _doneWithErrors )  {
+                        _state.setText( "Complete with Errors" );
+                        _state.setBackground( Color.ORANGE );
+                    }
+                    else
+                        _state.setBackground( Color.GREEN );
                     _progress.setValue( 100 );  
                 }
                 else if ( _state.getText().equalsIgnoreCase( "running" ) || _state.getText().equalsIgnoreCase( "starting" )
@@ -2055,6 +2065,8 @@ public class JobEditorMonitor extends JFrame {
     
     protected JProgressBar _progress;
     protected ColumnTextArea _state;
-
+    
+    protected boolean _doneWithErrors;
+    public boolean doneWithErrors() { return _doneWithErrors; }
     
 }

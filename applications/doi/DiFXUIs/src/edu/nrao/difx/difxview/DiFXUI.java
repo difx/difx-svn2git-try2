@@ -80,6 +80,7 @@ public class DiFXUI extends JFrame implements WindowListener {
         //  the queue dealing with messages in order.
         _multicastMonitor = new MulticastMonitor( _systemSettings );
         _difxMessageProcessor = new DiFXMessageProcessor( _systemSettings );
+        _systemSettings.difxMessageProcessor( _difxMessageProcessor );
         _multicastMonitor.difxMessageProcessor( _difxMessageProcessor );
         _difxMessageProcessor.start();
         _multicastMonitor.start();

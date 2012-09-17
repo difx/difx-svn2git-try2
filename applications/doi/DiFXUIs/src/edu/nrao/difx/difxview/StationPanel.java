@@ -26,12 +26,19 @@ import java.awt.Cursor;
 import java.util.Iterator;
 import java.util.ArrayList;
 
+import edu.nrao.difx.difxutilities.DiFXCommand;
+import edu.nrao.difx.xmllib.difxmessage.DifxGetDirectory;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.event.PopupMenuListener;
 import javax.swing.event.PopupMenuEvent;
 
-import java.net.UnknownHostException;
+import java.io.DataInputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
+
 import mil.navy.usno.widgetlib.NodeBrowserScrollPane;
 import mil.navy.usno.widgetlib.IndexedPanel;
 
@@ -73,8 +80,67 @@ public class StationPanel extends IndexedPanel {
         _dataSourcePanel.drawFrame( false );
         _dataSourcePanel.resizeOnTopBar( true );
         _contentPane.addNode( _dataSourcePanel );
+        //  The data format applies to all data sources.
+        String defaultdataFormat = _settings.dataFormat();
+        _dataFormat = new JComboBox();
+        _dataFormat.setBounds( 200, 30, 180, 25 );
+        _dataFormat.setToolTipText( "Format of the data, regardless of source." );
+        _dataFormat.setEditable( true );
+        //  This little bit causes a typed-in item to be treated as a format.
+        _dataFormat.getEditor().addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                //  If not already in the list of VSNs, add this name.
+                if ( !_settings.inModuleFormatList( (String)_dataFormat.getEditor().getItem() ) ) {
+                    if ( ((String)_dataFormat.getEditor().getItem()).length() > 0 )
+                        _settings.addModuleFormat( (String)_dataFormat.getEditor().getItem() );
+                }
+                dispatchChangeCallback();
+            }
+        });
+        _dataFormat.setBackground( Color.WHITE );
+        _dataFormat.addActionListener( new ActionListener() {
+            public void actionPerformed( ActionEvent e ) {
+                dispatchChangeCallback();
+            }
+        });
+        //  Put current items in the popup menu and set the current selection to match the
+        //  default.
+        int index = 0;
+        int selectionIndex = 0;
+        for ( Iterator<String> iter2 = _settings.moduleFormatList().iterator(); iter2.hasNext(); ) {
+            String thisItem = iter2.next();
+            _dataFormat.addItem( thisItem );
+            if ( thisItem.contentEquals( defaultdataFormat ) )
+                selectionIndex = index;
+            ++index;
+        }
+        _dataFormat.setSelectedIndex( selectionIndex );
+        //  This causes the popup menu to be rebuilt each time the button is hit.
+        //  Hopefully this is quick!
+        _dataFormat.addPopupMenuListener( new PopupMenuListener() {
+            public void popupMenuWillBecomeVisible( PopupMenuEvent e ) {
+                //  Save the current item so we can make it the choice of the new, rebuilt
+                //  popup.
+                String currentItem = dataFormat();
+                _dataFormat.removeAllItems();
+                for ( Iterator<String> iter = _settings.moduleFormatList().iterator(); iter.hasNext(); )
+                    _dataFormat.addItem( iter.next() );
+                _dataFormat.setSelectedItem( currentItem );
+            }
+            public void popupMenuCanceled( PopupMenuEvent e ) {
+                //System.out.println( "canceled" );
+            }
+            public void popupMenuWillBecomeInvisible( PopupMenuEvent e ) {
+                //System.out.println( "make invisible" );
+            }
+        });
+        _dataSourcePanel.add( _dataFormat );
+        JLabel dataFormatLabel = new JLabel( "Data Format: " );
+        dataFormatLabel.setBounds( 100, 30, 95, 25 );
+        dataFormatLabel.setHorizontalAlignment( JLabel.RIGHT );
+        _dataSourcePanel.add( dataFormatLabel );
         _vsnCheck = new JCheckBox( "" );
-        _vsnCheck.setBounds( 200, 30, 25, 25 );
+        _vsnCheck.setBounds( 200, 60, 25, 25 );
         _vsnCheck.setSelected( false );
         _vsnCheck.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent evt ) {
@@ -84,11 +150,11 @@ public class StationPanel extends IndexedPanel {
         } );
         _dataSourcePanel.add( _vsnCheck );
         JLabel vsnLabel = new JLabel( "Module: " );
-        vsnLabel.setBounds( 100, 30, 95, 25 );
+        vsnLabel.setBounds( 100, 60, 95, 25 );
         vsnLabel.setHorizontalAlignment( JLabel.RIGHT );
         _dataSourcePanel.add( vsnLabel );
         _vsnList = new JComboBox();
-        _vsnList.setBounds( 230, 30, 100, 25 );
+        _vsnList.setBounds( 230, 60, 150, 25 );
         _vsnList.setToolTipText( "VSN of module containing data for this antenna." );
         _vsnList.setEditable( true );
         //  This little bit causes a typed-in item to be treated as a module name.
@@ -100,97 +166,46 @@ public class StationPanel extends IndexedPanel {
                     if ( ((String)_vsnList.getEditor().getItem()).length() > 0 )
                         _settings.addDataSource( (String)_vsnList.getEditor().getItem(), "VSN", "hardware" );
                 }
-                dispatchChangeCallback();
+
+                //dispatchChangeCallback();
             }
         });
         _vsnList.setBackground( Color.WHITE );
         _vsnList.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _dataSourcePanel.name( "Data Source: " + (String)_vsnList.getSelectedItem() );
-                dispatchChangeCallback();
+                getDirectory();
+                //dispatchChangeCallback();
             }
         });
         _dataSourcePanel.add( _vsnList );
         _vsnList.setEnabled( true );
-        String defaultVSNFormat = _settings.vsnFormat();
-        _vsnFormat = new JComboBox();
-        _vsnFormat.setBounds( 335, 30, 180, 25 );
-        _vsnFormat.setToolTipText( "Module format." );
-        _vsnFormat.setEditable( true );
-        //  This little bit causes a typed-in item to be treated as a format.
-        _vsnFormat.getEditor().addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                //  If not already in the list of VSNs, add this name.
-                if ( !_settings.inModuleFormatList( (String)_vsnFormat.getEditor().getItem() ) ) {
-                    if ( ((String)_vsnFormat.getEditor().getItem()).length() > 0 )
-                        _settings.addModuleFormat( (String)_vsnFormat.getEditor().getItem() );
-                }
-                dispatchChangeCallback();
-            }
-        });
-        _vsnFormat.setBackground( Color.WHITE );
-        _vsnFormat.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                dispatchChangeCallback();
-            }
-        });
-        //  Put current items in the popup menu and set the current selection to match the
-        //  default.
-        int index = 0;
-        int selectionIndex = 0;
-        for ( Iterator<String> iter2 = _settings.moduleFormatList().iterator(); iter2.hasNext(); ) {
-            String thisItem = iter2.next();
-            _vsnFormat.addItem( thisItem );
-            if ( thisItem.contentEquals( defaultVSNFormat ) )
-                selectionIndex = index;
-            ++index;
-        }
-        _vsnFormat.setSelectedIndex( selectionIndex );
-        //  This causes the popup menu to be rebuilt each time the button is hit.
-        //  Hopefully this is quick!
-        _vsnFormat.addPopupMenuListener( new PopupMenuListener() {
-            public void popupMenuWillBecomeVisible( PopupMenuEvent e ) {
-                //  Save the current item so we can make it the choice of the new, rebuilt
-                //  popup.
-                String currentItem = vsnFormat();
-                _vsnFormat.removeAllItems();
-                for ( Iterator<String> iter = _settings.moduleFormatList().iterator(); iter.hasNext(); )
-                    _vsnFormat.addItem( iter.next() );
-                _vsnFormat.setSelectedItem( currentItem );
-            }
-            public void popupMenuCanceled( PopupMenuEvent e ) {
-                //System.out.println( "canceled" );
-            }
-            public void popupMenuWillBecomeInvisible( PopupMenuEvent e ) {
-                //System.out.println( "make invisible" );
-            }
-        });
-        _dataSourcePanel.add( _vsnFormat );
-        _vsnFormat.setEnabled( true );
         _dirListLocation = new SaneTextField();
-        _dirListLocation.setToolTipText( "Location on the DiFX Host of the file containing a directory listing for this module." );
-        _dirListLocation.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                _dataSourcePanel.name( "Data Source: " + (String)_vsnList.getSelectedItem() );
-                _settings.defaultNames().dirListLocation = _dirListLocation.getText();
-            }
-        });
-        _dirListLocation.setText( _settings.defaultNames().dirListLocation );
-        _dirListLocation.addActionListener( new ActionListener() {
-            public void actionPerformed( ActionEvent e ) {
-                dispatchChangeCallback();
-            }
-        });
+        _dirListLocation.setToolTipText( "Location on the Mark5 of the file containing a directory listing for this module." );
+//        _dirListLocation.addActionListener( new ActionListener() {
+//            public void actionPerformed( ActionEvent e ) {
+//                _dataSourcePanel.name( "Data Source: " + (String)_vsnList.getSelectedItem() );
+//                _settings.defaultNames().dirListLocation = _dirListLocation.getText();
+//            }
+//        });
+//        _dirListLocation.setText( _settings.defaultNames().dirListLocation );
+        _dirListLocation.setEditable( false );
+        _dirListLocation.setText( "" );
+//        _dirListLocation.addActionListener( new ActionListener() {
+//            public void actionPerformed( ActionEvent e ) {
+//                dispatchChangeCallback();
+//            }
+//        });
         _dataSourcePanel.add( _dirListLocation );
-        JLabel dirListLabel = new JLabel( "Listing:" );
-        dirListLabel.setBounds( 525, 30, 55, 25 );
+        JLabel dirListLabel = new JLabel( "Directory:" );
+        dirListLabel.setBounds( 390, 60, 85, 25 );
         dirListLabel.setHorizontalAlignment( JLabel.RIGHT );
         _dataSourcePanel.add( dirListLabel );
         Iterator<SystemSettings.DataSource> iter = _settings.listDataSources( "VSN" ).iterator();
         for ( ; iter.hasNext(); )
             _vsnList.addItem( iter.next().name );
         _fileCheck = new JCheckBox( "" );
-        _fileCheck.setBounds( 200, 80, 25, 25 );
+        _fileCheck.setBounds( 200, 120, 25, 25 );
         _fileCheck.setSelected( false );
         _fileCheck.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent evt ) {
@@ -200,7 +215,7 @@ public class StationPanel extends IndexedPanel {
         } );
         _dataSourcePanel.add( _fileCheck );
         JLabel fileLabel = new JLabel( "Files: " );
-        fileLabel.setBounds( 100, 80, 95, 25 );
+        fileLabel.setBounds( 100, 120, 95, 25 );
         fileLabel.setHorizontalAlignment( JLabel.RIGHT );
         _dataSourcePanel.add( fileLabel );
         _fileFilter = new SaneTextField();
@@ -216,10 +231,10 @@ public class StationPanel extends IndexedPanel {
         _dataSourcePanel.add( _fileList );
         JLabel fileFilterLabel = new JLabel( "Filter:" );
         fileFilterLabel.setHorizontalAlignment( JLabel.RIGHT );
-        fileFilterLabel.setBounds( 195, 80, 80, 25 );
+        fileFilterLabel.setBounds( 195, 120, 80, 25 );
         _dataSourcePanel.add( fileFilterLabel );
         _eVLBICheck = new JCheckBox( "" );
-        _eVLBICheck.setBounds( 200, 55, 25, 25 );
+        _eVLBICheck.setBounds( 200, 90, 25, 25 );
         _eVLBICheck.setSelected( false );
         _eVLBICheck.addActionListener( new ActionListener() {
             public void actionPerformed( ActionEvent evt ) {
@@ -229,7 +244,7 @@ public class StationPanel extends IndexedPanel {
         } );
         _dataSourcePanel.add( _eVLBICheck );
         JLabel eVLBILabel = new JLabel( "E-Transfer: " );
-        eVLBILabel.setBounds( 100, 55, 95, 25 );
+        eVLBILabel.setBounds( 100, 90, 95, 25 );
         eVLBILabel.setHorizontalAlignment( JLabel.RIGHT );
         _dataSourcePanel.add( eVLBILabel );
         //  Default setup.  This should come from the SystemSettings class so
@@ -371,16 +386,14 @@ public class StationPanel extends IndexedPanel {
         _fileCheck.setSelected( false );
         _eVLBICheck.setSelected( false );
         _vsnList.setEnabled( false );
-        _vsnFormat.setEnabled( false );
         _dirListLocation.setEnabled( false );
         _fileFilter.setEnabled( false );
         _fileList.setVisible( false );
-        _dataSourcePanel.staticHeight( 100 );
+        _dataSourcePanel.staticHeight( 135 );
         //  Then turn appropriate stuff back on.
         if ( selector == _vsnCheck ) {
             _vsnCheck.setSelected( true );
             _vsnList.setEnabled( true );
-            _vsnFormat.setEnabled( true );
             _dirListLocation.setEnabled( true );
             _dataSourcePanel.name( "Data Source: " + (String)_vsnList.getSelectedItem() );
         }
@@ -389,7 +402,7 @@ public class StationPanel extends IndexedPanel {
             _dataSourcePanel.name( "Data Source: " + "files " + _fileFilter.getText().trim() + "*" );
             _fileFilter.setEnabled( true );
             _fileList.setVisible( true );
-            _dataSourcePanel.staticHeight( 230 );
+            _dataSourcePanel.staticHeight( 265 );
         }
         else if ( selector == _eVLBICheck ) {
             _eVLBICheck.setSelected( true );
@@ -520,9 +533,9 @@ public class StationPanel extends IndexedPanel {
      * Change things to match a new width.
      */
     public void newWidth( int w ) {
-        _fileFilter.setBounds( 280, 80, w - 305, 25 );
-        _fileList.setBounds( 230, 110, w - 255, 120 );
-        _dirListLocation.setBounds( 585, 30, w - 610, 25 );
+        _fileFilter.setBounds( 280, 120, w - 305, 25 );
+        _fileList.setBounds( 230, 155, w - 255, 120 );
+        _dirListLocation.setBounds( 480, 60, w - 505, 25 );
         _contentPane.setBounds( 0, 20, w - 2, _contentPane.dataHeight() );
     }
 
@@ -535,7 +548,11 @@ public class StationPanel extends IndexedPanel {
         final Cursor cursor = this.getCursor();
         final IndexedPanel _this = this;
         this.setCursor( Cursor.getPredefinedCursor( Cursor.WAIT_CURSOR ) );
-        DiFXCommand_ls ls = new DiFXCommand_ls( _fileFilter.getText().trim() + "*", _settings );
+        DiFXCommand_ls ls = null;
+        if ( _fileFilter.getText().endsWith( "*" ) )
+            ls = new DiFXCommand_ls( _fileFilter.getText().trim(), _settings );
+        else
+            ls = new DiFXCommand_ls( _fileFilter.getText().trim() + "*", _settings );
         ls.addEndListener( new ActionListener() {
             public void actionPerformed( ActionEvent e ) {
                 _this.setCursor( cursor );
@@ -551,12 +568,19 @@ public class StationPanel extends IndexedPanel {
                         int i = 0;
                         while ( commonString.regionMatches( 0, newStr, 0, i ) )
                             ++i;
-                        commonString = commonString.substring( 0, i + 1 );
+                        if ( i > 0 )
+                            commonString = commonString.substring( 0, i - 1 );
+                        else
+                            commonString = "";
                     }
                     //  The common string becomes the new contents of the filter...
                     _fileFilter.setText( commonString );
                     _fileFilter.setCaretPosition( commonString.length() );
-                    _dataSource.setText( "files " + _fileFilter.getText().trim() + "*" );
+                    if ( newList.size() > 1 ) {
+                        _dataSourcePanel.name( "files " + _fileFilter.getText().trim() + "*" );
+                    }
+                    else
+                        _dataSourcePanel.name( "files " + _fileFilter.getText().trim() );
                 }
                 dispatchChangeCallback();
             }
@@ -615,6 +639,8 @@ public class StationPanel extends IndexedPanel {
         //  know its a file.
         if ( newFile.charAt( newFile.length() - 1 ) != '/' )
             _fileList.addNode( new FileListItem( newFile, sourceNode, true ) );
+        else
+            _fileList.addNode( new FileListItem( newFile, sourceNode, false ) );
     }
 
     /*
@@ -655,7 +681,7 @@ public class StationPanel extends IndexedPanel {
     public boolean useFile() { return _fileCheck.isSelected(); }
     public boolean useEVLBI() { return _eVLBICheck.isSelected(); }
     public String vsnSource() { return (String)_vsnList.getSelectedItem(); }
-    public String vsnFormat() { return (String)_vsnFormat.getSelectedItem(); }
+    public String dataFormat() { return (String)_dataFormat.getSelectedItem(); }
     public String toneSelection() { return (String)_toneSelection.getSelectedItem(); }
     public String dirListLocation() { return _dirListLocation.getText(); }
     public int phaseCalInt() { return _phaseCalInt.intValue(); }
@@ -703,12 +729,178 @@ public class StationPanel extends IndexedPanel {
         }
     }
 
+    /*
+     * Get the full path to a directory for the current VSN.  This will be done in a thread.
+     * This is a limited version of what the DirectoryDisplay does.
+     */
+    public void getDirectory() {
+        if ( vsnHost( (String)_vsnList.getSelectedItem() ) == null ) {
+            _dirListLocation.setText( "no Mark5 for VSN" );
+            _dirListLocation.setForeground( Color.RED );
+            return;
+        }
+            
+        //  Construct a Get Directory command.
+        DiFXCommand command = new DiFXCommand( _settings );
+        command.header().setType( "DifxGetDirectory" );
+        command.mpiProcessId( "-1" );
+        command.identifier( "gui" );
+        int monitorPort = 0;
+        DifxGetDirectory cmd = command.factory().createDifxGetDirectory();
+        cmd.setMark5( vsnHost( (String)_vsnList.getSelectedItem() ) );
+        cmd.setVsn( (String)_vsnList.getSelectedItem() );
+        cmd.setDifxVersion( _settings.difxVersion() );
+
+        // If we are using the TCP connection, set the address and port for diagnostic
+        // reporting.
+        if ( _settings.sendCommandsViaTCP() ) {
+            try {
+                cmd.setAddress( java.net.InetAddress.getLocalHost().getHostAddress() );
+            } catch ( java.net.UnknownHostException e ) {
+            }
+            monitorPort = _settings.newDifxTransferPort();
+            cmd.setPort( monitorPort );
+        }
+        
+        //  Set up a monitor thread to collect and interpret diagnostic messages from
+        //  guiServer as it sets up the threads and machine files.
+        GetDirectoryMonitor monitor = null;
+        if ( _settings.sendCommandsViaTCP() ) {
+            monitor = new GetDirectoryMonitor( monitorPort );
+            monitor.start();
+        }
+        
+        // -- Create the XML defined messages and process through the system
+        command.body().setDifxGetDirectory( cmd );
+        try {
+            //command.sendPacket( _settings.guiServerConnection().COMMAND_PACKET );
+            command.send();
+        } catch ( java.net.UnknownHostException e ) {
+            java.util.logging.Logger.getLogger("global").log(java.util.logging.Level.SEVERE, null,
+                    e.getMessage() );  //BLAT should be a pop-up
+        }    
+    }
+    
+    /*
+     * Thread to receive information from a "get directory" request.  Here we are only
+     * interested in the full path name and whether the request fails.  A more complete
+     * use of the available information is done in the DirectoryDisplay class.
+     */
+    protected class GetDirectoryMonitor extends Thread {
+        
+        public GetDirectoryMonitor( int port ) {
+            _dirListLocation.setText( "" );
+            _dirListLocation.setForeground( Color.GREEN );
+            _port = port;
+        }
+        
+        //  Information packets - most we ignore.
+        protected final int GETDIRECTORY_STARTED                = 301;
+        protected final int GETDIRECTORY_COMPLETED              = 302;
+        protected final int GETDIRECTORY_FULLPATH               = 303;
+        protected final int GETDIRECTORY_FAILED                 = 304;
+        protected final int MPIRUN_ERROR                        = 305;
+        protected final int NO_ENVIRONMENT_VARIABLE             = 306;
+        protected final int GETDIRECTORY_DATE                   = 307;
+        protected final int FILE_NOT_FOUND                      = 308;
+        protected final int GETDIRECTORY_FILESTART              = 309;
+        protected final int GETDIRECTORY_FILEDATA               = 310;
+        
+        @Override
+        public void run() {
+            //  Open a new server socket and await a connection.  The connection
+            //  will timeout after a given number of seconds (nominally 10).
+            try {
+                ServerSocket ssock = new ServerSocket( _port );
+                ssock.setSoTimeout( 10000 );  //  timeout is in millisec
+                try {
+                    Socket sock = ssock.accept();
+                    //  Turn the socket into a "data stream", which has useful
+                    //  functions.
+                    DataInputStream in = new DataInputStream( sock.getInputStream() );
+                    
+                    //  Loop collecting diagnostic packets from the guiServer.  These
+                    //  are identified by an initial integer, and then are followed
+                    //  by a data length, then data.
+                    boolean connected = true;
+                    while ( connected ) {
+                        //  Read the packet type as an integer.  The packet types
+                        //  are defined above (within this class).
+                        int packetType = in.readInt();
+                        //  Read the size of the incoming data (bytes).
+                        int packetSize = in.readInt();
+                        //  Read the data (as raw bytes)
+                        byte [] data = null;
+                        if ( packetSize > 0 ) {
+                            data = new byte[packetSize];
+                            in.readFully( data );
+                        }
+                        //  Interpret the packet type.
+                        if ( packetType == GETDIRECTORY_STARTED ) {
+                            connected = true;
+                        }
+                        else if ( packetType == GETDIRECTORY_COMPLETED ) {
+                            connected = false;
+                        }
+                        else if ( packetType == GETDIRECTORY_FULLPATH ) {
+                            _dirListLocation.setText( new String( data ) );
+                            _dirListLocation.setForeground( Color.BLACK );
+                        }
+                        else if ( packetType == GETDIRECTORY_FAILED ) {
+                        }
+                        else if ( packetType == MPIRUN_ERROR ) {
+                        }
+                        else if ( packetType == NO_ENVIRONMENT_VARIABLE ) {
+                            _dirListLocation.setText( "No MARK5_DIR_PATH environment variable on " + vsnHost( (String)_vsnList.getSelectedItem() ) );
+                            _dirListLocation.setForeground( Color.RED );
+                        }
+                        else if ( packetType == GETDIRECTORY_DATE ) {
+                        }
+                        else if ( packetType == FILE_NOT_FOUND ) {
+                            _dirListLocation.setText( "File not found on " + vsnHost( (String)_vsnList.getSelectedItem() ) );
+                            _dirListLocation.setForeground( Color.RED );
+                        }
+                        else if ( packetType == GETDIRECTORY_FILESTART ) {
+                        }
+                        else if ( packetType == GETDIRECTORY_FILEDATA ) {
+                        }
+                    }
+                    sock.close();
+                    dispatchChangeCallback();
+                } catch ( SocketTimeoutException e ) {
+                }
+                ssock.close();
+            } catch ( java.io.IOException e ) {
+                e.printStackTrace();
+            }
+        }
+        
+        protected int _port;
+        
+    }
+    
+    /*
+     * From a VSN string, get the Mark5 that holds it, if available.
+     */
+    public String vsnHost( String VSN ) {
+        for ( Iterator<BrowserNode> iter = _settings.hardwareMonitor().mk5Modules().children().iterator();
+                iter.hasNext(); ) {
+            Mark5Node thisModule = (Mark5Node)(iter.next());
+            if ( thisModule.bankAVSN().trim().contentEquals( VSN ) ||
+                 thisModule.bankBVSN().trim().contentEquals( VSN ) ) {
+                //  Found it!
+                return thisModule.name();
+            }
+        }
+        return null;
+    }
+    
     protected JCheckBox _useCheck;
     protected JCheckBox _vsnCheck;
     protected JCheckBox _fileCheck;
     protected JCheckBox _eVLBICheck;
     protected JComboBox _vsnList;
-    protected JComboBox _vsnFormat;
+    protected JComboBox _dataFormat;
     protected JLabel _dataSource;
     protected EventListenerList _changeListeners;
     protected SaneTextField _fileFilter;

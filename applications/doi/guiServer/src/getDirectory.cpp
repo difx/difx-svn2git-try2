@@ -9,7 +9,7 @@
 #include <ServerSideConnection.h>
 #include <sys/statvfs.h>
 #include <network/TCPClient.h>
-#include <JobMonitorConnection.h>
+#include <network/ActivePacketExchange.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -39,167 +39,173 @@ void ServerSideConnection::getDirectory( DifxMessageGeneric* G ) {
     char mark5[DIFX_MESSAGE_PARAM_LENGTH];
     char vsn[DIFX_MESSAGE_PARAM_LENGTH];
     char address[DIFX_MESSAGE_PARAM_LENGTH];
+    char fullPath[DIFX_MESSAGE_FILENAME_LENGTH];
+	char difxVersion[DIFX_MESSAGE_VERSION_LENGTH];
+            char creationDate[DIFX_MESSAGE_FILENAME_LENGTH];
     int port;
-    int generateNow;
+    int generateNew;
+    const char* mpiWrapper;
+    network::ActivePacketExchange* packetExchange;
+    
+    static const int GETDIRECTORY_STARTED                = 301;
+    static const int GETDIRECTORY_COMPLETED              = 302;
+    static const int GETDIRECTORY_FULLPATH               = 303;
+    static const int GETDIRECTORY_FAILED                 = 304;
+    static const int MPIRUN_ERROR                        = 305;
+    static const int NO_ENVIRONMENT_VARIABLE             = 306;
+    static const int GETDIRECTORY_DATE                   = 307;
+    static const int FILE_NOT_FOUND                      = 308;
+    static const int GETDIRECTORY_FILESTART              = 309;
+    static const int GETDIRECTORY_FILEDATA               = 310;
 	
 	//  Cast the message to a GetDirectory message, then make a copy of all
 	//  parameters included.  We are entering a fork and we can't depend on the
 	//  structure not being over-written.
 	S = &G->body.getDirectory;
-	strncpy( mark5, S.mark5, DIFX_MESSAGE_PARAM_LENGTH );
-	strncpy( vsn, S.vsn, DIFX_MESSAGE_PARAM_LENGTH );
-	strncpy( address, S.address, DIFX_MESSAGE_PARAM_LENGTH );
-	port = S.port;
-	generateNow = S.generateNow;
+	strncpy( mark5, S->mark5, DIFX_MESSAGE_PARAM_LENGTH );
+	strncpy( vsn, S->vsn, DIFX_MESSAGE_PARAM_LENGTH );
+	strncpy( address, S->address, DIFX_MESSAGE_PARAM_LENGTH );
+	strncpy( difxVersion, S->difxVersion, DIFX_MESSAGE_VERSION_LENGTH );
+	port = S->port;
+	generateNew = S->generateNew;
 	
+	//  Open a TCP socket connection to the server that should be running for us on the
+    //  host that requested this directory information (the GUI, presumably).  This socket is used
+    //  for diagnostic messages and to show progress on this specific job.  It can
+    //  also be used for some rudimentary control of the job.
+    network::TCPClient* guiSocket = new network::TCPClient( S->address, S->port );
+    guiSocket->waitForConnect();
+    //  Create a Job Monitor Connection out of this new socket if it connected properly.
+    //  If it did not connect, we need to bail out now.
+    if ( guiSocket->connected() ) {
+        packetExchange = new network::ActivePacketExchange( guiSocket );
+        packetExchange->sendPacket( GETDIRECTORY_STARTED, NULL, 0 );
+    }
+    else {
+        diagnostic( ERROR, "client socket connection from guiServer to GUI failed - unable to start job" );
+        return;
+    }
+    
+    //  Option to run a different version of mpirun.
+	if( S->mpiWrapper[0] )
+	    mpiWrapper = S->mpiWrapper;
+	else
+		mpiWrapper = "mpirun";
+
 	//  Fork a process to do everything from here.
 	signal( SIGCHLD, SIG_IGN );
 	childPid = fork();
 	if( childPid == 0 ) {
-	    //  Open a TCP socket connection to the server that should be running for us on the
-	    //  remote host.
-	    int sockfd;
-	    struct sockaddr_in servaddr;
-	    sockfd = socket( AF_INET, SOCK_STREAM, 0 );
-	    bzero( &servaddr, sizeof( servaddr ) );
-	    servaddr.sin_family = AF_INET;
-	    servaddr.sin_port = htons( port );
-	    inet_pton( AF_INET, address, &servaddr.sin_addr );
-  	    int filesize = connect( sockfd, (const sockaddr*)&servaddr, sizeof( servaddr ) );
-  	    
-  	    //  Assuming the socket connection was successful, write the file contents to the socket.
-  	    if ( filesize == 0 ) {
-        	//snprintf( message, DIFX_MESSAGE_LENGTH, "Client address: %s   port: %d - connection looks good", S->address, S->port );
-        	//printf( "%s\n", message );
-        	//difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_WARNING );
-        	//  Get the number of bytes we expect.
-        	int n = 0;
-        	fd_set rfds;
-            struct timeval tv;
-        	int rn = 0;
-        	int trySec = 5;
-        	while ( trySec > 0 && rn < (int)(sizeof( int )) ) {
-        	    FD_ZERO(&rfds);
-                FD_SET( sockfd, &rfds );
-                tv.tv_sec = 1;
-                tv.tv_usec = 0;
-                int rtn = select( sockfd + 1, &rfds, NULL, NULL, &tv );
-                if ( rtn >= 0 ) {
-        	        int readRtn = read( sockfd, (unsigned char*)(&n) + rn, sizeof( int ) - rn );
-        	        if ( readRtn > 0 )
-        	            rn += readRtn;
-        	    }
-        	    else if ( rtn < 0 ) {
-        	        snprintf( message, DIFX_MESSAGE_LENGTH, "Select error (%s) %s port: %d - transfer FAILED", strerror( errno ), S->address, S->port );
-        	        difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_ERROR );
-        	    }
-        	    --trySec;
-        	}
-        	filesize = ntohl( n );
-        	//  Then read the data.
-        	int ret = 0;
-        	int count = 0;
-        	short blockSize = 1024;
-        	char blockData[blockSize + 1];
-	        const int tmpFileSize = 100;
-        	char tmpFile[tmpFileSize];
-        	snprintf( tmpFile, tmpFileSize, "/tmp/filetransfer_%d", S->port );
-        	FILE *fp = fopen( tmpFile, "w" );
-        	int rtn = 0;
-        	while ( count < filesize && rtn != -1 ) {
-        	    int readn = blockSize;
-        	    if ( filesize - count < readn )
-        	        readn = filesize - count;
-        	    FD_ZERO(&rfds);
-                FD_SET( sockfd, &rfds );
-                tv.tv_sec = 1;
-                tv.tv_usec = 0;
-                rtn = select( sockfd + 1, &rfds, NULL, NULL, &tv );
-                if ( rtn != -1 ) {
-        	        ret = read( sockfd, blockData, readn );
-        	        if ( ret > 0 ) {
-        	            count += ret;
-        	            blockData[ret] = 0;
-        	            fprintf( fp, "%s", blockData );
-        	        }
+	
+	    bool noErrors = true;
+  		
+  		//  Find the directory path on the Mark5 where the VSN lives.
+  		fullPath[0] = 0;
+        snprintf( command, MAX_COMMAND_SIZE, 
+            "source %s/bin/setup_difx.%s; %s -host %s /bin/echo $MARK5_DIR_PATH",
+            _difxBase, difxVersion, mpiWrapper, mark5 );
+        diagnostic( WARNING, "executing: %s\n", command );
+        ExecuteSystem* executor = new ExecuteSystem( command );
+        if ( executor->pid() > -1 ) {
+            while ( int ret = executor->nextOutput( message, DIFX_MESSAGE_LENGTH ) ) {
+                if ( ret == 1 ) { // stdout
+                    //  The only (non-error) return we expect from this command is the
+                    //  value of the environment variable.
+                    snprintf( fullPath, DIFX_MESSAGE_FILENAME_LENGTH, "%s", message );
                 }
-        	    else {
-        	        snprintf( message, DIFX_MESSAGE_LENGTH, "Select error (%s) %s port: %d - transfer FAILED", strerror( errno ), S->address, S->port );
-        	        difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_ERROR );
-        	    }
-        	}
-        	fclose( fp );
-        	       
-  	    }
-  	    else {
-        	snprintf( message, DIFX_MESSAGE_LENGTH, "Client address: %s   port: %d - transfer FAILED", S->address, S->port );
-        	difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_ERROR );
-  	    }
+                else {            // stderr
+                    packetExchange->sendPacket( MPIRUN_ERROR, message, strlen( message ) );
+                    diagnostic( ERROR, "%s", message );
+                    noErrors = false;
+                }
+            }
+        }
+        delete executor;
 
-	    //  Check the destination filename
-    	if( S->destination[0] != '/' )  {
-    		filesize = -1;
-    	}
-    	else {
-    	    //  Check the existence of the destination directory
-    	    char path[DIFX_MESSAGE_FILENAME_LENGTH];
-    	    snprintf( path, DIFX_MESSAGE_FILENAME_LENGTH, "%s", S->destination );
-    	    int i = strlen( path );
-    	    while ( i > 0 && path[i] != '/' ) --i;
-    	    path[i] = 0;
-	        struct stat stt;
-	        int ret = stat( path, &stt );
-	        if ( ret == -1 ) {
-	            //  Either we aren't allowed to view this directory
-	            if ( errno == EACCES )
-	                filesize = -3;
-	            //  Or it doesn't exist at all
-	            else
-	                filesize = -2;
-	        }
-	        //  Make sure the destination is a directory
-	        else if ( !(stt.st_mode & S_IFDIR) ) {
-	            filesize = -5;
-	        }
-	        else {
-	            //  Check write permissions and uid for the difx user
-	            struct passwd *pwd = getpwnam( user );
-	            if ( pwd == NULL ) {
-	                snprintf( message, DIFX_MESSAGE_LENGTH, "DiFX username %s is not valid", user );
-	                difxMessageSendDifxAlert( message, DIFX_ALERT_LEVEL_ERROR );
-	                filesize = -4;
-	            }
-	            else {
-	                //  Make sure the DiFX user has write permission in the destination directory (via owner, group, or world).
-	                if ( ( stt.st_uid == pwd->pw_uid && stt.st_mode & S_IRUSR ) || ( stt.st_gid == pwd->pw_gid && stt.st_mode & S_IRGRP ) ||
-	                     ( stt.st_mode & S_IROTH ) ) {
-                  		//  Change permissions on the temporary file so the DiFX user can read it.
-                		//snprintf( command, MAX_COMMAND_SIZE, "chmod 644 /tmp/filetransfer_%d", S->port );
-                        //Mk5Daemon_system( D, command, 1 );
-  		
-                        //  Copy the new file to its specified location (as the DiFX user).
-                		snprintf( command, MAX_COMMAND_SIZE, "cp /tmp/filetransfer_%d %s", 
-                				 S->port,
-                				 S->destination );
-                  		system( command );
-              		}
- 	                //  Otherwise, we can't read it.
-	                else
-	                    filesize = -3;
-	            }
-	        }
-	    }
+        //  Construct a complete path for the directory.  This requires that something
+        //  was returned with the environment variable request above.
+        if ( noErrors ) {
+            if ( fullPath[0] != 0 ) {
+                snprintf( fullPath + strlen( fullPath ), DIFX_MESSAGE_FILENAME_LENGTH - strlen( fullPath ), "/%s.dir", vsn );
+                packetExchange->sendPacket( GETDIRECTORY_FULLPATH, fullPath, strlen( fullPath ) );
+            }
+            else {
+                packetExchange->sendPacket( NO_ENVIRONMENT_VARIABLE, NULL, 0 );
+                noErrors = false;
+            }
+        }
 
-        //printf( "sending %d as confirmation\n", filesize );
-        int n = htonl( filesize );            	
-        write( sockfd, &n, sizeof( int ) );
+        //  Get the creation date for the file, if it exists.
+        if ( noErrors ) {
+            creationDate[0] = 0;
+            snprintf( command, MAX_COMMAND_SIZE, 
+                "source %s/bin/setup_difx.%s; %s -host %s /bin/ls -l %s",
+                _difxBase, difxVersion, mpiWrapper, mark5, fullPath );
+            diagnostic( WARNING, "executing: %s\n", command );
+            executor = new ExecuteSystem( command );
+            if ( executor->pid() > -1 ) {
+                while ( int ret = executor->nextOutput( message, DIFX_MESSAGE_LENGTH ) ) {
+                    if ( ret == 1 ) { // stdout
+                        //  One line should be returned, containing the date the directory was
+                        //  last updated.
+                        snprintf( creationDate, DIFX_MESSAGE_FILENAME_LENGTH, "%s", message + 29 );
+                        creationDate[12] = 0;
+                    }
+                    else {            // stderr
+                        packetExchange->sendPacket( MPIRUN_ERROR, message, strlen( message ) );
+                        diagnostic( ERROR, "%s", message );
+                        noErrors = false;
+                    }
+                }
+            }
+            delete executor;
+        }
 
-  		//  Then clean up our litter.
-		snprintf( command, MAX_COMMAND_SIZE, "rm -f /tmp/filetransfer_%d", S->port );
-        system( command );
-        close( sockfd );
-  		
+        //  Send the creation date for this file if it exists.  If it doesn't exist,
+        //  send that information.
+        if ( noErrors ) {
+            if ( creationDate[0] != 0 ) {
+                packetExchange->sendPacket( GETDIRECTORY_DATE, creationDate, strlen( creationDate ) );
+            }
+            else {
+                packetExchange->sendPacket( FILE_NOT_FOUND, NULL, 0 );
+                noErrors = false;
+            }
+        }
+
+        //  Get the file contents.
+        if ( noErrors ) {
+            packetExchange->sendPacket( GETDIRECTORY_FILESTART, NULL, 0 );
+            snprintf( command, MAX_COMMAND_SIZE, 
+                "source %s/bin/setup_difx.%s; %s -host %s /bin/cat %s",
+                _difxBase, difxVersion, mpiWrapper, mark5, fullPath );
+            diagnostic( WARNING, "executing: %s\n", command );
+            executor = new ExecuteSystem( command );
+            if ( executor->pid() > -1 ) {
+                while ( int ret = executor->nextOutput( message, DIFX_MESSAGE_LENGTH ) ) {
+                    if ( ret == 1 ) { // stdout
+                        //  Each line represents file content.
+                        packetExchange->sendPacket( GETDIRECTORY_FILEDATA, message, strlen( message ) );
+                    }
+                    else {            // stderr
+                        packetExchange->sendPacket( MPIRUN_ERROR, message, strlen( message ) );
+                        diagnostic( ERROR, "%s", message );
+                        noErrors = false;
+                    }
+                }
+            }
+            delete executor;
+        }
+
+  		//  Clean up litter and exit.
+  		if ( noErrors )
+	        packetExchange->sendPacket( GETDIRECTORY_COMPLETED, NULL, 0 );
+	    else
+	        packetExchange->sendPacket( GETDIRECTORY_FAILED, NULL, 0 );
+	    sleep( 1 );
+	    delete guiSocket;
 		exit(EXIT_SUCCESS);
+		
 	}
 	    
 }

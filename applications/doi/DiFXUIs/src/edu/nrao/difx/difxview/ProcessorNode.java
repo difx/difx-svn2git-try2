@@ -530,6 +530,8 @@ public class ProcessorNode extends BrowserNode {
     public int numCPUs() { return Integer.parseInt( _numCPUs.getText() ); }
     public String cpuUsage() { return _cpuLoad.getText(); }
     
+    public String currentState() { return _state.getText(); }
+    
     ProcessorMonitorWindow _monitor;
     MessageWindow _alertWindow;
     ActivityMonitorLight _networkActivity;

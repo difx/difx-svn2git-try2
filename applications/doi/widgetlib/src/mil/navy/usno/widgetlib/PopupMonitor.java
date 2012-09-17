@@ -85,7 +85,6 @@ public class PopupMonitor extends JDialog implements WindowListener  {
      * Start things up.
      */
     public void start() {
-        _spinner = new Spinner();
         //  This is where we actually run the process.
         run();
         //  Wait for a delay in milliseconds before we actually display a pop-up
@@ -135,6 +134,7 @@ public class PopupMonitor extends JDialog implements WindowListener  {
      */
     protected void successCondition() {
         _theWindow.setTitle( "DISMISSED" );
+        _spinner.stop();
         _success = true;
         _theWindow.setVisible( false );
     }
@@ -144,6 +144,7 @@ public class PopupMonitor extends JDialog implements WindowListener  {
      */
     protected void errorCondition() {
         _cancelButton.setText( "Dismiss" );
+        _spinner.error();
         _dismissActive = true;
     }
     
@@ -184,6 +185,7 @@ public class PopupMonitor extends JDialog implements WindowListener  {
      */
     protected void cancelOperation() {
         _theWindow.setTitle( "DISMISSED" );
+        _spinner.stop();
         _success = false;
         _theWindow.setVisible( false );
     }
@@ -192,71 +194,6 @@ public class PopupMonitor extends JDialog implements WindowListener  {
      * Return whether the operation was completed successfully.
      */
     public boolean success() { return _success; }
-    
-    /*
-     * Little spinner thing.
-     */
-    public class Spinner extends JPanel {
-        
-        public Spinner() {
-            super();
-            _value = 0;
-            _this = this;
-            _timeThread = new TimeThread();
-            _timeThread.start();
-            _colors = new int[12];
-            for ( int i = 0; i < 12; ++i )
-                _colors[i] = 255;
-        }
-        
-        public void paintComponent( Graphics g ) {
-            super.paintComponent( g );
-            Graphics2D g2 = (Graphics2D)g;
-            g2.setRenderingHint( RenderingHints.KEY_ANTIALIASING,
-                         RenderingHints.VALUE_ANTIALIAS_ON );
-            Dimension d = getSize();
-            int startAngle = 359;
-            int endAngle = 15;
-            _colors[_value] = 0;
-            for ( int i = 0; i < 12; ++i ) {
-                if ( _cancelButton.getText().equalsIgnoreCase( "Dismiss" ) )
-                    g2.setColor( Color.RED );
-                else
-                    g2.setColor( new Color( _colors[i], 255, _colors[i] ) );
-                g2.fillArc( 0, 0, d.width, d.height, startAngle, endAngle );
-                startAngle -= 30;
-                _colors[i] += 25;
-                if ( _colors[i] > 255 )
-                    _colors[i] = 255;
-            }
-        }
-        
-        class TimeThread extends Thread {
-            
-            public TimeThread() {
-                super();
-            }
-            
-            public void run() {
-                _value = 10;
-                while ( !_theWindow.getTitle().equalsIgnoreCase( "DISMISSED" ) ) {
-                    try { Thread.sleep( 166 );
-                    } catch ( Exception e ) {
-                    }
-                    _value += 1;
-                    if ( _value == 12 )
-                        _value = 0;
-                    _this.updateUI();
-                }
-            }
-        }
-        
-        protected int _value;
-        protected TimeThread _timeThread;
-        volatile protected boolean _errorCondition;
-        protected Spinner _this;
-        protected int[] _colors;
-    }
     
     /*
      * Window event methods - we need each of these, even though we are only

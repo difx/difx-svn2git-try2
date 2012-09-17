@@ -28,8 +28,8 @@
         </file>
         <file>
             <url>src/edu/nrao/difx/difxview/SystemSettings.java</url>
-            <line>852</line>
-            <line>1614</line>
+            <line>869</line>
+            <line>1647</line>
         </file>
         <file>
             <url>src/edu/nrao/vlba/difxview/DiFXManagerUI.java</url>
@@ -71,6 +71,10 @@
             <line>186</line>
         </file>
         <file>
+            <url>src/edu/nrao/difx/difxview/PassNode.java</url>
+            <line>124</line>
+        </file>
+        <file>
             <url>src/edu/nrao/vlba/difxview/ProjectManagerUI.java</url>
             <line>762</line>
             <line>767</line>
@@ -78,17 +82,13 @@
             <line>1010</line>
         </file>
         <file>
-            <url>src/edu/nrao/difx/difxview/PassNode.java</url>
-            <line>124</line>
+            <url>src/edu/nrao/vlba/difxdatamodel/Job.java</url>
+            <line>253</line>
+            <line>1348</line>
         </file>
         <file>
             <url>src/edu/nrao/difx/difxview/QueueBrowserPanel.java</url>
             <line>593</line>
-        </file>
-        <file>
-            <url>src/edu/nrao/vlba/difxdatamodel/Job.java</url>
-            <line>253</line>
-            <line>1348</line>
         </file>
         <file>
             <url>src/edu/nrao/vlba/difxview/JobManagerUI.java</url>

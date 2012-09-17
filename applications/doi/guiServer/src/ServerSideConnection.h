@@ -133,8 +133,6 @@ namespace guiServer {
                     if ( _relayDifxMulticasts )
                         sendPacket( RELAY_PACKET, message, ret );
                     }
-//                    if ( _relayDifxMulticasts )
-//                        sendPacket( RELAY_PACKET, message, ret );
                 }
                 sched_yield();
             }
@@ -297,7 +295,7 @@ namespace guiServer {
     				machinesDefinition( &G );
     				break;
     			case DIFX_MESSAGE_GETDIRECTORY:
-    				//getDirectory( &G );
+    				getDirectory( &G );
     				break;
     		    case DIFX_MESSAGE_COMMAND:
     		        relayCommand( data, nBytes );
