@@ -1723,9 +1723,11 @@ public class SystemSettings extends JFrame {
             _difxVersion.addItem( newVal );
             _difxVersion.updateUI();
         }
+        _difxVersion.setEnabled( true );
     }
     public void clearDifxVersion() {
-        _difxVersion.removeAll();
+        _difxVersion.removeAllItems();
+        _difxVersion.setEnabled( false );
     }
     
     public void difxBase( String newVal ) { _difxBase.setText( newVal ); }
@@ -3722,6 +3724,11 @@ public class SystemSettings extends JFrame {
                     newSize();
                 }
             });
+            this.addComponentListener( new java.awt.event.ComponentAdapter() {
+                public void componentShown( ComponentEvent e ) {
+                    newSize();
+                }
+            });
             _tableModel = new DefaultTableModel();
             _table = new JTable( _tableModel );
             _scrollPane = new JScrollPane( _table );
@@ -3729,7 +3736,7 @@ public class SystemSettings extends JFrame {
             _tableModel.addColumn( "Variable" );        
             _tableModel.addColumn( "Setting" );
             _difxOnly = new JCheckBox( "DIFX" );
-            _difxOnly.setSelected( true );
+            _difxOnly.setSelected( false );
             _difxOnly.addActionListener( new ActionListener() {
                 public void actionPerformed( ActionEvent e ) {
                     _difxOnly.setSelected( true );
@@ -3764,6 +3771,7 @@ public class SystemSettings extends JFrame {
                 int w = this.getContentPane().getSize().width;
                 int h = this.getContentPane().getSize().height;
                 _scrollPane.setBounds( 0, 60, w, h - 60 );
+                _table.updateUI();
             }
         }
         
@@ -3782,6 +3790,7 @@ public class SystemSettings extends JFrame {
                 if ( useIt )
                     _tableModel.addRow( new Object[]{ key, _guiServerEnvironment.get( key ) } );
             }
+            _table.updateUI();
         }
         
         protected EnvironmentVariablesDisplay _this;
