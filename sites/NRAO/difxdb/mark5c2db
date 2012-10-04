@@ -9,8 +9,8 @@ from os import getenv, environ, popen, umask, getcwd, system
 
 program = 'mark5c2db'
 author = 'Walter Brisken'
-version = '0.4'
-verdate = '20120911'
+version = '0.5'
+verdate = '20121004'
 
 # Name of the Oracle VLBA legacy database
 databaseName = getenv("VLBA_DB")
@@ -167,6 +167,10 @@ def queryMark5C(db, startMJD, stopMJD, station, verbose):
 	stn = lower(station)
 	if stn == 'y':
 		stn = 'ea'
+	
+	if stn == 'ea':
+		print '\n*** NOTE: Querying VLA data can take a long time (10+ minutes) ***'
+		print '*** Please do not interrupt the process.                         ***\n'
 
 	hostlist = "'%s-mark5c-1', '%s-mark5c-2'" % (stn, stn)
 	query = "select * from mcdata where hostname IN (%s) and timestamp > %10.4f and timestamp < %10.4f order by timestamp" % (hostlist, startMJD, stopMJD)
@@ -220,7 +224,7 @@ if vexFile == None:
 print 'Connecting to the new database:'
 newDb = psycopg2.connect(newDatabaseName)
 print 'Connecting to the legacy database:'
-db = cx_Oracle.connect(databaseName)
+oldDb = cx_Oracle.connect(databaseName)
 
 
 
@@ -239,7 +243,7 @@ if 'Y' in stns:
 		exit(0);
 	evlaDb = psycopg2.connect(evlaDatabaseName)
 
-cursor = db.cursor()
+cursor = oldDb.cursor()
 
 for s in stns:
 	print '\nProcessing station %s' % s
@@ -273,8 +277,10 @@ for s in stns:
 		print cmd
 		if not doPretend:
 			cursor.execute(cmd)
+			print 'Executed'
 
 if not doPretend:
-	db.commit()
+	oldDb.commit()
+	print 'Committed'
 else:
 	print 'None of this actually happened because pretend mode was used.'
