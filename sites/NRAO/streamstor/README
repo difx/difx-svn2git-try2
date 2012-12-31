@@ -20,7 +20,7 @@ But this is probably not what you came here for.  To build an .rpm file:
 autoconf
 ./configure
 make dist
-rpm -rb streamstor-9.2a.tar.gz	# change version # as appropriate
+rpmbuild -tb dist/streamstor-9.2a.tar.gz	# change version # as appropriate
 
 The last step will either require root access or an environment conducive
 to ordinary user, which can be accomodated by, for example:
