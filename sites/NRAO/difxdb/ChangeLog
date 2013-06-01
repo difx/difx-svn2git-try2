@@ -1,9 +1,9 @@
 Version 1.16
 ~~~~~~~~~~~~
-* Post DiFX-2.1
 * Moving into NRAO sites directory
 * difxarch: David Gordon added Mark4 support
 * db2vex: leap second correctness
+* Version for DiFX-2.2.  Tagged June 1, 2013
 
 Version 1.15
 ~~~~~~~~~~~~
