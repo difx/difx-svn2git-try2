@@ -1,24 +1,23 @@
 #!/usr/bin/env python
 
 from sys import exit, argv, stdout, stdin
-from os import getenv, mkdir, system, umask, getcwd
+from os import getenv, mkdir, system, umask, getcwd, popen
 from string import split, strip, rfind, upper
 from getopt import getopt
 from os.path import isfile, isdir
 from glob import glob
 import datetime
 import cx_Oracle
-import popen2
 from time import localtime, asctime
 
 dbname = getenv("VLBA_DB")
 
 program = 'difxqueue'
-version = '0.8'
+version = '0.9'
 author  = 'Walter Brisken'
-verdate = '20110109'
+verdate = '20130917'
 
-clusterHorsepower = 0.24
+clusterHorsepower = 0.7
 	
 # Antennas considered not foreign
 vlbaAntennas = ['BR', 'FD', 'HN', 'KP', 'LA', 'MK', 'NL', 'OV', 'PT', 'SC']
@@ -957,11 +956,10 @@ class Pass:
 		nBad = 0
 		for j in jobs:
 			print 'Checking %s' % j.name
-			cmd = 'checkmpifxcorr %s/%s.input' % (queueDir, j.name)
-			p, q = popen2.popen4(cmd)
+			cmd = 'checkmpifxcorr %s/%s.input 2>&1' % (queueDir, j.name)
+			p = popen(cmd)
 			output = p.readlines()
 			p.close()
-			q.close()
 
 			if output[-1][0:9] == 'No errors':
 				print 'Looks good'
