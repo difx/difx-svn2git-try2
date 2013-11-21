@@ -17,7 +17,7 @@ version = '1.0'
 author  = 'Walter Brisken'
 verdate = '20131118'
 
-clusterHorsepower = 0.7
+clusterHorsepower = 1.0
 	
 # Antennas considered not foreign
 vlbaAntennas = ['BR', 'FD', 'HN', 'KP', 'LA', 'MK', 'NL', 'OV', 'PT', 'SC']
@@ -891,7 +891,7 @@ class Pass:
 			if verbose > 1:
 				print 'Executing: %s' % cmd
 			system(cmd)
-			cmd = 'cp tsys weather flag pcal *.*.tsys *.*.weather *.*.flag *.*.pcal *.*.cablecal %s' % queueDir
+			cmd = 'cp tsys weather flag pcal *.*.tsys *.*.weather *.*.flag *.*.pcal *.*.cablecal *.*.gain %s' % queueDir
 			if verbose > 1:
 				print 'Executing: %s' % cmd
 			system(cmd)
@@ -900,7 +900,7 @@ class Pass:
 				if verbose > 1:
 					print 'Executing: %s' % cmd
 				system(cmd)
-				cmd = 'chown :%s %s/{flag,tsys,weather,pcal} %s/*.*.{flag,tsys,weather,pcal,cablecal}' % (groupId, queueDir)
+				cmd = 'chown :%s %s/{flag,tsys,weather,pcal} %s/*.*.{flag,tsys,weather,pcal,cablecal,gain}' % (groupId, queueDir)
 				if verbose > 1:
 					print 'Executing: %s' % cmd
 				system(cmd)
