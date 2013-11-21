@@ -11,6 +11,7 @@ dist_bin_SCRIPTS = \
 	difxarch \
 	difxclean \
 	difxusage \
+	vlba-weather.py \
 	makemark4
 
 e2ecopy_SOURCES = \
