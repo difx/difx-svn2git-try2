@@ -93,6 +93,7 @@ def splitobscode(exper):
 	
 	return proposal, obsSeg
 
+# Returns obsCode, obsSeg, { ANT : [startmjd, stopmjd] }
 def vexPeek(vexFile, verbose):
 	
 	cmd = 'vexpeek %s' % vexFile
@@ -851,20 +852,11 @@ def processVexFile(vexFile, force, verbose, preobs, vsnProjectCode, isMark5C, fs
 		out.write(d)
 	out.close()
 
-	for s in stations:
-		stn = upper(s)
-		blocks = []
-		if stn == 'GB':
-			# GB is in the experiment.  Extract weather data from VLBAMPTS database
-			print 'Extracting GB weather data.  This may take a few minutes.'
-			data = popen('vlba-weather.py %14.8f %14.8f' % (experTimes[0]-0.1, experTimes[1]+0.1)).readlines()
-			if len(data) > 1:
-				outFile = '%s%s.%s.weather' % (lower(obsCode), lower(obsSeg), lower(stn))
-				out = open(outFile, 'w')
-				for d in data:
-					if d[0] == '#' or split(d)[0] == stn:
-						out.write(d)
-				out.close()
+	cmd = 'db2wx %s' % vexFile
+	if verbose > 1:
+		print 'Executing: %s' % cmd
+	system(cmd)
+
 
 
 # main below here

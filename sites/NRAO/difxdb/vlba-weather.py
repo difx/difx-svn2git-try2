@@ -45,6 +45,17 @@ from os import environ
 # Mark5 module information: /home/swc/DiFX-2.2/src/difxdb/mark5c2db .  I 
 # hope to use what I learn from you to improve that program.
 
+# For VLA (from Bryan):
+# temperature = emr-m352.HMT337.Temperature
+# pressure = emr-m352.WXT520.Pressure
+# dew point temperature = emr-m352.HMT337.Dewpoint_Temperature
+# wind speed = emr-m352.WXT520.Wind_Speed_Average
+# wind speed max (gust) = emr-m352.WXT520.Wind_Speed_Maximum
+# wind direction = emr-m352.WXT520.Wind_Direction_Average
+# rain accumulation = emr-m352.WXT520.Rain_Accumulation
+# the rain accumulation isn't done in the way you want - you'll have to
+# interpret that.
+
 # Parse the command line
 if len(sys.argv) != 3:
     print "Usage: %s <start-time> <end-time>" % sys.argv[0]
