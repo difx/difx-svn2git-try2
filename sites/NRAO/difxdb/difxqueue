@@ -900,7 +900,7 @@ class Pass:
 				if verbose > 1:
 					print 'Executing: %s' % cmd
 				system(cmd)
-				cmd = 'chown :%s %s/{flag,tsys,weather,pcal} %s/*.*.{flag,tsys,weather,pcal,cablecal,gain}' % (groupId, queueDir)
+				cmd = 'chown :%s %s/{flag,tsys,weather,pcal} %s/*.*.{flag,tsys,weather,pcal,cablecal,gain}' % (groupId, queueDir, queueDir)
 				if verbose > 1:
 					print 'Executing: %s' % cmd
 				system(cmd)
