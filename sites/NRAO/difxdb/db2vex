@@ -17,8 +17,8 @@ except:
 
 program = 'db2vex'
 author = 'Walter Brisken'
-version = '0.15'
-verdate = '20120912'
+version = '0.16'
+verdate = '20121210'
 
 tsysFile = 'tsys'
 
@@ -852,10 +852,11 @@ def processVexFile(vexFile, force, verbose, preobs, vsnProjectCode, isMark5C, fs
 		out.write(d)
 	out.close()
 
-	cmd = 'db2wx %s' % vexFile
-	if verbose > 1:
-		print 'Executing: %s' % cmd
-	system(cmd)
+	if not preobs:
+		cmd = 'db2wx %s' % vexFile
+		if verbose > 1:
+			print 'Executing: %s' % cmd
+		system(cmd)
 
 
 
