@@ -1,6 +1,8 @@
 Version 1.17
 ~~~~~~~~~~~~
-* Post DiFX-2.2
+* Support new calibration data path (see upcoming memo)
+* db2wx: get weather data for GB and Y
+* Version for DiFX-2.3, Dec 20, 2013
 
 Version 1.16
 ~~~~~~~~~~~~
