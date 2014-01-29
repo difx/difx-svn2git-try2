@@ -12,6 +12,7 @@ dist_bin_SCRIPTS = \
 	difxclean \
 	difxusage \
 	db2wx \
+	mark5c2db \
 	makemark4
 
 e2ecopy_SOURCES = \

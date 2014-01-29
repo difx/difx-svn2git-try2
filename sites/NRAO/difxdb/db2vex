@@ -17,8 +17,8 @@ except:
 
 program = 'db2vex'
 author = 'Walter Brisken'
-version = '0.16'
-verdate = '20121210'
+version = '0.17'
+verdate = '20140123'
 
 # Name of the Oracle VLBA legacy database
 databaseName = getenv("VLBA_DB")
@@ -48,10 +48,6 @@ def usage(pgm):
 	print '  -f         run even if means overwriting exisiting files\n'
 	print '  --preobs'
 	print '  -p         run in preobs mode: use projected clocks and no TAPELOG_OBS\n'
-	print '  --mark5a'
-	print '  -a         force to run in Mark5A mode'
-	print '  --mark5c'
-	print '  -c         force to run in Mark5C mode'
 	print '  --usno'
 	print '  -u         force to run in USNO Mark5C mode'
 	print '  --vsnProjectCode  <project code>'
@@ -60,15 +56,6 @@ def usage(pgm):
 	print '<fslog> is a field system log file\n'
 	print 'Example:  db2vex bj061h.vex\n'
 	exit(0)
-
-def getIsMark5C():
-	ldir = lower(getcwd())
-	if find(ldir, 'mark5a') >= 0:
-		return 0
-	elif find(ldir, 'mark5c') >= 0:
-		return 1
-	else:
-		return -1;
 
 # Splits a combined obs code into its proposal and segment portions
 def splitobscode(exper):
@@ -869,7 +856,7 @@ preobs = False
 args = []
 fsVSNs = [] # VSN list from field system logs
 vsnProjectCode = None
-isMark5C = -1
+isMark5C = 1
 
 for a in argv[1:]:
 	if vsnProjectCode == '':
@@ -885,10 +872,6 @@ for a in argv[1:]:
 			preobs = True
 		elif a in ['--vsnProjectCode']:
 			vsnProjectCode = ''
-		elif upper(a) in ['--MARK5A', '-A']:
-			isMark5C = 0
-		elif upper(a) in ['--MARK5C', '-C']:
-			isMark5C = 1
 		elif upper(a) in ['--MARK5C-2', '-2']:
 			isMark5C = 2
 		elif a in ['--usno', '-u']:
@@ -899,18 +882,11 @@ for a in argv[1:]:
 	else:
 		args.append(a)
 
-if isMark5C < 0:
-	isMark5C = getIsMark5C()
+if isMark5C and not newDB and not preobs:
+	print 'Error: Mark5C processing is to be done but the VLBAMPTS database is not accessable'
+	stop = True
 
-if isMark5C < 0:
-	print 'Cannot determine if this is Mark5A or Mark5C.  Assuming Mark5A'
-	isMark5C = 0;
-else:
-	if isMark5C and not newDB and not preobs:
-		print 'Error: Mark5C processing is to be done but the VLBAMPTS database is not accessable'
-		stop = True
-
-	print 'Proceeding as a %s project.  Please rerun and force project type if this not what you want.' % (['Mark5A', 'Mark5C', 'Mark5C-2', 'USNO'][isMark5C])
+print 'Proceeding as a %s project.  Please rerun and force project type if this not what you want.' % (['Mark5A', 'Mark5C', 'Mark5C-2', 'USNO'][isMark5C])
 
 if vsnProjectCode == '':
 	print 'Error: vsnProjectCode not specified.'
