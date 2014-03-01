@@ -41,7 +41,7 @@ def getdata(dbname, state, verbose):
 	db = cx_Oracle.connect(dbname)
 	cursor = db.cursor()
 	if state == 'ALL':
-		query = "select * from DIFXLOG"
+		query = "select * from DIFXLOG where CORR_STATUS != 'KILLED'"
 	else:
 		query = "select * from DIFXLOG where CORR_STATUS = '%s'" % state
 	if verbose > 0:
@@ -119,6 +119,7 @@ for d in data:
 			if nJob == 1:
 				print '\n#    Project Seg Pass           Id   Corr. Obs.   [min]'
 			print '%-4d %-8s %-2s %-14s %-3d  %-5.1f %-5.1f' % (nJob, d[0], seg, d[2], d[3], ct*60.0, ot*60.0)
+		print 'MJD range = %12.6f %12.6f' % (calcMJD(d[4]), calcMJD(d[5]))
 
 print '\nTotal correlator hours = ', corrHours
 print 'Total obs hours = ', obsHours

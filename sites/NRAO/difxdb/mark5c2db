@@ -9,8 +9,8 @@ from os import getenv, environ, popen, umask, getcwd, system
 
 program = 'mark5c2db'
 author = 'Walter Brisken'
-version = '0.6'
-verdate = '20121113'
+version = '0.8'
+verdate = '20140301'
 
 # Name of the Oracle VLBA legacy database
 databaseName = getenv("VLBA_DB")
@@ -28,9 +28,9 @@ def usage(pgm):
 	print 'A program to populate the legacy VLBA database with Mark5C information.\n'
 	print 'Usage: %s [options] <vex file>\n'
 	print 'Options can be:'
-	print '  -h  or  --help           print help information and quit.'
-	print '  -p  or  --pretend        run in pretend mode (don\'t update the database).'
-	print '  --force                  force insertion even if previous values exist already.'
+	print '  -h  or  --help         print help information and quit.'
+	print '  -p  or  --pretend      run in pretend mode (don\'t update the database).'
+	print '  --force                force insertion even if previous values exist already.'
 	print 'Note! Avoid running this program multiple times for the same experiment.\n'
 	print 'Example: %s bl175s.vex\n' % pgm
 
@@ -92,6 +92,7 @@ def process(monData):
 
 	scans = []
 
+	nNullVSN = 0
 	for m in monData:
 		N -= 1
 		action = ''
@@ -136,7 +137,9 @@ def process(monData):
 		if action == 'stop' and recStart > 0:
 			recStop = t
 			if recvsn == '':
-				print 'Warning: Scan with null VSN encountered: %12.6f to %12.6f' % (recStart, recStop)
+				if nNullVSN == 0:
+					print 'Scan with null VSN encountered: %12.6f to %12.6f' % (recStart, recStop)
+				nNullVSN += 1
 			else:
 				scans.append([recStart, recStop, recvsn, recBank])
 			recStart = -1
@@ -145,6 +148,9 @@ def process(monData):
 			recStart = t
 			recStop = -1
 			recBank = active
+
+	if nNullVSN > 0:
+		print 'A total of %d scans with null VSNs were seen.  This is probably nothing to worry about.' % nNullVSN
 	
 	blocks = []
 	lastblock = None
@@ -258,7 +264,7 @@ for s in stns:
 	else:
 		db = newDb
 
-	monData = queryMark5C(db, startMJD-0.1, stopMJD+0.1, s, 1)
+	monData = queryMark5C(db, startMJD-0.25, stopMJD+0.05, s, 1)
 
 	blocks = process(monData)
 
