@@ -9,8 +9,8 @@ from os import getenv, environ, popen, umask, getcwd, system
 
 program = 'mark5c2db'
 author = 'Walter Brisken'
-version = '0.8'
-verdate = '20140301'
+version = '0.9'
+verdate = '20140603'
 
 # Name of the Oracle VLBA legacy database
 databaseName = getenv("VLBA_DB")
@@ -26,11 +26,13 @@ mjd0 = datetime.datetime(1858, 11, 17, 0, 0)
 def usage(pgm):
 	print '%s ver %s  %s  %s\n' % (program, version, author, verdate)
 	print 'A program to populate the legacy VLBA database with Mark5C information.\n'
-	print 'Usage: %s [options] <vex file>\n'
+	print 'Usage: %s [options] <vex file> [list of station codes]\n'
 	print 'Options can be:'
 	print '  -h  or  --help         print help information and quit.'
 	print '  -p  or  --pretend      run in pretend mode (don\'t update the database).'
 	print '  --force                force insertion even if previous values exist already.'
+	print '\nIf a space separated list of one or more station codes is provided, only those'
+	print 'stations will be processed.\n'
 	print 'Note! Avoid running this program multiple times for the same experiment.\n'
 	print 'Example: %s bl175s.vex\n' % pgm
 
@@ -209,6 +211,7 @@ if len(argv) < 2:
 vexFile = None
 doForce = False
 doPretend = False
+stationFilter = []
 
 for a in argv[1:]:
 	if a in ['--help', '-h']:
@@ -220,6 +223,8 @@ for a in argv[1:]:
 		doPretend = True
 	elif vexFile == None:
 		vexFile = a
+	elif len(a) < 3 and a.isalpha():
+		stationFilter.append(lower(a))
 	else:
 		print 'Invalid comamnd line: only one vex file can be supplied.\nSee help information below.\n'
 		usage(argv[0])
@@ -241,8 +246,13 @@ obsCode, obsSeg, stationTimes = vexPeek(vexFile, 1)
 
 if len(obsSeg) == 0:
 	obsSeg = '  '	# yes : two spaces!
-
-stns = stationTimes.keys()
+if len(stationFilter) > 0:
+	stns = []
+	for s in stationTimes.keys():
+		if lower(s) in stationFilter:
+			stns.append(s)
+else:
+	stns = stationTimes.keys()
 stns.sort()
 
 if 'Y' in stns:
