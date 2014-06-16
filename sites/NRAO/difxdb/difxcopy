@@ -7,9 +7,9 @@ from os import getcwd, system
 from string import split, strip, find
 
 program = 'difxcopy'
-version = '0.2'
+version = '0.3'
 author  = 'Walter Brisken'
-verdate = '20110319'
+verdate = '20140610'
 
 fileTypes = ['input', 'calc', 'flag']
 
@@ -85,6 +85,8 @@ def copyfile(pathName, destination, listOfFiles, verbose, vexFiles):
 		elif indata[0:5] == 'FILE ' and indatatable:
 			outdata = indata
 		elif indata[0] == '@':
+			outdata = indata
+		elif indata[0:12] == 'DATA FORMAT:':
 			outdata = indata
 		else:
 			fn = strip(indata[colonPos+1:])
