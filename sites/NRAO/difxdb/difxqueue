@@ -13,9 +13,9 @@ from time import localtime, asctime
 dbname = getenv("VLBA_DB")
 
 program = 'difxqueue'
-version = '1.1'
+version = '1.2'
 author  = 'Walter Brisken'
-verdate = '20131230'
+verdate = '20140831'
 
 clusterHorsepower = 1.0
 	
@@ -890,6 +890,11 @@ class Pass:
 	def queueJobs(self, numbers, queueDir, priority, verbose=0):
 
 		groupId = getenv('DIFX_GROUP_ID')
+
+		if 'label' in self.jobList.kv:
+			corrVersion = self.jobList.kv['label']
+		else:
+			corrVersion = self.jobList.kv['DiFX']
 		
 		if not isdir(queueDir):
 			cmd = 'mkdir -p %s' % queueDir
@@ -937,7 +942,7 @@ class Pass:
 
 		for j in jobs:		
 			print 'Adding %s to the queue' % j.name
-			addDatabaseEntry(self.database, passData, j, queueDir, priority, self.corrType, self.jobList.kv['DiFX'], verbose)
+			addDatabaseEntry(self.database, passData, j, queueDir, priority, self.corrType, corrVersion, verbose)
 			if(queueDir != getcwd()):
 				cmd = 'difxcopy %s %s' % (j.name, queueDir)
 				if verbose > 1:
