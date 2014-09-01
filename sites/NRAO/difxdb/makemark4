@@ -1,17 +1,86 @@
 #!/usr/bin/env python
 
 from sys import argv, exit
-from string import split, strip
+from string import split, strip, upper, lower
 from glob import glob
-from os import getenv, chdir, system, getcwd, rmdir, umask, listdir, remove, popen
+from os import getenv, environ, chdir, system, getcwd, rmdir, umask, listdir, remove, popen
 from os.path import isfile, isdir, getsize
 from time import gmtime, time
 
 #
 program = 'makemark4'
-version = '0.1'
+version = '0.2'
 author  = 'David Gordon'
 verdate = '20140105'
+
+def setAntennaCodes(vexfile, passname, verbose):
+	# Adapted from single_code.c in difx2mark4
+	stationCodeTable = { \
+		"K" : "Kk", \
+		"b" : "Br", \
+		"f" : "Fd", \
+		"h" : "Hn", \
+		"k" : "Kp", \
+		"l" : "La", \
+		"m" : "Mk", \
+		"n" : "Nl", \
+		"o" : "Ov", \
+		"p" : "Pt", \
+		"s" : "Sc", \
+		"G" : "Gb", \
+		"c" : "Cm", \
+		"M" : "Mc", \
+		"H" : "Ho", \
+		"T" : "Ts", \
+		"U" : "Ur", \
+		"S" : "Nt", \
+		"I" : "Ma", \
+		"P" : "Oh", \
+		"X" : "On", \
+		"V" : "Wz", \
+		"N" : "Ny", \
+		"B" : "Bd", \
+		"y" : "Y" , \
+		"r" : "Ro", \
+		"w" : "Wb", \
+		"r" : "Zc", \
+		"Y" : "Yb" \
+	}
+
+	options='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+	start = 0
+
+	antennadata = popen('vexpeek %s' % vexfile).readlines()
+	if(len(antennadata) < 2):
+		return
+	antennas = []
+	for d in antennadata[1:]:
+		ant = split(d)[0]
+		if len(ant) == 1:
+			antennas.append(upper(ant[0]))
+		else:
+			antennas.append(upper(ant[0]) + lower(ant[1]))
+
+	outfile = '%s/%s.stationcodes' % (getcwd(), passname)
+	out = open(outfile, 'w')
+	done = []
+	used = []
+
+	for k in stationCodeTable.keys():
+		if stationCodeTable[k] in antennas:
+			done.append(stationCodeTable[k])
+			used.append(k)
+			out.write('%s %s\n' % (k, stationCodeTable[k]))
+	for a in antennas:
+		if a not in done:
+			while options[start] in used:
+				start += 1
+			used.append(options[start])
+			done.append(a)
+			out.write('%s %s\n' % (options[start], a))
+			
+	out.close()
+	environ['HOPS_STATION_CODE'] = outfile
 
 
 def genDateStr(t):
@@ -156,6 +225,24 @@ class JobList:
 		if verbose:
 			print ' metadata file will be: %s ' % metadatafile
 
+#		Find observing band(s)
+		bandcodestring = []
+		if self.kw.has_key('vex'):
+			vexfile = self.kw['vex']
+		else:
+			vexfile = projdir + '/' + self.kw['pass'] + '.vex.obs'
+		if not isfile(vexfile):
+			vexfile = projdir + '/' + self.kw['pass'] + '.vex.preobs'
+		if not isfile(vexfile):
+			vexfile = projdir + '/' + self.kw['pass'] + '.vex'
+		if isfile(vexfile):
+			bandcodestring = strip(popen('vexpeek %s --bands 2> /dev/null' % vexfile).readline())
+			if verbose:
+				print '\n Observing band(s): %s ' % bandcodestring
+			setAntennaCodes(vexfile, self.kw['pass'], verbose)
+		else:
+			bandcodestring = []
+
 
 		njobs = 0
 		nwarn = 0
@@ -236,22 +323,6 @@ class JobList:
 		segm = splitobscode(self.kw['exper'])
 		if verbose:
 			print '\n Experiment segment: %s ' % segm[1]
-
-#		Find observing band(s)
-		bandcodestring = []
-		vexfile = projdir + '/' + self.kw['pass'] + '.vex.obs'
-		if isfile(vexfile):
-			bandcodestring = strip(popen('vexpeek %s --bands 2> /dev/null' % vexfile).readline())
-			if verbose:
-				print '\n Observing band(s): %s ' % bandcodestring
-		else:
-			vexfile = projdir + '/' + self.kw['pass'] + '.vex'
-			if isfile(vexfile):
-				bandcodestring = strip(popen('vexpeek %s --bands 2> /dev/null' % vexfile).readline())
-				if verbose:
-					print '\n Observing band(s): %s ' % bandcodestring
-			else:
-				bandcodestring = [] 
 
 		meta = open(metadatafile, 'w')
 
