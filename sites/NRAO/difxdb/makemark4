@@ -48,8 +48,10 @@ def setAntennaCodes(vexfile, passname, verbose):
 		["w", "Wb"], \
 		["Y", "Yg"], \
 		["Y", "Yb"], \
+		["Y", "Ys"], \
 		["y", "Yg"], \
 		["y", "Yb"], \
+		["y", "Ys"], \
 		["F", "Ft"], \
 		["f", "Ft"], \
 		["J", "Ht"], \
@@ -57,7 +59,12 @@ def setAntennaCodes(vexfile, passname, verbose):
 		["O", "Tc"], \
 		["C", "Ts"], \
 		["Z", "Zc"], \
-		["r", "Zc"]
+		["r", "Zc"], \
+		["w", "Wf"], \
+		["h", "Hh"], \
+		["H", "HH"], \
+		["s", "Sh"], \
+		["S", "Sh"] \
 	]
 
 	options='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
