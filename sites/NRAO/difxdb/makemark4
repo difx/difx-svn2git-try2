@@ -15,37 +15,50 @@ verdate = '20140105'
 
 def setAntennaCodes(vexfile, passname, verbose):
 	# Adapted from single_code.c in difx2mark4
-	stationCodeTable = { \
-		"K" : "Kk", \
-		"b" : "Br", \
-		"f" : "Fd", \
-		"h" : "Hn", \
-		"k" : "Kp", \
-		"l" : "La", \
-		"m" : "Mk", \
-		"n" : "Nl", \
-		"o" : "Ov", \
-		"p" : "Pt", \
-		"s" : "Sc", \
-		"G" : "Gb", \
-		"c" : "Cm", \
-		"M" : "Mc", \
-		"H" : "Ho", \
-		"T" : "Ts", \
-		"U" : "Ur", \
-		"S" : "Nt", \
-		"I" : "Ma", \
-		"P" : "Oh", \
-		"X" : "On", \
-		"V" : "Wz", \
-		"N" : "Ny", \
-		"B" : "Bd", \
-		"y" : "Y" , \
-		"r" : "Ro", \
-		"w" : "Wb", \
-		"r" : "Zc", \
-		"Y" : "Yb" \
-	}
+	stationCodeTable = [ \
+		["K", "Kk"], \
+		["b", "Br"], \
+		["f", "Fd"], \
+		["h", "Hn"], \
+		["k", "Kp"], \
+		["l", "La"], \
+		["m", "Mk"], \
+		["n", "Nl"], \
+		["o", "Ov"], \
+		["p", "Pt"], \
+		["s", "Sc"], \
+		["G", "Gb"], \
+		["c", "Cm"], \
+		["H", "Hb"], \
+		["H", "Ho"], \
+		["T", "Ts"], \
+		["U", "Ur"], \
+		["S", "Sv"], \
+		["S", "Nt"], \
+		["I", "Ma"], \
+		["P", "Oh"], \
+		["X", "On"], \
+		["V", "Wz"], \
+		["N", "Ny"], \
+		["B", "Bd"], \
+		["B", "Mc"], \
+		["M", "Mc"], \
+		["y", "Y" ], \
+		["r", "Ro"], \
+		["w", "Wb"], \
+		["Y", "Yg"], \
+		["Y", "Yb"], \
+		["y", "Yg"], \
+		["y", "Yb"], \
+		["F", "Ft"], \
+		["f", "Ft"], \
+		["J", "Ht"], \
+		["A", "Ke"], \
+		["O", "Tc"], \
+		["C", "Ts"], \
+		["Z", "Zc"], \
+		["r", "Zc"]
+	]
 
 	options='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 	start = 0
@@ -66,17 +79,19 @@ def setAntennaCodes(vexfile, passname, verbose):
 	done = []
 	used = []
 
-	for k in stationCodeTable.keys():
-		if stationCodeTable[k] in antennas:
-			done.append(stationCodeTable[k])
+	for k, s in stationCodeTable:
+		if s in antennas:
+			done.append(s)
 			used.append(k)
-			out.write('%s %s\n' % (k, stationCodeTable[k]))
+			out.write('%s xx\n' % k)	# W__ is this needed?
+			out.write('%s %s\n' % (k, s))
 	for a in antennas:
 		if a not in done:
 			while options[start] in used:
 				start += 1
 			used.append(options[start])
 			done.append(a)
+			out.write('%s xx\n' % options[start])
 			out.write('%s %s\n' % (options[start], a))
 			
 	out.close()
