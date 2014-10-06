@@ -9,8 +9,8 @@ from os import getenv, environ, popen, umask, getcwd, system
 
 program = 'mark5c2db'
 author = 'Walter Brisken'
-version = '0.9'
-verdate = '20140603'
+version = '0.10'
+verdate = '20141006'
 
 # Name of the Oracle VLBA legacy database
 databaseName = getenv("VLBA_DB")
@@ -31,6 +31,7 @@ def usage(pgm):
 	print '  -h  or  --help         print help information and quit.'
 	print '  -p  or  --pretend      run in pretend mode (don\'t update the database).'
 	print '  --force                force insertion even if previous values exist already.'
+	print '  --override             like force, but allows one project to override another.'
 	print '\nIf a space separated list of one or more station codes is provided, only those'
 	print 'stations will be processed.\n'
 	print 'Note! Avoid running this program multiple times for the same experiment.\n'
@@ -211,6 +212,7 @@ if len(argv) < 2:
 vexFile = None
 doForce = False
 doPretend = False
+doOverride = False
 stationFilter = []
 
 for a in argv[1:]:
@@ -219,6 +221,8 @@ for a in argv[1:]:
 		exit(0)
 	elif a in ['--force']:
 		doForce = True
+	elif a in ['--override']:
+		doOverride = True
 	elif a in ['--pretend', '-p']:
 		doPretend = True
 	elif vexFile == None:
@@ -286,7 +290,13 @@ for s in stns:
 
 		vsn = zero2oh(b[2])
 
-		if doForce:
+		if doOverride:
+			cmd = "DELETE from TAPE WHERE STAID='%s' and EPOCH=to_date('%d/%02d/%02d:%02d:%02d:%02d', 'yyyy/mm/dd:hh24:mi:ss')" % (upper(s), dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+			print cmd
+			if not doPretend:
+				cursor.execute(cmd)
+
+		elif doForce:
 			cmd = "DELETE from TAPE WHERE PROPOSAL='%s' and SEGMENT='%s' and STAID='%s' and EPOCH=to_date('%d/%02d/%02d:%02d:%02d:%02d', 'yyyy/mm/dd:hh24:mi:ss')" % (obsCode, obsSeg, upper(s), dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
 			print cmd
 			if not doPretend:
