@@ -1,6 +1,8 @@
 Version 1.18
 ~~~~~~~~~~~~
 * difxqueue: actually respect "DIFX_LABEL" env var
+* plotbp improvements (Craig Walker)
+* Version for DiFX-2.4, Nov 4, 2014
 
 Version 1.17
 ~~~~~~~~~~~~
