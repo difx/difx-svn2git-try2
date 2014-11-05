@@ -1,7 +1,7 @@
 alias PREPEND 'setenv \!^ {\!:2}:{$\!^}'
 
 ####### DIFX VERSION ########################
-setenv DIFX_VERSION trunk
+setenv DIFX_VERSION DiFX-2.4.0
 
 ####### ROOT PATHS ##########################
 setenv DIFXROOT /usr/local/difx
