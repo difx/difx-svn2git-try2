@@ -37,7 +37,7 @@ setenv CALC_SERVER localhost
 
 if ( $OSTYPE == "darwin" || $OSTYPE == "linux" || $OSTYPE == "linux-gnu") then
   set OS=$OSTYPE
-else if ( $OSTYPE == "darwin9.0" ) then
+else if ( $OSTYPE == "darwin9.0" || $OSTYPE == "darwin13" || $OSTYPE == "darwin14" ) then
   set OS="darwin"
 else
   echo "Warning supported O/S $OSTYPE";
