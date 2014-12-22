@@ -13,11 +13,13 @@ from time import localtime, asctime
 dbname = getenv("VLBA_DB")
 
 program = 'difxqueue'
-version = '1.2'
+version = '1.3'
 author  = 'Walter Brisken'
-verdate = '20140831'
+verdate = '20141222'
 
 clusterHorsepower = 1.0
+
+delayModelProgram = 'calcif2'
 	
 # Antennas considered not foreign
 vlbaAntennas = ['BR', 'FD', 'HN', 'KP', 'LA', 'MK', 'NL', 'OV', 'PT', 'SC']
@@ -44,6 +46,9 @@ Options can include:
 
   --db-only
   -d         Operate only on database (some commands only)
+
+  --calc11
+             Use calc11 to generate delay model
 
   --queuedir
   -q         Specify the directory to use as the correlation base
@@ -950,8 +955,8 @@ class Pass:
 				system(cmd)
 			elif verbose > 1:
 				print 'Not copying, using local directory'
-			cmd = 'calcif2 %s -f %s/%s' % \
-				(options, queueDir, j.name)
+			cmd = '%s %s -f %s/%s' % \
+				(delayModelProgram, options, queueDir, j.name)
 			if verbose > 1:
 				print 'Executing: %s' % cmd
 			system(cmd)
@@ -1017,6 +1022,8 @@ for o, a in optlist:
 		priority = int(a)
 	elif o in ('-d', '--db-only'):
 		dbOnly = True
+	elif o in ('--calc11'):
+		delayModelProgram = 'difxcalc'
 	elif o in ('-q', '--queue'):
 		queueDir = a
 
