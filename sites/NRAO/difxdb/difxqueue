@@ -15,7 +15,7 @@ dbname = getenv("VLBA_DB")
 program = 'difxqueue'
 version = '1.3'
 author  = 'Walter Brisken'
-verdate = '20141222'
+verdate = '20141226'
 
 clusterHorsepower = 1.0
 
@@ -955,8 +955,12 @@ class Pass:
 				system(cmd)
 			elif verbose > 1:
 				print 'Not copying, using local directory'
-			cmd = '%s %s -f %s/%s' % \
-				(delayModelProgram, options, queueDir, j.name)
+			if delayModelProgram == 'difxcalc':
+				cmd = '%s %s/%s.calc' % \
+					(delayModelProgram, queueDir, j.name)
+			else:
+				cmd = '%s %s -f %s/%s' % \
+					(delayModelProgram, options, queueDir, j.name)
 			if verbose > 1:
 				print 'Executing: %s' % cmd
 			system(cmd)
@@ -1004,8 +1008,7 @@ def verify(action):
 
 umask(02)
 		
-optlist, args = getopt(argv[1:], 'hvfdq:p:', ['help', 'verbose', 'force', 'db-only', 'queuedir=', 'priority=', \
-	'override-version'])
+optlist, args = getopt(argv[1:], 'hvfdq:p:', ['help', 'verbose', 'force', 'db-only', 'calc11', 'queuedir=', 'priority=', 'override-version'])
 
 overrideVersion = False
 force = False
