@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+
+import datetime
+import cx_Oracle
+from sys import argv, exit
+from os import getenv, environ, popen, umask, getcwd, system
+from os.path import isfile
+from string import find, upper, lower, strip, split
+try:
+	import psycopg2
+except:
+	print 'psycopg2 not found.  Cannot continue.'
+	exit(0)
+
+
+program = 'db2cc'
+author = 'Walter Brisken'
+version = '0.1'
+verdate = '20150309'
+
+# Name of the Postgres VLBA database based on EVLA
+newDatabaseName = getenv("VLBAMPTS_DB")
+if newDatabaseName == None:
+	print 'Error: VMBAMPTS_DB environment variable not set.  Cannot continue.'
+	exit(0)
+
+mjd0 = datetime.datetime(1858, 11, 17, 0, 0)
+
+def usage(pgm):
+	print '%s ver %s  %s  %s\n' % (program, version, author, verdate)
+	print 'A program to extract cable cal values from the wideband VLBA database.\n'
+	print 'Usage: %s [options] <vex file>\n' % pgm
+	print 'options can be:\n'
+	print '  --help'
+	print '  -h         print this message and quit\n'
+	print '  --verbose'
+	print '  -v         print more diagnostics to screen\n'
+	print '  --force'
+	print '  -f         run even if means overwriting exisiting files\n'
+	print 'Example:  db2cc bf115f.vex\n'
+	exit(0)
+
+
+

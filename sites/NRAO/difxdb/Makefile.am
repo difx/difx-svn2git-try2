@@ -2,6 +2,8 @@ bin_PROGRAMS = \
 	e2ecopy
 
 dist_bin_SCRIPTS = \
+	db2cc \
+	db2wx \
 	db2vex \
 	condition \
 	getshelf \
@@ -11,7 +13,6 @@ dist_bin_SCRIPTS = \
 	difxarch \
 	difxclean \
 	difxusage \
-	db2wx \
 	mark5c2db \
 	makemark4
 
