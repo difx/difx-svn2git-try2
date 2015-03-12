@@ -1,0 +1,189 @@
+#!/usr/bin/env python
+
+import psycopg2 as pg
+from sys import argv, exit
+from os import environ, popen
+from string import lower, upper, split, strip
+
+program = 'db2flag'
+author = 'Walter Brisken'
+version = '0.1'
+verdate = '20150312'
+
+
+def getVLBAFlags(start, stop, station, filename):
+
+	arguments = { 'host' : (lower(station) + '-cc'), 'from': '%14.8f' % (start - 0.1), 'to': '%14.8f' % (stop + 0.1) }
+	dbAccess = environ['VLBAMPTS_DB']
+
+	out = open(filename, 'w')
+	print 'Collecting %s Weather data from vlbampts db (may take a couple minutes)' % upper(station)
+
+	query = """
+        SELECT
+          split_part(hostname_timestamp, ',', 1) as hostname,
+          split_part(hostname_timestamp, ',', 2)::double precision as timestamp,
+          COALESCE(RTP_inphase, -999) AS RTP_inphase,
+          COALESCE(RTP_quadphase, -999) AS RTP_quadphase
+        FROM crosstab(
+          $$ SELECT
+               UPPER(SUBSTR(hostname,1,2)) || ',' || timestamp,
+               monpointname,
+               monpointvalue
+             FROM mcdata
+             WHERE hostname = '%s-cc' AND
+                   devicename = 'RTPHASE' AND
+                   monpointname IN ('RTP_inphase', 'RTP_quadphase') AND
+                   timestamp BETWEEN %14.8f AND %14.8f
+             ORDER BY 1,2 $$,
+          $$ VALUES ('RTP_inphase'), ('RTP_quadphase') $$
+          ) AS ct(hostname_timestamp text,
+                  RTP_inphase double precision,
+                  RTP_quadphase double precision)""" % (lower(stn), startMJD, stopMJD)
+
+	db = pg.connect(dbAccess).cursor()
+	db.execute(query)
+
+	print 'Writing %s' % filename
+	out.write('# GB Weather data produced by %s ver. %s\n' % (program, version) )
+	out.write('# Ant MJD temp(C) pressure(mbar) dewpoint(C) WindSpeed(m/s) winddir(degrees) rain(cm) gust(m/s)\n')
+	for host, time, Temperature, DewPointTemperature, Pressure, WindSpeed, WindDirection, Rain, WindGust in db.fetchall():
+		out.write('%s %f %f %f %f %f %f %f %f\n' % (host, time, Temperature, Pressure, DewPointTemperature, WindSpeed, WindDirection, Rain, WindGust) )
+	
+	out.close()
+
+def getGBFlags(start, stop, filename):
+	pass
+
+def getVLAFlags(start, stop, filename):
+	pass
+
+				
+
+# Returns obsCode, obsSeg, { ANT : [startmjd, stopmjd] }
+def vexPeek(vexFile, verbose):
+	
+	cmd = 'vexpeek %s' % vexFile
+	if verbose > 0:
+		print 'Executing command: %s' % cmd
+
+	p = popen(cmd)
+	data = p.readlines()
+
+	if len(data) == 0:
+		return 'Error', 'Error', 'Error'
+	
+	obsCode = upper(strip(data[0]))
+	obsSeg = ''
+
+	if obsCode[0:5] == 'ERROR':
+		return 'Error', 'Error', 'Error'
+
+	if len(obsCode) > 3:
+		if obsCode[0].isalpha() and obsCode[1].isalpha() and obsCode[2].isdigit():
+			for i in range(3, len(obsCode)):
+				if obsCode[i].isalpha():
+					obsSeg = obsCode[i:]
+					obsCode = obsCode[0:i]
+					break;
+		if obsCode[0].isalpha() and obsCode[1].isdigit():
+			for i in range(2, len(obsCode)):
+				if obsCode[i].isalpha():
+					obsSeg = obsCode[i:]
+					obsCode = obsCode[0:i]
+					break;
+		
+
+	antennaTimes = {}
+	for d in data[1:]:
+		s = split(strip(d))
+		antennaTimes[upper(s[0])] = [float(s[1]), float(s[2])]
+
+	if verbose > 0:
+		print 'This is experiment %s %s' % (obsCode, obsSeg)
+
+	return obsCode, obsSeg, antennaTimes
+
+def exptTimeRange(antennaTimes):
+	start = 1e9
+	stop = -1e9
+	for a in antennaTimes.keys():
+		if antennaTimes[a][0] < start:
+			start = antennaTimes[a][0]
+		if antennaTimes[a][1] > stop:
+			stop = antennaTimes[a][0]
+	return [start, stop]
+
+def usage(pgm):
+	print '\n%s ver. %s  %s  %s' % (program, version, author, verdate)
+
+# Usage:  db2wx [options] <vexFile> [ant1 [ant2 ... ] ]
+
+vexFile = None
+antennas = []
+verbose = 0
+force = False
+
+for a in argv[1:]:
+	if a[0] == '-':
+		if a in ['-h', '--help']:
+			usage(argv[0])
+			exit(0)
+		if a in ['-v', '--verbose']:
+			verbose += 1
+		if a in ['-f', '--force']:
+			force = True
+		else:
+			print 'Unknown option: %s' % a
+			exit(0)
+	elif vexFile == None:
+		vexFile = a
+	else:
+		antennas.append(upper(a))
+
+if vexFile == None:
+	print 'Incomplete command line.  Run with --help for info.'
+	exit(0)
+
+obsCode, obsSeg, antennaTimes = vexPeek(vexFile, verbose)
+
+if not force:
+	nWrongAntenna = 0
+	for a in antennas:
+		if a not in antennaTimes.keys():
+			print 'Error: %s is not in this vex file' % a
+			nWrongAntenna += 1
+	if nWrongAntenna > 0:
+		exit(0)
+else:
+	for a in antennas:
+		if a not in antennaTimes.keys():
+			antennaTimes[a] = exptTimeRange(antennaTimes)
+
+if len(antennas) == 0:
+	antennas = antennaTimes.keys()
+
+
+# different antennas have their data stored in different DBs / mon points...
+
+ignored = ''
+
+print '\n%s is now collecting weather data...' % program
+
+for a in antennas:
+	if a == 'GB':
+		wxFile = '%s%s.%s.weather' % (lower(obsCode), lower(obsSeg), lower(a))
+		getGBWeather(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, wxFile)
+	elif a == 'Y':
+		wxFile = '%s%s.%s.weather' % (lower(obsCode), lower(obsSeg), lower(a))
+		getVLAWeather(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, wxFile)
+	elif a in ['BR', 'FD', 'HN', 'KP', 'LA', 'MK', 'NL', 'OV', 'PT', 'SC']:
+		wxFile = '%s%s.%s.weather.db2wx' % (lower(obsCode), lower(obsSeg), lower(a))
+		getVLBAWeather(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, a, wxFile)
+	else:
+		ignored += ' %s' % a
+
+if len(ignored) > 0:
+	print '\nThe following antennas are not (yet) supported by %s: %s' % (program, ignored)
+
+print ''
