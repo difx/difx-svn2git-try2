@@ -7,49 +7,65 @@ from string import lower, upper, split, strip
 
 program = 'db2flag'
 author = 'Walter Brisken'
-version = '0.1'
-verdate = '20150312'
+version = '0.2'
+verdate = '20150322'
 
 
 def getVLBAFlags(start, stop, station, filename):
 
-	arguments = { 'host' : (lower(station) + '-cc'), 'from': '%14.8f' % (start - 0.1), 'to': '%14.8f' % (stop + 0.1) }
 	dbAccess = environ['VLBAMPTS_DB']
 
+	# The reasons below must be <= 24 chars between single quotes
+	flagbits = \
+	[ \
+		( 0x0001, "'Synth 1 out of lock'" ), \
+		( 0x0002, "'Synth 2 out of lock'" ), \
+		( 0x0004, "'Synth 3 out of lock'" ), \
+		( 0x0080, "'Source change'" ), \
+		( 0x1000, "'Subreflector posn error'" ), \
+		( 0x4000, "'Antenna not pointing'" ), \
+		( 0x8000, "'Antenna position error'") \
+	]
+	nBit = len(flagbits)
+
+	flagstart = [-1] * nBit
+
 	out = open(filename, 'w')
-	print 'Collecting %s Weather data from vlbampts db (may take a couple minutes)' % upper(station)
+	print 'Collecting %s Flag data from vlbampts db (may take a couple minutes)' % upper(station)
 
 	query = """
-        SELECT
-          split_part(hostname_timestamp, ',', 1) as hostname,
-          split_part(hostname_timestamp, ',', 2)::double precision as timestamp,
-          COALESCE(RTP_inphase, -999) AS RTP_inphase,
-          COALESCE(RTP_quadphase, -999) AS RTP_quadphase
-        FROM crosstab(
-          $$ SELECT
-               UPPER(SUBSTR(hostname,1,2)) || ',' || timestamp,
-               monpointname,
-               monpointvalue
-             FROM mcdata
-             WHERE hostname = '%s-cc' AND
-                   devicename = 'RTPHASE' AND
-                   monpointname IN ('RTP_inphase', 'RTP_quadphase') AND
-                   timestamp BETWEEN %14.8f AND %14.8f
-             ORDER BY 1,2 $$,
-          $$ VALUES ('RTP_inphase'), ('RTP_quadphase') $$
-          ) AS ct(hostname_timestamp text,
-                  RTP_inphase double precision,
-                  RTP_quadphase double precision)""" % (lower(stn), startMJD, stopMJD)
+	SELECT timestamp, monpointvalue from mcdata 
+	WHERE hostname = '%s-cc' 
+	  AND devicename = 'FLAGGER' 
+	  AND monpointname = 'upper_flag'
+	  AND timestamp between %14.8f AND %14.8f
+	ORDER BY timestamp""" % (lower(station), start, stop) 
 
 	db = pg.connect(dbAccess).cursor()
 	db.execute(query)
 
-	print 'Writing %s' % filename
-	out.write('# GB Weather data produced by %s ver. %s\n' % (program, version) )
-	out.write('# Ant MJD temp(C) pressure(mbar) dewpoint(C) WindSpeed(m/s) winddir(degrees) rain(cm) gust(m/s)\n')
-	for host, time, Temperature, DewPointTemperature, Pressure, WindSpeed, WindDirection, Rain, WindGust in db.fetchall():
-		out.write('%s %f %f %f %f %f %f %f %f\n' % (host, time, Temperature, Pressure, DewPointTemperature, WindSpeed, WindDirection, Rain, WindGust) )
-	
+	lastflag = 0
+	nRec = 0
+
+	for timestamp, value in db.fetchall():
+		nRec += 1
+		flag = int(value)
+
+		for b in range(nBit):
+			if (flag & flagbits[b][0]) != (lastflag & flagbits[b][0]):
+				if flag & flagbits[b][0]:
+					flagstart[b] = timestamp
+				else:
+					out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart[b], timestamp, -1, flagbits[b][1]))
+
+		lastflag = flag
+
+	for b in range(nBit):
+		if lastflag & flagbits[b][0]:
+			out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart[b], stop, -1, flagbits[b][1]))
+
+	print '  %d records found' % nRec
+
 	out.close()
 
 def getGBFlags(start, stop, filename):
@@ -168,18 +184,18 @@ if len(antennas) == 0:
 
 ignored = ''
 
-print '\n%s is now collecting weather data...' % program
+print '\n%s is now collecting flag data...' % program
 
 for a in antennas:
 	if a == 'GB':
-		wxFile = '%s%s.%s.weather' % (lower(obsCode), lower(obsSeg), lower(a))
-		getGBWeather(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, wxFile)
+		wxFile = '%s%s.%s.flag' % (lower(obsCode), lower(obsSeg), lower(a))
+		getGBFlags(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, wxFile)
 	elif a == 'Y':
-		wxFile = '%s%s.%s.weather' % (lower(obsCode), lower(obsSeg), lower(a))
-		getVLAWeather(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, wxFile)
+		wxFile = '%s%s.%s.flag' % (lower(obsCode), lower(obsSeg), lower(a))
+		getVLAFlags(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, wxFile)
 	elif a in ['BR', 'FD', 'HN', 'KP', 'LA', 'MK', 'NL', 'OV', 'PT', 'SC']:
-		wxFile = '%s%s.%s.weather.db2wx' % (lower(obsCode), lower(obsSeg), lower(a))
-		getVLBAWeather(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, a, wxFile)
+		wxFile = '%s%s.%s.flag' % (lower(obsCode), lower(obsSeg), lower(a))
+		getVLBAFlags(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, a, wxFile)
 	else:
 		ignored += ' %s' % a
 
