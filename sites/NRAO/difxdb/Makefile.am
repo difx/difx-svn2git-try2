@@ -3,6 +3,7 @@ bin_PROGRAMS = \
 
 dist_bin_SCRIPTS = \
 	db2cc \
+	db2flag \
 	db2wx \
 	db2vex \
 	condition \
