@@ -7,12 +7,13 @@ from string import lower, upper, split, strip
 
 program = 'db2flag'
 author = 'Walter Brisken'
-version = '0.2'
-verdate = '20150322'
+version = '0.3'
+verdate = '20150323'
 
 
 def getVLBAFlags(start, stop, station, filename):
 
+	nRec = 0
 	dbAccess = environ['VLBAMPTS_DB']
 
 	# The reasons below must be <= 24 chars between single quotes
@@ -33,6 +34,7 @@ def getVLBAFlags(start, stop, station, filename):
 	out = open(filename, 'w')
 	print 'Collecting %s Flag data from vlbampts db (may take a couple minutes)' % upper(station)
 
+	# First query to get VME alerts that were funneled into the VLBAMPTS database via mon2xml
 	query = """
 	SELECT timestamp, monpointvalue from mcdata 
 	WHERE hostname = '%s-cc' 
@@ -45,7 +47,6 @@ def getVLBAFlags(start, stop, station, filename):
 	db.execute(query)
 
 	lastflag = 0
-	nRec = 0
 
 	for timestamp, value in db.fetchall():
 		nRec += 1
@@ -64,9 +65,43 @@ def getVLBAFlags(start, stop, station, filename):
 		if lastflag & flagbits[b][0]:
 			out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart[b], stop, -1, flagbits[b][1]))
 
+	# Now look for MIB-native alerts
+	#   For now, just look for subreflector problems.  Later, there may be more...
+	query = """
+	SELECT timestamp, alert from alertdata 
+	WHERE hostname='%s-m401'
+	  AND devicename='M402'
+	  AND monpointname='Ell_Cmd_Stat_Mismatch'
+	  AND timestamp between %14.8f AND %14.8f
+	ORDER BY timestamp""" % (lower(station), start, stop)
+
+	db = pg.connect(dbAccess).cursor()
+	db.execute(query)
+
+	flagstart = 0
+	lastflag = 0
+
+	for timestamp, alert in db.fetchall():
+		nRec += 1
+		flag = int(alert)
+
+		if flag != lastflag:
+			if flag:
+				flagstart = timestamp
+			else:
+				out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart, timestamp, -1, "'Ellipsoid pos error'"))
+
+		lastflag = flag
+	
+	if lastflag:
+		out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart, stop, -1, "'Ellipsoid pos error'"))
+
 	print '  %d records found' % nRec
 
 	out.close()
+	# if nRec is zero, delete output file
+
+	return nRec;
 
 def getGBFlags(start, stop, filename):
 	pass
