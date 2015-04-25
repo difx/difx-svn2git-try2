@@ -17,8 +17,8 @@ except:
 
 program = 'db2vex'
 author = 'Walter Brisken'
-version = '0.17'
-verdate = '20140123'
+version = '0.18'
+verdate = '20150414'
 
 # Name of the Oracle VLBA legacy database
 databaseName = getenv("VLBA_DB")
@@ -633,9 +633,13 @@ def genBlocks(scans, experTimes):
 	return blocks
 
 def writeShelfData(data, fileName):
+	pastLines = []
 	out = open(fileName, 'w')
 	for d in data:
-		out.write('%s %s %s\n' % (d[0], zero2oh(d[1]), d[2]))
+		line = '%s %s %s\n' % (d[0], zero2oh(d[1]), d[2])
+		if not line in pastLines:
+			out.write(line)
+			pastLines.append(line);
 	out.close()
 
 def signFlip(clock):
