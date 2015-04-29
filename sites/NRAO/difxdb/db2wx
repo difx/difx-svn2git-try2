@@ -313,8 +313,12 @@ def exptTimeRange(antennaTimes):
 
 def usage(pgm):
 	print '\n%s ver. %s  %s  %s' % (program, version, author, verdate)
-
-# Usage:  db2wx [options] <vexFile> [ant1 [ant2 ... ] ]
+	print '\nUsage:  %s [options] <vexFile> [ant1 [ant2 ... ] ]' % pgm
+	print '\nOptions can be:'
+	print '  -h or --help    : print this help information and quit.'
+	print '  -f or --force   : force execution, even if output files exist.'
+	print '  -v or --verbose : be more verbose in execution.'
+	print ''
 
 vexFile = None
 antennas = []
