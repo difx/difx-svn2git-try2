@@ -127,6 +127,29 @@ public:
 	std::vector<ZoomFreq> zoomFreqs;
 };
 
+class DatastreamSetup
+{
+public:
+	DatastreamSetup(const std::string &name);
+	int setkv(const std::string &key, const std::string &value);
+	bool hasBasebandFile(const Interval &interval) const;	// Returns true if at least one baseband file exists over the provided interval
+	int merge(const DatastreamSetup *dss);
+
+	std::string difxName;
+	std::vector<VexBasebandFile> basebandFiles;	// files to correlate
+	std::string networkPort;// For eVLBI : port for this antenna.  A non-number indicates raw mode attached to an ethernet interface
+	int windowSize;		// For eVLBI : TCP window size
+	std::string machine;	// If set, use specified machine as datastream node for this antenna
+	std::string format;	// Override format from .vex file.
+				// This is sometimes needed because format not known always at scheduling time
+				// Possible values: S2 VLBA MkIV/Mark4 Mark5B . Is converted to all caps on load
+	enum DataSource dataSource;
+	enum SamplingType dataSampling;
+
+	int startChan;		// within the antenna's channels, where does this datastream start? [0-based]
+	int nChan;		// number of channels provided by this datastream
+};
+
 class AntennaSetup
 {
 public:
@@ -135,6 +158,9 @@ public:
 	int setkv(const std::string &key, const std::string &value, ZoomFreq * zoomFreq);
 	void copyGlobalZoom(const GlobalZoom &globalZoom);
 	bool hasBasebandFile(const Interval &interval) const;	// Returns true if at least one baseband file exists over the provided interval
+	enum DataSource getDataSource() const;
+	const std::string &getFormat() const;
+
 
 	std::string vexName;	// Antenna name as it appears in vex file
 	std::string difxName;	// Antenna name (if different) to appear in difx
@@ -147,23 +173,14 @@ public:
 	std::vector<double> freqPhaseDelta;	// Phase difference between pols for each frequency
 	std::vector<double> loOffsets;		// LO offsets for each individual frequency
 	VexClock clock;
-	double deltaClock;	// sec
-	double deltaClockRate;	// sec/sec
+	double deltaClock;	// [sec]
+	double deltaClockRate;	// [sec/sec]
 	// flag
-	// media
 	bool polSwap;		// If true, swap polarizations
-	std::string format;	// Override format from .vex file.
-				// This is sometimes needed because format not known always at scheduling time
-				// Possible values: S2 VLBA MkIV/Mark4 Mark5B . Is converted to all caps on load
-	enum DataSource dataSource;
-	enum SamplingType dataSampling;
-	std::vector<VexBasebandFile> basebandFiles;	// files to correlate
-	std::string networkPort;// For eVLBI : port for this antenna.  A non-number indicates raw mode attached to an ethernet interface
-	int windowSize;		// For eVLBI : TCP window size
 	int phaseCalIntervalMHz;// 0 if no phase cal extraction, positive gives interval between tones to extract
 	enum ToneSelection toneSelection;	// Which tones to propagate to FITS
 	double toneGuardMHz;	// to avoid getting tones too close to band edges; default = bandwidth/8
-	int tcalFrequency;	// Hz (= 80 for VLBA)
+	int tcalFrequency;	// [Hz] (= 80 for VLBA)
 
 	// No more than one of the following can be used at a time:
 	std::vector<ZoomFreq> zoomFreqs;//List of zoom freqs to add for this antenna
@@ -172,8 +189,12 @@ public:
 	// antenna-specific start and stop times
 	double mjdStart;
 	double mjdStop;
-	
-	std::string machine;	// If set, use specified machine as datastream node for this antenna	FIXME: eventually make this a std::list<std::string> for multi-datastream support
+
+	DatastreamSetup defaultDatastreamSetup;	// only used to contain defaults used in creating datastreamSetups
+	std::list<std::string> datastreamList;	// list of datastreams provided in v2d file
+	std::vector<DatastreamSetup> datastreamSetups;
+private:
+	void addDatastream(const std::string &dsName);
 };
 
 class CorrSetup
@@ -283,6 +304,7 @@ public:
 	const SourceSetup *getSourceSetup(const std::string &name) const;
 	const SourceSetup *getSourceSetup(const std::vector<std::string> &names) const;
 	const PhaseCentre *getPhaseCentre(const std::string &difxname) const;
+	const DatastreamSetup *getDatastreamSetup(const std::string &name) const;
 	const AntennaSetup *getAntennaSetup(const std::string &name) const;
 	const GlobalZoom *getGlobalZoom(const std::string &name) const;
 	const VexClock *getAntennaClock(const std::string &antName) const;
@@ -337,6 +359,9 @@ public:
 	/* manually provided EOPs */
 	std::vector<VexEOP> eops;
 
+	/* datastream setup definitions */
+	std::vector<DatastreamSetup> datastreamSetups;
+
 	/* antenna setups to apply */
 	std::vector<AntennaSetup> antennaSetups;
 
@@ -356,6 +381,8 @@ private:
 	std::map<std::string,std::string> shelves;
 };
 
+std::ostream& operator << (std::ostream &os, const DatastreamSetup &x);
+std::ostream& operator << (std::ostream &os, const AntennaSetup &x);
 std::ostream& operator << (std::ostream &os, const CorrSetup &x);
 std::ostream& operator << (std::ostream &os, const CorrRule &x);
 std::ostream& operator << (std::ostream &os, const CorrParams &x);

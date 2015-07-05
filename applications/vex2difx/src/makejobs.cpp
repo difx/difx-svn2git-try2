@@ -379,7 +379,7 @@ void makeJobs(std::vector<VexJob>& J, VexData *V, const CorrParams *P, std::list
 			if(it->second == "None")
 			{
 				const AntennaSetup *as = P->getAntennaSetup(it->first);
-				if(!as->basebandFiles.empty())
+				if(as->getDataSource() == DataSourceFile)
 				{
 					if(!as->hasBasebandFile(*j))	// test if all baseband files are out of time range
 					{

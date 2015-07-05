@@ -364,22 +364,17 @@ static int getAntennas(VexData *V, Vex *v, const CorrParams &params)
 		fvex_double(&(r->value), &(r->units), &A->axisOffset);
 
 		const AntennaSetup *antennaSetup = params.getAntennaSetup(antName);
+
+		// Note: with multi-data-stream functionality, only module-based correlation can be specified directly by vex
 		if(antennaSetup)
 		{
-			if(antennaSetup->dataSource != DataSourceNone)
+			enum DataSource ds = antennaSetup->getDataSource();
+			if(ds != DataSourceNone)
 			{
-				if(antennaSetup->dataSource == DataSourceFile ||
-				   antennaSetup->dataSource == DataSourceModule)
-				{
-					A->basebandFiles = antennaSetup->basebandFiles;
-				}
-				else
-				{
-					A->basebandFiles.clear();
-				}
-				A->dataSource = antennaSetup->dataSource;
+				A->dataSource = ds;
 			}
 		}
+
 		const VexClock *paramClock = params.getAntennaClock(antName);
 		if(paramClock)
 		{
@@ -492,7 +487,9 @@ static int getAntennas(VexData *V, Vex *v, const CorrParams &params)
 			}
 		}
 
-		if(!antennaSetup || antennaSetup->dataSource == DataSourceNone)
+
+// FIXME: antennaSetup needs function that indicates whether datasource has been established
+		if(!antennaSetup || antennaSetup->getDataSource() == DataSourceNone)
 		{
 			if(params.fakeDatasource)
 			{
@@ -934,13 +931,15 @@ static int getModes(VexData *V, Vex *v, const CorrParams &params)
 			bool swapPol = params.swapPol(antName2);
 			VexSetup &setup = M->setups[V->getAntenna(a)->name];
 			antennaSetup = params.getAntennaSetup(antName2);
+
 			if(antennaSetup)
 			{
-				if(!antennaSetup->format.empty())
+				std::string fmt=antennaSetup->getFormat();
+				if(!fmt.empty())
 				{
-					std::cout << "Setting antenna format to " << antennaSetup->format << " for antenna " << antName << std::endl;
+					std::cout << "Setting antenna format to " << fmt << " for antenna " << antName << std::endl;
 				}
-				setup.formatName = antennaSetup->format;
+				setup.formatName = fmt;
 			}
 
 			// Get sample rate
@@ -1634,12 +1633,6 @@ static int getVSNs(VexData *V, Vex *v, const CorrParams &params)
 		std::string ant(stn);
 		Upper(ant);
 
-		if(V->nVSN(ant) > 0)
-		{
-			// Media already populated
-			continue;
-		}
-
 		if(params.useAntenna(ant))
 		{
 			const AntennaSetup *antennaSetup = params.getAntennaSetup(ant);
@@ -1647,7 +1640,7 @@ static int getVSNs(VexData *V, Vex *v, const CorrParams &params)
 			if(antennaSetup)
 			{
 				// If media is provided via v2d file, don't bother
-				if(antennaSetup->dataSource != DataSourceNone)
+				if(antennaSetup->getDataSource() != DataSourceNone)
 				{
 					continue;
 				}

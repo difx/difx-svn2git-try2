@@ -248,8 +248,8 @@ public:
 	std::string axisType;
 	double axisOffset;	// (m)
 	std::vector<VexClock> clocks;
-	std::vector<VexBasebandFile> basebandFiles;
 	enum DataSource	dataSource;
+	std::vector<VexBasebandFile>	vsns;	// used to store vsns listed in the vex file
 };
 
 class VexEOP

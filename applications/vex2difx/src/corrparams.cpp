@@ -873,6 +873,7 @@ ZoomFreq::ZoomFreq()
 	initialise(-999, -999, false, -1);
 }
 
+// freq and bw supplied in MHz
 void ZoomFreq::initialise(double freq, double bw, bool corrparent, int specavg)
 {
 	frequency = freq*1000000; //convert to Hz
@@ -881,7 +882,16 @@ void ZoomFreq::initialise(double freq, double bw, bool corrparent, int specavg)
 	spectralaverage = specavg;
 }
 
-AntennaSetup::AntennaSetup(const std::string &name) : vexName(name)
+DatastreamSetup::DatastreamSetup(const std::string &name) : difxName(name)
+{
+	networkPort = "0";
+	windowSize = 0;
+	dataSource = DataSourceNone;
+	dataSampling = NumSamplingTypes;	// flag that no sampling is is identified here
+	nChan = 0;				// Zero implies all.
+}
+
+AntennaSetup::AntennaSetup(const std::string &name) : vexName(name), defaultDatastreamSetup(name)
 {
 	polSwap = false;
 	X = 0.0;
@@ -896,14 +906,10 @@ AntennaSetup::AntennaSetup(const std::string &name) : vexName(name)
 	clock3 = 0.0;
 	clock4 = 0.0;
 	clock5 = 0.0;
-	networkPort = "0";
-	windowSize = 0;
 	phaseCalIntervalMHz = -1;
 	toneGuardMHz = -1.0;
 	toneSelection = ToneSelectionSmart;
 	tcalFrequency = -1;
-	dataSource = DataSourceNone;
-	dataSampling = NumSamplingTypes;	// flag that no sampling is is identified here
 
 	// antenna is by default not constrained in start time
 	mjdStart = -1.0;
@@ -1191,6 +1197,215 @@ double parseDouble(const std::string &value) {
 
 
 
+int DatastreamSetup::setkv(const std::string &key, const std::string &value)
+{
+	std::string::size_type at, last, splitat;
+	std::string nestedkeyval;
+	std::stringstream ss;
+	int nWarn = 0;
+
+	ss << value;
+
+	if(key == "machine")
+	{
+		ss >> machine;
+	}
+	else if(key == "format")
+	{
+		std::string s;
+		ss >> s;
+		Upper(s);
+
+		if(s == "MARK4")
+		{
+			s = "MKIV";
+		}
+
+		format = s;
+	}
+	else if(key == "sampling")
+	{
+		dataSampling = stringToSamplingType(value.c_str());
+		if(dataSampling >= NumSamplingTypes)
+		{
+			std::cerr << "Error: datastream " << difxName << " has illegal samping type set: " << value << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+	}
+	else if(key == "file" || key == "files")
+	{
+		if(dataSource != DataSourceFile && dataSource != DataSourceNone)
+		{
+			std::cerr << "Warning: datastream " << difxName << " had at least two kinds of data sources!: " << dataSourceNames[dataSource] << " and " << dataSourceNames[DataSourceFile] << std::endl;
+			++nWarn;
+		}
+		dataSource = DataSourceFile;
+		basebandFiles.push_back(VexBasebandFile(value));
+	}
+	else if(key == "filelist")
+	{
+		if(dataSource != DataSourceFile && dataSource != DataSourceNone)
+		{
+			std::cerr << "Warning: datastream " << difxName << " had at least two kinds of data sources!: " << dataSourceNames[dataSource] << " and " << dataSourceNames[DataSourceFile] << std::endl;
+			++nWarn;
+		}
+		dataSource = DataSourceFile;
+		loadBasebandFilelist(value, basebandFiles);
+	}
+	else if(key == "networkPort")
+	{
+		if(dataSource != DataSourceNetwork && dataSource != DataSourceNone)
+		{
+			std::cerr << "Warning: datastream " << difxName << " had at least two kinds of data sources!: " << dataSourceNames[dataSource] << " and " << dataSourceNames[DataSourceNetwork] << std::endl;
+			++nWarn;
+		}
+		dataSource = DataSourceNetwork;
+		ss >> networkPort;
+	}
+	else if(key == "windowSize")
+	{
+		if(dataSource != DataSourceNetwork && dataSource != DataSourceNone)
+		{
+			std::cerr << "Warning: datastream " << difxName << " had at least two kinds of data sources!: " << dataSourceNames[dataSource] << " and " << dataSourceNames[DataSourceNetwork] << std::endl;
+			++nWarn;
+		}
+		dataSource = DataSourceNetwork;
+		ss >> windowSize;
+	}
+	else if(key == "UDP_MTU")
+	{
+		if(dataSource != DataSourceNetwork && dataSource != DataSourceNone)
+		{
+			std::cerr << "Warning: datastream " << difxName << " had at least two kinds of data sources!: " << dataSourceNames[dataSource] << " and " << dataSourceNames[DataSourceNetwork] << std::endl;
+			++nWarn;
+		}
+		dataSource = DataSourceNetwork;
+		ss >> windowSize;
+		windowSize = -windowSize;
+	}
+	else if(key == "module" || key == "vsn")
+	{
+		if(dataSource == DataSourceModule)
+		{
+			std::cerr << "Warning: datastream " << difxName << " has multiple vsns assigned to it.  Only using the last one = " << value << " and discarding " << basebandFiles[0].filename << std::endl;
+		}
+		else if(dataSource != DataSourceNone)
+		{
+			std::cerr << "Warning: datastream " << difxName << " had at least two kinds of data sources!: " << dataSourceNames[dataSource] << " and " << dataSourceNames[DataSourceFile] << std::endl;
+			++nWarn;
+		}
+		dataSource = DataSourceModule;
+		basebandFiles.clear();
+		basebandFiles.push_back(VexBasebandFile(value));
+	}
+	else if(key == "fake")
+	{
+		dataSource = DataSourceFake;
+		basebandFiles.clear();
+		basebandFiles.push_back(VexBasebandFile(value));
+	}
+	else
+	{
+		std::cerr << "Warning: ANTENNA: Unknown parameter '" << key << "'." << std::endl; 
+		++nWarn;
+	}
+
+	return nWarn;
+}
+
+bool DatastreamSetup::hasBasebandFile(const Interval &interval) const
+{
+	for(std::vector<VexBasebandFile>::const_iterator it = basebandFiles.begin(); it != basebandFiles.end(); ++it)
+	{
+		if(it->overlap(interval) > 0.0)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+int DatastreamSetup::merge(const DatastreamSetup *dss)
+{
+	if(dataSource == DataSourceNone)
+	{
+		dataSource = dss->dataSource;
+	}
+	else if(dataSource != dss->dataSource && dss->dataSource != DataSourceNone)
+	{
+		std::cerr << "Error: conflicting data sources: " << dataSourceNames[dataSource] << " != " << dataSourceNames[dss->dataSource] << std::endl;
+
+		return -1;
+	}
+
+	if(format.empty())
+	{
+		format = dss->format;
+	}
+	else if(format != dss->format && !dss->format.empty())
+	{
+		std::cerr << "Error: conflicting formats: " << format << " != " << format << std::endl;
+
+		return -2;
+	}
+
+	if(dataSampling < dss->dataSampling)
+	{
+		if(dataSampling != 0)
+		{
+			std::cerr << "Error: conflicting sampling types specified" << std::endl;
+
+			return -3;
+		}
+		dataSampling = dss->dataSampling;	
+	}
+
+	if(!basebandFiles.empty())
+	{
+		std::cerr << "Error: cannot provide baseband file(s) in ANTENNA section when datastreams are specified." << std::endl;
+
+		return -4;
+	}
+	else
+	{
+		if(!dss->basebandFiles.empty())
+		{
+			basebandFiles = dss->basebandFiles;
+		}
+	}
+
+	if(!networkPort.empty() || windowSize != 0)
+	{
+		std::cerr << "Error: cannot provide network (eVLBI) information in ANTENNA section when datastreams are specified." << std::endl;
+
+		return -5;
+	}
+	else
+	{
+		networkPort = dss->networkPort;
+		windowSize = dss->windowSize;
+	}
+
+	if(machine.empty())
+	{
+		machine = dss->machine;
+	}
+	else
+	{
+		if(!dss->machine.empty())
+		{
+			std::cerr << "Error: cannot provide machine both in ANTENNA section and DATASTREAM section." << std::endl;
+
+			return -6;
+		}
+	}
+
+	return 0;
+}
+
+
 int AntennaSetup::setkv(const std::string &key, const std::string &value)
 {
 	std::string::size_type at, last, splitat;
@@ -1224,16 +1439,6 @@ int AntennaSetup::setkv(const std::string &key, const std::string &value)
 		clock.offset = parseDouble(value);
 		clock.offset /= 1.0e6;	// convert from us to sec
 		clock.mjdStart = 1;
-	}
-	else if(key == "sampling")
-	{
-		dataSampling = stringToSamplingType(value.c_str());
-		if(dataSampling >= NumSamplingTypes)
-		{
-			std::cerr << "Error: antenna " << vexName << " has illegal samping type set: " << value << std::endl;
-
-			exit(EXIT_FAILURE);
-		}
 	}
 	else if(key == "clockRate" || key == "clock1")
 	{
@@ -1374,6 +1579,12 @@ int AntennaSetup::setkv(const std::string &key, const std::string &value)
 		}
 		ss >> axisOffset;
 	}
+	else if(key == "datastreams")
+	{
+		std::string s;
+		ss >> s;
+		addDatastream(s);
+	}
 	else if(key == "format")
 	{
 		std::string s;
@@ -1385,83 +1596,93 @@ int AntennaSetup::setkv(const std::string &key, const std::string &value)
 			s = "MKIV";
 		}
 
-		format = s;
+		defaultDatastreamSetup.format = s;
 	}
 	else if(key == "machine")
 	{
-		ss >> machine;	// FIXME: when multiple datastreams per antenna are supported, this should be a list append
+		ss >> defaultDatastreamSetup.machine;
+	}
+	else if(key == "sampling")
+	{
+		defaultDatastreamSetup.dataSampling = stringToSamplingType(value.c_str());
+		if(defaultDatastreamSetup.dataSampling >= NumSamplingTypes)
+		{
+			std::cerr << "Error: antenna " << vexName << " has illegal samping type set: " << value << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
 	}
 	else if(key == "file" || key == "files")
 	{
-		if(dataSource != DataSourceFile && dataSource != DataSourceNone)
+		if(defaultDatastreamSetup.dataSource != DataSourceFile && defaultDatastreamSetup.dataSource != DataSourceNone)
 		{
-			std::cerr << "Warning: antenna " << vexName << " had at least two kinds of data sources!: " << dataSourceNames[dataSource] << " and " << dataSourceNames[DataSourceFile] << std::endl;
+			std::cerr << "Warning: antenna " << vexName << " had at least two kinds of data sources!: " << dataSourceNames[defaultDatastreamSetup.dataSource] << " and " << dataSourceNames[DataSourceFile] << std::endl;
 			++nWarn;
 		}
-		dataSource = DataSourceFile;
-		basebandFiles.push_back(VexBasebandFile(value));
+		defaultDatastreamSetup.dataSource = DataSourceFile;
+		defaultDatastreamSetup.basebandFiles.push_back(VexBasebandFile(value));
 	}
 	else if(key == "filelist")
 	{
-		if(dataSource != DataSourceFile && dataSource != DataSourceNone)
+		if(defaultDatastreamSetup.dataSource != DataSourceFile && defaultDatastreamSetup.dataSource != DataSourceNone)
 		{
-			std::cerr << "Warning: antenna " << vexName << " had at least two kinds of data sources!: " << dataSourceNames[dataSource] << " and " << dataSourceNames[DataSourceFile] << std::endl;
+			std::cerr << "Warning: antenna " << vexName << " had at least two kinds of data sources!: " << dataSourceNames[defaultDatastreamSetup.dataSource] << " and " << dataSourceNames[DataSourceFile] << std::endl;
 			++nWarn;
 		}
-		dataSource = DataSourceFile;
-		loadBasebandFilelist(value, basebandFiles);
+		defaultDatastreamSetup.dataSource = DataSourceFile;
+		loadBasebandFilelist(value, defaultDatastreamSetup.basebandFiles);
 	}
 	else if(key == "networkPort")
 	{
-		if(dataSource != DataSourceNetwork && dataSource != DataSourceNone)
+		if(defaultDatastreamSetup.dataSource != DataSourceNetwork && defaultDatastreamSetup.dataSource != DataSourceNone)
 		{
-			std::cerr << "Warning: antenna " << vexName << " had at least two kinds of data sources!: " << dataSourceNames[dataSource] << " and " << dataSourceNames[DataSourceNetwork] << std::endl;
+			std::cerr << "Warning: antenna " << vexName << " had at least two kinds of data sources!: " << dataSourceNames[defaultDatastreamSetup.dataSource] << " and " << dataSourceNames[DataSourceNetwork] << std::endl;
 			++nWarn;
 		}
-		dataSource = DataSourceNetwork;
-		ss >> networkPort;
+		defaultDatastreamSetup.dataSource = DataSourceNetwork;
+		ss >> defaultDatastreamSetup.networkPort;
 	}
 	else if(key == "windowSize")
 	{
-		if(dataSource != DataSourceNetwork && dataSource != DataSourceNone)
+		if(defaultDatastreamSetup.dataSource != DataSourceNetwork && defaultDatastreamSetup.dataSource != DataSourceNone)
 		{
-			std::cerr << "Warning: antenna " << vexName << " had at least two kinds of data sources!: " << dataSourceNames[dataSource] << " and " << dataSourceNames[DataSourceNetwork] << std::endl;
+			std::cerr << "Warning: antenna " << vexName << " had at least two kinds of data sources!: " << dataSourceNames[defaultDatastreamSetup.dataSource] << " and " << dataSourceNames[DataSourceNetwork] << std::endl;
 			++nWarn;
 		}
-		dataSource = DataSourceNetwork;
-		ss >> windowSize;
+		defaultDatastreamSetup.dataSource = DataSourceNetwork;
+		ss >> defaultDatastreamSetup.windowSize;
 	}
 	else if(key == "UDP_MTU")
 	{
-		if(dataSource != DataSourceNetwork && dataSource != DataSourceNone)
+		if(defaultDatastreamSetup.dataSource != DataSourceNetwork && defaultDatastreamSetup.dataSource != DataSourceNone)
 		{
-			std::cerr << "Warning: antenna " << vexName << " had at least two kinds of data sources!: " << dataSourceNames[dataSource] << " and " << dataSourceNames[DataSourceNetwork] << std::endl;
+			std::cerr << "Warning: antenna " << vexName << " had at least two kinds of data sources!: " << dataSourceNames[defaultDatastreamSetup.dataSource] << " and " << dataSourceNames[DataSourceNetwork] << std::endl;
 			++nWarn;
 		}
-		dataSource = DataSourceNetwork;
-		ss >> windowSize;
-		windowSize = -windowSize;
+		defaultDatastreamSetup.dataSource = DataSourceNetwork;
+		ss >> defaultDatastreamSetup.windowSize;
+		defaultDatastreamSetup.windowSize = -defaultDatastreamSetup.windowSize;
 	}
 	else if(key == "module" || key == "vsn")
 	{
-		if(dataSource == DataSourceModule)
+		if(defaultDatastreamSetup.dataSource == DataSourceModule)
 		{
-			std::cerr << "Warning: antenna " << vexName << " has multiple vsns assigned to it.  Only using the last one = " << value << " and discarding " << basebandFiles[0].filename << std::endl;
+			std::cerr << "Warning: antenna " << vexName << " has multiple vsns assigned to it.  Only using the last one = " << value << " and discarding " << defaultDatastreamSetup.basebandFiles[0].filename << std::endl;
 		}
-		else if(dataSource != DataSourceNone)
+		else if(defaultDatastreamSetup.dataSource != DataSourceNone)
 		{
-			std::cerr << "Warning: antenna " << vexName << " had at least two kinds of data sources!: " << dataSourceNames[dataSource] << " and " << dataSourceNames[DataSourceFile] << std::endl;
+			std::cerr << "Warning: antenna " << vexName << " had at least two kinds of data sources!: " << dataSourceNames[defaultDatastreamSetup.dataSource] << " and " << dataSourceNames[DataSourceFile] << std::endl;
 			++nWarn;
 		}
-		dataSource = DataSourceModule;
-		basebandFiles.clear();
-		basebandFiles.push_back(VexBasebandFile(value));
+		defaultDatastreamSetup.dataSource = DataSourceModule;
+		defaultDatastreamSetup.basebandFiles.clear();
+		defaultDatastreamSetup.basebandFiles.push_back(VexBasebandFile(value));
 	}
 	else if(key == "fake")
 	{
-		dataSource = DataSourceFake;
-		basebandFiles.clear();
-		basebandFiles.push_back(VexBasebandFile(value));
+		defaultDatastreamSetup.dataSource = DataSourceFake;
+		defaultDatastreamSetup.basebandFiles.clear();
+		defaultDatastreamSetup.basebandFiles.push_back(VexBasebandFile(value));
 	}
 	else if(key == "phaseCalInt")
 	{
@@ -1574,7 +1795,7 @@ int AntennaSetup::setkv(const std::string &key, const std::string &value)
 			at = value.find_first_of('/', last);
 			nestedkeyval = value.substr(last, at-last);
 			splitat = nestedkeyval.find_first_of('@');
-			nWarn += setkv(nestedkeyval.substr(0,splitat), nestedkeyval.substr(splitat+1), newfreq);
+			nWarn += setkv(nestedkeyval.substr(0, splitat), nestedkeyval.substr(splitat+1), newfreq);
 			last = at+1;
 		}
 	}
@@ -1605,15 +1826,28 @@ void AntennaSetup::copyGlobalZoom(const GlobalZoom &globalZoom)
 
 bool AntennaSetup::hasBasebandFile(const Interval &interval) const
 {
-	for(std::vector<VexBasebandFile>::const_iterator it = basebandFiles.begin(); it != basebandFiles.end(); ++it)
+	for(std::vector<DatastreamSetup>::const_iterator it = datastreamSetups.begin(); it != datastreamSetups.end(); ++it)
 	{
-		if(it->overlap(interval) > 0.0)
+		if(it->hasBasebandFile(interval))
 		{
 			return true;
 		}
 	}
 
 	return false;
+}
+
+
+// For now this returns the first datastreamSetup's data source...
+enum DataSource AntennaSetup::getDataSource() const
+{
+	return datastreamSetups[0].dataSource;
+}
+
+// For now this returns the first datastreamSetup's format...
+const std::string &AntennaSetup::getFormat() const
+{
+	return datastreamSetups[0].format;
 }
 
 int GlobalZoom::setkv(const std::string &key, const std::string &value, ZoomFreq *zoomFreq)
@@ -2026,6 +2260,7 @@ int CorrParams::load(const std::string &fileName)
 		PARSE_MODE_SETUP,
 		PARSE_MODE_RULE,
 		PARSE_MODE_SOURCE,
+		PARSE_MODE_DATASTREAM,
 		PARSE_MODE_ANTENNA,
 		PARSE_MODE_GLOBAL_ZOOM,
 		PARSE_MODE_EOP,
@@ -2040,6 +2275,7 @@ int CorrParams::load(const std::string &fileName)
 	CorrSetup   *corrSetup=0;
 	CorrRule    *rule=0;
 	SourceSetup *sourceSetup=0;
+	DatastreamSetup *datastreamSetup=0;
 	AntennaSetup *antennaSetup=0;
 	GlobalZoom  *globalZoom=0;
 	VexEOP       *eop=0;
@@ -2182,6 +2418,34 @@ int CorrParams::load(const std::string &fileName)
 			key = "";
 			parseMode = PARSE_MODE_SOURCE;
 		}
+		else if(*i == "DATASTREAM")
+		{
+			if(parseMode != PARSE_MODE_GLOBAL)
+			{
+				std::cerr << "Error: DATASTREAM out of place." << std::endl;
+				
+				exit(EXIT_FAILURE);
+			}
+			++i;
+			std::string dsName(*i);
+			if(getDatastreamSetup(dsName) != 0)
+			{
+				std::cerr << "Error: two DATASTREAM blocks named " << dsName << std::endl;
+
+				exit(EXIT_FAILURE);
+			}
+			datastreamSetups.push_back(DatastreamSetup(dsName));
+			datastreamSetup = &datastreamSetups.back();
+			++i;
+			if(*i != "{")
+			{
+				std::cerr << "Error: DATASTREAM " << datastreamSetup->difxName << ": '{' expected." << std::endl;
+
+				exit(EXIT_FAILURE);
+			}
+			key = "";
+			parseMode = PARSE_MODE_DATASTREAM;
+		}
 		else if(*i == "ANTENNA")
 		{
 			if(parseMode != PARSE_MODE_GLOBAL)
@@ -2312,6 +2576,9 @@ int CorrParams::load(const std::string &fileName)
 			case PARSE_MODE_SOURCE:
 				nWarn += sourceSetup->setkv(key, value);
 				break;
+			case PARSE_MODE_DATASTREAM:
+				nWarn += datastreamSetup->setkv(key, value);
+				break;
 			case PARSE_MODE_ANTENNA:
 				nWarn += antennaSetup->setkv(key, value);
 				break;
@@ -2383,6 +2650,45 @@ int CorrParams::load(const std::string &fileName)
 			it->copyGlobalZoom(*z);
 		}
 	}
+
+	// populate datastream structures
+	for(std::vector<AntennaSetup>::iterator it = antennaSetups.begin(); it != antennaSetups.end(); ++it)
+	{
+		if(it->datastreamList.empty())	// no explicit datastreams defined
+		{
+			// just copy the datastream from the antenna's default
+			it->datastreamSetups.push_back(it->defaultDatastreamSetup);
+		}
+		else
+		{
+			for(std::list<std::string>::const_iterator cit = it->datastreamList.begin(); cit != it->datastreamList.end(); ++cit)
+			{
+				const DatastreamSetup *dss;
+				dss = getDatastreamSetup(*cit);
+				if(dss == 0)
+				{
+					std::cerr << "Error: referenced DATASTREAM " << *cit << " is not defined!" << std::endl;
+
+					exit(EXIT_FAILURE);
+				}
+				else
+				{
+					int v;
+
+					it->datastreamSetups.push_back(it->defaultDatastreamSetup);
+					it->datastreamSetups.back().difxName = *cit;
+					v = it->datastreamSetups.back().merge(dss);
+					if(v != 0)
+					{
+						std::cerr << "Error merging default datastream setup of antenna " << it->vexName << " with supplied DATASTREAM " << *cit << std::endl;
+
+						exit(EXIT_FAILURE);
+					}
+				}
+			}
+		}
+	}
+
 
 	return nWarn;
 }
@@ -2747,6 +3053,22 @@ const VexClock *CorrParams::getAntennaClock(const std::string &antName) const
 	return 0;
 }
 
+const DatastreamSetup *CorrParams::getDatastreamSetup(const std::string &name) const
+{
+	const DatastreamSetup *d = 0;
+
+	for(std::vector<DatastreamSetup>::const_iterator it = datastreamSetups.begin(); it != datastreamSetups.end(); ++it)
+	{
+		if(it->difxName == name)
+		{
+			d = &(*it);
+			break;
+		}
+	}
+
+	return d;
+}
+
 const AntennaSetup *CorrParams::getAntennaSetup(const std::string &name) const
 {
 	const AntennaSetup *a = 0;
@@ -2767,6 +3089,15 @@ const AntennaSetup *CorrParams::getAntennaSetup(const std::string &name) const
 
 	return a;
 }
+
+void AntennaSetup::addDatastream(const std::string &dsName)
+{
+	if(find(datastreamList.begin(), datastreamList.end(), dsName) == datastreamList.end())
+	{
+		datastreamList.push_back(dsName);
+	}
+}
+
 
 const GlobalZoom *CorrParams::getGlobalZoom(const std::string &name) const
 {
@@ -3007,6 +3338,27 @@ std::ostream& operator << (std::ostream &os, const SourceSetup &x)
 	return os;
 }
 
+
+std::ostream& operator << (std::ostream &os, const DatastreamSetup &x)
+{
+	os << "DATASTREAM " << x.difxName << std::endl;
+	os << "{" << std::endl;
+	if(!x.format.empty())
+	{
+		os << "  format=" << x.format << std::endl;
+	}
+	os << "  # dataSource=" << dataSourceNames[x.dataSource] << std::endl;
+	if(x.dataSource == DataSourceNetwork)
+	{
+		os << "  networkPort=" << x.networkPort << std::endl;
+		os << "  windowSize=" << x.windowSize << std::endl;
+	}
+
+	os << "}" << std::endl;
+
+	return os;
+}
+
 std::ostream& operator << (std::ostream &os, const AntennaSetup &x)
 {
 	os << "ANTENNA " << x.vexName << std::endl;
@@ -3030,16 +3382,6 @@ std::ostream& operator << (std::ostream &os, const AntennaSetup &x)
 		os << "  clockEpoch=" << x.clock.offset_epoch << std::endl;
 	}
 	os << "  polSwap=" << x.polSwap << std::endl;
-	if(!x.format.empty())
-	{
-		os << "  format=" << x.format << std::endl;
-	}
-	os << "  # dataSource=" << dataSourceNames[x.dataSource] << std::endl;
-	if(x.dataSource == DataSourceNetwork)
-	{
-		os << "  networkPort=" << x.networkPort << std::endl;
-		os << "  windowSize=" << x.windowSize << std::endl;
-	}
 	os << "  phaseCalInt=" << x.phaseCalIntervalMHz << std::endl;
 	os << "  tcalFreq=" << x.tcalFrequency << std::endl;
 

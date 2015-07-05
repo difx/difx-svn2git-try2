@@ -678,6 +678,8 @@ int VexData::sanityCheck()
 
 	for(std::vector<VexAntenna>::const_iterator it = antennas.begin(); it != antennas.end(); ++it)
 	{
+#if 0
+FIXME: this functionality needs to be put somewhere else
 		if(it->dataSource == DataSourceFile && it->basebandFiles.empty())
 		{
 			std::cerr << "Warning: file based correlation desired but no files provided for antenna " << it->name << " ." << std::endl;
@@ -688,6 +690,7 @@ int VexData::sanityCheck()
 			std::cerr << "Warning: module based correlation desired but no media specified for antenna " << it->name << " ." << std::endl;
 			++nWarn;
 		}
+#endif
 		if(it->dataSource == DataSourceNone)
 		{
 			std::cerr << "Warning: data source is NONE for antenna " << it->name << " ." << std::endl;
@@ -1050,7 +1053,7 @@ int VexJob::generateFlagFile(const VexData &V, const char *fileName, unsigned in
 			exit(EXIT_FAILURE);
 		}
 
-		if(!ant->basebandFiles.empty() || ant->dataSource == DataSourceNetwork)
+		if(ant->dataSource != DataSourceModule)
 		{
 			// Aha! not module based so unflag JOB_FLAG_RECORD
 			flagMask[antIds[a->first]] &= ~VexJobFlag::JOB_FLAG_RECORD;
@@ -1690,7 +1693,7 @@ unsigned int VexData::nVSN(const std::string &antName) const
 	}
 	else
 	{
-		return A->basebandFiles.size();
+		return A->vsns.size();
 	}
 }
 
@@ -1700,7 +1703,7 @@ void VexData::addVSN(const std::string &antName, const std::string &vsn, const I
 	{
 		if(it->name == antName)
 		{
-			it->basebandFiles.push_back(VexBasebandFile(vsn, timeRange));
+			it->vsns.push_back(VexBasebandFile(vsn, timeRange));
 			it->dataSource = DataSourceModule;
 		}
 	}
@@ -1723,7 +1726,7 @@ std::string VexData::getVSN(const std::string &antName, const Interval &timeRang
 		return bestVSN;
 	}
 
-	for(std::vector<VexBasebandFile>::const_iterator v = A->basebandFiles.begin(); v != A->basebandFiles.end(); ++v)
+	for(std::vector<VexBasebandFile>::const_iterator v = A->vsns.begin(); v != A->vsns.end(); ++v)
 	{
 		double timeOverlap = timeRange.overlap(*v);
 		if(timeOverlap > best)
@@ -1885,7 +1888,7 @@ std::ostream& operator << (std::ostream &os, const VexAntenna &x)
 
 	os << "  dataSource=" << dataSourceNames[x.dataSource] << std::endl;
 
-	for(std::vector<VexBasebandFile>::const_iterator it = x.basebandFiles.begin(); it != x.basebandFiles.end(); ++it)
+	for(std::vector<VexBasebandFile>::const_iterator it = x.vsns.begin(); it != x.vsns.end(); ++it)
 	{
 		os << "  " << *it << std::endl;
 	}
