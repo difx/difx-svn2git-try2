@@ -29,6 +29,8 @@
 
 #include "freq.h"
 
+// Returns index of requested (fq, bw, sb, ...) from freqs.
+// If not in freqs, it is added first
 int getFreqId(std::vector<freq>& freqs, double fq, double bw, char sb, double isr, double osr, int os, int d, int iz, unsigned int t)
 {
 	for(std::vector<freq>::const_iterator it = freqs.begin(); it != freqs.end(); ++it)

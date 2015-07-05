@@ -1621,6 +1621,33 @@ int VexData::getAntennaIdByDefName(const std::string &antName) const
 	return -1;
 }
 
+// returns < 0 if number of channels varies with mode
+int VexData::getNumAntennaRecChans(const std::string &antName) const
+{
+	int nRecChan = 0;
+	
+	for(int s = 0; s < V->nScan(); ++s)
+	{
+		int n;
+		const VexScan *scan = getScan(s);
+
+		n = scan->nRecordChan(self, antName);
+		if(n > 0)
+		{
+			if(nRecChan == 0)
+			{
+				nRecChan = n;
+			}
+			if(nRecChan != n)
+			{
+				return -1;	// two scans with different numbers of record chans found.
+			}
+		}
+	}
+
+	return nRecChan;
+}
+
 int VexData::getModeIdByDefName(const std::string &defName) const
 {
 	for(std::vector<VexMode>::const_iterator it = modes.begin(); it != modes.end(); ++it)

@@ -547,6 +547,10 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 			nRecordChan = datastreamSetup.nChan;
 			startChan = datastreamSetup.startChan;
 		}
+		else if(dsId > 0)
+		{
+			cerr << "Developer error: setFormat(ant=" << antName << ", mode=" << mode->defName << ") -> datastream[" << dsId << "].nChan=0" << endl;
+		}
 	}
 	int n2 = next2(nRecordChan);
 
@@ -2124,7 +2128,7 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 
 		int d = 0;
 
-		//first iterate over all antennas, making sure all recorded bands are allocated
+		// first iterate over all antennas, making sure all recorded bands are allocated
 		for(int antennaId = 0; antennaId < D->nAntenna; ++antennaId)
 		{
 			string antName = antList[antennaId];
@@ -2151,11 +2155,14 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 
 			for(int ads = 0; ads < nads; ++ads)
 			{
-				const DatastreamSetup *datastreamSetup = 0;
-
+				const DatastreamSetup *datastreamSetup;
 				if(antennaSetup)
 				{
 					datastreamSetup = &antennaSetup->datastreamSetups[ads];
+				}
+				else
+				{
+					datastreamSetup = 0;
 				}
 				int v = setFormat(D, D->nDatastream, freqs, toneSets, mode, antName, corrSetup, P->v2dMode, datastreamSetup);
 				if(v)
@@ -2177,11 +2184,8 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 						}
 						nZoomBands = 0;
 						
-// FIXME: major work needed below here for support of multiple datastreams per antenna
 						int nZoomFreqs = antennaSetup->zoomFreqs.size();
-
-						// FIXME: implement the following function to get number of relevant zoom freqs
-						int nZoomFreqs = antennaSetup->getNumZoomFreqs(ads);
+						int nZoom;	// actual number of zoom freqs used
 
 						if(nZoomFreqs > 0)
 						{
@@ -2201,7 +2205,7 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 										parentFreqIndices[i] = j;
 									}
 								}
-								if(parentFreqIndices[i] < 0)
+								if(nads > 1 && parentFreqIndices[i] < 0)
 								{
 									cerr << "Error: Cannot find a parent freq for zoom band " << i << " of datastream " << antennaId << endl;
 									cerr << "Note: This might be caused by a frequency offset that is not a multiple of the spectral resolution" << endl;
@@ -2209,22 +2213,21 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 									exit(EXIT_FAILURE);
 								}
 								zoomChans = static_cast<int>(zf.bandwidth/corrSetup->FFTSpecRes);
-								fqId = getFreqId(freqs, zf.frequency, zf.bandwidth,
-	//							freqs[dd->recFreqId[parentFreqIndices[i]]].sideBand,
-									'U',
-										corrSetup->FFTSpecRes, corrSetup->outputSpecRes, overSamp, decimation, 1, 0);	// final zero points to the noTone pulse cal setup.
+								fqId = getFreqId(freqs, zf.frequency, zf.bandwidth, 'U', corrSetup->FFTSpecRes, corrSetup->outputSpecRes, overSamp, decimation, 1, 0);	// final zero points to the noTone pulse cal setup.
 								if(zoomChans < minChans)
 								{
 									minChans = zoomChans;
 								}
-								dd->zoomFreqId[i] = fqId;
-								dd->nZoomPol[i] = dd->nRecPol[parentFreqIndices[i]];
+								dd->zoomFreqId[nZoom] = fqId;
+								dd->nZoomPol[nZoom] = dd->nRecPol[parentFreqIndices[i]];
 								nZoomBands += dd->nRecPol[parentFreqIndices[i]];
 								if(!zf.correlateparent)
 								{
 									blockedfreqids[antennaId].insert(dd->recFreqId[parentFreqIndices[i]]);
 								}
+								++nZoom;
 							}
+							nZoomFreqs = nZoom;	// set to actual number needed
 							DifxDatastreamAllocZoomBands(dd, nZoomBands);
 							
 							nZoomBands = 0;
@@ -2279,11 +2282,11 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 								
 								exit(EXIT_FAILURE);
 							}
-							for(int i = 0; i < nFreqClockOffsets; ++i)
+							for(int i = 0; i < D->datastream[D->nDatastream]->nChan; ++i)
 							{
-								D->datastream[D->nDatastream].clockOffset[i] = antennaSetup->freqClockOffs.at(i);
-								D->datastream[D->nDatastream].clockOffsetDelta[i] = antennaSetup->freqClockOffsDelta.at(i);
-								D->datastream[D->nDatastream].phaseOffset[i] = antennaSetup->freqPhaseDelta.at(i);
+								D->datastream[D->nDatastream].clockOffset[i] = antennaSetup->freqClockOffs.at(startChan + i);
+								D->datastream[D->nDatastream].clockOffsetDelta[i] = antennaSetup->freqClockOffsDelta.at(startChan + i);
+								D->datastream[D->nDatastream].phaseOffset[i] = antennaSetup->freqPhaseDelta.at(startChan + i);
 							}
 						}
 
@@ -2296,9 +2299,9 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 
 								exit(EXIT_FAILURE);
 							}
-							for(int i = 0; i < nLoOffsets; ++i)
+							for(int i = 0; i < D->datastream[D->nDatastream]->nChan; ++i)
 							{
-								D->datastream[D->nDatastream].freqOffset[i] = antennaSetup->loOffsets.at(i);
+								D->datastream[D->nDatastream].freqOffset[i] = antennaSetup->loOffsets.at(startChan + i);
 							}
 						}
 					} // if antennaSetup
@@ -2717,6 +2720,7 @@ int main(int argc, char **argv)
 	bool deleteOld = 0;
 	bool strict = 1;
 	int nWarn = 0;
+	int nError = 0;
 	int nSkip = 0;
 	int nDigit;
 	int nJob = 0;
@@ -2884,7 +2888,76 @@ int main(int argc, char **argv)
 			}
 		}
 	}
+
+	// set datastream channels
+	// for each antenna with an ANTENNA section
+	//   * if ndatastream = 0, just zero the nChan and startChan params to keep them flexible
+	//   * else
+	//     * get number of recorded channels
+	//     * if it changes with mode, then bail out
+	//     * in cases where nChan is not set, set it to totalrecchans/ndatastream
+	//     * increment startChan to make set of datastreams contiguous
+	//     * if startChan + nChan for the last datastream does not sum to ndatastream then bail out
+	for(unsigned int a = 0; a < V->nAntenna(); ++a)
+	{
+		const VexAntenna *ant = V->getAntenna(a);
+		AntennaSetup *antSetup = P->getAntenna(ant->name);
+		if(antSetup)
+		{
+			int nads = antSetup->datastreams.size();	// number of antenna datastreams
+
+			if(nads == 0)
+			{
+				cerr << "Developer error: Number of Antenna Datastreams for antenna " << ant->name << " is zero!" << endl;
+
+				exit(EXIT_FAILURE);
+			}
+			else if(nads == 1)
+			{
+				antSetup->datastreams[0].nChan = 0;
+				antSetup->datastreams[0].startChan = 0;
+			}
+			else
+			{
+				int nRecChan = V->getNumAntennaRecChans(ant->name);	// returns < 0 if it varies with mode
+				int chanCount;
+
+				if(nRecChan < 0)
+				{
+					cerr << "Error: Cannot use multiple datastreams in cases where number of record channels varies with mode." << endl;
+					++nError;
+				}
+
+				chanCount = 0;
+				for(int ads = 0; ads < nads; ++ads)
+				{
+					antSetup->datastreams[ads].startChan = chanCount;
+					if(antSetup->datastreams[ads].nChan == 0)
+					{
+						if(nRecChan % nads != 0)
+						{
+							cerr << "Error: Number of record channels does not divide evenly into number of datastreams.  This error can be avoided by explicitly setting number of channels allocated to each datastream in the DATASTREAM blocks." << endl;
+							++nError;
+						}
+						antSetup->datastreams[ads].nChan = nRecChan/nads;
+					}
+					chanCount += antSetup->datastreams[ads].nChan;
+				}
+				if(chanCount != nRecChan)
+				{
+					cerr << "Error: Number of channels represented in DATASTREAMS (" << chanCount << ") does not equal number in vex file (" << nRecChan << ")." << endl;
+					++nError;
+				}
+			}
+		}
+	}
 	
+
+	if(nError > 0)
+	{
+		cerr << nError << " fatal errors encountered.  Quitting " << endl;
+	}
+
 	nWarn += P->sanityCheck();
 	if(!P->fakeDatasource)
 	{

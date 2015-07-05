@@ -249,7 +249,7 @@ public:
 	double axisOffset;	// (m)
 	std::vector<VexClock> clocks;
 	enum DataSource	dataSource;
-	std::vector<VexBasebandFile>	vsns;	// used to store vsns listed in the vex file
+	std::vector<VexBasebandFile> vsns;	// used to store vsns listed in the vex file
 };
 
 class VexEOP
@@ -378,6 +378,7 @@ public:
 	const VexAntenna *getAntenna(const std::string &name) const;
 	double getAntennaStartMJD(const std::string &name) const;
 	double getAntennaStopMJD(const std::string &name) const;
+	int getNumAntennaRecChans(const std::string &name) const;
 
 	unsigned int nMode() const { return modes.size(); }
 	int getModeIdByDefName(const std::string &defName) const;

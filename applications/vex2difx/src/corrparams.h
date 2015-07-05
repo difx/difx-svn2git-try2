@@ -39,6 +39,7 @@
 #include <difxio.h>
 
 #include "interval.h"
+#include "freq.h"
 #include "vextables.h"
 
 extern const double MJD_UNIX0;	// MJD at beginning of unix time
@@ -127,6 +128,25 @@ public:
 	std::vector<ZoomFreq> zoomFreqs;
 };
 
+/* Datastreams...
+
+How do multi-datastreams work in vex2difx?
+
+1. Datastreams contain format and data source information for a subset of channels produced by an antenna
+2. If an antenna has no representative ANTENNA section, then the vex file must provide all of the information and only one datastream can be configured for that antenna
+3. ANTENNA sections can reference zero or more DATASTREAM sections with the datastreams parameter
+4. If no DATASTREAM is provided, then the datastream-specific info comes from the vex file with possible overrides from the ANTENNA section.  After file loading a single entry in the datastreams vector is populated.
+5. If multiple datastreams are created, each datastream (currently) must contain a single contiguous block of channels from the VEX file.  If the datastream channels in the vex file are not contiguous they will need to be manually reordered.
+6. If the number of channels is not specified for datastreams of an antenna, it will be assumed that the datastreams evenly divide the number of recorded channels in the vex file.  It is an error if the number of channels in datastreams does not equal the number of channels in the vex file.
+7. Information that applies to all datastreams for an antenna can be provided in the ANTENNA section.
+8. It is not allowed to specify conflicting information in the ANTENNA section and a related DATASTREAM section; i.e., there is no overriding specified values.
+9. If multiple datastreams are defined then there is no mechanism to support modes with varying numbers of recorded channels.
+
+TODO:
+* DATA table needs populating (file lists or network info)
+* populateBaselineTable needs massive update
+*/
+
 class DatastreamSetup
 {
 public:
@@ -160,7 +180,6 @@ public:
 	bool hasBasebandFile(const Interval &interval) const;	// Returns true if at least one baseband file exists over the provided interval
 	enum DataSource getDataSource() const;
 	const std::string &getFormat() const;
-
 
 	std::string vexName;	// Antenna name as it appears in vex file
 	std::string difxName;	// Antenna name (if different) to appear in difx
