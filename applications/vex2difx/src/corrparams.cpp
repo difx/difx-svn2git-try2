@@ -3090,6 +3090,27 @@ const AntennaSetup *CorrParams::getAntennaSetup(const std::string &name) const
 	return a;
 }
 
+AntennaSetup *CorrParams::getAntennaSetupNonConst(const std::string &name)
+{
+	AntennaSetup *a = 0;
+
+	for(std::vector<AntennaSetup>::iterator it = antennaSetups.begin(); it != antennaSetups.end(); ++it)
+	{
+		if(it->vexName == "DEFAULT")
+		{
+			// keep this as a placeholder in case nothing better is found
+			a = &(*it);
+		}
+		if(it->vexName == name)
+		{
+			a = &(*it);
+			break;
+		}
+	}
+
+	return a;
+}
+
 void AntennaSetup::addDatastream(const std::string &dsName)
 {
 	if(find(datastreamList.begin(), datastreamList.end(), dsName) == datastreamList.end())

@@ -542,10 +542,10 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 	int startChan = 0;
 	if(datastreamSetup)
 	{
-		if(datastreamSetup.nChan > 0)
+		if(datastreamSetup->nChan > 0)
 		{
-			nRecordChan = datastreamSetup.nChan;
-			startChan = datastreamSetup.startChan;
+			nRecordChan = datastreamSetup->nChan;
+			startChan = datastreamSetup->startChan;
 		}
 		else if(dsId > 0)
 		{
@@ -728,7 +728,7 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 	D->datastream[dsId].quantBits = nBits;
 	DifxDatastreamAllocBands(D->datastream + dsId, nRecordChan);
 
-	for(i = 0; i < nRecordChan; ++i)
+	for(int i = 0; i < nRecordChan; ++i)
 	{
 		const VexChannel *ch = &setup->channels[i + startChan];
 		if(ch->subbandId < 0 || ch->subbandId >= static_cast<int>(mode->subbands.size()))
@@ -2146,7 +2146,7 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 
 			if(antennaSetup)
 			{
-				nads = antennaSetup.datastreamSetups.size();
+				nads = antennaSetup->datastreamSetups.size();
 			}
 			else
 			{
@@ -2185,14 +2185,15 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 						nZoomBands = 0;
 						
 						int nZoomFreqs = antennaSetup->zoomFreqs.size();
-						int nZoom;	// actual number of zoom freqs used
 
 						if(nZoomFreqs > 0)
 						{
 							int *parentFreqIndices = new int[nZoomFreqs];
+							int nZoom;	// actual number of zoom freqs used
 
 							DifxDatastreamAllocZoomFreqs(dd, nZoomFreqs);
 							
+							nZoom = 0;
 							for(int i = 0; i < nZoomFreqs; ++i)
 							{
 								const ZoomFreq &zf = antennaSetup->zoomFreqs[i];
@@ -2282,11 +2283,11 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 								
 								exit(EXIT_FAILURE);
 							}
-							for(int i = 0; i < D->datastream[D->nDatastream]->nChan; ++i)
+							for(int i = 0; i < datastreamSetup->nChan; ++i)
 							{
-								D->datastream[D->nDatastream].clockOffset[i] = antennaSetup->freqClockOffs.at(startChan + i);
-								D->datastream[D->nDatastream].clockOffsetDelta[i] = antennaSetup->freqClockOffsDelta.at(startChan + i);
-								D->datastream[D->nDatastream].phaseOffset[i] = antennaSetup->freqPhaseDelta.at(startChan + i);
+								D->datastream[D->nDatastream].clockOffset[i] = antennaSetup->freqClockOffs.at(datastreamSetup->startChan + i);
+								D->datastream[D->nDatastream].clockOffsetDelta[i] = antennaSetup->freqClockOffsDelta.at(datastreamSetup->startChan + i);
+								D->datastream[D->nDatastream].phaseOffset[i] = antennaSetup->freqPhaseDelta.at(datastreamSetup->startChan + i);
 							}
 						}
 
@@ -2299,9 +2300,9 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 
 								exit(EXIT_FAILURE);
 							}
-							for(int i = 0; i < D->datastream[D->nDatastream]->nChan; ++i)
+							for(int i = 0; i < datastreamSetup->nChan; ++i)
 							{
-								D->datastream[D->nDatastream].freqOffset[i] = antennaSetup->loOffsets.at(startChan + i);
+								D->datastream[D->nDatastream].freqOffset[i] = antennaSetup->loOffsets.at(datastreamSetup->startChan + i);
 							}
 						}
 					} // if antennaSetup
@@ -2901,10 +2902,10 @@ int main(int argc, char **argv)
 	for(unsigned int a = 0; a < V->nAntenna(); ++a)
 	{
 		const VexAntenna *ant = V->getAntenna(a);
-		AntennaSetup *antSetup = P->getAntenna(ant->name);
+		AntennaSetup *antSetup = P->getAntennaSetupNonConst(ant->name);
 		if(antSetup)
 		{
-			int nads = antSetup->datastreams.size();	// number of antenna datastreams
+			int nads = antSetup->datastreamSetups.size();	// number of antenna datastreams
 
 			if(nads == 0)
 			{
@@ -2914,8 +2915,8 @@ int main(int argc, char **argv)
 			}
 			else if(nads == 1)
 			{
-				antSetup->datastreams[0].nChan = 0;
-				antSetup->datastreams[0].startChan = 0;
+				antSetup->datastreamSetups[0].nChan = 0;
+				antSetup->datastreamSetups[0].startChan = 0;
 			}
 			else
 			{
@@ -2931,17 +2932,17 @@ int main(int argc, char **argv)
 				chanCount = 0;
 				for(int ads = 0; ads < nads; ++ads)
 				{
-					antSetup->datastreams[ads].startChan = chanCount;
-					if(antSetup->datastreams[ads].nChan == 0)
+					antSetup->datastreamSetups[ads].startChan = chanCount;
+					if(antSetup->datastreamSetups[ads].nChan == 0)
 					{
 						if(nRecChan % nads != 0)
 						{
 							cerr << "Error: Number of record channels does not divide evenly into number of datastreams.  This error can be avoided by explicitly setting number of channels allocated to each datastream in the DATASTREAM blocks." << endl;
 							++nError;
 						}
-						antSetup->datastreams[ads].nChan = nRecChan/nads;
+						antSetup->datastreamSetups[ads].nChan = nRecChan/nads;
 					}
-					chanCount += antSetup->datastreams[ads].nChan;
+					chanCount += antSetup->datastreamSetups[ads].nChan;
 				}
 				if(chanCount != nRecChan)
 				{

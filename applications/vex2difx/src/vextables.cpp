@@ -1626,12 +1626,12 @@ int VexData::getNumAntennaRecChans(const std::string &antName) const
 {
 	int nRecChan = 0;
 	
-	for(int s = 0; s < V->nScan(); ++s)
+	for(int s = 0; s < nScan(); ++s)
 	{
 		int n;
 		const VexScan *scan = getScan(s);
 
-		n = scan->nRecordChan(self, antName);
+		n = scan->nRecordChan(this, antName);
 		if(n > 0)
 		{
 			if(nRecChan == 0)

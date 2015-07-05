@@ -325,6 +325,7 @@ public:
 	const PhaseCentre *getPhaseCentre(const std::string &difxname) const;
 	const DatastreamSetup *getDatastreamSetup(const std::string &name) const;
 	const AntennaSetup *getAntennaSetup(const std::string &name) const;
+	AntennaSetup *getAntennaSetupNonConst(const std::string &name);
 	const GlobalZoom *getGlobalZoom(const std::string &name) const;
 	const VexClock *getAntennaClock(const std::string &antName) const;
 
