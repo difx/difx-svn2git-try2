@@ -884,7 +884,6 @@ static void populateFreqTable(DifxInput *D, const vector<freq>& freqs, const vec
 	}
 }
 
-#warning "FIXME: populateBaselineTable assumes nAntenna == nDatastream!"
 static double populateBaselineTable(DifxInput *D, const CorrParams *P, const CorrSetup *corrSetup, vector<set <int> > blockedfreqids)
 {	
 	int n1, n2;
@@ -924,116 +923,122 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 			config->doAutoCorr = 0;
 
 			// Instead, make autocorrlations from scratch
-			for(int configds1 = 0; configds1 < config->nDatastream-1; ++configds1)
+			for(int a1 = 0; a1 < D->nAntenna-1; ++a1)
 			{
-				int a1, ds1;
-
-				ds1 = config->datastreamId[configds1];
-				a1 = D->datastream[ds1].antennaId;
-
-				bl->dsA = ds1;
-				bl->dsB = ds1;
-
-				DifxBaselineAllocFreqs(bl, D->datastream[ds1].nRecFreq);
-
-				nFreq = 0; // this counts the actual number of freqs
-
-				for(int f = 0; f < D->datastream[ds1].nRecFreq; ++f)
+				for(int configds1 = 0; configds1 < config->nDatastream; ++configds1)
 				{
-					freqId = D->datastream[ds1].recFreqId[f];
+					int ds1;
 
-					if(!corrSetup->correlateFreqId(freqId))
+					ds1 = config->datastreamId[configds1];
+					if(a1 != D->datastream[ds1].antennaId)
 					{
 						continue;
 					}
-					if(!blockedfreqids[a1].empty() && blockedfreqids[a1].find(freqId) != blockedfreqids[a1].end())
+
+					bl->dsA = ds1;
+					bl->dsB = ds1;
+
+					DifxBaselineAllocFreqs(bl, D->datastream[ds1].nRecFreq);
+
+					nFreq = 0; // this counts the actual number of freqs
+
+					for(int f = 0; f < D->datastream[ds1].nRecFreq; ++f)
 					{
-						continue;
-					}
+						freqId = D->datastream[ds1].recFreqId[f];
 
-					DifxBaselineAllocPolProds(bl, nFreq, 4);
-
-					n1 = DifxDatastreamGetRecBands(D->datastream+ds1, freqId, a1p, a1c);
-
-					nPol = 0;
-					for(int u = 0; u < n1; ++u)
-					{
-						int v;
-
-						for(v = 0; v < n1; ++v)
+						if(!corrSetup->correlateFreqId(freqId))
 						{
-							if(corrSetup->doPolar || (a1p[u] == a1p[v] && (corrSetup->onlyPol == ' ' || corrSetup->onlyPol == a1p[u])))
+							continue;
+						}
+						if(!blockedfreqids[a1].empty() && blockedfreqids[a1].find(freqId) != blockedfreqids[a1].end())
+						{
+							continue;
+						}
+
+						DifxBaselineAllocPolProds(bl, nFreq, 4);
+
+						n1 = DifxDatastreamGetRecBands(D->datastream+ds1, freqId, a1p, a1c);
+
+						nPol = 0;
+						for(int u = 0; u < n1; ++u)
+						{
+							int v;
+
+							for(v = 0; v < n1; ++v)
 							{
-								bl->bandA[nFreq][nPol] = a1c[u];
-								bl->bandB[nFreq][nPol] = a1c[v];
-								++nPol;
+								if(corrSetup->doPolar || (a1p[u] == a1p[v] && (corrSetup->onlyPol == ' ' || corrSetup->onlyPol == a1p[u])))
+								{
+									bl->bandA[nFreq][nPol] = a1c[u];
+									bl->bandB[nFreq][nPol] = a1c[v];
+									++nPol;
+								}
 							}
 						}
-					}
-					bl->nPolProd[nFreq] = nPol;
+						bl->nPolProd[nFreq] = nPol;
 
-					if(nPol == 0)
-					{
-						// This deallocates
-						DifxBaselineAllocPolProds(bl, nFreq, 0);
-
-						continue;
-					}
-
-					++nFreq;
-				}
-				for(int f = 0; f < D->datastream[ds1].nZoomFreq; ++f)
-				{
-					freqId = D->datastream[ds1].zoomFreqId[f];
-
-					DifxBaselineAllocPolProds(bl, nFreq, 4);
-
-					n1 = DifxDatastreamGetZoomBands(D->datastream+ds1, freqId, a1p, a1c);
-
-					if(n1 < 0 || n1 > 2)
-					{
-						fprintf(stderr, "Developer error: n1 = %d for ds1 = %d a1=%d freqId=%d\n", n1, ds1, a1, freqId);
-
-						exit(EXIT_FAILURE);
-					}
-
-					nPol = 0;
-					for(int u = 0; u < n1; ++u)
-					{
-						for(int v = 0; v < n1; ++v)
+						if(nPol == 0)
 						{
-							if(corrSetup->doPolar || (a1p[u] == a1p[v] && (corrSetup->onlyPol == ' ' || corrSetup->onlyPol == a1p[u])))
+							// This deallocates
+							DifxBaselineAllocPolProds(bl, nFreq, 0);
+
+							continue;
+						}
+
+						++nFreq;
+					}
+					for(int f = 0; f < D->datastream[ds1].nZoomFreq; ++f)
+					{
+						freqId = D->datastream[ds1].zoomFreqId[f];
+
+						DifxBaselineAllocPolProds(bl, nFreq, 4);
+
+						n1 = DifxDatastreamGetZoomBands(D->datastream+ds1, freqId, a1p, a1c);
+
+						if(n1 < 0 || n1 > 2)
+						{
+							fprintf(stderr, "Developer error: n1 = %d for ds1 = %d a1=%d freqId=%d\n", n1, ds1, a1, freqId);
+
+							exit(EXIT_FAILURE);
+						}
+
+						nPol = 0;
+						for(int u = 0; u < n1; ++u)
+						{
+							for(int v = 0; v < n1; ++v)
 							{
-								bl->bandA[nFreq][nPol] = D->datastream[ds1].nRecBand + a1c[u];
-								bl->bandB[nFreq][nPol] = D->datastream[ds1].nRecBand + a1c[v];
-								++nPol;
+								if(corrSetup->doPolar || (a1p[u] == a1p[v] && (corrSetup->onlyPol == ' ' || corrSetup->onlyPol == a1p[u])))
+								{
+									bl->bandA[nFreq][nPol] = D->datastream[ds1].nRecBand + a1c[u];
+									bl->bandB[nFreq][nPol] = D->datastream[ds1].nRecBand + a1c[v];
+									++nPol;
+								}
 							}
 						}
-					}
-					bl->nPolProd[nFreq] = nPol;
+						bl->nPolProd[nFreq] = nPol;
 
-					if(nPol == 0)
+						if(nPol == 0)
+						{
+							// This deallocates
+							DifxBaselineAllocPolProds(bl, nFreq, 0);
+
+							continue;
+						}
+
+						++nFreq;
+					}
+
+					bl->nFreq = nFreq;
+
+					if(bl->nFreq > 0)
 					{
-						// This deallocates
-						DifxBaselineAllocPolProds(bl, nFreq, 0);
-
-						continue;
+						config->baselineId[config->nBaseline] = blId;
+						++config->nBaseline;
+						++bl;
+						++blId;
 					}
-
-					++nFreq;
-				}
-
-				bl->nFreq = nFreq;
-
-				if(bl->nFreq > 0)
-				{
-					config->baselineId[config->nBaseline] = blId;
-					++config->nBaseline;
-					++bl;
-					++blId;
-				}
-			}
-		}
+				} // config datastream loop
+			} // antenna loop
+		} // if profile mode
 		else // Not profile mode
 		{
 			// Beware those who try to follow the logic below!
@@ -1054,289 +1059,302 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 
 			// Needless to say, this logic can probably be simplified some, but it seems to work!
 
-			for(int configds1 = 0; configds1 < config->nDatastream-1; ++configds1)
+			for(int a1 = 0; a1 < D->nAntenna-1; ++a1)
 			{
-				int a1, ds1;
-
-				ds1 = config->datastreamId[configds1];
-				a1 = D->datastream[ds1].antennaId;
-				for(int configds2 = configds1+1; configds2 < config->nDatastream; ++configds2)
+				for(int a2 = a1 + 1; a2 < D->nAntenna; ++a2)
 				{
-					int a2, ds2;
-
-					ds2 = config->datastreamId[configds2];
-					a2 = D->datastream[ds2].antennaId;
-					
-					bl->dsA = ds1;
-					bl->dsB = ds2;
-
-					// Excape if this baseline is not requested
-					if(!P->useBaseline(D->antenna[a1].name, D->antenna[a2].name))
+					for(int configds1 = 0; configds1 < config->nDatastream; ++configds1)
 					{
-						continue;
-					}
+						int ds1;
 
-					// Allocate enough space for worst case possibility
-					DifxBaselineAllocFreqs(bl, D->datastream[ds1].nRecFreq + D->datastream[ds1].nZoomFreq);
-
-					nFreq = 0; // this counts the actual number of freqs
-
-					// Note: eventually we need to loop over all datastreams associated with this antenna!
-					for(int f = 0; f < D->datastream[ds1].nRecFreq; ++f)
-					{
-						bool zoom2 = false;	// did antenna 2 zoom band make match? 
-
-						freqId = D->datastream[ds1].recFreqId[f];
-
-						if(!corrSetup->correlateFreqId(freqId))
-						{
-							continue;
-						}
-						if(!blockedfreqids[a1].empty() && blockedfreqids[a1].find(freqId) != blockedfreqids[a1].end())
-						{
-							continue;
-						}
-						if(!blockedfreqids[a2].empty() && blockedfreqids[a2].find(freqId) != blockedfreqids[a2].end())
+						ds1 = config->datastreamId[configds1];
+						if(a1 != D->datastream[ds1].antennaId)
 						{
 							continue;
 						}
 
-						DifxBaselineAllocPolProds(bl, nFreq, 4);
-
-						n1 = DifxDatastreamGetRecBands(D->datastream+ds1, freqId, a1p, a1c);
-						n2 = DifxDatastreamGetRecBands(D->datastream+ds2, freqId, a2p, a2c);
-
-						lowedgefreq = D->freq[freqId].freq;
-						if(D->freq[freqId].sideband == 'L')
+						for(int configds2 = 0; configds2 < config->nDatastream; ++configds2)
 						{
-							lowedgefreq -= D->freq[freqId].bw;
-						}
+							int ds2;
 
-						if(n2 == 0)
-						{
-							//look for another freqId which matches band but is opposite sideband
-							for(int f2 = 0; f2 < D->datastream[ds2].nRecFreq; ++f2)
+							ds2 = config->datastreamId[configds2];
+							if(a2 != D->datastream[ds2].antennaId)
 							{
-								altFreqId = D->datastream[ds2].recFreqId[f2];
-								altlowedgefreq = D->freq[altFreqId].freq;
-								if(D->freq[altFreqId].sideband == 'L')
-								{
-									altlowedgefreq -= D->freq[altFreqId].bw;
-								}
-								if(altlowedgefreq     == lowedgefreq &&
-								   D->freq[freqId].bw == D->freq[altFreqId].bw)
-								{
-									n2 = DifxDatastreamGetRecBands(D->datastream+ds2, altFreqId, a2p, a2c);
-								}
+								continue;
 							}
-						}
-						if(n2 == 0)
-						{
-							//still no dice? Try the zoom bands of datastream 2 with the same sideband
-							for(int f2 = 0; f2 < D->datastream[ds2].nZoomFreq; ++f2)
+							
+							// Excape if this baseline is not requested
+							if(!P->useBaseline(D->antenna[a1].name, D->antenna[a2].name))
 							{
-								altFreqId = D->datastream[ds2].zoomFreqId[f2];
-								if(D->freq[freqId].freq == D->freq[altFreqId].freq &&
-								   D->freq[freqId].bw   == D->freq[altFreqId].bw &&
-								   D->freq[freqId].sideband == D->freq[altFreqId].sideband)
-								{
-									n2 = DifxDatastreamGetZoomBands(D->datastream+ds2, altFreqId, a2p, a2c);
-									zoom2 = true;
-								}
+								continue;
 							}
-						}
-						if(n2 == 0)
-						{
-							//still no dice? Try the opposite sidebands of zoom bands of datastream 2
-							for(int f2 = 0; f2 < D->datastream[ds2].nZoomFreq; ++f2)
-							{
-								altFreqId = D->datastream[ds2].zoomFreqId[f2];
-								altlowedgefreq = D->freq[altFreqId].freq;
-								if(D->freq[altFreqId].sideband == 'L')
-								{
-									altlowedgefreq -= D->freq[altFreqId].bw;
-								}
-								if(altlowedgefreq == lowedgefreq &&
-								   D->freq[freqId].bw == D->freq[altFreqId].bw)
-								{
-									n2 = DifxDatastreamGetZoomBands(D->datastream+ds2, altFreqId, a2p, a2c);
-									zoom2 = true;
-								}
-							}
-						}
 
-						nPol = 0;
-						for(int u = 0; u < n1; ++u)
-						{
-							for(int v = 0; v < n2; ++v)
+							bl->dsA = ds1;
+							bl->dsB = ds2;
+
+							// Allocate enough space for worst case possibility
+							DifxBaselineAllocFreqs(bl, D->datastream[ds1].nRecFreq + D->datastream[ds1].nZoomFreq);
+
+							nFreq = 0; // this counts the actual number of freqs
+
+							// Note: eventually we need to loop over all datastreams associated with this antenna!
+							for(int f = 0; f < D->datastream[ds1].nRecFreq; ++f)
 							{
-								if(corrSetup->doPolar || (a1p[u] == a2p[v] && (corrSetup->onlyPol == ' ' || corrSetup->onlyPol == a1p[u])))
+								bool zoom2 = false;	// did antenna 2 zoom band make match? 
+
+								freqId = D->datastream[ds1].recFreqId[f];
+
+								if(!corrSetup->correlateFreqId(freqId))
 								{
-									bl->bandA[nFreq][nPol] = a1c[u];
-									bl->bandB[nFreq][nPol] = a2c[v];
-									if(zoom2)
+									continue;
+								}
+								if(!blockedfreqids[a1].empty() && blockedfreqids[a1].find(freqId) != blockedfreqids[a1].end())
+								{
+									continue;
+								}
+								if(!blockedfreqids[a2].empty() && blockedfreqids[a2].find(freqId) != blockedfreqids[a2].end())
+								{
+									continue;
+								}
+
+								DifxBaselineAllocPolProds(bl, nFreq, 4);
+
+								n1 = DifxDatastreamGetRecBands(D->datastream+ds1, freqId, a1p, a1c);
+								n2 = DifxDatastreamGetRecBands(D->datastream+ds2, freqId, a2p, a2c);
+
+								lowedgefreq = D->freq[freqId].freq;
+								if(D->freq[freqId].sideband == 'L')
+								{
+									lowedgefreq -= D->freq[freqId].bw;
+								}
+
+								if(n2 == 0)
+								{
+									//look for another freqId which matches band but is opposite sideband
+									for(int f2 = 0; f2 < D->datastream[ds2].nRecFreq; ++f2)
 									{
-										bl->bandB[nFreq][nPol] += D->datastream[ds2].nRecBand;
+										altFreqId = D->datastream[ds2].recFreqId[f2];
+										altlowedgefreq = D->freq[altFreqId].freq;
+										if(D->freq[altFreqId].sideband == 'L')
+										{
+											altlowedgefreq -= D->freq[altFreqId].bw;
+										}
+										if(altlowedgefreq     == lowedgefreq &&
+										   D->freq[freqId].bw == D->freq[altFreqId].bw)
+										{
+											n2 = DifxDatastreamGetRecBands(D->datastream+ds2, altFreqId, a2p, a2c);
+										}
 									}
-									++nPol;
 								}
-							}
-						}
-						bl->nPolProd[nFreq] = nPol;
-
-						if(nPol == 0)
-						{
-							// This deallocates
-							DifxBaselineAllocPolProds(bl, nFreq, 0);
-
-							continue;
-						}
-
-						if(globalBandwidth == 0)
-						{
-							globalBandwidth = D->freq[freqId].bw;
-						}
-						else if(globalBandwidth > 0)
-						{
-							if(globalBandwidth != D->freq[freqId].bw)
-							{
-								globalBandwidth = -1;
-							}
-						}
-
-						++nFreq;
-					}
-
-					for(int f = 0; f < D->datastream[a1].nZoomFreq; ++f)
-					{
-						bool zoom2 = false;	// did antenna 2 zoom band make match? 
-
-						n2 = 0;
-
-						freqId = D->datastream[ds1].zoomFreqId[f];
-
-						// Unlike for recbands, don't query corrSetup->correlateFreqId as all defined zoom bands should be correlated
-
-						DifxBaselineAllocPolProds(bl, nFreq, 4);
-
-						n1 = DifxDatastreamGetZoomBands(D->datastream+ds1, freqId, a1p, a1c);
-
-						lowedgefreq = D->freq[freqId].freq;
-						if(D->freq[freqId].sideband == 'L')
-						{
-							lowedgefreq -= D->freq[freqId].bw;
-						}
-
-						for(int f2 = 0; f2 < D->datastream[ds2].nRecFreq; ++f2)
-						{
-							altFreqId = D->datastream[ds2].recFreqId[f2];
-							if(D->freq[freqId].freq == D->freq[altFreqId].freq &&
-							   D->freq[freqId].bw   == D->freq[altFreqId].bw &&
-							   D->freq[altFreqId].sideband == 'U')
-							{
-								n2 = DifxDatastreamGetRecBands(D->datastream+ds2, altFreqId, a2p, a2c);
-							}
-						}
-
-						if(n2 == 0)
-						{
-							//look for another freqId which matches band but is opposite sideband
-							for(int f2 = 0; f2 < D->datastream[ds2].nRecFreq; ++f2)
-							{
-								altFreqId = D->datastream[ds2].recFreqId[f2];
-								altlowedgefreq = D->freq[altFreqId].freq;
-								if(D->freq[altFreqId].sideband == 'L')
+								if(n2 == 0)
 								{
-									altlowedgefreq -= D->freq[altFreqId].bw;
-								}
-								if(altlowedgefreq     == lowedgefreq &&
-								   D->freq[freqId].bw == D->freq[altFreqId].bw)
-								{
-									n2 = DifxDatastreamGetRecBands(D->datastream+ds2, altFreqId, a2p, a2c);
-								}
-							}
-						}
-						if(n2 == 0)
-						{
-							n2 = DifxDatastreamGetZoomBands(D->datastream+ds2, freqId, a2p, a2c);
-							if(n2 > 0)
-							{
-								zoom2 = true;
-							}
-						}
-						if(n2 == 0)
-						{
-							//still no dice? Try the opposite sidebands of zoom bands of datastream 2
-							for(int f2 = 0; f2 < D->datastream[ds2].nZoomFreq; ++f2)
-							{
-								altFreqId = D->datastream[ds2].zoomFreqId[f2];
-								altlowedgefreq = D->freq[altFreqId].freq;
-								if(D->freq[altFreqId].sideband == 'L')
-								{
-									altlowedgefreq -= D->freq[altFreqId].bw;
-								}
-								if(altlowedgefreq == lowedgefreq &&
-								   D->freq[freqId].bw == D->freq[altFreqId].bw)
-								{
-									n2 = DifxDatastreamGetZoomBands(D->datastream+ds2, altFreqId, a2p, a2c);
-									zoom2 = true;
-								}
-							}
-						}
-
-						nPol = 0;
-						for(int u = 0; u < n1; ++u)
-						{
-							for(int v = 0; v < n2; ++v)
-							{
-								if(corrSetup->doPolar || (a1p[u] == a2p[v] && (corrSetup->onlyPol == ' ' || corrSetup->onlyPol == a1p[u])))
-								{
-									bl->bandA[nFreq][nPol] = D->datastream[ds1].nRecBand + a1c[u];
-									bl->bandB[nFreq][nPol] = a2c[v];
-									if(zoom2)
+									//still no dice? Try the zoom bands of datastream 2 with the same sideband
+									for(int f2 = 0; f2 < D->datastream[ds2].nZoomFreq; ++f2)
 									{
-										bl->bandB[nFreq][nPol] += D->datastream[ds2].nRecBand;
+										altFreqId = D->datastream[ds2].zoomFreqId[f2];
+										if(D->freq[freqId].freq == D->freq[altFreqId].freq &&
+										   D->freq[freqId].bw   == D->freq[altFreqId].bw &&
+										   D->freq[freqId].sideband == D->freq[altFreqId].sideband)
+										{
+											n2 = DifxDatastreamGetZoomBands(D->datastream+ds2, altFreqId, a2p, a2c);
+											zoom2 = true;
+										}
 									}
-									++nPol;
 								}
+								if(n2 == 0)
+								{
+									//still no dice? Try the opposite sidebands of zoom bands of datastream 2
+									for(int f2 = 0; f2 < D->datastream[ds2].nZoomFreq; ++f2)
+									{
+										altFreqId = D->datastream[ds2].zoomFreqId[f2];
+										altlowedgefreq = D->freq[altFreqId].freq;
+										if(D->freq[altFreqId].sideband == 'L')
+										{
+											altlowedgefreq -= D->freq[altFreqId].bw;
+										}
+										if(altlowedgefreq == lowedgefreq &&
+										   D->freq[freqId].bw == D->freq[altFreqId].bw)
+										{
+											n2 = DifxDatastreamGetZoomBands(D->datastream+ds2, altFreqId, a2p, a2c);
+											zoom2 = true;
+										}
+									}
+								}
+
+								nPol = 0;
+								for(int u = 0; u < n1; ++u)
+								{
+									for(int v = 0; v < n2; ++v)
+									{
+										if(corrSetup->doPolar || (a1p[u] == a2p[v] && (corrSetup->onlyPol == ' ' || corrSetup->onlyPol == a1p[u])))
+										{
+											bl->bandA[nFreq][nPol] = a1c[u];
+											bl->bandB[nFreq][nPol] = a2c[v];
+											if(zoom2)
+											{
+												bl->bandB[nFreq][nPol] += D->datastream[ds2].nRecBand;
+											}
+											++nPol;
+										}
+									}
+								}
+								bl->nPolProd[nFreq] = nPol;
+
+								if(nPol == 0)
+								{
+									// This deallocates
+									DifxBaselineAllocPolProds(bl, nFreq, 0);
+
+									continue;
+								}
+
+								if(globalBandwidth == 0)
+								{
+									globalBandwidth = D->freq[freqId].bw;
+								}
+								else if(globalBandwidth > 0)
+								{
+									if(globalBandwidth != D->freq[freqId].bw)
+									{
+										globalBandwidth = -1;
+									}
+								}
+
+								++nFreq;
 							}
-						}
-						bl->nPolProd[nFreq] = nPol;
 
-						if(nPol == 0)
-						{
-							// This deallocates
-							DifxBaselineAllocPolProds(bl, nFreq, 0);
-
-							continue;
-						}
-
-						if(globalBandwidth == 0)
-						{
-							globalBandwidth = D->freq[freqId].bw;
-						}
-						else if(globalBandwidth > 0)
-						{
-							if(globalBandwidth != D->freq[freqId].bw)
+							for(int f = 0; f < D->datastream[a1].nZoomFreq; ++f)
 							{
-								globalBandwidth = -1;
-							}
-						}
+								bool zoom2 = false;	// did antenna 2 zoom band make match? 
 
-						++nFreq;
-					}
-	
-					bl->nFreq = nFreq;
-	
-					if(bl->nFreq > 0)
-					{
-						config->baselineId[config->nBaseline] = blId;
-						++config->nBaseline;
-						++bl;
-						++blId;
-					}
-				}
-			}
+								n2 = 0;
+
+								freqId = D->datastream[ds1].zoomFreqId[f];
+
+								// Unlike for recbands, don't query corrSetup->correlateFreqId as all defined zoom bands should be correlated
+
+								DifxBaselineAllocPolProds(bl, nFreq, 4);
+
+								n1 = DifxDatastreamGetZoomBands(D->datastream+ds1, freqId, a1p, a1c);
+
+								lowedgefreq = D->freq[freqId].freq;
+								if(D->freq[freqId].sideband == 'L')
+								{
+									lowedgefreq -= D->freq[freqId].bw;
+								}
+
+								for(int f2 = 0; f2 < D->datastream[ds2].nRecFreq; ++f2)
+								{
+									altFreqId = D->datastream[ds2].recFreqId[f2];
+									if(D->freq[freqId].freq == D->freq[altFreqId].freq &&
+									   D->freq[freqId].bw   == D->freq[altFreqId].bw &&
+									   D->freq[altFreqId].sideband == 'U')
+									{
+										n2 = DifxDatastreamGetRecBands(D->datastream+ds2, altFreqId, a2p, a2c);
+									}
+								}
+
+								if(n2 == 0)
+								{
+									//look for another freqId which matches band but is opposite sideband
+									for(int f2 = 0; f2 < D->datastream[ds2].nRecFreq; ++f2)
+									{
+										altFreqId = D->datastream[ds2].recFreqId[f2];
+										altlowedgefreq = D->freq[altFreqId].freq;
+										if(D->freq[altFreqId].sideband == 'L')
+										{
+											altlowedgefreq -= D->freq[altFreqId].bw;
+										}
+										if(altlowedgefreq     == lowedgefreq &&
+										   D->freq[freqId].bw == D->freq[altFreqId].bw)
+										{
+											n2 = DifxDatastreamGetRecBands(D->datastream+ds2, altFreqId, a2p, a2c);
+										}
+									}
+								}
+								if(n2 == 0)
+								{
+									n2 = DifxDatastreamGetZoomBands(D->datastream+ds2, freqId, a2p, a2c);
+									if(n2 > 0)
+									{
+										zoom2 = true;
+									}
+								}
+								if(n2 == 0)
+								{
+									//still no dice? Try the opposite sidebands of zoom bands of datastream 2
+									for(int f2 = 0; f2 < D->datastream[ds2].nZoomFreq; ++f2)
+									{
+										altFreqId = D->datastream[ds2].zoomFreqId[f2];
+										altlowedgefreq = D->freq[altFreqId].freq;
+										if(D->freq[altFreqId].sideband == 'L')
+										{
+											altlowedgefreq -= D->freq[altFreqId].bw;
+										}
+										if(altlowedgefreq == lowedgefreq &&
+										   D->freq[freqId].bw == D->freq[altFreqId].bw)
+										{
+											n2 = DifxDatastreamGetZoomBands(D->datastream+ds2, altFreqId, a2p, a2c);
+											zoom2 = true;
+										}
+									}
+								}
+
+								nPol = 0;
+								for(int u = 0; u < n1; ++u)
+								{
+									for(int v = 0; v < n2; ++v)
+									{
+										if(corrSetup->doPolar || (a1p[u] == a2p[v] && (corrSetup->onlyPol == ' ' || corrSetup->onlyPol == a1p[u])))
+										{
+											bl->bandA[nFreq][nPol] = D->datastream[ds1].nRecBand + a1c[u];
+											bl->bandB[nFreq][nPol] = a2c[v];
+											if(zoom2)
+											{
+												bl->bandB[nFreq][nPol] += D->datastream[ds2].nRecBand;
+											}
+											++nPol;
+										}
+									}
+								}
+								bl->nPolProd[nFreq] = nPol;
+
+								if(nPol == 0)
+								{
+									// This deallocates
+									DifxBaselineAllocPolProds(bl, nFreq, 0);
+
+									continue;
+								}
+
+								if(globalBandwidth == 0)
+								{
+									globalBandwidth = D->freq[freqId].bw;
+								}
+								else if(globalBandwidth > 0)
+								{
+									if(globalBandwidth != D->freq[freqId].bw)
+									{
+										globalBandwidth = -1;
+									}
+								}
+
+								++nFreq;
+							}
+			
+							bl->nFreq = nFreq;
+			
+							if(bl->nFreq > 0)
+							{
+								config->baselineId[config->nBaseline] = blId;
+								++config->nBaseline;
+								++bl;
+								++blId;
+							}
+						} // config datastream 2 loop
+					} // config datastream 1 loop
+				} // ant 2 loop
+			} // ant 1 loop
 		}
 		config->baselineId[config->nBaseline] = -1;
 	}
