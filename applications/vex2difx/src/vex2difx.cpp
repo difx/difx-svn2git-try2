@@ -547,7 +547,7 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 			nRecordChan = datastreamSetup->nChan;
 			startChan = datastreamSetup->startChan;
 		}
-		else if(dsId > 0)
+		else if(datastreamSetup->startChan > 0)
 		{
 			cerr << "Developer error: setFormat(ant=" << antName << ", mode=" << mode->defName << ") -> datastream[" << dsId << "].nChan=0" << endl;
 		}
@@ -743,6 +743,14 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 		{
 			unsigned int toneSetId, fqId;
 			const VexSubband& subband = mode->subbands[ch->subbandId];
+
+			r -= startChan;
+			if(r < 0 || r >= D->datastream[dsId].nRecBand)
+			{
+				cerr << "Error: setFormat: index to record channel = " << r << " is out of range" << endl;
+
+				exit(EXIT_FAILURE);
+			}
 			
 			if(v2dMode == V2D_MODE_PROFILE || setup->phaseCalIntervalMHz() == 0)
 			{
@@ -754,21 +762,14 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 				toneSetId = getToneSetId(toneSets, ch->tones);
 			}
 			
-			fqId = getFreqId(freqs, subband.freq, subband.bandwidth, subband.sideBand,
-					corrSetup->FFTSpecRes, corrSetup->outputSpecRes, overSamp, decimation, 0, toneSetId);	// 0 means not zoom band
+			fqId = getFreqId(freqs, subband.freq, subband.bandwidth, subband.sideBand, corrSetup->FFTSpecRes, corrSetup->outputSpecRes, overSamp, decimation, 0, toneSetId);	// 0 means not zoom band
 			
-			if(r < 0 || r >= D->datastream[dsId].nRecBand)
-			{
-				cerr << "Error: setFormat: index to record channel = " << r << " is out of range" << endl;
-
-				exit(EXIT_FAILURE);
-			}
 			D->datastream[dsId].recBandFreqId[r] = getBand(bandMap, fqId);
 			D->datastream[dsId].recBandPolName[r] = subband.pol;
 		}
 	}
 	DifxDatastreamAllocFreqs(D->datastream + dsId, bandMap.size());
-	for(unsigned int j = 0; j < bandMap.size(); ++j)
+	for(size_t j = 0; j < bandMap.size(); ++j)
 	{
 		D->datastream[dsId].recFreqId[j] = bandMap[j].first;
 		D->datastream[dsId].nRecPol[j]   = bandMap[j].second;

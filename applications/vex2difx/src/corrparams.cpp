@@ -1362,30 +1362,41 @@ int DatastreamSetup::merge(const DatastreamSetup *dss)
 		dataSampling = dss->dataSampling;	
 	}
 
-	if(!basebandFiles.empty())
+	if(dataSource != DataSourceFake && dataSource != DataSourceNetwork)
 	{
-		std::cerr << "Error: cannot provide baseband file(s) in ANTENNA section when datastreams are specified." << std::endl;
-
-		return -4;
-	}
-	else
-	{
-		if(!dss->basebandFiles.empty())
+		if(!basebandFiles.empty())
 		{
-			basebandFiles = dss->basebandFiles;
+			std::cerr << "Error: cannot provide baseband file(s) in ANTENNA section when datastreams are specified." << std::endl;
+			for(std::vector<VexBasebandFile>::const_iterator it = basebandFiles.begin(); it != basebandFiles.end(); ++it)
+			{
+				std::cout << "  File: " << *it << std::endl;
+			}
+
+			return -4;
+		}
+		else
+		{
+			if(!dss->basebandFiles.empty())
+			{
+				basebandFiles = dss->basebandFiles;
+			}
 		}
 	}
 
-	if(!networkPort.empty() || windowSize != 0)
+	if(dataSource == DataSourceNetwork)
 	{
-		std::cerr << "Error: cannot provide network (eVLBI) information in ANTENNA section when datastreams are specified." << std::endl;
+		if((!networkPort.empty() && networkPort != "0") || windowSize != 0)
+		{
+			std::cerr << "Error: cannot provide network (eVLBI) information in ANTENNA section when datastreams are specified." << std::endl;
+			std::cout << "  Network port = '" << networkPort << "' and windowSize = " << windowSize << std::endl;
 
-		return -5;
-	}
-	else
-	{
-		networkPort = dss->networkPort;
-		windowSize = dss->windowSize;
+			return -5;
+		}
+		else
+		{
+			networkPort = dss->networkPort;
+			windowSize = dss->windowSize;
+		}
 	}
 
 	if(machine.empty())
