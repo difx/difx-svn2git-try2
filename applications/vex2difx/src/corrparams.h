@@ -144,8 +144,6 @@ How do multi-datastreams work in vex2difx?
 
 TODO:
 * DATA table needs populating (file lists or network info)
-* populateBaselineTable needs massive update
-* "ACTIVE BASELINES" is set incorrectly
 */
 
 class DatastreamSetup

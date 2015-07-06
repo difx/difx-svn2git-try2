@@ -321,11 +321,10 @@ static DifxDatastream *makeDifxDatastreams(const VexJob& J, const VexData *V, co
 {
 	DifxDatastream *datastreams;
 	int nDatastream;
-	int nAntenna;
 	int di;
 
+	// Determine worst case (but typical) number of datastreams for this job
 	nDatastream = 0;
-	nAntenna = J.vsns.size();
 	for(std::map<std::string,std::string>::const_iterator it = J.vsns.begin(); it != J.vsns.end(); ++it)
 	{
 		const AntennaSetup *as = P->getAntennaSetup(it->first);
@@ -338,7 +337,6 @@ static DifxDatastream *makeDifxDatastreams(const VexJob& J, const VexData *V, co
 			nDatastream += as->datastreamSetups.size();
 		}
 	}
-printf("DEBUG: nDatastream = %d  nAntenna = %d\n", nDatastream, nAntenna);
 	nDatastream *= nSet;
 	
 	datastreams = newDifxDatastreamArray(nDatastream);
@@ -903,26 +901,11 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 	// Calculate maximum number of possible baselines based on list of configs
 	D->nBaseline = 0;
 
-	if(P->v2dMode == V2D_MODE_PROFILE)
+	for(configId = 0; configId < D->nConfig; ++configId)
 	{
-		for(configId = 0; configId < D->nConfig; ++configId)
-		{
-			int nA = D->config[configId].nAntenna;
+		D->nBaseline += D->config[configId].nBaseline;
+	}
 
-			D->nBaseline += nA;
-		}
-	}
-	else
-	{
-		// This is the normal configuration, assume n*(n-1)/2
-		for(configId = 0; configId < D->nConfig; ++configId)
-		{
-			int nA = D->config[configId].nAntenna;
-			
-			D->nBaseline += nA*(nA-1)/2;
-		}
-	}
-	
 	D->baseline = newDifxBaselineArray(D->nBaseline);
 
 	bl = D->baseline;
@@ -941,20 +924,23 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 			config->doAutoCorr = 0;
 
 			// Instead, make autocorrlations from scratch
-			for(int a1 = 0; a1 < config->nAntenna; ++a1)
+			for(int configds1 = 0; configds1 < config->nDatastream-1; ++configds1)
 			{
-// FIXME: start here
-				bl->dsA = config->datastreamId[a1];
-				bl->dsB = config->datastreamId[a1];
+				int a1, ds1;
 
-				DifxBaselineAllocFreqs(bl, D->datastream[a1].nRecFreq);
+				ds1 = config->datastreamId[configds1];
+				a1 = D->datastream[ds1].antennaId;
+
+				bl->dsA = ds1;
+				bl->dsB = ds1;
+
+				DifxBaselineAllocFreqs(bl, D->datastream[ds1].nRecFreq);
 
 				nFreq = 0; // this counts the actual number of freqs
 
-				// Note: here we need to loop over all datastreams associated with this antenna!
-				for(int f = 0; f < D->datastream[a1].nRecFreq; ++f)
+				for(int f = 0; f < D->datastream[ds1].nRecFreq; ++f)
 				{
-					freqId = D->datastream[a1].recFreqId[f];
+					freqId = D->datastream[ds1].recFreqId[f];
 
 					if(!corrSetup->correlateFreqId(freqId))
 					{
@@ -967,7 +953,7 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 
 					DifxBaselineAllocPolProds(bl, nFreq, 4);
 
-					n1 = DifxDatastreamGetRecBands(D->datastream+a1, freqId, a1p, a1c);
+					n1 = DifxDatastreamGetRecBands(D->datastream+ds1, freqId, a1p, a1c);
 
 					nPol = 0;
 					for(int u = 0; u < n1; ++u)
@@ -996,17 +982,17 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 
 					++nFreq;
 				}
-				for(int f = 0; f < D->datastream[a1].nZoomFreq; ++f)
+				for(int f = 0; f < D->datastream[ds1].nZoomFreq; ++f)
 				{
-					freqId = D->datastream[a1].zoomFreqId[f];
+					freqId = D->datastream[ds1].zoomFreqId[f];
 
 					DifxBaselineAllocPolProds(bl, nFreq, 4);
 
-					n1 = DifxDatastreamGetZoomBands(D->datastream+a1, freqId, a1p, a1c);
+					n1 = DifxDatastreamGetZoomBands(D->datastream+ds1, freqId, a1p, a1c);
 
 					if(n1 < 0 || n1 > 2)
 					{
-						fprintf(stderr, "Developer error: n1 = %d for a1=%d freqId=%d\n", n1, a1, freqId);
+						fprintf(stderr, "Developer error: n1 = %d for ds1 = %d a1=%d freqId=%d\n", n1, ds1, a1, freqId);
 
 						exit(EXIT_FAILURE);
 					}
@@ -1018,8 +1004,8 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 						{
 							if(corrSetup->doPolar || (a1p[u] == a1p[v] && (corrSetup->onlyPol == ' ' || corrSetup->onlyPol == a1p[u])))
 							{
-								bl->bandA[nFreq][nPol] = D->datastream[a1].nRecBand + a1c[u];
-								bl->bandB[nFreq][nPol] = D->datastream[a1].nRecBand + a1c[v];
+								bl->bandA[nFreq][nPol] = D->datastream[ds1].nRecBand + a1c[u];
+								bl->bandB[nFreq][nPol] = D->datastream[ds1].nRecBand + a1c[v];
 								++nPol;
 							}
 						}
@@ -1068,12 +1054,21 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 
 			// Needless to say, this logic can probably be simplified some, but it seems to work!
 
-			for(int a1 = 0; a1 < config->nDatastream-1; ++a1)
+			for(int configds1 = 0; configds1 < config->nDatastream-1; ++configds1)
 			{
-				for(int a2 = a1+1; a2 < config->nDatastream; ++a2)
+				int a1, ds1;
+
+				ds1 = config->datastreamId[configds1];
+				a1 = D->datastream[ds1].antennaId;
+				for(int configds2 = configds1+1; configds2 < config->nDatastream; ++configds2)
 				{
-					bl->dsA = config->datastreamId[a1];
-					bl->dsB = config->datastreamId[a2];
+					int a2, ds2;
+
+					ds2 = config->datastreamId[configds2];
+					a2 = D->datastream[ds2].antennaId;
+					
+					bl->dsA = ds1;
+					bl->dsB = ds2;
 
 					// Excape if this baseline is not requested
 					if(!P->useBaseline(D->antenna[a1].name, D->antenna[a2].name))
@@ -1082,16 +1077,16 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 					}
 
 					// Allocate enough space for worst case possibility
-					DifxBaselineAllocFreqs(bl, D->datastream[a1].nRecFreq + D->datastream[a1].nZoomFreq);
+					DifxBaselineAllocFreqs(bl, D->datastream[ds1].nRecFreq + D->datastream[ds1].nZoomFreq);
 
 					nFreq = 0; // this counts the actual number of freqs
 
 					// Note: eventually we need to loop over all datastreams associated with this antenna!
-					for(int f = 0; f < D->datastream[a1].nRecFreq; ++f)
+					for(int f = 0; f < D->datastream[ds1].nRecFreq; ++f)
 					{
 						bool zoom2 = false;	// did antenna 2 zoom band make match? 
 
-						freqId = D->datastream[a1].recFreqId[f];
+						freqId = D->datastream[ds1].recFreqId[f];
 
 						if(!corrSetup->correlateFreqId(freqId))
 						{
@@ -1108,8 +1103,8 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 
 						DifxBaselineAllocPolProds(bl, nFreq, 4);
 
-						n1 = DifxDatastreamGetRecBands(D->datastream+a1, freqId, a1p, a1c);
-						n2 = DifxDatastreamGetRecBands(D->datastream+a2, freqId, a2p, a2c);
+						n1 = DifxDatastreamGetRecBands(D->datastream+ds1, freqId, a1p, a1c);
+						n2 = DifxDatastreamGetRecBands(D->datastream+ds2, freqId, a2p, a2c);
 
 						lowedgefreq = D->freq[freqId].freq;
 						if(D->freq[freqId].sideband == 'L')
@@ -1120,9 +1115,9 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 						if(n2 == 0)
 						{
 							//look for another freqId which matches band but is opposite sideband
-							for(int f2 = 0; f2 < D->datastream[a2].nRecFreq; ++f2)
+							for(int f2 = 0; f2 < D->datastream[ds2].nRecFreq; ++f2)
 							{
-								altFreqId = D->datastream[a2].recFreqId[f2];
+								altFreqId = D->datastream[ds2].recFreqId[f2];
 								altlowedgefreq = D->freq[altFreqId].freq;
 								if(D->freq[altFreqId].sideband == 'L')
 								{
@@ -1131,21 +1126,21 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 								if(altlowedgefreq     == lowedgefreq &&
 								   D->freq[freqId].bw == D->freq[altFreqId].bw)
 								{
-									n2 = DifxDatastreamGetRecBands(D->datastream+a2, altFreqId, a2p, a2c);
+									n2 = DifxDatastreamGetRecBands(D->datastream+ds2, altFreqId, a2p, a2c);
 								}
 							}
 						}
 						if(n2 == 0)
 						{
 							//still no dice? Try the zoom bands of datastream 2 with the same sideband
-							for(int f2 = 0; f2 < D->datastream[a2].nZoomFreq; ++f2)
+							for(int f2 = 0; f2 < D->datastream[ds2].nZoomFreq; ++f2)
 							{
-								altFreqId = D->datastream[a2].zoomFreqId[f2];
+								altFreqId = D->datastream[ds2].zoomFreqId[f2];
 								if(D->freq[freqId].freq == D->freq[altFreqId].freq &&
 								   D->freq[freqId].bw   == D->freq[altFreqId].bw &&
 								   D->freq[freqId].sideband == D->freq[altFreqId].sideband)
 								{
-									n2 = DifxDatastreamGetZoomBands(D->datastream+a2, altFreqId, a2p, a2c);
+									n2 = DifxDatastreamGetZoomBands(D->datastream+ds2, altFreqId, a2p, a2c);
 									zoom2 = true;
 								}
 							}
@@ -1153,9 +1148,9 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 						if(n2 == 0)
 						{
 							//still no dice? Try the opposite sidebands of zoom bands of datastream 2
-							for(int f2 = 0; f2 < D->datastream[a2].nZoomFreq; ++f2)
+							for(int f2 = 0; f2 < D->datastream[ds2].nZoomFreq; ++f2)
 							{
-								altFreqId = D->datastream[a2].zoomFreqId[f2];
+								altFreqId = D->datastream[ds2].zoomFreqId[f2];
 								altlowedgefreq = D->freq[altFreqId].freq;
 								if(D->freq[altFreqId].sideband == 'L')
 								{
@@ -1164,7 +1159,7 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 								if(altlowedgefreq == lowedgefreq &&
 								   D->freq[freqId].bw == D->freq[altFreqId].bw)
 								{
-									n2 = DifxDatastreamGetZoomBands(D->datastream+a2, altFreqId, a2p, a2c);
+									n2 = DifxDatastreamGetZoomBands(D->datastream+ds2, altFreqId, a2p, a2c);
 									zoom2 = true;
 								}
 							}
@@ -1181,7 +1176,7 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 									bl->bandB[nFreq][nPol] = a2c[v];
 									if(zoom2)
 									{
-										bl->bandB[nFreq][nPol] += D->datastream[a2].nRecBand;
+										bl->bandB[nFreq][nPol] += D->datastream[ds2].nRecBand;
 									}
 									++nPol;
 								}
@@ -1218,13 +1213,13 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 
 						n2 = 0;
 
-						freqId = D->datastream[a1].zoomFreqId[f];
+						freqId = D->datastream[ds1].zoomFreqId[f];
 
 						// Unlike for recbands, don't query corrSetup->correlateFreqId as all defined zoom bands should be correlated
 
 						DifxBaselineAllocPolProds(bl, nFreq, 4);
 
-						n1 = DifxDatastreamGetZoomBands(D->datastream+a1, freqId, a1p, a1c);
+						n1 = DifxDatastreamGetZoomBands(D->datastream+ds1, freqId, a1p, a1c);
 
 						lowedgefreq = D->freq[freqId].freq;
 						if(D->freq[freqId].sideband == 'L')
@@ -1232,23 +1227,23 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 							lowedgefreq -= D->freq[freqId].bw;
 						}
 
-						for(int f2 = 0; f2 < D->datastream[a2].nRecFreq; ++f2)
+						for(int f2 = 0; f2 < D->datastream[ds2].nRecFreq; ++f2)
 						{
-							altFreqId = D->datastream[a2].recFreqId[f2];
+							altFreqId = D->datastream[ds2].recFreqId[f2];
 							if(D->freq[freqId].freq == D->freq[altFreqId].freq &&
 							   D->freq[freqId].bw   == D->freq[altFreqId].bw &&
 							   D->freq[altFreqId].sideband == 'U')
 							{
-								n2 = DifxDatastreamGetRecBands(D->datastream+a2, altFreqId, a2p, a2c);
+								n2 = DifxDatastreamGetRecBands(D->datastream+ds2, altFreqId, a2p, a2c);
 							}
 						}
 
 						if(n2 == 0)
 						{
 							//look for another freqId which matches band but is opposite sideband
-							for(int f2 = 0; f2 < D->datastream[a2].nRecFreq; ++f2)
+							for(int f2 = 0; f2 < D->datastream[ds2].nRecFreq; ++f2)
 							{
-								altFreqId = D->datastream[a2].recFreqId[f2];
+								altFreqId = D->datastream[ds2].recFreqId[f2];
 								altlowedgefreq = D->freq[altFreqId].freq;
 								if(D->freq[altFreqId].sideband == 'L')
 								{
@@ -1257,13 +1252,13 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 								if(altlowedgefreq     == lowedgefreq &&
 								   D->freq[freqId].bw == D->freq[altFreqId].bw)
 								{
-									n2 = DifxDatastreamGetRecBands(D->datastream+a2, altFreqId, a2p, a2c);
+									n2 = DifxDatastreamGetRecBands(D->datastream+ds2, altFreqId, a2p, a2c);
 								}
 							}
 						}
 						if(n2 == 0)
 						{
-							n2 = DifxDatastreamGetZoomBands(D->datastream+a2, freqId, a2p, a2c);
+							n2 = DifxDatastreamGetZoomBands(D->datastream+ds2, freqId, a2p, a2c);
 							if(n2 > 0)
 							{
 								zoom2 = true;
@@ -1272,9 +1267,9 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 						if(n2 == 0)
 						{
 							//still no dice? Try the opposite sidebands of zoom bands of datastream 2
-							for(int f2 = 0; f2 < D->datastream[a2].nZoomFreq; ++f2)
+							for(int f2 = 0; f2 < D->datastream[ds2].nZoomFreq; ++f2)
 							{
-								altFreqId = D->datastream[a2].zoomFreqId[f2];
+								altFreqId = D->datastream[ds2].zoomFreqId[f2];
 								altlowedgefreq = D->freq[altFreqId].freq;
 								if(D->freq[altFreqId].sideband == 'L')
 								{
@@ -1283,7 +1278,7 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 								if(altlowedgefreq == lowedgefreq &&
 								   D->freq[freqId].bw == D->freq[altFreqId].bw)
 								{
-									n2 = DifxDatastreamGetZoomBands(D->datastream+a2, altFreqId, a2p, a2c);
+									n2 = DifxDatastreamGetZoomBands(D->datastream+ds2, altFreqId, a2p, a2c);
 									zoom2 = true;
 								}
 							}
@@ -1296,11 +1291,11 @@ static double populateBaselineTable(DifxInput *D, const CorrParams *P, const Cor
 							{
 								if(corrSetup->doPolar || (a1p[u] == a2p[v] && (corrSetup->onlyPol == ' ' || corrSetup->onlyPol == a1p[u])))
 								{
-									bl->bandA[nFreq][nPol] = D->datastream[a1].nRecBand + a1c[u];
+									bl->bandA[nFreq][nPol] = D->datastream[ds1].nRecBand + a1c[u];
 									bl->bandB[nFreq][nPol] = a2c[v];
 									if(zoom2)
 									{
-										bl->bandB[nFreq][nPol] += D->datastream[a2].nRecBand;
+										bl->bandB[nFreq][nPol] += D->datastream[ds2].nRecBand;
 									}
 									++nPol;
 								}
@@ -1380,7 +1375,8 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 	string configName;
 	double floatReadTimeNS, floatFFTDurNS, floatSubintDurNS;
 	double msgSize, dataRate, readSize;
-	long long tintNS;
+	int64_t tintNS;
+	int nDatastream;
 
 	corrSetup = P->getCorrSetup(S->corrSetupName);
 	if(corrSetup == 0)
@@ -1408,6 +1404,22 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 		}
 	}
 
+	// get worst case datastream count
+	nDatastream = 0;
+	for(int antennaId = 0; antennaId < D->nAntenna; ++antennaId)
+	{
+		const AntennaSetup *antennaSetup = P->getAntennaSetup(D->antenna[antennaId].name);
+
+		if(antennaSetup)
+		{
+			nDatastream += antennaSetup->datastreamSetups.size();
+		}
+		else
+		{
+			++nDatastream;
+		}
+	}
+
 	configName = S->modeDefName + string("_") + S->corrSetupName;
 
 	configs.push_back(pair<string,string>(S->modeDefName, S->corrSetupName));
@@ -1421,7 +1433,7 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 		}
 	}
 	config->tInt = corrSetup->tInt;
-	tintNS = static_cast<long long>(1e9*corrSetup->tInt + 0.5);
+	tintNS = static_cast<int64_t>(1e9*corrSetup->tInt + 0.5);
 	floatFFTDurNS = 1000000000.0/corrSetup->FFTSpecRes;
 	fftDurNS = static_cast<int>(floatFFTDurNS);
 	dataRate = mode->getHighestSampleRate()*mode->getBits()*mode->subbands.size();
@@ -1464,7 +1476,7 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 	}
 	else //first try to set a reasonable subintNS
 	{
-		long long nscounter;
+		int64_t nscounter;
 
 		nFFTsPerIntegration = static_cast<int>(1e9*corrSetup->tInt/floatFFTDurNS + 0.5);
 
@@ -1530,7 +1542,7 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 					divisor *= 5;
 				}
 
-				long long testsubintNS = tintNS / divisor;
+				int64_t testsubintNS = tintNS / divisor;
 				msgSize = (testsubintNS*1.0e-9)*dataRate/8.0;
 				readSize = msgSize*D->dataBufferFactor/D->nDataSegments;
 				if(readSize > P->minReadSize && readSize < P->maxReadSize && 
@@ -1640,8 +1652,8 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 	config->doPolar = corrSetup->doPolar;
 	config->doAutoCorr = 1;
 	config->nAntenna = D->nAntenna;
-	config->nDatastream = D->nAntenna;
-	config->nBaseline = D->nAntenna*(D->nAntenna-1)/2;
+	config->nDatastream = nDatastream;
+	config->nBaseline = nDatastream*(nDatastream-1)/2;	// this is a worst case (but typical) scenario; may shrink later.
 
 	//if guardNS was not set explicitly, change it to the right amount to allow for
 	//adjustment to get to an integer NS + geometric rate slippage (assumes Earth-based antenna)
@@ -1687,7 +1699,7 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 	//	config->decimation *= 2;
 	//}
 	
-	DifxConfigAllocDatastreamIds(config, config->nDatastream, nConfig*config->nDatastream);
+	DifxConfigAllocDatastreamIds(config, config->nDatastream, D->nConfig*config->nDatastream);
 	DifxConfigAllocBaselineIds(config, config->nBaseline, nConfig*config->nBaseline);
 
 	config->nPol = mode->getPols(config->pol);
@@ -1767,7 +1779,7 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 	int overSamp, decimation, worstcaseguardns;
 	DifxDatastream *dd;
 	double globalBandwidth;
-	vector<set <int> > blockedfreqids;
+	vector<set <int> > blockedfreqids;	// vector index is over antennaId
 
 	// Initialize toneSets with the trivial case, which is used for all zoom bands
 	vector<int> noTones;
@@ -2063,7 +2075,10 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 	for(int configId = 0; configId < D->nConfig; ++configId)
 	{
 		const VexMode *mode;
-		
+		DifxConfig *config;
+
+		config = D->config + configId;
+
 		mode = V->getModeByDefName(configs[configId].first);
 		if(mode == 0)
 		{
@@ -2096,7 +2111,7 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 				exit(EXIT_FAILURE);
 			}
 
-			D->config[configId].pulsarId = D->nPulsar;
+			config->pulsarId = D->nPulsar;
 			loadPulsarConfigFile(D, corrSetup->binConfigFile.c_str());
 			nbin = D->pulsar[D->nPulsar-1].nBin;
 			if(D->pulsar[D->nPulsar-1].scrunch > 0)
@@ -2122,7 +2137,7 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 
 		if(!corrSetup->phasedArrayConfigFile.empty())
 		{
-			D->config[configId].phasedArrayId = D->nPhasedArray;
+			config->phasedArrayId = D->nPhasedArray;
 			snprintf(D->phasedarray[D->nPhasedArray].fileName, DIFXIO_FILENAME_LENGTH, "%s", corrSetup->phasedArrayConfigFile.c_str());
 			++D->nPhasedArray;
 		}
@@ -2307,10 +2322,10 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 							}
 						}
 					} // if antennaSetup
-					D->config[configId].datastreamId[d] = D->nDatastream;
+					config->datastreamId[d] = D->nDatastream;
 					++D->nDatastream;
 					++d;
-				}
+				} // if valid format
 			} // datastream loop
 		} // antenna loop
 		if(corrSetup->xmacLength > minChans)
@@ -2323,13 +2338,13 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 			}
 			else
 			{
-				D->config[configId].xmacLength = minChans;
+				config->xmacLength = minChans;
 			}
 		}
-		worstcaseguardns = calculateWorstcaseGuardNS(mode->getLowestSampleRate(), D->config[configId].subintNS, mode->getMinBits(), mode->getMinSubbands());
-		if(D->config[configId].guardNS < worstcaseguardns)
+		worstcaseguardns = calculateWorstcaseGuardNS(mode->getLowestSampleRate(), config->subintNS, mode->getMinBits(), mode->getMinSubbands());
+		if(config->guardNS < worstcaseguardns)
 		{
-			cerr << "vex2difx calculates the worst-case guardNS as " << worstcaseguardns << ", but you have explicitly set " << D->config[configId].guardNS << ". It is possible that mpifxcorr will refuse to run! Unless you know what you are doing, you should probably set guardNS to " << worstcaseguardns << " or above, or just leave it unset!" << endl;
+			cerr << "vex2difx calculates the worst-case guardNS as " << worstcaseguardns << ", but you have explicitly set " << config->guardNS << ". It is possible that mpifxcorr will refuse to run! Unless you know what you are doing, you should probably set guardNS to " << worstcaseguardns << " or above, or just leave it unset!" << endl;
 			if(strict)
 			{
 				cerr << "\nExiting since strict mode was enabled" << endl;
@@ -2341,7 +2356,8 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 				cerr << "\nContinuing since --force was specified" << endl;
 			}
 		}
-	}
+	} // configId loop
+		
 
 	if(nPulsar != D->nPulsar)
 	{
