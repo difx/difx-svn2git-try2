@@ -141,6 +141,7 @@ How do multi-datastreams work in vex2difx?
 7. Information that applies to all datastreams for an antenna can be provided in the ANTENNA section.
 8. It is not allowed to specify conflicting information in the ANTENNA section and a related DATASTREAM section; i.e., there is no overriding specified values.
 9. If multiple datastreams are defined then there is no mechanism to support modes with varying numbers of recorded channels.
+10. It is likely problematic for two streams to have identical channels or overlapping channels with zoom bands entirely within the overlap
 
 TODO:
 * DATA table needs populating (file lists or network info)

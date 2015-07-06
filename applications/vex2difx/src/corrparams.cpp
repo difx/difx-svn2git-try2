@@ -916,42 +916,6 @@ AntennaSetup::AntennaSetup(const std::string &name) : vexName(name), defaultData
 	mjdStop = -1.0;
 }
 
-int AntennaSetup::setkv(const std::string &key, const std::string &value, ZoomFreq *zoomFreq)
-{
-	int nWarn = 0;
-
-	if(key == "freq" || key == "FREQ")
-	{
-		zoomFreq->frequency = atof(value.c_str())*1000000; //convert to Hz
-	}
-	else if(key == "bw" || key == "BW")
-	{
-		zoomFreq->bandwidth = atof(value.c_str())*1000000; //convert to Hz
-	}
-	else if(key == "noparent" || key == "NOPARENT")
-	{
-		if(value == "TRUE" || value == "True" || value == "true")
-		{
-			zoomFreq->correlateparent = false;
-		}
-		else
-		{
-			zoomFreq->correlateparent = true;
-		}
-	}
-	else if(key == "specAvg" || key == "SPECAVG" || key == "specavg")
-	{
-		zoomFreq->spectralaverage = atoi(value.c_str());
-	}
-	else
-	{
-		std::cerr << "Warning: ANTENNA: Unknown parameter '" << key << "'." << std::endl; 
-		++nWarn;
-	}
-
-	return nWarn;
-}
-
   enum charType {SIGN,DIGIT,DOT,E,SPACE,CHARERROR};
 
   enum charType whatChar(const char a) {
@@ -1817,6 +1781,42 @@ int AntennaSetup::setkv(const std::string &key, const std::string &value)
 	else if(key == "mjdStop")
 	{
 		ss >> mjdStop;
+	}
+	else
+	{
+		std::cerr << "Warning: ANTENNA: Unknown parameter '" << key << "'." << std::endl; 
+		++nWarn;
+	}
+
+	return nWarn;
+}
+
+int AntennaSetup::setkv(const std::string &key, const std::string &value, ZoomFreq *zoomFreq)
+{
+	int nWarn = 0;
+
+	if(key == "freq" || key == "FREQ")
+	{
+		zoomFreq->frequency = atof(value.c_str())*1000000; //convert to Hz
+	}
+	else if(key == "bw" || key == "BW")
+	{
+		zoomFreq->bandwidth = atof(value.c_str())*1000000; //convert to Hz
+	}
+	else if(key == "noparent" || key == "NOPARENT")
+	{
+		if(value == "TRUE" || value == "True" || value == "true")
+		{
+			zoomFreq->correlateparent = false;
+		}
+		else
+		{
+			zoomFreq->correlateparent = true;
+		}
+	}
+	else if(key == "specAvg" || key == "SPECAVG" || key == "specavg")
+	{
+		zoomFreq->spectralaverage = atoi(value.c_str());
 	}
 	else
 	{
