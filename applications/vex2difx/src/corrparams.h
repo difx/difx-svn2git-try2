@@ -136,8 +136,8 @@ How do multi-datastreams work in vex2difx?
 2. If an antenna has no representative ANTENNA section, then the vex file must provide all of the information and only one datastream can be configured for that antenna
 3. ANTENNA sections can reference zero or more DATASTREAM sections with the datastreams parameter
 4. If no DATASTREAM is provided, then the datastream-specific info comes from the vex file with possible overrides from the ANTENNA section.  After file loading a single entry in the datastreams vector is populated.
-5. If multiple datastreams are created, each datastream (currently) must contain a single contiguous block of channels from the VEX file.  If the datastream channels in the vex file are not contiguous they will need to be manually reordered.
-6. If the number of channels is not specified for datastreams of an antenna, it will be assumed that the datastreams evenly divide the number of recorded channels in the vex file.  It is an error if the number of channels in datastreams does not equal the number of channels in the vex file.
+5. If multiple datastreams are created, each datastream (currently) must contain a single contiguous block of baseband channels (bands) from the VEX file.  If the datastream baseband channels in the vex file are not contiguous they will need to be manually reordered.
+6. If the number of baseband channels (bands) is not specified for datastreams of an antenna, it will be assumed that the datastreams evenly divide the number of recorded baseband channels in the vex file.  It is an error if the number of baseband channels in datastreams does not equal the number of recorded baseband channels in the vex file.
 7. Information that applies to all datastreams for an antenna can be provided in the ANTENNA section.
 8. It is not allowed to specify conflicting information in the ANTENNA section and a related DATASTREAM section; i.e., there is no overriding specified values.
 9. If multiple datastreams are defined then there is no mechanism to support modes with varying numbers of recorded channels.
@@ -145,6 +145,7 @@ How do multi-datastreams work in vex2difx?
 
 TODO:
 * DATA table needs populating (file lists or network info)
+* Test all non-fake modes
 */
 
 class DatastreamSetup

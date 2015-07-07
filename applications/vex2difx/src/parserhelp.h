@@ -31,6 +31,7 @@
 #define __PARSERHELP_H__
 
 #include <string>
+#include <vector>
 
 enum charType
 {
@@ -50,5 +51,19 @@ int getOp(std::string &value, int &plus);
 
 // Read a string consisting of a series of additions and subtrations (only) and return a double
 double parseDouble(const std::string &value);
+
+// Turns a string into MJD
+// The following formats are allowd:
+// 1. decimal mjd:  55345.113521
+// 2. ISO 8601 dateTtime strings:  2009-03-08T12:34:56.121
+// 3. VLBA-like time:   2009MAR08-12:34:56.121
+// 4. vex time: 2009y245d08h12m24s"
+double parseTime(const std::string &timeStr);
+
+double parseCoord(const char *str, char type);
+
+void split(const std::string &str, std::vector<std::string> &tokens, const std::string &delimiters = " ");
+
+bool parseBoolean(const std::string &str);
 
 #endif

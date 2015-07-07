@@ -46,6 +46,12 @@ int fvex_dec(char **field, double *dec);
 
 int checkCRLF(const char *filename);
 
-int next2(int x);
+/* round to nearest second */
+double roundSeconds(double mjd);
+
+/* check if an integer is a power of 2 */
+bool isPowerOf2(int n);
+
+int nextPowerOf2(int x);
 
 #endif

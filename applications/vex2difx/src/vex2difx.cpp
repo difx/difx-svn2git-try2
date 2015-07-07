@@ -524,7 +524,7 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 			cerr << "Developer error: setFormat(ant=" << antName << ", mode=" << mode->defName << ") -> datastream[" << dsId << "].nBand=0" << endl;
 		}
 	}
-	int n2 = next2(nRecordChan);
+	int n2 = nextPowerOf2(nRecordChan);
 
 	overSamp = 1;	// FIXME: eventually allow other values?
 	decimation = calcDecimation(overSamp);

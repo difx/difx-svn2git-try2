@@ -75,9 +75,31 @@ int checkCRLF(const char *filename)
 	return 0;
 }
 
+/* round to nearest second */
+double roundSeconds(double mjd)
+{
+	int intmjd, intsec;
+
+	intmjd = static_cast<int>(mjd);
+	intsec = static_cast<int>((mjd - intmjd)*86400.0 + 0.5);
+
+	return intmjd + intsec/86400.0;
+}
+
+/* check if an integer is a power of 2 */
+bool isPowerOf2(int n)
+{
+	if(!(n & (n - 1))) 
+	{
+		return true;
+	}
+
+	return false; // also true for zero but this shouldn't concern us
+}
+
 // round up to the next power of two
 // There must be a more elegant solution!
-int next2(int x)
+int nextPowerOf2(int x)
 {
 	int n=0; 
 	int m=0;
@@ -100,4 +122,3 @@ int next2(int x)
 		return 2<<m;
 	}
 }
-

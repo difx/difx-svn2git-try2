@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2014-2015 by Chris Phillips                             *
+ *   Copyright (C) 2014-2015 by Chris Phillips & Walter Brisken            *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -28,7 +28,12 @@
  *==========================================================================*/
 
 #include <iostream>
+#include <cstdio>
+#include <cstring>
 #include <sstream>
+#include <cmath>
+#include <cstdlib>
+#include "timeutils.h"
 #include "parserhelp.h"
 
 enum charType whatChar(const char a)
@@ -271,4 +276,164 @@ double parseDouble(const std::string &value)
   }
 
   return result;
+}
+
+// Turns a string into MJD 
+// The following formats are allowd:
+// 1. decimal mjd:  55345.113521
+// 2. ISO 8601 dateTtime strings:  2009-03-08T12:34:56.121
+// 3. VLBA-like time:   2009MAR08-12:34:56.121
+// 4. vex time: 2009y245d08h12m24s"
+double parseTime(const std::string &timeStr)
+{
+	const int TimeLength=54;
+	double mjd;
+	char str[TimeLength];
+	char *p;
+	int n;
+	struct tm tm;
+	char dummy;
+
+	snprintf(str, TimeLength, "%s", timeStr.c_str());
+
+	// Test for ISO 8601
+	p = strptime(str, "%FT%T", &tm);
+	if(!p)
+	{
+		//Test for VLBA-like
+		p = strptime(str, "%Y%b%d-%T", &tm);
+	}
+	if(!p)
+	{
+		//Test for Vex
+		p = strptime(str, "%Yy%jd%Hh%Mm%Ss", &tm);
+	}
+	if(p)
+	{
+		return mktime(&tm)/86400.0 + MJD_UNIX0;
+	}
+
+	n = sscanf(str, "%lf%c", &mjd, &dummy);
+	if(n == 1)
+	{
+		// Must be straight MJD value
+		return mjd;
+	}
+
+	// No match
+	std::cerr << std::endl;
+	std::cerr << "Error: date not parsable: " << timeStr << std::endl;
+	std::cerr << std::endl;
+	std::cerr << "Allowable formats are:" << std::endl;
+	std::cerr << "1. Straight MJD        54345.341944" << std::endl;
+	std::cerr << "2. Vex formatted date  2009y245d08h12m24s" << std::endl;
+	std::cerr << "3. VLBA-like format    2009SEP02-08:12:24" << std::endl;
+	std::cerr << "4. ISO 8601 format     2009-09-02T08:12:24" << std::endl;
+	std::cerr << std::endl;
+
+	exit(EXIT_FAILURE);
+}
+
+double parseCoord(const char *str, char type)
+{
+	int sign = 1, l, n;
+	double a, b, c;
+	double v = -999999.0;
+
+	if(type != ' ' && type != 'R' && type != 'D')
+	{
+		std::cerr << "Programmer error: parseCoord: parameter 'type' has illegal value = " << type << std::endl;
+		
+		exit(EXIT_FAILURE);
+	}
+
+	if(str[0] == '-')
+	{
+		sign = -1;
+		++str;
+	}
+	else if(str[0] == '+')
+	{
+		++str;
+	}
+
+	l = strlen(str);
+
+	if(sscanf(str, "%lf:%lf:%lf", &a, &b, &c) == 3)
+	{
+		v = sign*(a + b/60.0 + c/3600.0);
+		if(type == 'D')
+		{
+			v *= M_PI/180.0;
+		}
+		else
+		{
+			v *= M_PI/12.0;
+		}
+	}
+	else if(sscanf(str, "%lfh%lfm%lf", &a, &b, &c) == 3 && str[l-1] == 's' && type != 'D')
+	{
+		v = sign*(a + b/60.0 + c/3600.0);
+		v *= M_PI/12.0;
+	}
+	else if(sscanf(str, "%lfd%lf'%lf\"", &a, &b, &c) == 3 && str[l-1] == '"' && type == 'D')
+	{
+		v = sign*(a + b/60.0 + c/3600.0);
+		v *= M_PI/180.0;
+	}
+	else if(sscanf(str, "%lf%n", &a, &n) == 1)
+	{
+		if(n == l)
+		{
+			v = a;
+		}
+		else if(strcmp(str+n, "rad") == 0)
+		{
+			v = a;
+		}
+		else if(strcmp(str+n, "deg") == 0)
+		{
+			v = a*M_PI/180.0;
+		}
+		else
+		{
+			std::cerr << "Error parsing coordinate value " << str << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+		v *= sign;
+	}
+
+	return v;
+}
+
+// From http://oopweb.com/CPP/Documents/CPPHOWTO/Volume/C++Programming-HOWTO-7.html
+void split(const std::string &str, std::vector<std::string> &tokens, const std::string &delimiters)
+{
+	// Skip delimiters at beginning.
+	std::string::size_type lastPos = str.find_first_not_of(delimiters, 0);
+	// Find first "non-delimiter".
+	std::string::size_type pos     = str.find_first_of(delimiters, lastPos);
+
+	while(std::string::npos != pos || std::string::npos != lastPos)
+	{
+		// Found a token, add it to the vector.
+		tokens.push_back(str.substr(lastPos, pos - lastPos));
+		// Skip delimiters.  Note the "not_of"
+		lastPos = str.find_first_not_of(delimiters, pos);
+		// Find next "non-delimiter"
+		pos = str.find_first_of(delimiters, lastPos);
+	}
+}
+
+bool parseBoolean(const std::string &str)
+{
+	if(str[0] == '0' || str[0] == 'f' || str[0] == 'F' || str[0] == '-')
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
 }
