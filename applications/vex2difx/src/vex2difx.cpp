@@ -446,32 +446,6 @@ static DifxDatastream *makeDifxDatastreams(const VexJob& J, const VexData *V, co
 	return datastreams;
 }
 
-// round up to the next power of two
-// There must be a more elegant solution!
-static int next2(int x)
-{
-	int n=0; 
-	int m=0;
-	
-	for(int i=0; i < 31; ++i)
-	{
-		if(x & (1 << i))
-		{
-			++n;
-			m = i;
-		}
-	}
-
-	if(n < 2)
-	{
-		return x;
-	}
-	else
-	{
-		return 2<<m;
-	}
-}
-
 static int getBand(vector<pair<int,int> >& bandMap, int fqId)
 {
 	for(vector<pair<int,int> >::iterator it = bandMap.begin(); it != bandMap.end(); ++it)
@@ -537,17 +511,17 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 	}
 
 	int nRecordChan = setup->nRecordChan;
-	int startChan = 0;
+	int startBand = 0;
 	if(datastreamSetup)
 	{
-		if(datastreamSetup->nChan > 0)
+		if(datastreamSetup->nBand > 0)
 		{
-			nRecordChan = datastreamSetup->nChan;
-			startChan = datastreamSetup->startChan;
+			nRecordChan = datastreamSetup->nBand;
+			startBand = datastreamSetup->startBand;
 		}
-		else if(datastreamSetup->startChan > 0)
+		else if(datastreamSetup->startBand > 0)
 		{
-			cerr << "Developer error: setFormat(ant=" << antName << ", mode=" << mode->defName << ") -> datastream[" << dsId << "].nChan=0" << endl;
+			cerr << "Developer error: setFormat(ant=" << antName << ", mode=" << mode->defName << ") -> datastream[" << dsId << "].nBand=0" << endl;
 		}
 	}
 	int n2 = next2(nRecordChan);
@@ -726,7 +700,7 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 
 	for(int i = 0; i < nRecordChan; ++i)
 	{
-		const VexChannel *ch = &setup->channels[i + startChan];
+		const VexChannel *ch = &setup->channels[i + startBand];
 		if(ch->subbandId < 0 || ch->subbandId >= static_cast<int>(mode->subbands.size()))
 		{
 			cerr << "Error: setFormat: index to subband=" << ch->subbandId << " is out of range" << endl;
@@ -740,7 +714,7 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 			unsigned int toneSetId, fqId;
 			const VexSubband& subband = mode->subbands[ch->subbandId];
 
-			r -= startChan;
+			r -= startBand;
 			if(r < 0 || r >= D->datastream[dsId].nRecBand)
 			{
 				cerr << "Error: setFormat: index to record channel = " << r << " is out of range" << endl;
@@ -2315,11 +2289,11 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 								
 								exit(EXIT_FAILURE);
 							}
-							for(int i = 0; i < datastreamSetup->nChan; ++i)
+							for(int i = 0; i < datastreamSetup->nBand; ++i)
 							{
-								D->datastream[D->nDatastream].clockOffset[i] = antennaSetup->freqClockOffs.at(datastreamSetup->startChan + i);
-								D->datastream[D->nDatastream].clockOffsetDelta[i] = antennaSetup->freqClockOffsDelta.at(datastreamSetup->startChan + i);
-								D->datastream[D->nDatastream].phaseOffset[i] = antennaSetup->freqPhaseDelta.at(datastreamSetup->startChan + i);
+								D->datastream[D->nDatastream].clockOffset[i] = antennaSetup->freqClockOffs.at(datastreamSetup->startBand + i);
+								D->datastream[D->nDatastream].clockOffsetDelta[i] = antennaSetup->freqClockOffsDelta.at(datastreamSetup->startBand + i);
+								D->datastream[D->nDatastream].phaseOffset[i] = antennaSetup->freqPhaseDelta.at(datastreamSetup->startBand + i);
 							}
 						}
 
@@ -2332,9 +2306,9 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 
 								exit(EXIT_FAILURE);
 							}
-							for(int i = 0; i < datastreamSetup->nChan; ++i)
+							for(int i = 0; i < datastreamSetup->nBand; ++i)
 							{
-								D->datastream[D->nDatastream].freqOffset[i] = antennaSetup->loOffsets.at(datastreamSetup->startChan + i);
+								D->datastream[D->nDatastream].freqOffset[i] = antennaSetup->loOffsets.at(datastreamSetup->startBand + i);
 							}
 						}
 					} // if antennaSetup
@@ -2925,13 +2899,13 @@ int main(int argc, char **argv)
 
 	// set datastream channels
 	// for each antenna with an ANTENNA section
-	//   * if ndatastream = 0, just zero the nChan and startChan params to keep them flexible
+	//   * if ndatastream = 0, just zero the nBand and startBand params to keep them flexible
 	//   * else
 	//     * get number of recorded channels
 	//     * if it changes with mode, then bail out
-	//     * in cases where nChan is not set, set it to totalrecchans/ndatastream
-	//     * increment startChan to make set of datastreams contiguous
-	//     * if startChan + nChan for the last datastream does not sum to ndatastream then bail out
+	//     * in cases where nBand is not set, set it to totalrecchans/ndatastream
+	//     * increment startBand to make set of datastreams contiguous
+	//     * if startBand + nBand for the last datastream does not sum to ndatastream then bail out
 	for(unsigned int a = 0; a < V->nAntenna(); ++a)
 	{
 		const VexAntenna *ant = V->getAntenna(a);
@@ -2948,8 +2922,8 @@ int main(int argc, char **argv)
 			}
 			else if(nads == 1)
 			{
-				antSetup->datastreamSetups[0].nChan = 0;
-				antSetup->datastreamSetups[0].startChan = 0;
+				antSetup->datastreamSetups[0].nBand = 0;
+				antSetup->datastreamSetups[0].startBand = 0;
 			}
 			else
 			{
@@ -2965,17 +2939,17 @@ int main(int argc, char **argv)
 				chanCount = 0;
 				for(int ads = 0; ads < nads; ++ads)
 				{
-					antSetup->datastreamSetups[ads].startChan = chanCount;
-					if(antSetup->datastreamSetups[ads].nChan == 0)
+					antSetup->datastreamSetups[ads].startBand = chanCount;
+					if(antSetup->datastreamSetups[ads].nBand == 0)
 					{
 						if(nRecChan % nads != 0)
 						{
 							cerr << "Error: Number of record channels does not divide evenly into number of datastreams.  This error can be avoided by explicitly setting number of channels allocated to each datastream in the DATASTREAM blocks." << endl;
 							++nError;
 						}
-						antSetup->datastreamSetups[ads].nChan = nRecChan/nads;
+						antSetup->datastreamSetups[ads].nBand = nRecChan/nads;
 					}
-					chanCount += antSetup->datastreamSetups[ads].nChan;
+					chanCount += antSetup->datastreamSetups[ads].nBand;
 				}
 				if(chanCount != nRecChan)
 				{

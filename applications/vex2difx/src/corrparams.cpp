@@ -43,6 +43,7 @@
 #include "util.h"
 #include "timeutils.h"
 #include "corrparams.h"
+#include "parserhelp.h"
 
 const double PhaseCentre::DEFAULT_RA  = -999.9;
 const double PhaseCentre::DEFAULT_DEC = -999.9;
@@ -888,277 +889,8 @@ DatastreamSetup::DatastreamSetup(const std::string &name) : difxName(name)
 	windowSize = 0;
 	dataSource = DataSourceNone;
 	dataSampling = NumSamplingTypes;	// flag that no sampling is is identified here
-	nChan = 0;				// Zero implies all.
+	nBand = 0;				// Zero implies all.
 }
-
-AntennaSetup::AntennaSetup(const std::string &name) : vexName(name), defaultDatastreamSetup(name)
-{
-	polSwap = false;
-	X = 0.0;
-	Y = 0.0;
-	Z = 0.0;
-	axisOffset = -1e6;
-	deltaClock = 0.0;
-	deltaClockRate = 0.0;
-	clock.mjdStart = -1e9;
-	clockorder = 1;
-	clock2 = 0.0;
-	clock3 = 0.0;
-	clock4 = 0.0;
-	clock5 = 0.0;
-	phaseCalIntervalMHz = -1;
-	toneGuardMHz = -1.0;
-	toneSelection = ToneSelectionSmart;
-	tcalFrequency = -1;
-
-	// antenna is by default not constrained in start time
-	mjdStart = -1.0;
-	mjdStop = -1.0;
-}
-
-  enum charType {SIGN,DIGIT,DOT,E,SPACE,CHARERROR};
-
-  enum charType whatChar(const char a) {
-    if (a=='+'||a=='-') 
-      return SIGN;
-    else if (a=='E'||a=='e')
-      return (E);
-    else if (a>='0'&&a<='9')
-      return DIGIT;
-    else if (a==' ')
-      return SPACE;
-    else if (a=='.')
-      return DOT;
-    else
-      return CHARERROR;
-  }
-
-  int getdouble(std::string &value, double &x) {
-    enum stateType {START, STARTINT, INTEGER, DECIMAL, STARTEXP, EXPONENT, END, ERROR};
-    enum stateType state = START;
-    enum charType what;
-
-    unsigned int i;
-    for (i=0 ; i<value.length(); i++) {
-      what = whatChar(value[i]);
-      
-      switch (state) {
-      case START:
-	switch (what) {
-	case CHARERROR:
-	  std::cerr << "Error parsing character in \"" << value << "\" at : '" << value[i] << "':" << i << std::endl;
-	  value = "";
-	  return 1; 
-	  break;
-	case SIGN:
-	  state = STARTINT;
-	  break;
-	case DIGIT:
-	  state = INTEGER;
-	  break;
-	case SPACE:
-	  break;
-	case E:
-	  state = ERROR;
-	  break;
-	case DOT:
-	  state=DECIMAL;
-	  break;
-	}
-	break;
-	
-      case STARTINT:
-	switch (what) {
-	case CHARERROR:
-	  std::cerr << "Error parsing character in \"" << value << "\" at : '" << value[i] << "':" << i << std::endl;
-	  value = "";
-	  return 1; 
-	  break;
-	case SIGN:
-	case E:
-	  state = ERROR;
-	  break;
-	case DIGIT:
-	  state = INTEGER;
-	  break;
-	case SPACE:
-	  break;
-	case DOT:
-	  state = DECIMAL;
-	}
-	break;
-
-      case INTEGER:
-	switch (what) {
-	case CHARERROR:
-	  std::cerr << "Error parsing character in \"" << value << "\" at : '" << value[i] << "':" << i << std::endl;
-	  value = "";
-	  return 1; 
-	  break;
-	case DIGIT:
-	  break;
-	case SIGN:
-	case SPACE:
-	  state = END;
-	  break;
-	case E:
-	  state = STARTEXP;
-	  break;
-	case DOT:
-	  state = DECIMAL;
-	}
-	break;
-	
-      case DECIMAL:
-	switch (what) {
-	case CHARERROR:
-	  std::cerr << "Error parsing character in \"" << value << "\" at : '" << value[i] << "':" << i << std::endl;
-	  value = "";
-	  return 1; 
-	  break;
-	case DIGIT:
-	  break;
-	case SIGN:
-	case SPACE:
-	  state = END;
-	  break;
-	case E:
-	  state = STARTEXP;
-	  break;
-	case DOT:
-	  state = ERROR;
-	  break;
-	}
-	break;
-	
-      case STARTEXP:
-	switch (what) {
-	case CHARERROR:
-	  std::cerr << "Error parsing character in \"" << value << "\" at : '" << value[i] << "':" << i << std::endl;
-	  value = "";
-	  return 1; 
-	  break;
-	case SIGN:
-	case DIGIT:
-	  state = EXPONENT;
-	  break;
-	case SPACE:
-	case E:
-	case DOT:
-	  state = ERROR;
-	  break;
-	}
-	break;
-	
-      case EXPONENT:
-	switch (what) {
-	case CHARERROR:
-	  std::cerr << "Error parsing character in \"" << value << "\" at : '" << value[i] << "':" << i << std::endl;
-	  value = "";
-	  return 1; 
-	  break;
-	case SPACE:
-	case SIGN:
-	  state = END;
-	  break;
-	case DIGIT:
-	  break;
-	case DOT:
-	case E:
-	  state = ERROR;
-	  break;
-	}
-	break;
-
-      case ERROR:
-      case END:
-	break;
-	
-      }
-      
-      if (state==ERROR) {
-	std::cerr << "Error parsing \"" << value << "\" at : '" << value[i] << "':" << i << std::endl;
-	value = "";
-	return 1; 
-      }
-      if (state==END) break;
-    }
-
-    std::stringstream ss;
-    if (state==START) {
-      value = "";
-      return 1;
-    } else if (state==END) {
-    } else {
-      i = value.length();
-    }
-    ss << value.substr(0,i);
-    ss >> x;
-    value  = value.substr(i);
-
-    return 0;
-  }
-  
-  int getOp(std::string &value, int &plus) {
-    enum charType what;
-
-    unsigned int i;
-    for (i=0 ; i<value.length(); i++) {
-      what = whatChar(value[i]);
-      
-      if (what==CHARERROR) {
-	std::cerr << "Error parsing character in \"" << value << "\" at : '" << value[i] << "':" << i << std::endl;
-	value = "";
-	return 1; 
-      } else if (what==SPACE) {
-	continue;
-      } else if (what==SIGN) {
-	if (value[i]=='+') {
-	  plus = 1;
-	} else {
-	  plus = 0;
-	} 
-	value = value.substr(i+1);
-	return(0);
-      } else {
-	std::cerr << "Unexpected character in \"" << value << "\" at : '" << value[i] << "':" << i << std::endl;
-	value = "";
-	return 1; 
-      }
-    }
-    return(1); // Did not match anything
-  }
-
-double parseDouble(const std::string &value) {
-  // Read a string consisting of a series of additions and subtrations (only) and return a double
-
-  std::string str = value; // Copy as the procedure destroys the string
-  
-  int status, number=1, sign=-1;
-  double thisvalue, result=0;
-  while (str.length()) {
-    if (number) {
-      status = getdouble(str, thisvalue);
-      if (status) break;
-      if (sign==-1)
-	result = thisvalue;
-      else if (sign==1) 
-	result += thisvalue;
-      else
-	result -= thisvalue;
-      number = 0;
-    
-    } else  {
-      status = getOp(str, sign);
-      if (status) break;
-      number = 1;
-    }
-  }
-
-  return result;
-
-}
-
 
 
 int DatastreamSetup::setkv(const std::string &key, const std::string &value)
@@ -1173,6 +905,10 @@ int DatastreamSetup::setkv(const std::string &key, const std::string &value)
 	if(key == "machine")
 	{
 		ss >> machine;
+	}
+	else if(key == "nBand")
+	{
+		ss >> nBand;
 	}
 	else if(key == "format")
 	{
@@ -1293,6 +1029,8 @@ bool DatastreamSetup::hasBasebandFile(const Interval &interval) const
 
 int DatastreamSetup::merge(const DatastreamSetup *dss)
 {
+	nBand = dss->nBand;	// there is no way for the defaultDatastreamSetup to have this set
+
 	if(dataSource == DataSourceNone)
 	{
 		dataSource = dss->dataSource;
@@ -1380,6 +1118,31 @@ int DatastreamSetup::merge(const DatastreamSetup *dss)
 	return 0;
 }
 
+
+AntennaSetup::AntennaSetup(const std::string &name) : vexName(name), defaultDatastreamSetup(name)
+{
+	polSwap = false;
+	X = 0.0;
+	Y = 0.0;
+	Z = 0.0;
+	axisOffset = -1e6;
+	deltaClock = 0.0;
+	deltaClockRate = 0.0;
+	clock.mjdStart = -1e9;
+	clockorder = 1;
+	clock2 = 0.0;
+	clock3 = 0.0;
+	clock4 = 0.0;
+	clock5 = 0.0;
+	phaseCalIntervalMHz = -1;
+	toneGuardMHz = -1.0;
+	toneSelection = ToneSelectionSmart;
+	tcalFrequency = -1;
+
+	// antenna is by default not constrained in start time
+	mjdStart = -1.0;
+	mjdStop = -1.0;
+}
 
 int AntennaSetup::setkv(const std::string &key, const std::string &value)
 {

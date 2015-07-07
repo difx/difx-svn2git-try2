@@ -20,13 +20,15 @@ vex2difx_SOURCES = \
 	makejobs.cpp \
 	mediachange.h \
 	mediachange.cpp \
+	parserhelp.h \
+	parserhelp.cpp \
 	sanitycheck.h \
 	sanitycheck.cpp \
 	timeutils.h \
 	timeutils.cpp \
 	util.h \
 	util.cpp \
-	vex2difx.cpp 
+	vex2difx.cpp
 
 vexpeek_SOURCES = \
 	vextables.cpp \
@@ -35,6 +37,8 @@ vexpeek_SOURCES = \
 	vexload.h \
 	corrparams.cpp \
 	corrparams.h \
+	parserhelp.h \
+	parserhelp.cpp \
 	timeutils.h \
 	timeutils.cpp \
 	interval.h \

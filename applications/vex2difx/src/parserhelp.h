@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2009-2015 by Walter Brisken                             *
+ *   Copyright (C) 2014-2015 by Chris Phillips                             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -20,32 +20,35 @@
  * SVN properties (DO NOT CHANGE)
  *
  * $Id$
- * $HeadURL$
+ * $HeadURL: https://svn.atnf.csiro.au/difx/applications/vex2difx/branches/multidatastream/src/vex2difx.cpp $
  * $LastChangedRevision$
  * $Author$
  * $LastChangedDate$
  *
  *==========================================================================*/
 
-#ifndef __UTIL_H__
-#define __UTIL_H__
+#ifndef __PARSERHELP_H__
+#define __PARSERHELP_H__
 
-#include <algorithm>
+#include <string>
 
-// To capitalize a string
-#define Upper(s) transform(s.begin(), s.end(), s.begin(), (int(*)(int))toupper)
+enum charType
+{
+	SIGN,
+	DIGIT,
+	DOT,
+	E,
+	SPACE,
+	CHARERROR
+};
 
-// To uncapitalize a string
-#define Lower(s) transform(s.begin(), s.end(), s.begin(), (int(*)(int))tolower)
+enum charType whatChar(const char a);
 
-extern "C" {
-int fvex_double(char **field, char **units, double *d);
-int fvex_ra(char **field, double *ra);
-int fvex_dec(char **field, double *dec);
-}
+int getDouble(std::string &value, double &x);
+  
+int getOp(std::string &value, int &plus);
 
-int checkCRLF(const char *filename);
-
-int next2(int x);
+// Read a string consisting of a series of additions and subtrations (only) and return a double
+double parseDouble(const std::string &value);
 
 #endif

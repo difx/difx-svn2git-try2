@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2012 by Walter Brisken                                  *
+ *   Copyright (C) 2012-2015 by Walter Brisken                             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -74,3 +74,30 @@ int checkCRLF(const char *filename)
 
 	return 0;
 }
+
+// round up to the next power of two
+// There must be a more elegant solution!
+int next2(int x)
+{
+	int n=0; 
+	int m=0;
+	
+	for(int i=0; i < 31; ++i)
+	{
+		if(x & (1 << i))
+		{
+			++n;
+			m = i;
+		}
+	}
+
+	if(n < 2)
+	{
+		return x;
+	}
+	else
+	{
+		return 2<<m;
+	}
+}
+
