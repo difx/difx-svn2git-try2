@@ -1565,7 +1565,6 @@ void CorrParams::defaults()
 	invalidMask = ~0;		// write flags for all types of invalidity
 	visBufferLength = 80;
 	v2dMode = V2D_MODE_NORMAL;
-	overSamp = 0;
 	outputFormat = OutputFormatDIFX;
 	nCore = 0;
 	nThread = 0;
@@ -1787,10 +1786,6 @@ int CorrParams::setkv(const std::string &key, const std::string &value)
 		{
 		  outputFormat = OutputFormatASCII;
 		}
-	}
-	else if(key == "overSamp")
-	{
-		ss >> overSamp;
 	}
 	else if(key == "machines")
 	{
@@ -3053,7 +3048,6 @@ std::ostream& operator << (std::ostream &os, const CorrParams &x)
 	os << "nDataSegments=" << x.nDataSegments << std::endl;
 	os << "maxReadSize=" << x.maxReadSize << " # Bytes" << std::endl;
 	os << "minReadSize=" << x.minReadSize << " # Bytes" << std::endl;
-	os << "overSamp=" << x.overSamp << std::endl;
 	os << "outputFormat=" << x.outputFormat << std::endl;
 	
 	if(!x.antennaList.empty())

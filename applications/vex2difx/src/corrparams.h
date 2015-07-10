@@ -360,7 +360,6 @@ public:
 	int minReadSize;	// Min (Bytes) amount of data to read into datastream at a time
 	unsigned int invalidMask;
 	int visBufferLength;
-	int overSamp;		// A user supplied override to oversample factor
 	enum OutputFormatType outputFormat; // DIFX or ASCII
 	std::string v2dComment;
 	std::string outPath;	// If supplied, put the .difx/ output within the supplied directory rather in ./ .

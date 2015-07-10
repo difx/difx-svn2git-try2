@@ -1468,37 +1468,6 @@ static int getModes(VexData *V, Vex *v, const CorrParams &params)
 				setup.channels[threadId].threadId = threadId;
 			}
 		} // End of antenna loop
-
-#if 0
-		for(std::vector<VexSubband>::iterator it = M->subbands.begin(); it != M->subbands.end(); ++it)
-		{
-			int overSamp = static_cast<int>(setup.sampRate/(2.0*it->bandwidth) + 0.001);
-
-			if(params.overSamp > 0)
-			{
-				if(params.overSamp > overSamp)
-				{
-					std::cerr << "Warning: Mode=" << M->defName << " subband=" << M->overSamp.size() << 
-						": requested oversample factor " << params.overSamp << 
-						" is greater than the observed oversample factor " << overSamp << std::endl;
-					std::cerr << "This was triggered because the sample rate was " << setup.sampRate <<
-						" and the bandwidth was " << it->bandwidth << std::endl;
-					++nWarn;
-				}
-				overSamp = params.overSamp;
-			}
-			else if(overSamp > 8)
-			{
-				overSamp = 8;
-			}
-
-			M->overSamp.push_back(overSamp);
-		}
-#endif
-		M->overSamp.push_back(1);
-
-		M->overSamp.sort();
-		M->overSamp.unique();
 	}
 
 	return nWarn;

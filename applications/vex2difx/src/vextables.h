@@ -211,7 +211,6 @@ public:
 
 	std::vector<VexSubband> subbands;
 	std::map<std::string,VexSetup> setups;	// indexed by antenna name
-	std::list<int> overSamp;		// list of the oversample factors used by this mode
 };
 
 class VexClock

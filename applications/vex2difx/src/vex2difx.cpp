@@ -483,7 +483,7 @@ static int getToneSetId(vector<vector<int> > &toneSets, const vector<int> &tones
 static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<int> >& toneSets, const VexMode *mode, const string &antName, const CorrSetup *corrSetup, enum V2D_Mode v2dMode, const DatastreamSetup *datastreamSetup)
 {
 	vector<pair<int,int> > bandMap;
-	int overSamp, decimation;
+	int decimation;
 
 	if(mode == 0)
 	{
@@ -526,8 +526,8 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 	}
 	int n2 = nextPowerOf2(nRecordChan);
 
-	overSamp = 1;	// FIXME: eventually allow other values?
-	decimation = calcDecimation(overSamp);
+	// FIXME: eventually allow other values?
+	decimation = calcDecimation(1);
 
 	if(setup->formatName == string("VLBA1_1"))
 	{
@@ -732,7 +732,7 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 				toneSetId = getToneSetId(toneSets, ch->tones);
 			}
 			
-			fqId = getFreqId(freqs, subband.freq, subband.bandwidth, subband.sideBand, corrSetup->FFTSpecRes, corrSetup->outputSpecRes, overSamp, decimation, 0, toneSetId);	// 0 means not zoom band
+			fqId = getFreqId(freqs, subband.freq, subband.bandwidth, subband.sideBand, corrSetup->FFTSpecRes, corrSetup->outputSpecRes, decimation, 0, toneSetId);	// 0 means not zoom band
 			
 			D->datastream[dsId].recBandFreqId[r] = getBand(bandMap, fqId);
 			D->datastream[dsId].recBandPolName[r] = subband.pol;
@@ -814,7 +814,6 @@ static void populateFreqTable(DifxInput *D, const vector<freq>& freqs, const vec
 		df->sideband = freqs[f].sideBand;
 		df->nChan = static_cast<int>(freqs[f].bw/freqs[f].inputSpecRes + 0.5);	// df->nChan is the number of pre-averaged channels
 		df->specAvg = freqs[f].specAvg();
-		df->overSamp = freqs[f].overSamp;
 		df->decimation = freqs[f].decimation;
 
 		chanBW = freqs[f].outputSpecRes*1e-6;
@@ -822,20 +821,6 @@ static void populateFreqTable(DifxInput *D, const vector<freq>& freqs, const vec
 		{
 			firstChanBWWarning = 0;
 			cout << "Warning: channel bandwidth is " << chanBW << " MHz, which is larger than the minimum recommended 0.5 MHz.  Consider decreasing the output spectral resolution." << endl;
-		}
-
-		// This is to correct for the fact that mpifxcorr does not know about oversampling
-		if(df->overSamp > df->decimation)
-		{
-			if(freqs[f].isZoomFreq == 0) // Don't correct zoom bands as the bandwidth is already correct
-			{
-				df->bw *= df->overSamp/df->decimation;
-			}
-			else	// Instead, correct the number of channels
-			{
-				df->nChan = df->nChan*df->decimation/df->overSamp;
-			}
-			df->overSamp = df->decimation;
 		}
 
 		if(freqs[f].toneSetId >= toneSets.size())
@@ -1651,43 +1636,6 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 	{
 		config->guardNS = calculateWorstcaseGuardNS(mode->getLowestSampleRate(), config->subintNS, mode->getMinBits(), mode->getMinSubbands());
 	}
-	//config->overSamp = static_cast<int>(mode->sampRate/(2.0*mode->subbands[0].bandwidth) + 0.001);
-	//if(config->overSamp <= 0)
-	//{
-	//	cerr << "Error: configName=" << configName << " overSamp=" << config->overSamp << endl;
-	//	cerr << "samprate=" << mode->sampRate << " bw=" << 
-	//		mode->subbands[0].bandwidth << endl;
-	//	exit(EXIT_FAILURE);
-	//}
-	// try to get a good balance of oversampling and decim
-	//while(config->overSamp % 4 == 0)
-	//{
-	//	config->overSamp /= 2;
-	//	config->decimation *= 2;
-	//}
-#if 0
-	config->overSamp = static_cast<int>(mode->sampRate/(2.0*mode->subbands[0].bandwidth) + 0.001);
-	cout << "OS=" << config->overSamp << endl;
-	if(config->overSamp <= 0)
-	{
-		cerr << "Error: configName=" << configName << " overSamp=" << config->overSamp << endl;
-		cerr << "samprate=" << mode->sampRate << " bw=" << mode->subbands[0].bandwidth << endl;
-
-		exit(EXIT_FAILURE);
-	}
-
-	if(config->overSamp > 2)
-	{
-		config->decimation = config->oversamp/2;
-	}
-	cout << "Deci=" << config->decimation << endl;
-#endif
-	// try to get a good balance of oversampling and decim
-	//while(config->overSamp % 4 == 0)
-	//{
-	//	config->overSamp /= 2;
-	//	config->decimation *= 2;
-	//}
 	
 	DifxConfigAllocDatastreamIds(config, config->nDatastream, D->nConfig*config->nDatastream);
 	DifxConfigAllocBaselineIds(config, config->nBaseline, nConfig*config->nBaseline);
@@ -1766,7 +1714,7 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 	const double MAX_POS_DIFF = 5e-9; //radians, approximately equal to 1 mas
 	int pointingSrcIndex, foundSrcIndex, atSource;
 	int nZoomBands, fqId, polcount, zoomChans = 0, minChans;
-	int overSamp, decimation, worstcaseguardns;
+	int decimation, worstcaseguardns;
 	DifxDatastream *dd;
 	double globalBandwidth;
 	vector<set <int> > blockedfreqids;	// vector index is over antennaId
@@ -2077,9 +2025,8 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 			exit(EXIT_FAILURE);
 		}
 
-		overSamp = 1;	// Currently only this is supported
-
-		decimation = calcDecimation(overSamp);
+		// Currently only this is supported
+		decimation = calcDecimation(1);
 
 		corrSetup = P->getCorrSetup(configs[configId].second);
 		if(corrSetup == 0)
@@ -2220,7 +2167,7 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 									exit(EXIT_FAILURE);
 								}
 								zoomChans = static_cast<int>(zf.bandwidth/corrSetup->FFTSpecRes);
-								fqId = getFreqId(freqs, zf.frequency, zf.bandwidth, 'U', corrSetup->FFTSpecRes, corrSetup->outputSpecRes, overSamp, decimation, 1, 0);	// final zero points to the noTone pulse cal setup.
+								fqId = getFreqId(freqs, zf.frequency, zf.bandwidth, 'U', corrSetup->FFTSpecRes, corrSetup->outputSpecRes, decimation, 1, 0);	// final zero points to the noTone pulse cal setup.
 								if(zoomChans < minChans)
 								{
 									minChans = zoomChans;
