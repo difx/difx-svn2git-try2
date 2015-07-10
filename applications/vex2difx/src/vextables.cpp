@@ -1438,75 +1438,6 @@ void VexData::addScanEvents()
 
 }
 
-unsigned int VexScan::nAntennasWithRecordedData(const VexData *V) const
-{
-	unsigned int nAnt = 0;
-
-	const VexMode *M = V->getModeByDefName(modeDefName);
-	if(!M)
-	{
-		return 0;
-	}
-
-	for(std::map<std::string,Interval>::const_iterator it = stations.begin(); it != stations.end(); ++it)
-	{
-		std::map<std::string,VexSetup>::const_iterator S = M->setups.find(it->first);
-		if(S != M->setups.end() && S->second.nRecordChan > 0 && S->second.formatName != "NONE" && getRecordEnable(it->first) == true)
-		{
-			++nAnt;
-		}
-	}
-
-	return nAnt;
-}
-
-unsigned int VexScan::nRecordChan(const VexData *V, const std::string &antName) const
-{
-	unsigned int nRecChan = 0;
-	const VexMode *M = V->getModeByDefName(modeDefName);
-
-	if(M)
-	{
-		std::map<std::string,VexSetup>::const_iterator it = M->setups.find(antName);
-		if(it != M->setups.end())
-		{
-			nRecChan = it->second.nRecordChan;
-		}
-		else
-		{
-			std::cerr << "Warning: Ant " << antName << " not found in mode " << M->defName << std::endl;
-		}
-	}
-
-	return nRecChan;
-}
-
-bool VexScan::getRecordEnable(const std::string &antName) const
-{
-	std::map<std::string,bool>::const_iterator it = recordEnable.find(antName);
-	if(it != recordEnable.end())
-	{
-		return it->second;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-const Interval *VexScan::getAntennaInterval(const std::string &antName) const
-{
-	std::map<std::string,Interval>::const_iterator it = stations.find(antName);
-	if(it != stations.end())
-	{
-		return &it->second;
-	}
-	else
-	{
-		return 0;
-	}
-}
-
 void VexData::setScanSize(unsigned int num, double size)
 {
 	if(num >= nScan())
@@ -1523,6 +1454,28 @@ void VexData::getScanList(std::list<std::string> &scanList) const
 	{
 		scanList.push_back(it->defName);
 	}
+}
+
+unsigned int VexData::nAntennasWithRecordedData(const VexScan &scan) const
+{
+	unsigned int nAnt = 0;
+
+	const VexMode *M = getModeByDefName(scan.modeDefName);
+	if(!M)
+	{
+		return 0;
+	}
+
+	for(std::map<std::string,Interval>::const_iterator it = scan.stations.begin(); it != scan.stations.end(); ++it)
+	{
+		std::map<std::string,VexSetup>::const_iterator S = M->setups.find(it->first);
+		if(S != M->setups.end() && S->second.nRecordChan > 0 && S->second.formatName != "NONE" && scan.getRecordEnable(it->first) == true)
+		{
+			++nAnt;
+		}
+	}
+
+	return nAnt;
 }
 
 int VexEOP::setkv(const std::string &key, const std::string &value)
@@ -1753,6 +1706,23 @@ const VexMode *VexData::getModeByDefName(const std::string &defName) const
 	return 0;
 }
 
+unsigned int VexData::nRecordChan(const VexMode &mode, const std::string &antName) const
+{
+	unsigned int nRecChan = 0;
+
+	std::map<std::string,VexSetup>::const_iterator it = mode.setups.find(antName);
+	if(it != mode.setups.end())
+	{
+		nRecChan = it->second.nRecordChan;
+	}
+	else
+	{
+		std::cerr << "Warning: Ant " << antName << " not found in mode " << mode.defName << std::endl;
+	}
+
+	return nRecChan;
+}
+
 int VexData::getAntennaIdByName(const std::string &antName) const
 {
 	for(std::vector<VexAntenna>::const_iterator it = antennas.begin(); it != antennas.end(); ++it)
@@ -1784,12 +1754,11 @@ int VexData::getNumAntennaRecChans(const std::string &antName) const
 {
 	int nRecChan = 0;
 	
-	for(int s = 0; s < nScan(); ++s)
+	for(std::vector<VexMode>::const_iterator it = modes.begin(); it != modes.end(); ++it)
 	{
 		int n;
-		const VexScan *scan = getScan(s);
 
-		n = scan->nRecordChan(this, antName);
+		n = nRecordChan(*it, antName);
 		if(n > 0)
 		{
 			if(nRecChan == 0)
@@ -2181,29 +2150,6 @@ std::ostream& operator << (std::ostream &os, const VexSource &x)
 	}
 	os << "  ra=" << x.ra <<
 		"\n  dec=" << x.dec << std::endl;
-
-	return os;
-}
-
-std::ostream& operator << (std::ostream &os, const VexScan &x)
-{
-	os << "Scan " << x.defName << 
-		"\n  timeRange=" << (const Interval&)x <<
-		"\n  mode=" << x.modeDefName <<
-		"\n  source=" << x.sourceDefName << 
-		"\n  size=" << x.size << " bytes \n";
-
-	for(std::map<std::string,Interval>::const_iterator iter = x.stations.begin(); iter != x.stations.end(); ++iter)
-	{
-		os << "  " << iter->first << " range=" << iter->second << std::endl;
-	}
-
-	for(std::map<std::string,bool>::const_iterator iter = x.recordEnable.begin(); iter != x.recordEnable.end(); ++iter)
-	{
-		os << "  " << iter->first << " enable=" << iter->second << std::endl;
-	}
-
-	os << "  setup=" << x.corrSetupName << std::endl;
 
 	return os;
 }

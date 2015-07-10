@@ -889,14 +889,14 @@ int DatastreamSetup::merge(const DatastreamSetup *dss)
 		dataSampling = dss->dataSampling;	
 	}
 
-	if(dataSource != DataSourceFake && dataSource != DataSourceNetwork)
+	if(dataSource == DataSourceFile)
 	{
 		if(!basebandFiles.empty())
 		{
 			std::cerr << "Error: cannot provide baseband file(s) in ANTENNA section when datastreams are specified." << std::endl;
 			for(std::vector<VexBasebandData>::const_iterator it = basebandFiles.begin(); it != basebandFiles.end(); ++it)
 			{
-				std::cout << "  File: " << *it << std::endl;
+				std::cerr << "  File: " << *it << std::endl;
 			}
 
 			return -4;
@@ -906,6 +906,23 @@ int DatastreamSetup::merge(const DatastreamSetup *dss)
 			if(!dss->basebandFiles.empty())
 			{
 				basebandFiles = dss->basebandFiles;
+			}
+		}
+	}
+	else if(dataSource == DataSourceModule)
+	{
+		if(!vsn.empty())
+		{
+			std::cerr << "Error: cannot provide vsn in ANTENNA section when datastreams are specified." << std::endl;
+			std::cerr << "  VSN: " << vsn << std::endl;
+
+			return -4;
+		}
+		else
+		{
+			if(!dss->vsn.empty())
+			{
+				vsn = dss->vsn;
 			}
 		}
 	}

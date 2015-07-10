@@ -14,6 +14,8 @@ vex2difx_SOURCES = \
 	vex_clock.h \
 	vex_datastream.cpp \
 	vex_datastream.h \
+	vex_scan.cpp \
+	vex_scan.h \
 	vextables.h \
 	vextables.cpp \
 	vexload.h \
@@ -47,6 +49,8 @@ vexpeek_SOURCES = \
 	vex_clock.h \
 	vex_datastream.cpp \
 	vex_datastream.h \
+	vex_scan.cpp \
+	vex_scan.h \
 	vextables.cpp \
 	vextables.h \
 	vexload.cpp \

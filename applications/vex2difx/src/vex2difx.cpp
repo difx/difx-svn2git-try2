@@ -2706,6 +2706,53 @@ int applyCorrParams(VexData *V, const CorrParams &params)
 	*/
 
 	// change data sources
+	for(unsigned int a = 0; a < V->nAntenna(); ++a)
+	{
+		const VexAntenna *A;
+
+		A = V->getAntenna(a);
+		if(!A)
+		{
+			std::cerr << "Developer error: mergeCorrParams: Antenna number " << a << " cannot be gotten even though nAntenna() reports " << V->nAntenna() << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+
+		const AntennaSetup *as = params.getAntennaSetup(A->defName);
+		if(!as)
+		{
+			continue;
+		}
+		unsigned int nDatastream = as->datastreamSetups.size();
+		int totalBands = 0;
+		for(unsigned dsId = 0; dsId < nDatastream; ++dsId)
+		{
+			const DatastreampSetup *ds = &(as->datastreamSetups[dsId]);
+			if(A->datastreams.size() <= dsId)
+			{
+				// need to add another one
+				A->datastreams.push_back(VexDatastream());
+			}
+			VexDatastream *vs = &(A->datastreams[dsId]);
+
+			if(!ds->networkPort.empty())
+			{
+				vs->networkPort = ds->networkPort;
+			}
+			if(ds->windowSize != 0)
+			{
+				vs->windowSize = ds->windowSize;
+			}
+
+// VSN and files get copied over.....
+
+			if(ds->nBand > 0)
+			{
+				
+				totalBands += ds->nBand;
+			}
+		}
+	}
 
 	// Tones
 	for(unsigned int a = 0; a < V->nAntenna(); ++a)

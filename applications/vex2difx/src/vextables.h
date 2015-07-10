@@ -41,6 +41,7 @@
 #include "vex_clock.h"
 #include "vex_datastream.h"
 #include "vex_antenna.h"
+#include "vex_scan.h"
 
 extern const double RAD2ASEC;
 
@@ -79,27 +80,6 @@ public:
 	VexEvent() : mjd(0.0), eventType(NO_EVENT), name("") {}
 	VexEvent(double m, enum EventType e, const std::string &a) : mjd(m), eventType(e), name(a), scan("") {}
 	VexEvent(double m, enum EventType e, const std::string &a, const std::string &b) : mjd(m), eventType(e), name(a), scan(b) {}
-};
-
-class VexScan : public Interval
-{
-public:
-	std::string defName;				// name of this scan
-	std::string intent;				// intent of this scan
-
-	std::string modeDefName;
-	std::string sourceDefName;	
-	std::map<std::string,Interval> stations;
-	std::map<std::string,bool> recordEnable;	// This is true of the drive number is non-zero
-	std::string corrSetupName;			// points to CorrSetup entry
-	double size;					// [bytes] approx. correlated size
-	double mjdVex;					// The start time listed in the vex file
-
-	VexScan(): size(0), mjdVex(0.0) {};
-	unsigned int nAntennasWithRecordedData(const VexData *V) const;
-	unsigned int nRecordChan(const VexData *V, const std::string &antName) const;
-	const Interval *getAntennaInterval(const std::string &antName) const;
-	bool getRecordEnable(const std::string &antName) const;
 };
 
 class VexSource
@@ -171,7 +151,7 @@ public:
 class VexSetup	// Container for all antenna-specific settings
 {
 public:
-	VexSetup() : sampRate(0.0), nBit(0), nRecordChan(0) {}
+	VexSetup() : sampRate(0.0), nBit(0), nRecordChan(0), dataSampling(SamplingReal) {}
 	int phaseCalIntervalMHz() const;
 	const VexIF *getIF(const std::string &ifName) const;
 	double firstTuningForIF(const std::string &ifName) const;	// returns Hz
@@ -186,6 +166,7 @@ public:
 	unsigned int nBit;
 	unsigned int nRecordChan;	// number of recorded channels
 	std::string formatName;		// e.g. VLBA, MKIV, Mk5B, VDIF, LBA, K5, ...
+	enum SamplingType dataSampling;	// Real or Complex
 };
 
 class VexMode
@@ -341,6 +322,7 @@ public:
 	void addScanEvents();
 	void setScanSize(unsigned int num, double size);
 	void getScanList(std::list<std::string> &scans) const;
+	unsigned int nAntennasWithRecordedData(const VexScan &scan) const;
 
 	unsigned int nAntenna() const { return antennas.size(); }
 	int getAntennaIdByName(const std::string &antName) const;
@@ -356,6 +338,7 @@ public:
 	int getModeIdByDefName(const std::string &defName) const;
 	const VexMode *getMode(unsigned int num) const;
 	const VexMode *getModeByDefName(const std::string &defName) const;
+	unsigned int nRecordChan(const VexMode &mode, const std::string &antName) const;
 
 	unsigned int nEOP() const { return eops.size(); }
 	void addEOP(const VexEOP &e);
@@ -382,7 +365,6 @@ public:
 
 bool operator < (const VexEvent &a, const VexEvent &b);
 std::ostream& operator << (std::ostream &os, const VexSource &x);
-std::ostream& operator << (std::ostream &os, const VexScan &x);
 std::ostream& operator << (std::ostream &os, const VexSubband &x);
 std::ostream& operator << (std::ostream &os, const VexChannel &x);
 std::ostream& operator << (std::ostream &os, const VexIF &x);

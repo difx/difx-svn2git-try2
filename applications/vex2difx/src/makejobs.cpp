@@ -69,7 +69,7 @@ static void genJobGroups(std::vector<VexJobGroup> &JGs, const VexData *V, const 
 	while(!scans.empty())
 	{
 		const VexScan *scan = V->getScanByDefName(scans.front());
-		unsigned int nRecordedAnt = scan->nAntennasWithRecordedData(V);
+		unsigned int nRecordedAnt = V->nAntennasWithRecordedData(*scan);
 
 		if(nRecordedAnt < P->minSubarraySize)
 		{

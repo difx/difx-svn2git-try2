@@ -1,7 +1,7 @@
 
 Goal: all data from which difx schedules are derived come from VexTables
 
-Exceptions: zoom bands
+Exceptions: zoom bands, machines
 
 
 Don't forget to:
@@ -12,6 +12,13 @@ Don't forget to:
 
 * dataSampling, network params to VexDatastream
 
+new equivalent for Scan.corrSetup
+
+
+Operate rules from v2d onto vex structure
+ - setups/modes and scans using them
+ - sources and the scans they are in?
+ - explicit scan names?
 
 
 figure out what do do with shelf
