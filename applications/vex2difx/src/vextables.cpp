@@ -515,6 +515,7 @@ void VexMode::selectTones(const std::string &antName, enum ToneSelection selecti
 	}
 }
 
+
 double VexIF::getLowerEdgeFreq() const
 {
 	double bandCenter = ifSSLO;
@@ -727,12 +728,12 @@ FIXME: this functionality needs to be put somewhere else
 			std::cerr << "Warning: module based correlation desired but no media specified for antenna " << it->name << " ." << std::endl;
 			++nWarn;
 		}
-#endif
 		if(it->dataSource == DataSourceNone)
 		{
 			std::cerr << "Warning: data source is NONE for antenna " << it->name << " ." << std::endl;
 			++nWarn;
 		}
+#endif
 	}
 
 	return nWarn;
@@ -743,25 +744,6 @@ VexSource *VexData::newSource()
 	sources.push_back(VexSource());
 
 	return &sources.back();
-}
-
-// get the clock epoch as a MJD value (with fractional component), negative 
-// means not found.  Also fills in the first two coeffs, returned in seconds
-double VexAntenna::getVexClocks(double mjd, double *coeffs) const
-{
-	double epoch = -1.0;
-
-	for(std::vector<VexClock>::const_iterator it = clocks.begin(); it != clocks.end(); ++it)
-	{
-		if(it->mjdStart <= mjd)
-		{
-			epoch = it->offset_epoch;
-			coeffs[0] = it->offset;
-			coeffs[1] = it->rate;
-		}
-	}
-
-	return epoch;
 }
 
 const VexSource *VexData::getSource(unsigned int num) const
@@ -821,53 +803,28 @@ VexScan *VexData::newScan()
 	return &scans.back();
 }
 
-void VexJob::assignVSNs(const VexData &V)
+
+void VexJob::assignAntennas(const VexData &V)
 {
-	std::list<std::string> antennas;
+	jobAntennas.clear();
 
 	for(std::vector<std::string>::const_iterator s = scans.begin(); s != scans.end(); ++s)
 	{
 		const VexScan* S = V.getScanByDefName(*s);
 		for(std::map<std::string,Interval>::const_iterator a = S->stations.begin(); a != S->stations.end(); ++a)
 		{
-			if(find(antennas.begin(), antennas.end(), a->first) == antennas.end())
+			if(find(jobAntennas.begin(), jobAntennas.end(), a->first) == jobAntennas.end())
 			{
-				if(V.getAntennaStartMJD(a->first) <= mjdStart && V.getAntennaStopMJD(a->first) >= mjdStop)
+				const VexAntenna *A = V.getAntenna(a->first);
+
+				if(A->hasData(*S))
 				{
-					antennas.push_back(a->first);
+					jobAntennas.push_back(a->first);
 				}
 			}
 		}
 	}
-	
-	for(std::list<std::string>::const_iterator a = antennas.begin(); a != antennas.end(); ++a)
-	{
-		if(V.getAntenna(*a)->dataSource != DataSourceModule)
-		{
-			vsns[*a] = "None";
-		}
-		else
-		{
-			const std::string &vsn = V.getVSN(*a, *this);
-			if(vsn != "None")
-			{
-				vsns[*a] = vsn;
-			}
-		}
-	}
-}
-
-std::string VexJob::getVSN(const std::string &antName) const
-{
-	for(std::map<std::string,std::string>::const_iterator a = vsns.begin(); a != vsns.end(); ++a)
-	{
-		if(a->first == antName)
-		{
-			return a->second;
-		}
-	}
-
-	return std::string("None");
+	sort(jobAntennas.begin(), jobAntennas.end());
 }
 
 /* Modified from http://www-graphics.stanford.edu/~seander/bithacks.html */
@@ -1049,9 +1006,9 @@ int VexJob::generateFlagFile(const VexData &V, const char *fileName, unsigned in
 	std::ofstream of;
 	const std::list<VexEvent> &eventList = *V.getEvents();
 
-	for(std::map<std::string,std::string>::const_iterator a = vsns.begin(); a != vsns.end(); ++a)
+	for(std::vector<std::string>::const_iterator a = jobAntennas.begin(); a != jobAntennas.end(); ++a)
 	{
-		antIds[a->first] = nAnt;
+		antIds[*a] = nAnt;
 		++nAnt;
 	}
 
@@ -1064,21 +1021,21 @@ int VexJob::generateFlagFile(const VexData &V, const char *fileName, unsigned in
 	std::vector<double> flagStart(nAnt, mjdStart);
 
 	// Except if not a Mark5 Module case, don't assume RECORD flag is on
-	for(std::map<std::string,std::string>::const_iterator a = vsns.begin(); a != vsns.end(); ++a)
+	for(unsigned int antId = 0; antId < nAnt; ++antId)
 	{
-		const VexAntenna *ant = V.getAntenna(a->first);
+		const VexAntenna *ant = V.getAntenna(jobAntennas[antId]);
 
 		if(!ant)
 		{
-			std::cerr << "Developer error: generateFlagFile: antenna " << a->first << " not found in antenna table." << std::endl;
+			std::cerr << "Developer error: generateFlagFile: antenna " << jobAntennas[antId] << " not found in antenna table." << std::endl;
 
 			exit(EXIT_FAILURE);
 		}
 
-		if(ant->dataSource != DataSourceModule)
+		if(ant->dataSource() != DataSourceModule)
 		{
 			// Aha! not module based so unflag JOB_FLAG_RECORD
-			flagMask[antIds[a->first]] &= ~VexJobFlag::JOB_FLAG_RECORD;
+			flagMask[antId] &= ~VexJobFlag::JOB_FLAG_RECORD;
 		}
 	}
 
@@ -1161,9 +1118,9 @@ int VexJob::generateFlagFile(const VexData &V, const char *fileName, unsigned in
 		{
 			if(fabs(e->mjd - mjdStart) < 0.5/86400.0)
 			{
-				for(std::map<std::string,std::string>::const_iterator a = vsns.begin(); a != vsns.end(); ++a)
+				for(unsigned int antId = 0; antId < nAnt; ++antId)
 				{
-					flagMask[antIds[a->first]] &= ~VexJobFlag::JOB_FLAG_TIME;
+					flagMask[antId] &= ~VexJobFlag::JOB_FLAG_TIME;
 				}
 			}
 		}
@@ -1171,9 +1128,9 @@ int VexJob::generateFlagFile(const VexData &V, const char *fileName, unsigned in
 		{
 			if(fabs(e->mjd - mjdStart) < 0.5/86400.0)
 			{
-				for(std::map<std::string,std::string>::const_iterator a = vsns.begin(); a != vsns.end(); ++a)
+				for(unsigned int antId = 0; antId < nAnt; ++antId)
 				{
-					flagMask[antIds[a->first]] |= VexJobFlag::JOB_FLAG_TIME;
+					flagMask[antId] |= VexJobFlag::JOB_FLAG_TIME;
 				}
 			}
 		}
@@ -1972,6 +1929,7 @@ bool VexData::usesMode(const std::string &modeDefName) const
 	return false;
 }
 
+/*
 unsigned int VexData::nVSN(const std::string &antName) const
 {
 	const VexAntenna *A;
@@ -1986,15 +1944,23 @@ unsigned int VexData::nVSN(const std::string &antName) const
 		return A->vsns.size();
 	}
 }
+*/
 
-void VexData::addVSN(const std::string &antName, const std::string &vsn, const Interval &timeRange)
+void VexData::addVSN(const std::string &antName, unsigned int datastreamId, const std::string &vsn, const Interval &timeRange)
 {
 	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); ++it)
 	{
 		if(it->name == antName)
 		{
-			it->vsns.push_back(VexBasebandFile(vsn, timeRange));
-			it->dataSource = DataSourceModule;
+			if(datastreamId < it->nDatastream())
+			{
+				it->datastreams[datastreamId].vsns.push_back(VexBasebandData(vsn, timeRange));
+				it->datastreams[datastreamId].dataSource = DataSourceModule;
+			}
+			else
+			{
+				std::cerr << "Error: trying to add VSN " << vsn << " to antenna " << antName << " datastream " << datastreamId << " but the highest datastream there is " << (it->nDatastream()-1) << std::endl;
+			}
 		}
 	}
 }
@@ -2003,18 +1969,22 @@ void VexData::addVSNEvents()
 {
 	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); ++it)
 	{
-// FIXME: handle Mark6 w/ multiple parallel modules somehow?
-		if(it->dataSource == DataSourceModule)
+		for(std::vector<VexDatastream>::const_iterator dit = it->datastreams.begin(); dit != it->datastreams.end(); ++dit)
 		{
-			for(std::vector<VexBasebandFile>::const_iterator vit = it->vsns.begin(); vit != it->vsns.end(); ++vit)
+			if(dit->dataSource == DataSourceModule)
 			{
-				addEvent(vit->mjdStart, VexEvent::RECORD_START, it->defName);
-				addEvent(vit->mjdStop,  VexEvent::RECORD_STOP,  it->defName);
+				for(std::vector<VexBasebandData>::const_iterator vit = dit->vsns.begin(); vit != dit->vsns.end(); ++vit)
+				{
+					addEvent(vit->mjdStart, VexEvent::RECORD_START, it->defName);
+					addEvent(vit->mjdStop,  VexEvent::RECORD_STOP,  it->defName);
+				}
 			}
 		}
+		
 	}
 }
 
+/*
 std::string VexData::getVSN(const std::string &antName, const Interval &timeRange) const
 {
 	const VexAntenna *A;
@@ -2032,7 +2002,7 @@ std::string VexData::getVSN(const std::string &antName, const Interval &timeRang
 		return bestVSN;
 	}
 
-	for(std::vector<VexBasebandFile>::const_iterator v = A->vsns.begin(); v != A->vsns.end(); ++v)
+	for(std::vector<VexBasebandData>::const_iterator v = A->vsns.begin(); v != A->vsns.end(); ++v)
 	{
 		double timeOverlap = timeRange.overlap(*v);
 		if(timeOverlap > best)
@@ -2044,6 +2014,7 @@ std::string VexData::getVSN(const std::string &antName, const Interval &timeRang
 
 	return bestVSN;
 }
+*/
 
 void VexData::setExper(const std::string &name, const Interval &experTimeRange)
 {
@@ -2201,17 +2172,6 @@ void VexData::setAntennaAxisOffset(const std::string &antName, double axisOffset
 }
 
 
-std::ostream& operator << (std::ostream &os, const Interval &x)
-{
-	int p = os.precision();
-
-	os.precision(12);
-	os << "mjd(" << x.mjdStart << "," << x.mjdStop << ")";
-	os.precision(p);
-
-	return os;
-}
-
 std::ostream& operator << (std::ostream &os, const VexSource &x)
 {
 	os << "Source " << x.defName << std::endl;
@@ -2244,39 +2204,6 @@ std::ostream& operator << (std::ostream &os, const VexScan &x)
 	}
 
 	os << "  setup=" << x.corrSetupName << std::endl;
-
-	return os;
-}
-
-std::ostream& operator << (std::ostream &os, const VexClock &x)
-{
-	os << "Clock(" << x.mjdStart << ": " << x.offset << ", " << x.rate << ", " << x.offset_epoch << ")";
-
-	return os;
-}
-
-std::ostream& operator << (std::ostream &os, const VexAntenna &x)
-{
-	os << "Antenna " << x.name <<
-		"\n  x=" << x.x << "  dx/dt=" << x.dx <<
-		"\n  y=" << x.y << "  dy/dt=" << x.dy <<
-		"\n  z=" << x.z << "  dz/dt=" << x.dz <<
-		"\n  posEpoch=" << x.posEpoch <<
-		"\n  axisType=" << x.axisType <<
-		"\n  axisOffset=" << x.axisOffset <<
-		"\n  tcalFrequency=" << x.tcalFrequency << std::endl;
-
-	os << "  dataSource=" << dataSourceNames[x.dataSource] << std::endl;
-
-	for(std::vector<VexBasebandFile>::const_iterator it = x.vsns.begin(); it != x.vsns.end(); ++it)
-	{
-		os << "  " << *it << std::endl;
-	}
-
-	for(std::vector<VexClock>::const_iterator it = x.clocks.begin(); it != x.clocks.end(); ++it)
-	{
-		os << "  " << *it << std::endl;
-	}
 
 	return os;
 }
@@ -2352,14 +2279,6 @@ std::ostream& operator << (std::ostream &os, const VexEOP &x)
 	return os;
 }
 
-
-std::ostream& operator << (std::ostream &os, const VexBasebandFile &x)
-{
-	os << "Baseband(" << x.filename << ", " << (const Interval&)x << ")";
-
-	return os;
-}
-
 std::ostream& operator << (std::ostream &os, const VexJob &x)
 {
 	int p = os.precision();
@@ -2374,10 +2293,12 @@ std::ostream& operator << (std::ostream &os, const VexJob &x)
 		os << " " << *s;
 	}
 	os << std::endl;
-	for(std::map<std::string,std::string>::const_iterator v = x.vsns.begin(); v != x.vsns.end(); ++v)
+	os << "  Antenna list:";
+	for(std::vector<std::string>::const_iterator a = x.jobAntennas.begin(); a != x.jobAntennas.end(); ++a)
 	{
-		os << "  " << "VSN[" << v->first << "] = " << v->second << std::endl;
+		os << " " << *a;
 	}
+	os << std::endl;
 	os << "  size = " << x.dataSize << " bytes" << std::endl;
 
 	os.precision(p);

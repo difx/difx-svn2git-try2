@@ -44,12 +44,13 @@
 #include "timeutils.h"
 #include "corrparams.h"
 #include "parserhelp.h"
+#include "vex_basebanddata.h"
 
 const double PhaseCentre::DEFAULT_RA  = -999.9;
 const double PhaseCentre::DEFAULT_DEC = -999.9;
 
 
-int loadBasebandFilelist(const std::string &fileName, std::vector<VexBasebandFile> &basebandFiles)
+int loadBasebandFilelist(const std::string &fileName, std::vector<VexBasebandData> &basebandFiles)
 {
 	const int MaxLineLength=1024;
 	std::ifstream is;
@@ -94,12 +95,12 @@ int loadBasebandFilelist(const std::string &fileName, std::vector<VexBasebandFil
 		}
 		else if(l == 1)
 		{
-			basebandFiles.push_back(VexBasebandFile(tokens[0]));
+			basebandFiles.push_back(VexBasebandData(tokens[0]));
 			++n;
 		}
 		else if(l == 3)
 		{
-			basebandFiles.push_back(VexBasebandFile(tokens[0],
+			basebandFiles.push_back(VexBasebandData(tokens[0],
 				parseTime(tokens[1]),
 				parseTime(tokens[2]) ));
 			++n;
@@ -756,7 +757,7 @@ int DatastreamSetup::setkv(const std::string &key, const std::string &value)
 			++nWarn;
 		}
 		dataSource = DataSourceFile;
-		basebandFiles.push_back(VexBasebandFile(value));
+		basebandFiles.push_back(VexBasebandData(value));
 	}
 	else if(key == "filelist")
 	{
@@ -811,14 +812,13 @@ int DatastreamSetup::setkv(const std::string &key, const std::string &value)
 			++nWarn;
 		}
 		dataSource = DataSourceModule;
-		basebandFiles.clear();
-		basebandFiles.push_back(VexBasebandFile(value));
+		vsn = value;
 	}
 	else if(key == "fake")
 	{
 		dataSource = DataSourceFake;
 		basebandFiles.clear();
-		basebandFiles.push_back(VexBasebandFile(value));
+		basebandFiles.push_back(VexBasebandData(value));
 	}
 	else
 	{
@@ -829,11 +829,21 @@ int DatastreamSetup::setkv(const std::string &key, const std::string &value)
 	return nWarn;
 }
 
-bool DatastreamSetup::hasBasebandFile(const Interval &interval) const
+bool DatastreamSetup::hasBasebandData(const Interval &interval) const
 {
-	for(std::vector<VexBasebandFile>::const_iterator it = basebandFiles.begin(); it != basebandFiles.end(); ++it)
+	if(dataSource == DataSourceFile)
 	{
-		if(it->overlap(interval) > 0.0)
+		for(std::vector<VexBasebandData>::const_iterator it = basebandFiles.begin(); it != basebandFiles.end(); ++it)
+		{
+			if(it->overlap(interval) > 0.0)
+			{
+				return true;
+			}
+		}
+	}
+	else if(dataSource == DataSourceModule)
+	{
+		if(!vsn.empty())
 		{
 			return true;
 		}
@@ -884,7 +894,7 @@ int DatastreamSetup::merge(const DatastreamSetup *dss)
 		if(!basebandFiles.empty())
 		{
 			std::cerr << "Error: cannot provide baseband file(s) in ANTENNA section when datastreams are specified." << std::endl;
-			for(std::vector<VexBasebandFile>::const_iterator it = basebandFiles.begin(); it != basebandFiles.end(); ++it)
+			for(std::vector<VexBasebandData>::const_iterator it = basebandFiles.begin(); it != basebandFiles.end(); ++it)
 			{
 				std::cout << "  File: " << *it << std::endl;
 			}
@@ -1173,7 +1183,7 @@ int AntennaSetup::setkv(const std::string &key, const std::string &value)
 			++nWarn;
 		}
 		defaultDatastreamSetup.dataSource = DataSourceFile;
-		defaultDatastreamSetup.basebandFiles.push_back(VexBasebandFile(value));
+		defaultDatastreamSetup.basebandFiles.push_back(VexBasebandData(value));
 	}
 	else if(key == "filelist")
 	{
@@ -1228,14 +1238,11 @@ int AntennaSetup::setkv(const std::string &key, const std::string &value)
 			++nWarn;
 		}
 		defaultDatastreamSetup.dataSource = DataSourceModule;
-		defaultDatastreamSetup.basebandFiles.clear();
-		defaultDatastreamSetup.basebandFiles.push_back(VexBasebandFile(value));
+		defaultDatastreamSetup.vsn = value;
 	}
 	else if(key == "fake")
 	{
 		defaultDatastreamSetup.dataSource = DataSourceFake;
-		defaultDatastreamSetup.basebandFiles.clear();
-		defaultDatastreamSetup.basebandFiles.push_back(VexBasebandFile(value));
 	}
 	else if(key == "phaseCalInt")
 	{
@@ -1413,11 +1420,11 @@ void AntennaSetup::copyGlobalZoom(const GlobalZoom &globalZoom)
 	}
 }
 
-bool AntennaSetup::hasBasebandFile(const Interval &interval) const
+bool AntennaSetup::hasBasebandData(const Interval &interval) const
 {
 	for(std::vector<DatastreamSetup>::const_iterator it = datastreamSetups.begin(); it != datastreamSetups.end(); ++it)
 	{
-		if(it->hasBasebandFile(interval))
+		if(it->hasBasebandData(interval))
 		{
 			return true;
 		}

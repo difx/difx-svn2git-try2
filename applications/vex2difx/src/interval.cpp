@@ -84,3 +84,13 @@ void Interval::logicalOr(const Interval &v)
 	}
 }
 
+std::ostream& operator << (std::ostream &os, const Interval &x)
+{
+	int p = os.precision();
+
+	os.precision(12);
+	os << "mjd(" << x.mjdStart << "," << x.mjdStop << ")";
+	os.precision(p);
+
+	return os;
+}

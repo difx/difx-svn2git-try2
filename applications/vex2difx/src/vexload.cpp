@@ -278,6 +278,8 @@ static int getAntennas(VexData *V, Vex *v)
 		A->defName = stn;
 		Upper(A->name);
 
+		A->datastreams.push_back(VexDatastream());
+
 		p = (struct site_position *)get_station_lowl(stn, T_SITE_POSITION, B_SITE, v);
 		if(p == 0)
 		{
@@ -1359,7 +1361,9 @@ static int getVSN(VexData *V, Vex *v, const char *station)
 		}
 		else
 		{
-			V->addVSN(antName, vsn, vsnTimeRange);
+			// Note: always adding to datastream 0 at this time.
+			// with vex2 this will need to change
+			V->addVSN(antName, 0, vsn, vsnTimeRange);
 		}
 	}
 

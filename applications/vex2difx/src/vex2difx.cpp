@@ -217,29 +217,27 @@ static DifxJob *makeDifxJob(string directory, const VexJob& J, int nAntenna, con
 	return job;
 }
 
-static DifxAntenna *makeDifxAntennas(const VexJob& J, const VexData *V, const CorrParams *P, int *n, vector<string>& antList)
+static DifxAntenna *makeDifxAntennas(const VexJob& J, const VexData *V, const CorrParams *P, int *n)
 {
 	DifxAntenna *A;
 	double mjd;
-	map<string,string>::const_iterator a;
+	vector<string>::const_iterator a;
 	int i;
 
 	mjd = 0.5*(V->obsStart() + V->obsStop());
 
-	*n = J.vsns.size();
-
-	antList.clear();
+	*n = J.jobAntennas.size();
 
 	A = newDifxAntennaArray(*n);
 
 	// Note: the vsns vector here is used even for non-module corrlation.  It will map an antenna to a non-allowed VSN name which won't be used in case of non-module correlation.
-	for(i = 0, a = J.vsns.begin(); a != J.vsns.end(); ++i, ++a)
+	for(i = 0, a = J.jobAntennas.begin(); a != J.jobAntennas.end(); ++i, ++a)
 	{
 		double clockrefmjd;
 		
-		const VexAntenna *ant = V->getAntenna(a->first);
+		const VexAntenna *ant = V->getAntenna(*a);
 		
-		snprintf(A[i].name, DIFXIO_NAME_LENGTH, "%s", a->first.c_str());
+		snprintf(A[i].name, DIFXIO_NAME_LENGTH, "%s", a->c_str());
 		A[i].X = ant->x + ant->dx*(mjd-ant->posEpoch)*86400.0;
 		A[i].Y = ant->y + ant->dy*(mjd-ant->posEpoch)*86400.0;
 		A[i].Z = ant->z + ant->dz*(mjd-ant->posEpoch)*86400.0;
@@ -247,7 +245,7 @@ static DifxAntenna *makeDifxAntennas(const VexJob& J, const VexData *V, const Co
 		clockrefmjd = ant->getVexClocks(J.mjdStart, A[i].clockcoeff);
 		if(clockrefmjd < 0.0 && !P->fakeDatasource)
 		{
-			cerr << "WARNING: Job " << J.jobSeries << " " << J.jobId << ": no clock offsets being applied to antenna " << a->first << endl;
+			cerr << "WARNING: Job " << J.jobSeries << " " << J.jobId << ": no clock offsets being applied to antenna " << *a << endl;
 			cerr << "          Unless this is intentional, your results will suffer!" << endl;
 		}
 		A[i].clockrefmjd = clockrefmjd;
@@ -259,29 +257,14 @@ static DifxAntenna *makeDifxAntennas(const VexJob& J, const VexData *V, const Co
 		A[i].offset[2] = 0.0;
 
 		/* override with antenna setup values? */
-		const AntennaSetup *antSetup = P->getAntennaSetup(a->first);
+		const AntennaSetup *antSetup = P->getAntennaSetup(*a);
 		if(antSetup)
 		{
-			if(fabs(antSetup->X) > 0.1)
-			{
-				A[i].X = antSetup->X;
-			}
-			if(fabs(antSetup->Y) > 0.1)
-			{
-				A[i].Y = antSetup->Y;
-			}
-			if(fabs(antSetup->Z) > 0.1)
-			{
-				A[i].Z = antSetup->Z;
-			}
-			if(antSetup->axisOffset > -1e5)
-			{
-				A[i].offset[0] = antSetup->axisOffset;
-			}
 			if(!antSetup->difxName.empty())
 			{
 				snprintf(A[i].name, DIFXIO_NAME_LENGTH, "%s", antSetup->difxName.c_str());
 			}
+// FIXME: below here should be done in the applyCorrParams function
 			A[i].clockcoeff[0] += antSetup->deltaClock*1.0e6;	// convert to us from sec
 			A[i].clockcoeff[1] += antSetup->deltaClockRate*1.0e6;	// convert to us/sec from sec/sec
 			A[i].clockorder  = antSetup->clockorder;
@@ -302,8 +285,7 @@ static DifxAntenna *makeDifxAntennas(const VexJob& J, const VexData *V, const Co
 			}
 		}
 
-		antList.push_back(a->first);
-		snprintf(A[i].shelf, DIFXIO_SHELF_LENGTH, "%s", P->getShelf(a->second));
+		//snprintf(A[i].shelf, DIFXIO_SHELF_LENGTH, "%s", P->getShelf(a->second));
 	}
 
 	return A;
@@ -317,17 +299,9 @@ static DifxDatastream *makeDifxDatastreams(const VexJob& J, const VexData *V, co
 
 	// Determine worst case (but typical) number of datastreams for this job
 	nDatastream = 0;
-	for(std::map<std::string,std::string>::const_iterator it = J.vsns.begin(); it != J.vsns.end(); ++it)
+	for(std::vector<std::string>::const_iterator it = J.jobAntennas.begin(); it != J.jobAntennas.end(); ++it)
 	{
-		const AntennaSetup *as = P->getAntennaSetup(it->first);
-		if(!as)
-		{
-			++nDatastream;
-		}
-		else
-		{
-			nDatastream += as->datastreamSetups.size();
-		}
+		nDatastream += it->nDatastream();
 	}
 	nDatastream *= nSet;
 	
@@ -337,21 +311,15 @@ static DifxDatastream *makeDifxDatastreams(const VexJob& J, const VexData *V, co
 	for(int s = 0; s < nSet; ++s)
 	{
 		int antennaId = 0;
-		for(map<string,string>::const_iterator a = J.vsns.begin(); a != J.vsns.end(); ++a)
+		for(std::vector<std::string>::const_iterator a = J.jobAntennas.begin(); a != J.jobAntennas.end(); ++a)
 		{
 			int nd;
-			const VexAntenna *ant = V->getAntenna(a->first);
+			const VexAntenna *ant = V->getAntenna(*a);
 			const AntennaSetup *antennaSetup = P->getAntennaSetup(ant->name);
 
-			if(!antennaSetup)
-			{
-				nd = 1;
-			}
-			else
-			{
-				nd = antennaSetup->datastreamSetups.size();
-			}
-			
+			nd = ant->nDatastream();
+
+// FIXME: read data from VexDatastream objects from here on
 			for(int d = 0; d < nd; ++d)
 			{
 				DifxDatastream *dd = datastreams + di;
@@ -1697,7 +1665,6 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 	set<string> configSet;
 	set<string> spacecraftSet;
 	vector<pair<string,string> > configs;
-	vector<string> antList;
 	vector<freq> freqs;
 	vector<vector<int> > toneSets;
 	int nPulsar=0;
@@ -1764,7 +1731,7 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 	D->outputFormat = P->outputFormat;
 	D->nDataSegments = P->nDataSegments;
 
-	D->antenna = makeDifxAntennas(J, V, P, &(D->nAntenna), antList);
+	D->antenna = makeDifxAntennas(J, V, P, &(D->nAntenna));
 	D->job = makeDifxJob(V->getDirectory(), J, D->nAntenna, V->getExper()->name, &(D->nJob), nDigit, ext, P);
 	
 	D->nScan = J.scans.size();
@@ -2076,7 +2043,7 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 		// first iterate over all antennas, making sure all recorded bands are allocated
 		for(int antennaId = 0; antennaId < D->nAntenna; ++antennaId)
 		{
-			string antName = antList[antennaId];
+			string antName = J.jobAntennas[antennaId];
 			setFormat(D, D->nDatastream, freqs, toneSets, mode, antName, corrSetup, P->v2dMode, 0);
 		}
 
@@ -2084,8 +2051,10 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 		for(int antennaId = 0; antennaId < D->nAntenna; ++antennaId)
 		{
 			int nads;	// number of datastreams for this antenna
-			string antName = antList[antennaId];
-			
+			string antName = J.jobAntennas[antennaId];
+			const VexAntenna *antenna;
+
+			antenna = V->getAntenna(antName);
 			setup = mode->getSetup(antName);
 			antennaSetup = P->getAntennaSetup(antName);
 
@@ -2114,19 +2083,10 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 				{
 					dd = D->datastream + D->nDatastream;
 					dd->phaseCalIntervalMHz = setup->phaseCalIntervalMHz();
+					dd->tcalFrequency = antenna->tcalFrequency;
 
 					if(antennaSetup)
 					{
-						if(antennaSetup->tcalFrequency >= 0)
-						{
-							// use .v2d value
-							dd->tcalFrequency = antennaSetup->tcalFrequency;
-						}
-						if(antennaSetup->phaseCalIntervalMHz >= 0)
-						{
-							// Override with the .v2d value
-							dd->phaseCalIntervalMHz = antennaSetup->phaseCalIntervalMHz;
-						}
 						nZoomBands = 0;
 						
 						int nZoomFreqs = antennaSetup->zoomFreqs.size();
@@ -2565,7 +2525,7 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 			*of << (J.dataSize/1000000) << "  #";
 			of->precision(p);
 
-			for(vector<string>::const_iterator ai = antList.begin(); ai != antList.end(); ++ai)
+			for(vector<string>::const_iterator ai = J.jobAntennas.begin(); ai != J.jobAntennas.end(); ++ai)
 			{
 				*of << " " << *ai;
 			}

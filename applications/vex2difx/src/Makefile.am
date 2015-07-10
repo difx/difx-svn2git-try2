@@ -6,6 +6,14 @@ LDADD = \
 	$(top_builddir)/vex/libvex.la
 
 vex2difx_SOURCES = \
+	vex_antenna.cpp \
+	vex_antenna.h \
+	vex_basebanddata.cpp \
+	vex_basebanddata.h \
+	vex_clock.cpp \
+	vex_clock.h \
+	vex_datastream.cpp \
+	vex_datastream.h \
 	vextables.h \
 	vextables.cpp \
 	vexload.h \
@@ -31,6 +39,14 @@ vex2difx_SOURCES = \
 	vex2difx.cpp
 
 vexpeek_SOURCES = \
+	vex_antenna.cpp \
+	vex_antenna.h \
+	vex_basebanddata.cpp \
+	vex_basebanddata.h \
+	vex_clock.cpp \
+	vex_clock.h \
+	vex_datastream.cpp \
+	vex_datastream.h \
 	vextables.cpp \
 	vextables.h \
 	vexload.cpp \

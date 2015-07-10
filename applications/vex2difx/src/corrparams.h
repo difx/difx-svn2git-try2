@@ -153,11 +153,12 @@ class DatastreamSetup
 public:
 	DatastreamSetup(const std::string &name);
 	int setkv(const std::string &key, const std::string &value);
-	bool hasBasebandFile(const Interval &interval) const;	// Returns true if at least one baseband file exists over the provided interval
+	bool hasBasebandData(const Interval &interval) const;	// Returns true if at least one baseband file exists over the provided interval
 	int merge(const DatastreamSetup *dss);
 
 	std::string difxName;
-	std::vector<VexBasebandFile> basebandFiles;	// files to correlate
+	std::string vsn;	// if provided manually
+	std::vector<VexBasebandData> basebandFiles;	// files to correlate
 	std::string networkPort;// For eVLBI : port for this antenna.  A non-number indicates raw mode attached to an ethernet interface
 	int windowSize;		// For eVLBI : TCP window size
 	std::string machine;	// If set, use specified machine as datastream node for this antenna
@@ -178,7 +179,7 @@ public:
 	int setkv(const std::string &key, const std::string &value);
 	int setkv(const std::string &key, const std::string &value, ZoomFreq * zoomFreq);
 	void copyGlobalZoom(const GlobalZoom &globalZoom);
-	bool hasBasebandFile(const Interval &interval) const;	// Returns true if at least one baseband file exists over the provided interval
+	bool hasBasebandData(const Interval &interval) const;	// Returns true if at least one baseband file exists over the provided interval
 	enum DataSource getDataSource() const;
 	const std::string &getFormat() const;
 

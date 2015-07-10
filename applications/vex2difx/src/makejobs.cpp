@@ -370,39 +370,12 @@ void makeJobs(std::vector<VexJob>& J, VexData *V, const CorrParams *P, std::list
 
 		V->addEvent(j->mjdStart, VexEvent::JOB_START, name.str());
 		V->addEvent(j->mjdStop,  VexEvent::JOB_STOP,  name.str());
-		j->assignVSNs(*V);
 
-		// Here we need to check if there really is data for all the stations in the job.
-		//   If not, remove the antenna and add to the "no data" table.
-		for(std::map<std::string,std::string>::iterator it = j->vsns.begin(); it != j->vsns.end(); ++it)
-		{
-			if(it->second == "None")
-			{
-				const AntennaSetup *as = P->getAntennaSetup(it->first);
-				if(as->getDataSource() == DataSourceFile)
-				{
-					if(!as->hasBasebandFile(*j))	// test if all baseband files are out of time range
-					{
-						removedAntennas.push_back(std::pair<int,std::string>(jobId, it->first));
-						if(verbose > 0)
-						{
-							std::cout << "Removed " << it->first << " from jobId " << jobId << " because no data exists." << std::endl;
-						}
-						j->vsns.erase(it);
-
-						// this is a bit ugly.  Any better way to remove one item from a map from within?
-						it = j->vsns.begin();
-						if(it == j->vsns.end())
-						{
-							break;
-						}
-					}
-				}
-			}
-		}
+		// finds antennas that are active during at least a subset of the jobs scans and have media
+		j->assignAntennas(*V);
 		
 		// If fewer than minSubarray antennas remain, then mark the job as bad and exclude writing it later.
-		if(j->vsns.size() < P->minSubarraySize)
+		if(j->jobAntennas.size() < P->minSubarraySize)
 		{
 			j->jobSeries = "-";	// Flag to not actually produce this job
 		}
