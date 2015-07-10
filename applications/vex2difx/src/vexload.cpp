@@ -540,8 +540,6 @@ static int getAntennas(VexData *V, Vex *v, const CorrParams &params)
 					else
 					{
 						V->addVSN(antName, vsn, vsnTimeRange);
-						V->addEvent(vsnTimeRange.mjdStart, VexEvent::RECORD_START, antName);
-						V->addEvent(vsnTimeRange.mjdStop, VexEvent::RECORD_STOP, antName);
 					}
 				}
 			}
@@ -551,7 +549,7 @@ static int getAntennas(VexData *V, Vex *v, const CorrParams &params)
 	return nWarn;
 }
 
-static int getSources(VexData *V, Vex *v, const CorrParams &params)
+static int getSources(VexData *V, Vex *v)
 {
 	int nWarn = 0;
 	
@@ -613,19 +611,14 @@ static int getSources(VexData *V, Vex *v, const CorrParams &params)
 
 			exit(EXIT_FAILURE);
 		}
-
-		const SourceSetup *setup = params.getSourceSetup(S->defName);
-		if(setup)
-		{
-			if(setup->pointingCentre.calCode > ' ')
-			{
-				S->calCode = setup->pointingCentre.calCode;
-			}
-		}
 	}
 
 	return nWarn;
 }
+
+#if 0
+
+// function not needed anymore?
 
 static Interval adjustTimeRange(std::map<std::string, double> &antStart, std::map<std::string, double> &antStop, unsigned int minSubarraySize)
 {
@@ -698,17 +691,16 @@ static Interval adjustTimeRange(std::map<std::string, double> &antStart, std::ma
 
 	return Interval(mjdStart, mjdStop);
 }
+#endif
 
-static int getScans(VexData *V, Vex *v, const CorrParams &params)
+static int getScans(VexData *V, Vex *v)
 {
 	char *scanId;
-	int nScanSkip = 0;
 	int nWarn = 0;
 
 	for(Llist *L = (Llist *)get_scan(&scanId, v); L != 0; L = (Llist *)get_scan_next(&scanId))
 	{
 		VexScan *S;
-		std::map<std::string,double> antStart, antStop;
 		std::map<std::string,bool> recordEnable;
 		std::map<std::string,Interval> stations;
 		double startScan, stopScan;
@@ -721,8 +713,6 @@ static int getScans(VexData *V, Vex *v, const CorrParams &params)
 
 		stations.clear();
 		recordEnable.clear();
-		antStart.clear();
-		antStop.clear();
 
 		Llist *lowls = L;
 		lowls=find_lowl(lowls,T_COMMENT);
@@ -765,10 +755,6 @@ static int getScans(VexData *V, Vex *v, const CorrParams &params)
 			vex_field(T_STATION, p, 1, &link, &name, &stn, &units);
 			stationName = std::string(stn);
 			Upper(stationName);
-			if(!params.useAntenna(stationName))
-			{
-				continue;
-			}
 
 			vex_field(T_STATION, p, 2, &link, &name, &value, &units);
 			fvex_double(&value, &units, &startAnt);
@@ -790,25 +776,13 @@ static int getScans(VexData *V, Vex *v, const CorrParams &params)
 			recordEnable[stationName] = (atoi(value) > 0);
 
 			stations[stationName] = Interval(startAnt, stopAnt);
-
-			antStart[stationName] = startAnt;
-			antStop[stationName] = stopAnt;
-		}
-
-		if(stations.size() < params.minSubarraySize)
-		{
-			continue;
 		}
 
 		// Adjust start and stop times so that the minimum subarray size is
 		// always honored.  The return value becomes
-		Interval timeRange = adjustTimeRange(antStart, antStop, params.minSubarraySize);
-
-		// If the min subarray condition never occurs, then skip the scan
-		if(timeRange.duration_seconds() < 0.5)
-		{
-			continue;
-		}
+		
+		// We don't do this anymore.  Should we?  If so, do in VexData::reduceScans()
+		// Interval timeRange = adjustTimeRange(antStart, antStop, params.minSubarraySize);
 
 		std::string scanDefName(scanId);
 		std::string sourceDefName((char *)get_scan_source(L));
@@ -822,7 +796,12 @@ static int getScans(VexData *V, Vex *v, const CorrParams &params)
 			exit(EXIT_FAILURE);
 		}
 
-		std::string corrSetupName = params.findSetup(scanDefName, sourceDefName, modeDefName, src->calCode, 0);
+
+/* FIXME
+
+This functionality needs to be put in somewhere...
+
+		std::string corrSetupName = params.findSetup(scanDefName, sourceDefName, modeDefName);
 
 		if(corrSetupName == "" || corrSetupName == "SKIP")
 		{
@@ -836,51 +815,22 @@ static int getScans(VexData *V, Vex *v, const CorrParams &params)
 			exit(EXIT_FAILURE);
 		}
 
-		if(params.mjdStart > stopScan || params.mjdStop < startScan)
-		{
-			++nScanSkip;
-			continue;
-		}
-
-		if(startScan < params.mjdStart)
-		{
-			startScan = params.mjdStart;
-		}
-		if(stopScan > params.mjdStop)
-		{
-			stopScan = params.mjdStop;
-		}
+And then this:
+		S->corrSetupName = corrSetupName;
+*/
 
 		// Make scan
 		S = V->newScan();
-		S->setTimeRange(timeRange);
+		S->setTimeRange(Interval(startScan, stopScan));
 		S->defName = scanDefName;
 		S->stations = stations;
 		S->recordEnable = recordEnable;
 		S->modeDefName = modeDefName;
 		S->sourceDefName = sourceDefName;
-		S->corrSetupName = corrSetupName;
 		S->intent = intent;
 		S->mjdVex = mjd;
-
-		// Add to event list
-		V->addEvent(S->mjdStart, VexEvent::SCAN_START, scanId, scanId);
-		V->addEvent(S->mjdStop,  VexEvent::SCAN_STOP,  scanId, scanId);
-		for(std::map<std::string, double>::const_iterator it = antStart.begin(); it != antStart.end(); ++it)
-		{
-			V->addEvent(std::max(it->second, startScan), VexEvent::ANT_SCAN_START, it->first, scanId);
-		}
-		for(std::map<std::string, double>::const_iterator it = antStop.begin(); it != antStop.end(); ++it)
-		{
-			V->addEvent(std::min(it->second, stopScan), VexEvent::ANT_SCAN_STOP, it->first, scanId);
-		}
 	}
 
-	if(nScanSkip > 0)
-	{
-		std::cout << "FYI: " << nScanSkip << " scans skipped because of time range selection." << std::endl;
-	}
-	
 	return nWarn;
 }
 
@@ -1652,7 +1602,7 @@ static int getVSNs(VexData *V, Vex *v, const CorrParams &params)
 	return nWarn;
 }
 
-static int getEOPs(VexData *V, Vex *v, const CorrParams &params)
+static int getEOPs(VexData *V, Vex *v)
 {
 	llist *block;
 	int N = 0;
@@ -1731,27 +1681,10 @@ static int getEOPs(VexData *V, Vex *v, const CorrParams &params)
 		}
 	}
 
-	if(!params.eops.empty())
-	{
-		if(N > 0)
-		{
-			std::cerr << "Warning: Mixing EOP values from vex and v2d files.  Your mileage may vary!" << std::endl;
-			++nWarn;
-		}
-		for(std::vector<VexEOP>::const_iterator e = params.eops.begin(); e != params.eops.end(); ++e)
-		{
-			VexEOP *E;
-			
-			E = V->newEOP();
-			*E = *e;
-			++N;
-		}
-	}
-
 	return nWarn;
 }
 
-static int getExper(VexData *V, Vex *v, const CorrParams &params)
+static int getExper(VexData *V, Vex *v)
 {
 	llist *block;
 	double start=0.0, stop=0.0;
@@ -1826,30 +1759,8 @@ static int getExper(VexData *V, Vex *v, const CorrParams &params)
 	return nWarn;
 }
 
-// Note: this is approximate, assumes all polarizations matched and no IFs being selected out
-static void calculateScanSizes(VexData *V, const CorrParams &P)
-{
-	int nScan;
 
-	nScan = V->nScan();
-
-	for(int s = 0; s < nScan; ++s)
-	{
-		const VexScan *scan;
-		const VexMode *mode;
-		const CorrSetup *setup;
-		int nSubband, nBaseline;
-		
-		scan = V->getScan(s);
-		mode = V->getModeByDefName(scan->modeDefName);
-		setup = P.getCorrSetup(scan->corrSetupName);
-		nSubband = mode->subbands.size();
-		nBaseline = scan->stations.size()*(scan->stations.size()+1)/2;
-		V->setScanSize(s, scan->duration()*86400*nBaseline*nSubband*setup->bytesPerSecPerBLPerBand());
-	}
-}
-
-VexData *loadVexFile(const CorrParams &P, int * numWarnings)
+VexData *loadVexFile(const CorrParams &P, int *numWarnings)
 {
 	VexData *V;
 	Vex *v;
@@ -1867,18 +1778,13 @@ VexData *loadVexFile(const CorrParams &P, int * numWarnings)
 	V->setDirectory(P.vexFile.substr(0, P.vexFile.find_last_of('/')));
 
 	nWarn += getAntennas(V, v, P);
-	nWarn += getSources(V, v, P);
-	nWarn += getScans(V, v, P);
+	nWarn += getSources(V, v);
+	nWarn += getScans(V, v);
 	nWarn += getModes(V, v, P);
 	nWarn += getVSNs(V, v, P);
-	nWarn += getEOPs(V, v, P);
-	nWarn += getExper(V, v, P);
+	nWarn += getEOPs(V, v);
+	nWarn += getExper(V, v);
 	*numWarnings = *numWarnings + nWarn;
-
-	calculateScanSizes(V, P);
-	V->findLeapSeconds();
-	V->addBreaks(P.manualBreaks);
-	V->sortEvents();
 
 	return V;
 }

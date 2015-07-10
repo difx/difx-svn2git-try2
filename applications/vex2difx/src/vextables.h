@@ -110,14 +110,12 @@ public:
 class VexSource
 {
 public:
-	VexSource() : calCode(' '), qualifier(0), ra(0.0), dec(0.0) {}
+	VexSource() : ra(0.0), dec(0.0) {}
 	bool hasSourceName(const std::string &name) const;
 
 	std::string defName;			// in the "def ... ;" line in Vex
 	
 	std::vector<std::string> sourceNames;	// from source_name statements
-	char calCode;
-	int qualifier;
 	double ra;		// (rad)
 	double dec;		// (rad)
 
@@ -368,6 +366,8 @@ public:
 	const VexScan *getScan(unsigned int num) const;
 	const VexScan *getScanByDefName(const std::string &defName) const;
 	const VexScan *getScanByAntennaTime(const std::string &antName, double mjd) const;
+	void reduceScans(int minSubarraySize, const Interval &timerange);
+	void addScanEvents();
 	void setScanSize(unsigned int num, double size);
 	void getScanList(std::list<std::string> &scans) const;
 
@@ -379,6 +379,7 @@ public:
 	double getAntennaStartMJD(const std::string &name) const;
 	double getAntennaStopMJD(const std::string &name) const;
 	int getNumAntennaRecChans(const std::string &name) const;
+	bool removeAntenna(const std::string &name);
 
 	unsigned int nMode() const { return modes.size(); }
 	int getModeIdByDefName(const std::string &defName) const;
@@ -386,6 +387,7 @@ public:
 	const VexMode *getModeByDefName(const std::string &defName) const;
 
 	unsigned int nEOP() const { return eops.size(); }
+	void addEOP(const VexEOP &e);
 	const VexEOP *getEOP(unsigned int num) const;
 	const std::vector<VexEOP> &getEOPs() const { return eops; }
 
@@ -394,6 +396,7 @@ public:
 
 	unsigned int nVSN(const std::string &antName) const;
 	void addVSN(const std::string &antName, const std::string &vsn, const Interval &timeRange);
+	void AddVSNEvents();
 	std::string getVSN(const std::string &antName, const Interval &timeRange) const;
 
 	unsigned int nEvent() const { return events.size(); }

@@ -1907,8 +1907,8 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 			radiff  = fabs(D->source[i].ra - srcra);
 			decdiff = fabs(D->source[i].dec - srcdec);
 			if(radiff < MAX_POS_DIFF && decdiff < MAX_POS_DIFF &&
-			   D->source[i].calCode[0] == src->calCode &&
-			   D->source[i].qual == src->qualifier)
+			   D->source[i].calCode[0] == pointingCentre->calCode &&
+			   D->source[i].qual == pointingCentre->qualifier)
 			 {
 			 	if(pointingCentre->difxName.compare(PhaseCentre::DEFAULT_NAME) != 0)
 				{
@@ -1938,8 +1938,8 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 			snprintf(D->source[pointingSrcIndex].name, DIFXIO_NAME_LENGTH, "%s", src->sourceNames[0].c_str());
 			D->source[pointingSrcIndex].ra = src->ra;
 			D->source[pointingSrcIndex].dec = src->dec;
-			D->source[pointingSrcIndex].calCode[0] = src->calCode;
-			D->source[pointingSrcIndex].qual = src->qualifier;
+			D->source[pointingSrcIndex].calCode[0] = pointingCentre->calCode;
+			D->source[pointingSrcIndex].qual = pointingCentre->qualifier;
 			//overwrite with stuff from the source setup if it exists
 			if(pointingCentre->difxName.compare(PhaseCentre::DEFAULT_NAME) != 0)
 			{
@@ -2711,6 +2711,75 @@ static void runCommand(const char *cmd, int verbose)
 	}
 }
 
+// Note: this is approximate, assumes all polarizations matched and no IFs being selected out
+static void calculateScanSizes(VexData *V, const CorrParams &P)
+{
+	int nScan;
+
+	nScan = V->nScan();
+
+	for(int s = 0; s < nScan; ++s)
+	{
+		const VexScan *scan;
+		const VexMode *mode;
+		const CorrSetup *setup;
+		int nSubband, nBaseline;
+		
+		scan = V->getScan(s);
+		mode = V->getModeByDefName(scan->modeDefName);
+		setup = P.getCorrSetup(scan->corrSetupName);
+		nSubband = mode->subbands.size();
+		nBaseline = scan->stations.size()*(scan->stations.size()+1)/2;
+		V->setScanSize(s, scan->duration()*86400*nBaseline*nSubband*setup->bytesPerSecPerBLPerBand());
+	}
+}
+
+int mergeCorrParams(VexData *V, const CorrParams &params)
+{
+	int nWarn = 0;
+	
+	if(!params.eops.empty())
+	{
+		if(V->nEOP() > 0)
+		{
+			std::cerr << "Warning: Mixing EOP values from vex and v2d files.  Your mileage may vary!" << std::endl;
+			++nWarn;
+		}
+
+		for(std::vector<VexEOP>::const_iterator e = params.eops.begin(); e != params.eops.end(); ++e)
+		{
+			V->addEOP(*e);
+		}
+	}
+
+	
+	for(int a = 0; a < V->nAntenna(); )
+	{
+		const VexAntenna *A;
+
+		A = V->getAntenna(a);
+		if(!A)
+		{
+			std::cerr << "Developer error: mergeCorrParams: Antenna number " << a << " cannot be gotten even though nAntenna() reports " << V->nAntenna() << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+		if(!params.useAntenna(A->defName))
+		{
+			V->removeAntenna(A->defName);
+		}
+		else
+		{
+			++a;
+		}
+	}
+
+	// remove scans with too few antennas or with scans outside the specified time range
+	V->reduceScans(params.minSubarraySize, params);
+
+
+}
+
 int main(int argc, char **argv)
 {
 	CorrParams *P;
@@ -2882,6 +2951,18 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+	calculateScanSizes(V, *P);
+	V->addBreaks(P->manualBreaks);
+	nWarn += mergeCorrParams(V, *P);
+	
+	// FIXME: maybe need a full event populator function
+	// FIXME even more: move events out of VEX structure!
+	V->addScanEvents();
+	V->AddVSNEvents();
+	V->sortEvents();
+
+	V->findLeapSeconds();
+
 	// set min and max bandwidths for each setup
 	for(unsigned int s = 0; s < V->nScan(); ++s)
 	{
@@ -2909,7 +2990,7 @@ int main(int argc, char **argv)
 	for(unsigned int a = 0; a < V->nAntenna(); ++a)
 	{
 		const VexAntenna *ant = V->getAntenna(a);
-		AntennaSetup *antSetup = P->getAntennaSetupNonConst(ant->name);
+		AntennaSetup *antSetup = P->getNonConstAntennaSetup(ant->name);
 		if(antSetup)
 		{
 			int nads = antSetup->datastreamSetups.size();	// number of antenna datastreams
@@ -3023,8 +3104,6 @@ int main(int argc, char **argv)
 			added = new SourceSetup(S->sourceDefName);
 			added->doPointingCentre = true;
 			added->pointingCentre = PhaseCentre(src->ra, src->dec, src->sourceNames[0]);
-			added->pointingCentre.calCode = src->calCode;
-			added->pointingCentre.qualifier = src->qualifier;
 			P->addSourceSetup(*added);
 		}
 	}

@@ -284,7 +284,7 @@ public:
 	CorrRule(const std::string &name = "rule_default");
 
 	int setkv(const std::string &key, const std::string &value);
-	bool match(const std::string &scan, const std::string &source, const std::string &mode, char cal, int qual) const;
+	bool match(const std::string &scan, const std::string &source, const std::string &mode) const;
 
 	std::string ruleName;
 
@@ -326,11 +326,11 @@ public:
 	const PhaseCentre *getPhaseCentre(const std::string &difxname) const;
 	const DatastreamSetup *getDatastreamSetup(const std::string &name) const;
 	const AntennaSetup *getAntennaSetup(const std::string &name) const;
-	AntennaSetup *getAntennaSetupNonConst(const std::string &name);
+	AntennaSetup *getNonConstAntennaSetup(const std::string &name);
 	const GlobalZoom *getGlobalZoom(const std::string &name) const;
 	const VexClock *getAntennaClock(const std::string &antName) const;
 
-	const std::string &findSetup(const std::string &scan, const std::string &source, const std::string &mode, char cal, int qual) const;
+	const std::string &findSetup(const std::string &scan, const std::string &source, const std::string &mode) const;
 	const std::string &getNewSourceName(const std::string &origName) const;
 	
 	/* global parameters */

@@ -791,6 +791,7 @@ const VexSource *VexData::getSourceBySourceName(const std::string &name) const
 	return 0;
 }
 
+
 VexScan *VexData::newScan()
 {
 	scans.push_back(VexScan());
@@ -1321,6 +1322,79 @@ const VexScan *VexData::getScanByAntennaTime(const std::string &antName, double 
 	return 0;
 }
 
+// this removes scans out of time range or with fewer than minSubarraySize antennas
+void VexData::reduceScans(int minSubarraySize, const Interval &timerange)
+{
+	std::list<std::string> antsToRemove;
+
+// FIXME: maybe print some statistics such as number of scans dropped due to minsubarraysize and timerange
+
+	for(std::vector<VexScan>::iterator it = scans.begin(); it != scans.end(); )
+	{
+		Interval antennatimerange;	
+		
+		// initialize acausally
+		antennatimerange.mjdStart = 1;
+		antennatimerange.mjdStop = 0;
+
+		antsToRemove.clear();
+		for(std::map<std::string,Interval>::iterator sit = it->stations.begin(); sit != it->stations.end(); ++sit)
+		{
+			if(sit->second.overlap(timerange) <= 0.0)
+			{
+				antsToRemove.push_back(sit->first);
+			}
+			else
+			{
+				sit->second.logicalAnd(timerange);
+				if(!antennatimerange.isCausal())
+				{
+					antennatimerange = sit->second;
+				}
+				else
+				{
+					antennatimerange.logicalOr(sit->second);
+				}
+			}
+		}
+		for(std::list<std::string>::const_iterator ait = antsToRemove.begin(); ait != antsToRemove.end(); ++ait)
+		{
+			it->stations.erase(*ait);
+		}
+
+		if(it->overlap(antennatimerange) <= 0.5/86400.0)
+		{
+			it = scans.erase(it);
+			continue;
+		}
+
+		if(it->stations.size() < minSubarraySize)
+		{
+			it = scans.erase(it);
+		}
+		else
+		{
+			it->logicalAnd(antennatimerange);
+			++it;
+		}
+	}
+}
+
+void VexData::addScanEvents()
+{
+	for(std::vector<VexScan>::const_iterator it = scans.begin(); it != scans.end(); ++it)
+	{
+		addEvent(it->mjdStart, VexEvent::SCAN_START, it->defName, it->defName);
+		addEvent(it->mjdStop,  VexEvent::SCAN_STOP,  it->defName, it->defName);
+		for(std::map<std::string,Interval>::const_iterator sit = it->stations.begin(); sit != it->stations.end(); ++sit)
+		{
+			addEvent(std::max(sit->second.mjdStart, it->mjdStart), VexEvent::ANT_SCAN_START, sit->first, it->defName);
+			addEvent(std::min(sit->second.mjdStop,  it->mjdStop),  VexEvent::ANT_SCAN_STOP,  sit->first, it->defName);
+		}
+	}
+
+}
+
 unsigned int VexScan::nAntennasWithRecordedData(const VexData *V) const
 {
 	unsigned int nAnt = 0;
@@ -1648,6 +1722,55 @@ int VexData::getNumAntennaRecChans(const std::string &antName) const
 	return nRecChan;
 }
 
+// returns false if antenna was not there.  Otherwise true
+// this function essentially wipes out any record of this antenna being part of observing
+bool VexData::removeAntenna(const std::string &name)
+{
+	// remove VexAntenna
+	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); )
+	{
+		if(it->name == name)
+		{
+			it = antennas.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
+
+	// remove antenna from scans
+	for(std::vector<VexScan>::iterator it = scans.begin(); it != scans.end(); )
+	{
+		it->stations.erase(name);
+
+		if(it->stations.empty())
+		{
+			it = scans.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
+
+	// remove antenna from modes
+	for(std::vector<VexMode>::iterator it = modes.begin(); it != modes.end(); )
+	{
+		it->setups.erase(name);
+
+		if(it->setups.empty())
+		{
+			it = modes.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
+}
+
+
 int VexData::getModeIdByDefName(const std::string &defName) const
 {
 	for(std::vector<VexMode>::const_iterator it = modes.begin(); it != modes.end(); ++it)
@@ -1677,6 +1800,14 @@ const VexEOP *VexData::getEOP(unsigned int num) const
 	}
 
 	return &eops[num];
+}
+
+void VexData::addEOP(const VexEOP &e)
+{
+	VexEOP *E;
+
+	E = newEOP();
+	*E = e;
 }
 
 bool VexData::usesAntenna(const std::string &antennaName) const
@@ -1732,6 +1863,22 @@ void VexData::addVSN(const std::string &antName, const std::string &vsn, const I
 		{
 			it->vsns.push_back(VexBasebandFile(vsn, timeRange));
 			it->dataSource = DataSourceModule;
+		}
+	}
+}
+
+void VexData::AddVSNEvents()
+{
+	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); ++it)
+	{
+// FIXME: handle Mark6 w/ multiple parallel modules somehow?
+		if(it->dataSource == DataSourceModule)
+		{
+			for(std::vector<VexBasebandFile>::const_iterator vit = it->vsns.begin(); vit != it->vsns.end(); ++vit)
+			{
+				addEvent(vit->mjdStart, VexEvent::RECORD_START, it->defName);
+				addEvent(vit->mjdStop,  VexEvent::RECORD_STOP,  it->defName);
+			}
 		}
 	}
 }
@@ -1866,9 +2013,7 @@ std::ostream& operator << (std::ostream &os, const VexSource &x)
 		os << "  name=" << *it << std::endl;
 	}
 	os << "  ra=" << x.ra <<
-		"\n  dec=" << x.dec <<
-		"\n  calCode=" << x.calCode <<
-		"\n  qual=" << x.qualifier << std::endl;
+		"\n  dec=" << x.dec << std::endl;
 
 	return os;
 }

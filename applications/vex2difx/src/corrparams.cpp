@@ -434,7 +434,7 @@ CorrRule::CorrRule(const std::string &name) : ruleName(name)
 {
 }
 
-bool CorrRule::match(const std::string &scan, const std::string &source, const std::string &mode, char cal, int qual) const
+bool CorrRule::match(const std::string &scan, const std::string &source, const std::string &mode) const
 {
 	if(!scanName.empty() && find(scanName.begin(), scanName.end(), scan) == scanName.end())
 	{
@@ -445,10 +445,6 @@ bool CorrRule::match(const std::string &scan, const std::string &source, const s
 		return false;
 	}
 	if(!modeName.empty() && find(modeName.begin(), modeName.end(), mode) == modeName.end())
-	{
-		return false;
-	}
-	if(!calCode.empty() && find(calCode.begin(), calCode.end(), cal) == calCode.end())
 	{
 		return false;
 	}
@@ -2683,7 +2679,7 @@ const AntennaSetup *CorrParams::getAntennaSetup(const std::string &name) const
 	return a;
 }
 
-AntennaSetup *CorrParams::getAntennaSetupNonConst(const std::string &name)
+AntennaSetup *CorrParams::getNonConstAntennaSetup(const std::string &name)
 {
 	AntennaSetup *a = 0;
 
@@ -2815,7 +2811,7 @@ const PhaseCentre *CorrParams::getPhaseCentre(const std::string &difxName) const
 	return 0;
 }
 
-const std::string &CorrParams::findSetup(const std::string &scan, const std::string &source, const std::string &mode, char cal, int qual) const
+const std::string &CorrParams::findSetup(const std::string &scan, const std::string &source, const std::string &mode) const
 {
 	std::vector<CorrRule>::const_iterator it;
 	static const std::string def("default");
@@ -2823,7 +2819,7 @@ const std::string &CorrParams::findSetup(const std::string &scan, const std::str
 
 	for(it = rules.begin(); it != rules.end(); ++it)
 	{
-		if(it->match(scan, source, mode, cal, qual))
+		if(it->match(scan, source, mode))
 		{
 			return it->corrSetupName;
 		}
