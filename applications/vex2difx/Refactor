@@ -1,0 +1,22 @@
+
+Goal: all data from which difx schedules are derived come from VexTables
+
+Exceptions: zoom bands
+
+
+Don't forget to:
+
+* revisit clocks (especially poly model)
+
+* copy VSNs, files -> Vex struct
+
+* dataSampling, network params to VexDatastream
+
+
+
+figure out what do do with shelf
+
+
+split out VexJob, rename as Job
+
+split out VexXXX
