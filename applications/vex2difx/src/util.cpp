@@ -28,6 +28,7 @@
  *==========================================================================*/
 
 #include <cstdio>
+#include <cstdlib>
 #include "util.h"
 
 /* Function to look through a file to make sure it is not DOS formatted */
@@ -122,3 +123,23 @@ int nextPowerOf2(int x)
 		return 2<<m;
 	}
 }
+
+char swapPolarizationCode(char pol)
+{
+	switch(pol)
+	{
+	case 'R':
+		return 'L';
+	case 'L':
+		return 'R';
+	case 'X':
+		return 'Y';
+	case 'Y':
+		return 'X';
+	default:
+		fprintf(stderr, "Error: unknown polarization: %c\n", pol);
+
+		exit(EXIT_FAILURE);
+	}
+}
+

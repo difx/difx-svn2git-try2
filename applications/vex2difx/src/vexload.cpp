@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2009-2012 by Walter Brisken                             *
+ *   Copyright (C) 2009-2015 by Walter Brisken                             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -37,7 +37,6 @@
 #include <algorithm>
 #include <unistd.h>
 #include "util.h"
-#include "corrparams.h"
 #include "vextables.h"
 #include "../vex/vex.h"
 #include "../vex/vex_parse.h"
@@ -53,25 +52,6 @@ public:
 	std::vector<int> sign;
 	std::vector<int> mag;
 };
-
-static char swapPolarization(char pol)
-{
-	switch(pol)
-	{
-	case 'R':
-		return 'L';
-	case 'L':
-		return 'R';
-	case 'X':
-		return 'Y';
-	case 'Y':
-		return 'X';
-	default:
-		std::cerr << "Error: unknown polarization: " << pol << std::endl;
-
-		exit(EXIT_FAILURE);
-	}
-}
 
 static void fixOhs(std::string &str)
 {
@@ -276,7 +256,7 @@ double vexDate(char *value)
 	return mjd;
 }
 
-static int getAntennas(VexData *V, Vex *v, const CorrParams &params)
+static int getAntennas(VexData *V, Vex *v)
 {
 	struct dvalue *r;
 	llist *block;
@@ -293,10 +273,6 @@ static int getAntennas(VexData *V, Vex *v, const CorrParams &params)
 		std::string antName(stn);
 		Upper(antName);
 
-		if(!params.useAntenna(antName))
-		{
-			continue;
-		}
 		A = V->newAntenna();
 		A->name = stn;
 		A->defName = stn;
@@ -363,131 +339,111 @@ static int getAntennas(VexData *V, Vex *v, const CorrParams &params)
 		}
 		fvex_double(&(r->value), &(r->units), &A->axisOffset);
 
-		const AntennaSetup *antennaSetup = params.getAntennaSetup(antName);
-
-		// Note: with multi-data-stream functionality, only module-based correlation can be specified directly by vex
-		if(antennaSetup)
+		for(void *c = get_station_lowl(stn, T_CLOCK_EARLY, B_CLOCK, v); c; c = get_station_lowl_next())
 		{
-			enum DataSource ds = antennaSetup->getDataSource();
-			if(ds != DataSourceNone)
+			char *value;
+			char *units;
+			int name;
+			int link;
+			double mjd;
+
+			vex_field(T_CLOCK_EARLY, c, 1, &link, &name, &value, &units);
+			if(value)
 			{
-				A->dataSource = ds;
+				mjd = vexDate(value);
 			}
-		}
-
-		const VexClock *paramClock = params.getAntennaClock(antName);
-		if(paramClock)
-		{
-			A->clocks.push_back(*paramClock);
-		}
-		else 
-		{
-			for(void *c = get_station_lowl(stn, T_CLOCK_EARLY, B_CLOCK, v); c; c = get_station_lowl_next())
+			else
 			{
-				char *value;
-				char *units;
-				int name;
-				int link;
-				double mjd;
+				mjd = 0.0;
+			}
+			A->clocks.push_back(VexClock());
+			VexClock &clock = A->clocks.back();
+			clock.mjdStart = mjd;
+			V->addEvent(mjd, VexEvent::CLOCK_BREAK, antName);
 
-				vex_field(T_CLOCK_EARLY, c, 1, &link, &name, &value, &units);
+			vex_field(T_CLOCK_EARLY, c, 2, &link, &name, &value, &units);
+			if(value && units)
+			{
+				fvex_double(&value, &units, &clock.offset);
+			}
+
+			vex_field(T_CLOCK_EARLY, c, 3, &link, &name, &value, &units);
+			if(value)
+			{
+				clock.offset_epoch = vexDate(value);
+				vex_field(T_CLOCK_EARLY, c, 4, &link, &name, &value, &units);
 				if(value)
 				{
-					mjd = vexDate(value);
-				}
-				else
-				{
-					mjd = 0.0;
-				}
-				A->clocks.push_back(VexClock());
-				VexClock &clock = A->clocks.back();
-				clock.mjdStart = mjd;
-				V->addEvent(mjd, VexEvent::CLOCK_BREAK, antName);
-
-				vex_field(T_CLOCK_EARLY, c, 2, &link, &name, &value, &units);
-				if(value && units)
-				{
-					fvex_double(&value, &units, &clock.offset);
-				}
-
-				vex_field(T_CLOCK_EARLY, c, 3, &link, &name, &value, &units);
-				if(value)
-				{
-					clock.offset_epoch = vexDate(value);
-					vex_field(T_CLOCK_EARLY, c, 4, &link, &name, &value, &units);
-					if(value)
+					if(units)
 					{
-						if(units)
+						fvex_double(&value, &units, &clock.rate);
+					}
+					else
+					{
+						clock.rate = atof(value);
+					}
+				}
+			}
+			clock.flipSign();
+		}
+
+		// As a last resort, look for unlinked clock blocks
+#warning: "FIXME: note: the following should eventually be removed once proper linking in vex files is in place"
+		if(A->clocks.empty() && block)
+		{
+			Llist *defs;
+			
+			defs = ((struct block *)block->ptr)->items;
+			if(defs)
+			{
+				defs = find_def(defs, stn);
+			}
+			if(defs)
+			{
+				for(Llist *lowls = find_lowl(((Def *)((Lowl *)defs->ptr)->item)->refs, T_CLOCK_EARLY); lowls; lowls = lowls->next)
+				{
+					Clock_early *C;
+					
+					if(((Lowl *)lowls->ptr)->statement != T_CLOCK_EARLY)
+					{
+						continue;
+					}
+
+					C = (Clock_early *)(((Lowl *)lowls->ptr)->item);
+					if(C)
+					{
+						double mjd;
+						
+						if(C->start)
 						{
-							fvex_double(&value, &units, &clock.rate);
+							mjd = vexDate(C->start);
 						}
 						else
 						{
-							clock.rate = atof(value);
+							mjd = 0.0;
 						}
-					}
-				}
-				clock.flipSign();
-			}
-
-			// As a last resort, look for unlinked clock blocks
-#warning: "FIXME: note: the following should eventually be removed once proper linking in vex files is in place"
-			if(A->clocks.empty() && block)
-			{
-				Llist *defs;
-				
-				defs = ((struct block *)block->ptr)->items;
-				if(defs)
-				{
-					defs = find_def(defs, stn);
-				}
-				if(defs)
-				{
-					for(Llist *lowls = find_lowl(((Def *)((Lowl *)defs->ptr)->item)->refs, T_CLOCK_EARLY); lowls; lowls = lowls->next)
-					{
-						Clock_early *C;
+						A->clocks.push_back(VexClock());
+						VexClock &clock = A->clocks.back();
+						clock.mjdStart = mjd;
+						V->addEvent(mjd, VexEvent::CLOCK_BREAK, antName);
+						if(C->offset)
+						{
+							fvex_double(&(C->offset->value), &(C->offset->units), &clock.offset);
+						}
+						if(C->rate && C->origin) 
+						{
+							clock.rate = atof(C->rate->value);
+							clock.offset_epoch = vexDate(C->origin);
+						}
 						
-						if(((Lowl *)lowls->ptr)->statement != T_CLOCK_EARLY)
-						{
-							continue;
-						}
-
-						C = (Clock_early *)(((Lowl *)lowls->ptr)->item);
-						if(C)
-						{
-							double mjd;
-							
-							if(C->start)
-							{
-								mjd = vexDate(C->start);
-							}
-							else
-							{
-								mjd = 0.0;
-							}
-							A->clocks.push_back(VexClock());
-							VexClock &clock = A->clocks.back();
-							clock.mjdStart = mjd;
-							V->addEvent(mjd, VexEvent::CLOCK_BREAK, antName);
-							if(C->offset)
-							{
-								fvex_double(&(C->offset->value), &(C->offset->units), &clock.offset);
-							}
-							if(C->rate && C->origin) 
-							{
-								clock.rate = atof(C->rate->value);
-								clock.offset_epoch = vexDate(C->origin);
-							}
-							
-							// vex has the opposite sign convention, so swap
-							clock.flipSign();
-						}
+						// vex has the opposite sign convention, so swap
+						clock.flipSign();
 					}
 				}
 			}
 		}
 
-
+#if 0
 // FIXME: antennaSetup needs function that indicates whether datasource has been established
 		if(!antennaSetup || antennaSetup->getDataSource() == DataSourceNone)
 		{
@@ -544,6 +500,7 @@ static int getAntennas(VexData *V, Vex *v, const CorrParams &params)
 				}
 			}
 		}
+#endif
 	}
 
 	return nWarn;
@@ -615,83 +572,6 @@ static int getSources(VexData *V, Vex *v)
 
 	return nWarn;
 }
-
-#if 0
-
-// function not needed anymore?
-
-static Interval adjustTimeRange(std::map<std::string, double> &antStart, std::map<std::string, double> &antStop, unsigned int minSubarraySize)
-{
-	std::list<double> start;
-	std::list<double> stop;
-	double mjdStart, mjdStop;
-
-	if(minSubarraySize < 1)
-	{
-		std::cerr << "Developer error: adjustTimeRange: minSubarraySize = " << minSubarraySize << " is < 1" << std::endl;
-
-		exit(EXIT_FAILURE);
-	}
-
-	if(antStart.size() != antStop.size())
-	{
-		std::cerr << "Developer error: adjustTimeRange: size mismatch" << std::endl;
-
-		exit(EXIT_FAILURE);
-	}
-
-	if(antStart.size() < minSubarraySize)
-	{
-		// Return an acausal interval
-		return Interval(1, 0);
-	}
-
-	for(std::map<std::string, double>::iterator it = antStart.begin(); it != antStart.end(); ++it)
-	{
-		start.push_back(it->second);
-	}
-	start.sort();
-	// Now the start times are sorted chronologically
-
-	for(std::map<std::string, double>::iterator it = antStop.begin(); it != antStop.end(); ++it)
-	{
-		stop.push_back(it->second);
-	}
-	stop.sort();
-	// Now stop times are sorted chronologically
-
-	// Pick off times where min subarray condition is met
-	// If these are in the wrong order (i.e., no such interval exists)
-	// Then these will form an acausal interval which will be caught by
-	// the caller.
-	for(unsigned int i = 0; i < minSubarraySize-1; ++i)
-	{
-		start.pop_front();
-		stop.pop_back();
-	}
-	mjdStart = start.front();
-	mjdStop = stop.back();
-
-	// Adjust start times where needed
-	for(std::map<std::string, double>::iterator it = antStart.begin(); it != antStart.end(); ++it)
-	{
-		if(it->second < mjdStart)
-		{
-			it->second = mjdStart;
-		}
-	}
-
-	for(std::map<std::string, double>::iterator it = antStop.begin(); it != antStop.end(); ++it)
-	{
-		if(it->second > mjdStop)
-		{
-			it->second = mjdStop;
-		}
-	}
-
-	return Interval(mjdStart, mjdStop);
-}
-#endif
 
 static int getScans(VexData *V, Vex *v)
 {
@@ -778,12 +658,6 @@ static int getScans(VexData *V, Vex *v)
 			stations[stationName] = Interval(startAnt, stopAnt);
 		}
 
-		// Adjust start and stop times so that the minimum subarray size is
-		// always honored.  The return value becomes
-		
-		// We don't do this anymore.  Should we?  If so, do in VexData::reduceScans()
-		// Interval timeRange = adjustTimeRange(antStart, antStop, params.minSubarraySize);
-
 		std::string scanDefName(scanId);
 		std::string sourceDefName((char *)get_scan_source(L));
 		std::string modeDefName((char *)get_scan_mode(L));
@@ -834,7 +708,7 @@ And then this:
 	return nWarn;
 }
 
-static int getModes(VexData *V, Vex *v, const CorrParams &params)
+static int getModes(VexData *V, Vex *v)
 {
 	int nWarn = 0;
 
@@ -859,7 +733,6 @@ static int getModes(VexData *V, Vex *v, const CorrParams &params)
 			void *p, *p2;
 			const std::string &antName = V->getAntenna(a)->defName;
 			std::string antName2 = V->getAntenna(a)->defName;
-			const AntennaSetup *antennaSetup;
 			std::map<std::string,std::vector<int> > pcalMap;
 			std::map<std::string,char> bbc2pol;
 			std::map<std::string,std::string> bbc2ifName;
@@ -878,19 +751,7 @@ static int getModes(VexData *V, Vex *v, const CorrParams &params)
 			ch2tracks.clear();
 
 			Upper(antName2);
-			bool swapPol = params.swapPol(antName2);
 			VexSetup &setup = M->setups[V->getAntenna(a)->name];
-			antennaSetup = params.getAntennaSetup(antName2);
-
-			if(antennaSetup)
-			{
-				std::string fmt=antennaSetup->getFormat();
-				if(!fmt.empty())
-				{
-					std::cout << "Setting antenna format to " << fmt << " for antenna " << antName << std::endl;
-				}
-				setup.formatName = fmt;
-			}
 
 			// Get sample rate
 			p = get_all_lowl(antName.c_str(), modeDefName, T_SAMPLE_RATE, B_FREQ, v);
@@ -934,10 +795,6 @@ static int getModes(VexData *V, Vex *v, const CorrParams &params)
 				
 				vex_field(T_IF_DEF, p, 3, &link, &name, &value, &units);
 				vif.pol = value[0];
-				if(swapPol)
-				{
-					vif.pol = swapPolarization(vif.pol);
-				}
 
 				vex_field(T_IF_DEF, p, 4, &link, &name, &value, &units);
 				fvex_double(&value, &units, &vif.ifSSLO);
@@ -1055,7 +912,6 @@ static int getModes(VexData *V, Vex *v, const CorrParams &params)
 				{
 					std::cerr << "Unable to determine data format for antenna " << antName << std::endl;
 
-					//exit(EXIT_FAILURE);
 					setup.formatName = "NONE";
 				}
 			}
@@ -1188,12 +1044,6 @@ static int getModes(VexData *V, Vex *v, const CorrParams &params)
 				setup.nRecordChan = ch2tracks.size();
 				setup.nBit = nBit;
 			}
-//			else if(setup.formatName == "VDIF")
-//			{
-//				std::cerr << "Warning: Antenna " << antName << " format treated as (one channel) VDIF/5032/2." << std::endl;
-//				setup.nBit = 2;
-//				setup.nRecordChan = 1;
-//			}
 			else if(setup.formatName.find("VDIF") != std::string::npos)  // INTERLACEDVDIF...
 			{
 #warning "handling of INTERLACEDVDIF nRecordChan may not be correct in all cases"
@@ -1255,7 +1105,7 @@ static int getModes(VexData *V, Vex *v, const CorrParams &params)
 				} 
 			}
 
-			if(setup.formatName == "MARK5B"||setup.formatName == "KVN5B")
+			if(setup.formatName == "MARK5B" || setup.formatName == "KVN5B")
 			{
 				// Because Mark5B formatters can apply a bitmask, the track numbers may not be contiguous.  Here we go through and reorder track numbers in sequence, starting with 2
 
@@ -1400,7 +1250,7 @@ static int getModes(VexData *V, Vex *v, const CorrParams &params)
 				}
 
 				vex_field(T_CHAN_DEF, p, 6, &link, &name, &bbcName, &units);
-				subbandId = M->addSubband(freq, bandwidth, sideBand, bbc2pol[bbcName], static_cast<int>(bandwidth/origBandwidth+0.5));
+				subbandId = M->addSubband(freq, bandwidth, sideBand, bbc2pol[bbcName]);
 
 				vex_field(T_CHAN_DEF, p, 7, &link, &name, &value, &units);
 				std::string phaseCalName(value);
@@ -1417,30 +1267,10 @@ static int getModes(VexData *V, Vex *v, const CorrParams &params)
 				setup.channels.back().bbcSideBand = sideBand;
 				setup.channels.back().bbcName = bbcName;
 				setup.channels.back().name = chanName;
-				setup.channels.back().oversamp = static_cast<int>(bandwidth/origBandwidth+0.5);
 				if(recChanId >= 0)
 				{
 					setup.channels.back().recordChan = recChanId;
-					if(antennaSetup && antennaSetup->toneSelection == ToneSelectionVex)
-					{
-						setup.channels.back().tones = pcalMap[phaseCalName];
-					}
-
-					const VexIF *vif = setup.getIF(setup.channels.back().ifName);
-
-					// This is called even for vex selected tones as negative tones 
-					// are turned positive and result tone order becomes sorted
-					if(antennaSetup)
-					{
-						setup.channels.back().selectTones(
-							(antennaSetup->phaseCalIntervalMHz >= 0 ? antennaSetup->phaseCalIntervalMHz : vif->phaseCalIntervalMHz), 
-							antennaSetup->toneSelection,
-							antennaSetup->toneGuardMHz);
-					}
-					else
-					{
-						setup.channels.back().selectTones(vif->phaseCalIntervalMHz, ToneSelectionSmart, bandwidth/1000000.0/8.0);
-					}
+					setup.channels.back().tones = pcalMap[phaseCalName];
 				}
 				else
 				{
@@ -1530,8 +1360,6 @@ static int getVSN(VexData *V, Vex *v, const char *station)
 		else
 		{
 			V->addVSN(antName, vsn, vsnTimeRange);
-			V->addEvent(vsnTimeRange.mjdStart, VexEvent::RECORD_START, antName);
-			V->addEvent(vsnTimeRange.mjdStop, VexEvent::RECORD_STOP, antName);
 		}
 	}
 
@@ -1543,29 +1371,13 @@ static int getVSN(VexData *V, Vex *v, const char *station)
 	return 0;
 }
 
-static int getVSNs(VexData *V, Vex *v, const CorrParams &params)
+static int getVSNs(VexData *V, Vex *v)
 {
 	int nWarn = 0;
 
 	for(char *stn = get_station_def(v); stn; stn=get_station_def_next())
 	{
-		std::string ant(stn);
-		Upper(ant);
-
-		if(params.useAntenna(ant))
-		{
-			const AntennaSetup *antennaSetup = params.getAntennaSetup(ant);
-
-			if(antennaSetup)
-			{
-				// If media is provided via v2d file, don't bother
-				if(antennaSetup->getDataSource() != DataSourceNone)
-				{
-					continue;
-				}
-			}
-			getVSN(V, v, stn);
-		}
+		getVSN(V, v, stn);
 	}
 
 	return nWarn;
@@ -1729,14 +1541,14 @@ static int getExper(VexData *V, Vex *v)
 }
 
 
-VexData *loadVexFile(const CorrParams &P, int *numWarnings)
+VexData *loadVexFile(const std::string &vexFile, int *numWarnings)
 {
 	VexData *V;
 	Vex *v;
 	int r;
 	int nWarn = 0;
 
-	r = vex_open(P.vexFile.c_str(), &v);
+	r = vex_open(vexFile.c_str(), &v);
 	if(r != 0)
 	{
 		return 0;
@@ -1744,13 +1556,13 @@ VexData *loadVexFile(const CorrParams &P, int *numWarnings)
 
 	V = new VexData();
 
-	V->setDirectory(P.vexFile.substr(0, P.vexFile.find_last_of('/')));
+	V->setDirectory(vexFile.substr(0, vexFile.find_last_of('/')));
 
-	nWarn += getAntennas(V, v, P);
+	nWarn += getAntennas(V, v);
 	nWarn += getSources(V, v);
 	nWarn += getScans(V, v);
-	nWarn += getModes(V, v, P);
-	nWarn += getVSNs(V, v, P);
+	nWarn += getModes(V, v);
+	nWarn += getVSNs(V, v);
 	nWarn += getEOPs(V, v);
 	nWarn += getExper(V, v);
 	*numWarnings = *numWarnings + nWarn;

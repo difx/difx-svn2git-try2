@@ -46,6 +46,9 @@ int fvex_dec(char **field, double *dec);
 
 int checkCRLF(const char *filename);
 
+//FIXME: add DOYtoMJD from vexload also to timeutils?
+
+//FIXME: move to timeutils?
 /* round to nearest second */
 double roundSeconds(double mjd);
 
@@ -53,5 +56,7 @@ double roundSeconds(double mjd);
 bool isPowerOf2(int n);
 
 int nextPowerOf2(int x);
+
+char swapPolarizationCode(char pol);
 
 #endif

@@ -35,10 +35,6 @@ vexpeek_SOURCES = \
 	vextables.h \
 	vexload.cpp \
 	vexload.h \
-	corrparams.cpp \
-	corrparams.h \
-	parserhelp.h \
-	parserhelp.cpp \
 	timeutils.h \
 	timeutils.cpp \
 	interval.h \

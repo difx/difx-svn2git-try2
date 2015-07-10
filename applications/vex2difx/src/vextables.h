@@ -125,13 +125,12 @@ public:
 class VexSubband		// Mode-specific frequency details for all antennas
 {
 public:
-	VexSubband(double f=0.0, double b=0.0, char s=' ', char p=' ', std::string name="", int os=1) : freq(f), bandwidth(b), sideBand(s), pol(p), oversamp(os) {}
+	VexSubband(double f=0.0, double b=0.0, char s=' ', char p=' ', std::string name="", int os=1) : freq(f), bandwidth(b), sideBand(s), pol(p) {}
 
 	double freq;		// (Hz)
 	double bandwidth;	// (Hz)
 	char sideBand;		// net side band of channel (U or L)
 	char pol;		// R or L
-	int oversamp;		// samplerate/(2*bandwidth)
 };
 
 class VexChannel		// Antenna-specific baseband channel details
@@ -143,7 +142,8 @@ public:
 	friend bool operator ==(const VexChannel &c1, const VexChannel &c2);
 	friend bool operator <(const VexChannel &c1, const VexChannel &c2);
 
-	int recordChan;		// channel number on recorded media	(< 0 indicates non-recording)
+	int recordChan;		// channel number on recorded media or threadnum on stream	(< 0 indicates non-recording)
+	int streamId;		// stream number
 	int subbandId;		// 0-based index; -1 means unset
 	std::string ifName;	// name of the IF this channel came from
 	double bbcFreq;		// sky frequency tuning of the BBC (Hz)
@@ -153,7 +153,6 @@ public:
 	std::string bbcName;	// name given in VEX of this channel in the BBC table
 	std::vector<int> tones;	// pulse cal tones to extract, directly from PHASE_CAL_DETECT
 	int threadId;		// thread Id for this channel (assigned based on channel names)
-	int oversamp;		// oversample factor = samplerate / (2*bandwidth)
 };
 
 class VexIF
@@ -182,11 +181,13 @@ public:
 	const VexIF *getIF(const std::string &ifName) const;
 	double firstTuningForIF(const std::string &ifName) const;	// returns Hz
 	double dataRateMbps() const { return sampRate*nBit*nRecordChan/1000000.0; }
+	void setPhaseCalInterval(int phaseCalIntervalMHz);
+	void selectTones(enum ToneSelection selection, double guardBandMHz);
 
 	std::map<std::string,VexIF> ifs;		// Indexed by name in the vex file, such as IF_A
 	std::vector<VexChannel> channels;
 
-	double sampRate;		// (Hz)
+	double sampRate;		// [Hz]
 	unsigned int nBit;
 	unsigned int nRecordChan;	// number of recorded channels
 	std::string formatName;		// e.g. VLBA, MKIV, Mk5B, VDIF, LBA, K5, ...
@@ -197,7 +198,7 @@ class VexMode
 public:
 	VexMode() {}
 
-	int addSubband(double freq, double bandwidth, char sideband, char pol, int oversamp);
+	int addSubband(double freq, double bandwidth, char sideband, char pol);
 	int getPols(char *pols) const;
 	int getBits() const;
 	int getMinBits() const;
@@ -206,6 +207,9 @@ public:
 	double getLowestSampleRate() const;
 	double getHighestSampleRate() const;
 	double getAverageSampleRate() const;
+	void swapPolarization(const std::string &antName);
+	void setPhaseCalInterval(const std::string &antName, int phaseCalIntervalMHz);
+	void selectTones(const std::string &antName, enum ToneSelection selection, double guardBandMHz);
 
 	std::string defName;
 
@@ -232,14 +236,14 @@ public:
 class VexAntenna
 {
 public:
-	VexAntenna() : x(0.0), y(0.0), z(0.0), dx(0.0), dy(0.0), dz(0.0), posEpoch(0.0), axisOffset(0.0), dataSource(DataSourceNone) {}
+	VexAntenna() : x(0.0), y(0.0), z(0.0), dx(0.0), dy(0.0), dz(0.0), posEpoch(0.0), axisOffset(0.0), dataSource(DataSourceNone), tcalFrequency(0) {}
 
 	double getVexClocks(double mjd, double * coeffs) const;
 
 	std::string name;
 	std::string defName;	// Sometimes names get changed
 
-	double x, y, z;		// (m) antenna position
+	double x, y, z;		// (m) antenna position in ITRF
 	double dx, dy, dz;	// (m/sec) antenna velocity
 	double posEpoch;	// mjd
 	std::string axisType;
@@ -247,6 +251,7 @@ public:
 	std::vector<VexClock> clocks;
 	enum DataSource	dataSource;
 	std::vector<VexBasebandFile> vsns;	// used to store vsns listed in the vex file
+	int tcalFrequency;	// Hz
 };
 
 class VexEOP
@@ -339,6 +344,13 @@ public:
 	VexEOP *newEOP();
 	void findLeapSeconds();
 	void addBreaks(const std::vector<double> &breaks);
+	void swapPolarization(const std::string &antName);
+	void setPhaseCalInterval(const std::string &antName, int phaseCalIntervalMHz);
+	void selectTones(const std::string &antName, enum ToneSelection selection, double guardBandMHz);
+	void setClock(const std::string &antName, const VexClock &clock);
+	void setTcalFrequency(const std::string &antName, int tcalFrequency);
+	void setAntennaPosition(const std::string &antName, double X, double Y, double Z);
+	void setAntennaAxisOffset(const std::string &antName, double axisOffset);
 
 	double obsStart() const
 	{
@@ -395,7 +407,7 @@ public:
 
 	unsigned int nVSN(const std::string &antName) const;
 	void addVSN(const std::string &antName, const std::string &vsn, const Interval &timeRange);
-	void AddVSNEvents();
+	void addVSNEvents();
 	std::string getVSN(const std::string &antName, const Interval &timeRange) const;
 
 	unsigned int nEvent() const { return events.size(); }

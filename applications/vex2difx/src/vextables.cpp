@@ -34,6 +34,7 @@
 #include <cmath>
 #include <regex.h>
 #include "vextables.h"
+#include "util.h"
 
 const double RAD2ASEC=180.0*3600.0/M_PI;
 
@@ -239,9 +240,9 @@ void VexChannel::selectTones(int toneIntervalMHz, enum ToneSelection selection, 
 	}
 }
 
-int VexMode::addSubband(double freq, double bandwidth, char sideband, char pol, int oversamp)
+int VexMode::addSubband(double freq, double bandwidth, char sideband, char pol)
 {
-	VexSubband S(freq, bandwidth, sideband, pol, "", oversamp);
+	VexSubband S(freq, bandwidth, sideband, pol, "");
 
 	for(std::vector<VexSubband>::const_iterator it = subbands.begin(); it != subbands.end(); ++it)
 	{
@@ -255,13 +256,6 @@ int VexMode::addSubband(double freq, double bandwidth, char sideband, char pol, 
 
 	return subbands.size() - 1;
 }
-
-#if 0
-int VexMode::getOversampleFactor() const
-{
-	return static_cast<int>(sampRate/(2.0*subbands[0].bandwidth) + 0.001);
-}
-#endif
 
 int VexMode::getPols(char *pols) const
 {
@@ -477,6 +471,50 @@ double VexMode::getAverageSampleRate() const
 	}
 }
 
+void VexMode::swapPolarization(const std::string &antName)
+{
+	for(std::map<std::string,VexSetup>::iterator it = setups.begin(); it != setups.end(); ++it)
+	{
+		if(it->first == antName)
+		{
+			// change IF pols
+			for(std::map<std::string,VexIF>::iterator vit = it->second.ifs.begin(); vit != it->second.ifs.end(); ++vit)
+			{
+				vit->second.pol = swapPolarizationCode(vit->second.pol);
+			}
+
+			// reassign subband index for each channel
+			for(std::vector<VexChannel>::iterator cit = it->second.channels.begin(); cit != it->second.channels.end(); ++cit)
+			{
+				char origPol = subbands[cit->subbandId].pol;
+				cit->subbandId = addSubband(cit->bbcFreq, cit->bbcBandwidth, cit->bbcSideBand, swapPolarizationCode(origPol));
+			}
+		}
+	}
+}
+
+void VexMode::setPhaseCalInterval(const std::string &antName, int phaseCalIntervalMHz)
+{
+	for(std::map<std::string,VexSetup>::iterator it = setups.begin(); it != setups.end(); ++it)
+	{
+		if(it->first == antName)
+		{
+			it->second.setPhaseCalInterval(phaseCalIntervalMHz);
+		}
+	}
+}
+
+void VexMode::selectTones(const std::string &antName, enum ToneSelection selection, double guardBandMHz)
+{
+	for(std::map<std::string,VexSetup>::iterator it = setups.begin(); it != setups.end(); ++it)
+	{
+		if(it->first == antName)
+		{
+			it->second.selectTones(selection, guardBandMHz);
+		}
+	}
+}
+
 double VexIF::getLowerEdgeFreq() const
 {
 	double bandCenter = ifSSLO;
@@ -640,8 +678,7 @@ bool operator == (const VexSubband &s1, const VexSubband &s2)
 	if(s1.pol       != s2.pol       ||
 	   s1.freq      != s2.freq      ||
 	   s1.sideBand  != s2.sideBand  ||
-	   s1.bandwidth != s2.bandwidth ||
-	   s1.oversamp  != s2.oversamp)
+	   s1.bandwidth != s2.bandwidth)
 	{
 		return false;
 	}
@@ -695,21 +732,6 @@ FIXME: this functionality needs to be put somewhere else
 		{
 			std::cerr << "Warning: data source is NONE for antenna " << it->name << " ." << std::endl;
 			++nWarn;
-		}
-	}
-
-	for(std::vector<VexMode>::const_iterator it = modes.begin(); it != modes.end(); ++it)
-	{
-		bool first = true;
-
-		for(std::vector<VexSubband>::const_iterator sb = it->subbands.begin(); sb != it->subbands.end(); ++sb)
-		{
-			if(sb->oversamp != 1 && first)
-			{
-				std::cerr << "Warning: some or all subbands are oversampled.  Oversampled bands will be fully correlated unless zoom bands are used." << std::endl;
-				first = false;
-				++nWarn;
-			}
 		}
 	}
 
@@ -901,7 +923,6 @@ double VexJob::calcOps(const VexData *V, int fftSize, bool doPolar) const
 		nSubband = M->subbands.size();
 
 		// Estimate number of operations based on VLBA Sensitivity Upgrade Memo 16
-		// Note: currently this does not consider oversampling
 		// Note: this assumes all polarizations are matched
 		opsPerSample = 16.0 + 5.0*intlog2(fftSize) + 2.5*nAnt*nPol;
 		ops += opsPerSample*seconds*sampRate*nSubband*nAnt;
@@ -1322,22 +1343,93 @@ const VexScan *VexData::getScanByAntennaTime(const std::string &antName, double 
 	return 0;
 }
 
+static Interval adjustTimeRange(std::map<std::string, double> &antStart, std::map<std::string, double> &antStop, unsigned int minSubarraySize)
+{
+	std::list<double> start;
+	std::list<double> stop;
+	double mjdStart, mjdStop;
+
+	if(minSubarraySize < 1)
+	{
+		std::cerr << "Developer error: adjustTimeRange: minSubarraySize = " << minSubarraySize << " is < 1" << std::endl;
+
+		exit(EXIT_FAILURE);
+	}
+
+	if(antStart.size() != antStop.size())
+	{
+		std::cerr << "Developer error: adjustTimeRange: size mismatch" << std::endl;
+
+		exit(EXIT_FAILURE);
+	}
+
+	if(antStart.size() < minSubarraySize)
+	{
+		// Return an acausal interval
+		return Interval(1, 0);
+	}
+
+	for(std::map<std::string, double>::iterator it = antStart.begin(); it != antStart.end(); ++it)
+	{
+		start.push_back(it->second);
+	}
+	start.sort();
+	// Now the start times are sorted chronologically
+
+	for(std::map<std::string, double>::iterator it = antStop.begin(); it != antStop.end(); ++it)
+	{
+		stop.push_back(it->second);
+	}
+	stop.sort();
+	// Now stop times are sorted chronologically
+
+	// Pick off times where min subarray condition is met
+	// If these are in the wrong order (i.e., no such interval exists)
+	// Then these will form an acausal interval which will be caught by
+	// the caller.
+	for(unsigned int i = 0; i < minSubarraySize-1; ++i)
+	{
+		start.pop_front();
+		stop.pop_back();
+	}
+	mjdStart = start.front();
+	mjdStop = stop.back();
+
+	// Adjust start times where needed
+	for(std::map<std::string, double>::iterator it = antStart.begin(); it != antStart.end(); ++it)
+	{
+		if(it->second < mjdStart)
+		{
+			it->second = mjdStart;
+		}
+	}
+
+	for(std::map<std::string, double>::iterator it = antStop.begin(); it != antStop.end(); ++it)
+	{
+		if(it->second > mjdStop)
+		{
+			it->second = mjdStop;
+		}
+	}
+
+	return Interval(mjdStart, mjdStop);
+}
+
 // this removes scans out of time range or with fewer than minSubarraySize antennas
+// the final time ranges (both of scans and antennas within) are truncated to the time window when the subarray size condition is met.
 void VexData::reduceScans(int minSubarraySize, const Interval &timerange)
 {
 	std::list<std::string> antsToRemove;
+	std::map<std::string, double> antStart, antStop;
 
 // FIXME: maybe print some statistics such as number of scans dropped due to minsubarraysize and timerange
 
 	for(std::vector<VexScan>::iterator it = scans.begin(); it != scans.end(); )
 	{
-		Interval antennatimerange;	
-		
-		// initialize acausally
-		antennatimerange.mjdStart = 1;
-		antennatimerange.mjdStop = 0;
-
+		antStart.clear();
+		antStop.clear();
 		antsToRemove.clear();
+
 		for(std::map<std::string,Interval>::iterator sit = it->stations.begin(); sit != it->stations.end(); ++sit)
 		{
 			if(sit->second.overlap(timerange) <= 0.0)
@@ -1347,14 +1439,8 @@ void VexData::reduceScans(int minSubarraySize, const Interval &timerange)
 			else
 			{
 				sit->second.logicalAnd(timerange);
-				if(!antennatimerange.isCausal())
-				{
-					antennatimerange = sit->second;
-				}
-				else
-				{
-					antennatimerange.logicalOr(sit->second);
-				}
+				antStart[sit->first] = sit->second.mjdStart;
+				antStop[sit->first]  = sit->second.mjdStop;
 			}
 		}
 		for(std::list<std::string>::const_iterator ait = antsToRemove.begin(); ait != antsToRemove.end(); ++ait)
@@ -1362,21 +1448,21 @@ void VexData::reduceScans(int minSubarraySize, const Interval &timerange)
 			it->stations.erase(*ait);
 		}
 
-		if(it->overlap(antennatimerange) <= 0.5/86400.0)
+		Interval antennaTimeRange = adjustTimeRange(antStart, antStop, minSubarraySize);
+
+		if(!antennaTimeRange.isCausal() || it->overlap(antennaTimeRange) <= 0.5/86400.0)
 		{
 			it = scans.erase(it);
 			continue;
 		}
 
-		if(it->stations.size() < minSubarraySize)
+		for(std::map<std::string,Interval>::iterator sit = it->stations.begin(); sit != it->stations.end(); ++sit)
 		{
-			it = scans.erase(it);
+			sit->second.logicalAnd(antennaTimeRange);
 		}
-		else
-		{
-			it->logicalAnd(antennatimerange);
-			++it;
-		}
+
+		it->logicalAnd(antennaTimeRange);
+		++it;
 	}
 }
 
@@ -1619,6 +1705,47 @@ double VexSetup::firstTuningForIF(const std::string &ifName) const	// return Hz
 	return tune;
 }
 
+void VexSetup::setPhaseCalInterval(int phaseCalIntervalMHz)
+{
+	// change IF phase cal values
+	for(std::map<std::string,VexIF>::iterator it = ifs.begin(); it != ifs.end(); ++it)
+	{
+		it->second.phaseCalIntervalMHz = phaseCalIntervalMHz;
+	}
+
+	// weed out unwanted tones
+	for(std::vector<VexChannel>::iterator it = channels.begin(); it != channels.end(); ++it)
+	{
+		if(phaseCalIntervalMHz <= 0)
+		{
+			it->tones.clear();
+		}
+		else
+		{
+			for(std::vector<int>::iterator tit = it->tones.begin(); tit != it->tones.end(); )
+			{
+				if(*tit % phaseCalIntervalMHz != 0)
+				{
+					tit = it->tones.erase(tit);
+				}
+				else
+				{
+					++tit;
+				}
+			}
+		}
+	}
+}
+
+void VexSetup::selectTones(enum ToneSelection selection, double guardBandMHz)
+{
+	for(std::vector<VexChannel>::iterator it = channels.begin(); it != channels.end(); ++it)
+	{
+		const VexIF *vif = getIF(it->ifName);
+		it->selectTones(vif->phaseCalIntervalMHz, selection, guardBandMHz);
+	}
+}
+
 bool operator ==(const VexChannel &c1, const VexChannel &c2)
 {
 	if( (c1.recordChan  != c2.recordChan)   ||
@@ -1726,12 +1853,15 @@ int VexData::getNumAntennaRecChans(const std::string &antName) const
 // this function essentially wipes out any record of this antenna being part of observing
 bool VexData::removeAntenna(const std::string &name)
 {
+	bool rv = false;
+
 	// remove VexAntenna
 	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); )
 	{
 		if(it->name == name)
 		{
 			it = antennas.erase(it);
+			rv = true;
 		}
 		else
 		{
@@ -1768,6 +1898,8 @@ bool VexData::removeAntenna(const std::string &name)
 			++it;
 		}
 	}
+
+	return rv;
 }
 
 
@@ -1867,7 +1999,7 @@ void VexData::addVSN(const std::string &antName, const std::string &vsn, const I
 	}
 }
 
-void VexData::AddVSNEvents()
+void VexData::addVSNEvents()
 {
 	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); ++it)
 	{
@@ -1994,6 +2126,81 @@ void VexData::addBreaks(const std::vector<double> &breaks)
 	}
 }
 
+void VexData::swapPolarization(const std::string &antName)
+{
+	for(std::vector<VexMode>::iterator it = modes.begin(); it != modes.end(); ++it)
+	{
+		it->swapPolarization(antName);
+	}
+}
+
+void VexData::setPhaseCalInterval(const std::string &antName, int phaseCalIntervalMHz)
+{
+	for(std::vector<VexMode>::iterator it = modes.begin(); it != modes.end(); ++it)
+	{
+		it->setPhaseCalInterval(antName, phaseCalIntervalMHz);
+	}
+}
+
+void VexData::selectTones(const std::string &antName, enum ToneSelection selection, double guardBandMHz)
+{
+	for(std::vector<VexMode>::iterator it = modes.begin(); it != modes.end(); ++it)
+	{
+		it->selectTones(antName, selection, guardBandMHz);
+	}
+}
+
+void VexData::setClock(const std::string &antName, const VexClock &clock)
+{
+	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); ++it)
+	{
+		if(it->name == antName)
+		{
+			it->clocks.clear();
+			it->clocks.push_back(clock);
+		}
+	}
+}
+
+void VexData::setTcalFrequency(const std::string &antName, int tcalFrequency)
+{
+	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); ++it)
+	{
+		if(it->name == antName)
+		{
+			it->tcalFrequency = tcalFrequency;
+		}
+	}
+}
+
+void VexData::setAntennaPosition(const std::string &antName, double X, double Y, double Z)
+{
+	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); ++it)
+	{
+		if(it->name == antName)
+		{
+			it->x = X;
+			it->y = Y;
+			it->z = Z;
+			it->dx = 0.0;
+			it->dy = 0.0;
+			it->dz = 0.0;
+		}
+	}
+}
+
+void VexData::setAntennaAxisOffset(const std::string &antName, double axisOffset)
+{
+	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); ++it)
+	{
+		if(it->name == antName)
+		{
+			it->axisOffset = axisOffset;
+		}
+	}
+}
+
+
 std::ostream& operator << (std::ostream &os, const Interval &x)
 {
 	int p = os.precision();
@@ -2056,7 +2263,8 @@ std::ostream& operator << (std::ostream &os, const VexAntenna &x)
 		"\n  z=" << x.z << "  dz/dt=" << x.dz <<
 		"\n  posEpoch=" << x.posEpoch <<
 		"\n  axisType=" << x.axisType <<
-		"\n  axisOffset=" << x.axisOffset << std::endl;
+		"\n  axisOffset=" << x.axisOffset <<
+		"\n  tcalFrequency=" << x.tcalFrequency << std::endl;
 
 	os << "  dataSource=" << dataSourceNames[x.dataSource] << std::endl;
 
@@ -2075,14 +2283,14 @@ std::ostream& operator << (std::ostream &os, const VexAntenna &x)
 
 std::ostream& operator << (std::ostream &os, const VexSubband &x)
 {
-	os << "[" << x.freq << " Hz, " << x.bandwidth << " Hz, sb=" << x.sideBand << ", pol=" << x.pol << ", oversamp=" << x.oversamp << "]";
+	os << "[" << x.freq << " Hz, " << x.bandwidth << " Hz, sb=" << x.sideBand << ", pol=" << x.pol << "]";
 	
 	return os;
 }
 
 std::ostream& operator << (std::ostream &os, const VexChannel &x)
 {
-	os << "[name=" << x.name << " BBC=" << x.bbcName << " IF=" << x.ifName << " s=" << x.subbandId << " -> r=" << x.recordChan << " t=" << x.threadId << " o=" << x.oversamp << " tones=";
+	os << "[name=" << x.name << " BBC=" << x.bbcName << " IF=" << x.ifName << " s=" << x.subbandId << " -> r=" << x.recordChan << " t=" << x.threadId << " tones=";
 	for(std::vector<int>::const_iterator v = x.tones.begin(); v != x.tones.end(); ++v)
 	{
 		if(v != x.tones.begin())

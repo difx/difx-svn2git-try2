@@ -61,15 +61,7 @@ const int defaultMaxNSBetweenACAvg = 2000000;	// 2ms, good default for use with 
 
 static int calcDecimation(int overSamp)
 {
-#warning "FIXME: handle non 2^n overSamp here"
-	if(overSamp > 2)
-	{
-		return overSamp / 2;
-	}
-	else
-	{
-		return 1;
-	}
+	return 1;
 }
 
 static bool usesCannonicalVDIFThreadIds(const char *antName)
@@ -2681,10 +2673,11 @@ static void calculateScanSizes(VexData *V, const CorrParams &P)
 	}
 }
 
-int mergeCorrParams(VexData *V, const CorrParams &params)
+int applyCorrParams(VexData *V, const CorrParams &params)
 {
 	int nWarn = 0;
-	
+
+	// merge sets of EOPs from vex and corr params file
 	if(!params.eops.empty())
 	{
 		if(V->nEOP() > 0)
@@ -2699,8 +2692,8 @@ int mergeCorrParams(VexData *V, const CorrParams &params)
 		}
 	}
 
-	
-	for(int a = 0; a < V->nAntenna(); )
+	// remove unwanted antennas
+	for(unsigned int a = 0; a < V->nAntenna(); )
 	{
 		const VexAntenna *A;
 
@@ -2724,7 +2717,123 @@ int mergeCorrParams(VexData *V, const CorrParams &params)
 	// remove scans with too few antennas or with scans outside the specified time range
 	V->reduceScans(params.minSubarraySize, params);
 
+	// swap antenna polarizations
+	for(unsigned int a = 0; a < V->nAntenna(); ++a)
+	{
+		const VexAntenna *A;
 
+		A = V->getAntenna(a);
+		if(!A)
+		{
+			std::cerr << "Developer error: mergeCorrParams: Antenna number " << a << " cannot be gotten even though nAntenna() reports " << V->nAntenna() << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+
+		if(params.swapPol(A->defName))
+		{
+			V->swapPolarization(A->defName);
+		}
+	}
+
+	// MODES / SETUPS
+
+	// change formats
+	/* mode->setup[ant] = antSetup->getFormat() 
+	
+		but maybe much more interesting -- set threads, streams, ... here too?
+
+	*/
+
+	// change data sources
+
+	// Tones
+	for(unsigned int a = 0; a < V->nAntenna(); ++a)
+	{
+		const VexAntenna *A;
+
+		A = V->getAntenna(a);
+		if(!A)
+		{
+			std::cerr << "Developer error: mergeCorrParams: Antenna number " << a << " cannot be gotten even though nAntenna() reports " << V->nAntenna() << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+
+		const AntennaSetup *as = params.getAntennaSetup(A->defName);
+		if(!as)
+		{
+			// No antenna setup implies doing "smart" tone extraction (-1.0 implies 1/8 band guard)
+			V->selectTones(A->defName, ToneSelectionSmart, -1.0);
+
+			continue;
+		}
+
+		if(as->toneSelection == ToneSelectionNone)
+		{
+			// change to having no injected tones
+			V->setPhaseCalInterval(A->defName, -1);
+
+			continue;
+		}
+
+		if(as->phaseCalIntervalMHz >= 0)
+		{
+			// this sets phase cal interval and removes tones that are not multiples of it
+			// interval = 0 implies no pulse cal
+			V->setPhaseCalInterval(A->defName, as->phaseCalIntervalMHz);
+		}
+
+		if(as->toneSelection != ToneSelectionVex)
+		{
+			V->selectTones(A->defName, as->toneSelection, as->toneGuardMHz);
+		}
+		
+	}
+
+	// Override clocks and other antenna parameters
+	for(unsigned int a = 0; a < V->nAntenna(); ++a)
+	{
+		const VexAntenna *A;
+
+		A = V->getAntenna(a);
+		if(!A)
+		{
+			std::cerr << "Developer error: mergeCorrParams: Antenna number " << a << " cannot be gotten even though nAntenna() reports " << V->nAntenna() << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+
+		const AntennaSetup *as = params.getAntennaSetup(A->defName);
+		if(!as)
+		{
+			continue;
+		}
+
+		const VexClock *paramClock = params.getAntennaClock(A->defName);
+		if(paramClock)
+		{
+			V->setClock(A->defName, *paramClock);
+		}
+
+		if(as->X != 0.0 || as->Y != 0.0 || as->Z != 0.0)
+		{
+			V->setAntennaPosition(A->defName, as->X, as->Y, as->Z);
+		}
+
+		if(as->tcalFrequency != 0)
+		{
+			V->setTcalFrequency(A->defName, as->tcalFrequency);
+		}
+
+		if(as->axisOffset != 0.0)
+		{
+			V->setAntennaAxisOffset(A->defName, as->axisOffset);
+		}
+	}
+
+
+	return nWarn;
 }
 
 int main(int argc, char **argv)
@@ -2748,7 +2857,6 @@ int main(int argc, char **argv)
 	int nSkip = 0;
 	int nDigit;
 	int nJob = 0;
-	int nMulti = 0;
 	std::list<std::pair<int,std::string> > removedAntennas;
 
 	if(argc < 2)
@@ -2889,7 +2997,7 @@ int main(int argc, char **argv)
 	command = "rm -f " + missingDataFile;
 	system(command.c_str());
 
-	V = loadVexFile(*P, &nWarn);
+	V = loadVexFile(P->vexFile, &nWarn);
 
 	if(!V)
 	{
@@ -2900,12 +3008,12 @@ int main(int argc, char **argv)
 
 	calculateScanSizes(V, *P);
 	V->addBreaks(P->manualBreaks);
-	nWarn += mergeCorrParams(V, *P);
+	nWarn += applyCorrParams(V, *P);
 	
 	// FIXME: maybe need a full event populator function
 	// FIXME even more: move events out of VEX structure!
 	V->addScanEvents();
-	V->AddVSNEvents();
+	V->addVSNEvents();
 	V->sortEvents();
 
 	V->findLeapSeconds();
@@ -3143,18 +3251,6 @@ int main(int argc, char **argv)
 
 	cout << endl;
 	cout << nJob << " job(s) created." << endl;
-
-	if(nMulti > 0)
-	{
-		cout << endl;
-		cout << "Notice!  " << nMulti << " jobs were replicated multiple times and have a letter suffix" << endl;
-		cout << "after the job number.  This is probably due to mixed amounts of oversampling" << endl;
-		cout << "at the same time within one or more observing modes. In cases like this the" << endl;
-		cout << "PI might want different processing to be done on each IF (such as number of" << endl;
-		cout << "spectral lines or integration times).  Consider explicitly making multiple" << endl;
-		cout << ".v2d files, one for each oversample factor, that operate only on the" << endl;
-		cout << "relavant baseband channels." << endl;
-	}
 
 	if(nJob > 0 && P->v2dComment.length() > 0)
 	{
