@@ -3017,11 +3017,8 @@ int main(int argc, char **argv)
 	V->addBreaks(P->manualBreaks);
 	nWarn += applyCorrParams(V, *P);
 	
-	// FIXME: maybe need a full event populator function
-	// FIXME even more: move events out of VEX structure!
-	V->addScanEvents();
-	V->addVSNEvents();
-	V->sortEvents();
+	// FIXME: events needs to be defined
+	V->generateEvents(events);
 
 	V->findLeapSeconds();
 

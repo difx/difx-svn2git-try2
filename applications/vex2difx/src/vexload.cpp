@@ -361,7 +361,6 @@ static int getAntennas(VexData *V, Vex *v)
 			A->clocks.push_back(VexClock());
 			VexClock &clock = A->clocks.back();
 			clock.mjdStart = mjd;
-			V->addEvent(mjd, VexEvent::CLOCK_BREAK, antName);
 
 			vex_field(T_CLOCK_EARLY, c, 2, &link, &name, &value, &units);
 			if(value && units)
@@ -427,7 +426,6 @@ static int getAntennas(VexData *V, Vex *v)
 						A->clocks.push_back(VexClock());
 						VexClock &clock = A->clocks.back();
 						clock.mjdStart = mjd;
-						V->addEvent(mjd, VexEvent::CLOCK_BREAK, antName);
 						if(C->offset)
 						{
 							fvex_double(&(C->offset->value), &(C->offset->units), &clock.offset);

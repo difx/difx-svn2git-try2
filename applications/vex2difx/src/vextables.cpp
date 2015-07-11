@@ -36,664 +36,6 @@
 #include "vextables.h"
 #include "util.h"
 
-const double RAD2ASEC=180.0*3600.0/M_PI;
-
-// Note: the ordering here is crucial!
-const char VexEvent::eventName[][20] =
-{
-	"None",
-	"Ant Stop",
-	"Ant Off-source",
-	"Scan Stop",
-	"Job Stop",
-	"Observe Stop",
-	"Record Stop",
-	"Clock Break",
-	"Leap Second",
-	"Manual Break",
-	"Record Start",
-	"Observe Start",
-	"Job Start",
-	"Scan Start",
-	"Ant On-source",
-	"Ant Start"
-};
-
-
-bool operator<(const VexEvent &a, const VexEvent &b)
-{
-	if(a.mjd < b.mjd - 0.000001)
-	{
-		return true;
-	}
-	else if(a.mjd > b.mjd + 0.000001)
-	{
-		return false;
-	}
-	if(a.eventType < b.eventType)
-	{
-		return true;
-	}
-	else if(a.eventType > b.eventType)
-	{
-		return false;
-	}
-
-	return a.name < b.name;
-}
-
-void VexChannel::selectTones(int toneIntervalMHz, enum ToneSelection selection, double guardBandMHz)
-{
-	double epsilonHz = 1.0;
-	int tonesInBand;
-	int firstToneMHz;
-
-	if(toneIntervalMHz <= 0)
-	{
-		return;
-	}
-
-	if(guardBandMHz < 0.0)
-	{
-		guardBandMHz = bbcBandwidth*1.0e-6/8.0;	// default to 1/8 of the band
-	}
-
-	if(bbcSideBand == 'U')
-	{
-		int m = static_cast<int>( (bbcFreq + epsilonHz)*1.0e-6/toneIntervalMHz );
-		firstToneMHz = (m+1)*toneIntervalMHz;
-		tonesInBand = static_cast<int>((bbcFreq + bbcBandwidth)*1.0e-6 - firstToneMHz)/toneIntervalMHz + 1;
-	}
-	else
-	{
-		int m = static_cast<int>( (bbcFreq - epsilonHz)*1.0e-6/toneIntervalMHz );
-		firstToneMHz = m*toneIntervalMHz;
-		tonesInBand = static_cast<int>(firstToneMHz - (bbcFreq - bbcBandwidth)*1.0e-6)/toneIntervalMHz + 1;
-	}
-
-	if(selection == ToneSelectionVex)
-	{
-		std::vector<int>::iterator it;
-
-		// Here what we do is turn negative tone indices (i.e., counting from end of band) to positive ones
-		for(it = tones.begin(); it != tones.end(); ++it)
-		{
-			if(*it < 0)
-			{
-				*it = tonesInBand + *it;	// For 8 tones: -1 -> 7, -2 -> 6, ...
-			}
-		}
-		sort(tones.begin(), tones.end());
-	}
-	else
-	{
-		tones.clear();
-	}
-
-	switch(selection)
-	{
-	case ToneSelectionVex:
-		// Nothing to do
-		break;
-	case ToneSelectionNone:
-		// Nothing to do
-		break;
-	case ToneSelectionEnds:
-		if(tonesInBand > 0)
-		{
-			tones.push_back(0);
-		}
-		if(tonesInBand > 1)
-		{
-			tones.push_back(tonesInBand - 1);
-		}
-		break;
-	case ToneSelectionAll:
-		for(int i = 0; i < tonesInBand; ++i)
-		{
-			tones.push_back(i);
-		}
-		break;
-	case ToneSelectionSmart:
-		if(tonesInBand == 1)
-		{
-			tones.push_back(0);
-		}
-		else if(tonesInBand == 2)
-		{
-			tones.push_back(0);
-			tones.push_back(1);
-		}
-		else if(tonesInBand > 2)
-		{
-			for(int i = 0; i < tonesInBand; ++i)
-			{
-				if(bbcSideBand == 'U')
-				{
-					double f = firstToneMHz + i*toneIntervalMHz;
-					if(f > (bbcFreq*1.0e-6+guardBandMHz) && f < ((bbcFreq+bbcBandwidth)*1.0e-6-guardBandMHz))
-					{
-						if(tones.size() < 2)
-						{
-							tones.push_back(i);
-						}
-						else
-						{
-							tones[1] = i;
-						}
-					}
-				}
-				else
-				{
-					double f = firstToneMHz - i*toneIntervalMHz;
-					if(f < (bbcFreq*1.0e-6-guardBandMHz) && f > ((bbcFreq-bbcBandwidth)*1.0e-6+guardBandMHz))
-					{
-						if(tones.size() < 2)
-						{
-							tones.push_back(i);
-						}
-						else
-						{
-							tones[1] = i;
-						}
-					}
-				}
-			}
-		}
-		if(tonesInBand > 2 && tones.size() < 2 && guardBandMHz > bbcBandwidth*1.0e-6/2000)
-		{
-			// If not enough tones are found, recurse a bit...
-			printf("Recursing %f\n", guardBandMHz/2.0);
-			selectTones(toneIntervalMHz, selection, guardBandMHz/2.0);	
-		}
-		break;
-	case ToneSelectionMost:
-		for(int i = 0; i < tonesInBand; ++i)
-		{
-			if(bbcSideBand == 'U')
-			{
-				double f = firstToneMHz + i*toneIntervalMHz;
-				if(f > (bbcFreq*1.0e-6+guardBandMHz) && f < ((bbcFreq+bbcBandwidth)*1.0e-6-guardBandMHz))
-				{
-					tones.push_back(i);
-				}
-			}
-			else
-			{
-				double f = firstToneMHz - i*toneIntervalMHz;
-				if(f < (bbcFreq*1.0e-6-guardBandMHz) && f > ((bbcFreq-bbcBandwidth)*1.0e-6+guardBandMHz))
-				{
-					tones.push_back(i);
-				}
-			}
-		}
-		if(tones.size() < tonesInBand && tones.size() < 2 && guardBandMHz > bbcBandwidth*1.0e-6/2000)
-		{
-			// If not enough tones are found, recurse a bit...
-			selectTones(toneIntervalMHz, selection, guardBandMHz/2.0);	
-		}
-		break;
-	default:
-		std::cerr << "Error: selectTones: unexpected value of selection: " << selection << std::endl;
-		
-		exit(EXIT_FAILURE);
-	}
-}
-
-int VexMode::addSubband(double freq, double bandwidth, char sideband, char pol)
-{
-	VexSubband S(freq, bandwidth, sideband, pol, "");
-
-	for(std::vector<VexSubband>::const_iterator it = subbands.begin(); it != subbands.end(); ++it)
-	{
-		if(S == *it)
-		{
-			return it - subbands.begin();
-		}
-	}
-
-	subbands.push_back(S);
-
-	return subbands.size() - 1;
-}
-
-int VexMode::getPols(char *pols) const
-{
-	int n=0;
-	bool L=false, R=false, X=false, Y=false;
-	std::vector<VexSubband>::const_iterator it;
-
-	for(it = subbands.begin(); it != subbands.end(); ++it)
-	{
-		if(it->pol == 'R')
-		{
-			R = true;
-		}
-		else if(it->pol == 'L')
-		{
-			L = true;
-		}
-		else if(it->pol == 'X')
-		{
-			X = true;
-		}
-		else if(it->pol == 'Y')
-		{
-			Y = true;
-		}
-		else
-		{
-			std::cerr << "Error: VexMode::getPols: subband with illegal polarization (" << it->pol << ") encountered." << std::endl;
-			
-			exit(EXIT_FAILURE);
-		}
-	}
-
-	if(R) 
-	{
-		*pols = 'R';
-		++pols;
-		++n;
-	}
-	if(L)
-	{
-		*pols = 'L';
-		++pols;
-		++n;
-	}
-	if(n)
-	{
-		return n;
-	}
-	if(X) 
-	{
-		*pols = 'X';
-		++pols;
-		++n;
-	}
-	if(Y)
-	{
-		*pols = 'Y';
-		++pols;
-		++n;
-	}
-
-	return n;
-}
-
-int VexMode::getBits() const
-{
-	static int firstTime = 1;
-	unsigned int nBit = setups.begin()->second.nBit;
-	std::map<std::string,VexSetup>::const_iterator it;
-
-	for(it = setups.begin(); it != setups.end(); ++it)
-	{
-		if(it->second.nBit != nBit)
-		{
-			if(nBit != 0 && it->second.nBit != 0 && firstTime)
-			{
-				std::cerr << "Warning: getBits: differing number of bits: " << nBit << "," << it->second.nBit << std::endl;
-				std::cerr << "  Will proceed, but note that some metadata may be incorrect." << std::endl;
-
-				firstTime = 0;
-			}
-
-			if(it->second.nBit > nBit)
-			{
-				nBit = it->second.nBit;
-			}
-		}
-
-	}
-
-	return nBit;
-}
-
-int VexMode::getMinBits() const
-{
-	unsigned int minBit = 0;
-	std::map<std::string,VexSetup>::const_iterator it;
-
-	for(it = setups.begin(); it != setups.end(); ++it)
-	{
-		if(it->second.nBit > 0 && (it->second.nBit < minBit || minBit == 0))
-		{
-			minBit = it->second.nBit;
-		}
-
-	}
-
-	return minBit;
-}
-
-int VexMode::getMinSubbands() const
-{
-	int minSubbands = 0;
-	std::map<std::string,VexSetup>::const_iterator it;
-
-	for(it = setups.begin(); it != setups.end(); ++it)
-	{
-		int s;
-
-		s = it->second.channels.size();
-		if(s > 0 && (s < minSubbands || minSubbands == 0))
-		{
-			minSubbands = s;
-		}
-	}
-
-	return minSubbands;
-}
-
-const VexSetup* VexMode::getSetup(const std::string &antName) const
-{
-	std::map<std::string,VexSetup>::const_iterator it;
-
-	it = setups.find(antName);
-	if(it == setups.end())
-	{
-		std::cerr << "Error: VexMode::getSetup: antName=" << antName << " not found." << std::endl;
-		
-		exit(EXIT_FAILURE);
-	}
-
-	return &it->second;
-}
-
-double VexMode::getLowestSampleRate() const
-{
-	if(setups.empty())
-	{
-		return 0.0;
-	}
-	else
-	{
-		double sr = 1.0e30;	// A very large number
-		
-		for(std::map<std::string,VexSetup>::const_iterator it = setups.begin(); it != setups.end(); ++it)
-		{
-			if(it->second.sampRate < sr && it->second.sampRate > 0.0)
-			{
-				sr = it->second.sampRate;
-			}
-		}
-
-		if(sr > 1.0e29)
-		{
-			sr = 0.0;
-		}
-
-		return sr;
-	}
-}
-
-double VexMode::getHighestSampleRate() const
-{
-	if(setups.empty())
-	{
-		return 0.0;
-	}
-	else
-	{
-		double sr = 0.0;
-		
-		for(std::map<std::string,VexSetup>::const_iterator it = setups.begin(); it != setups.end(); ++it)
-		{
-			if(it->second.sampRate > sr)
-			{
-				sr = it->second.sampRate;
-			}
-		}
-
-		return sr;
-	}
-}
-
-double VexMode::getAverageSampleRate() const
-{
-	if(setups.empty())
-	{
-		return 0.0;
-	}
-	else
-	{
-		double sr = 0.0;
-		
-		for(std::map<std::string,VexSetup>::const_iterator it = setups.begin(); it != setups.end(); ++it)
-		{
-			sr += it->second.sampRate;
-		}
-
-		sr /= setups.size();
-
-		return sr;
-	}
-}
-
-void VexMode::swapPolarization(const std::string &antName)
-{
-	for(std::map<std::string,VexSetup>::iterator it = setups.begin(); it != setups.end(); ++it)
-	{
-		if(it->first == antName)
-		{
-			// change IF pols
-			for(std::map<std::string,VexIF>::iterator vit = it->second.ifs.begin(); vit != it->second.ifs.end(); ++vit)
-			{
-				vit->second.pol = swapPolarizationCode(vit->second.pol);
-			}
-
-			// reassign subband index for each channel
-			for(std::vector<VexChannel>::iterator cit = it->second.channels.begin(); cit != it->second.channels.end(); ++cit)
-			{
-				char origPol = subbands[cit->subbandId].pol;
-				cit->subbandId = addSubband(cit->bbcFreq, cit->bbcBandwidth, cit->bbcSideBand, swapPolarizationCode(origPol));
-			}
-		}
-	}
-}
-
-void VexMode::setPhaseCalInterval(const std::string &antName, int phaseCalIntervalMHz)
-{
-	for(std::map<std::string,VexSetup>::iterator it = setups.begin(); it != setups.end(); ++it)
-	{
-		if(it->first == antName)
-		{
-			it->second.setPhaseCalInterval(phaseCalIntervalMHz);
-		}
-	}
-}
-
-void VexMode::selectTones(const std::string &antName, enum ToneSelection selection, double guardBandMHz)
-{
-	for(std::map<std::string,VexSetup>::iterator it = setups.begin(); it != setups.end(); ++it)
-	{
-		if(it->first == antName)
-		{
-			it->second.selectTones(selection, guardBandMHz);
-		}
-	}
-}
-
-
-double VexIF::getLowerEdgeFreq() const
-{
-	double bandCenter = ifSSLO;
-
-	// Calculate the center of the 500-1000 MHz IF range;
-	if(ifSideBand == 'L')
-	{
-		bandCenter -= 750.0e6;
-	}
-	else
-	{
-		bandCenter += 750.0e6;
-	}
-
-	return bandCenter - 500.0e6;
-}
-
-char VexChannel::bandCode() const
-{
-	if(bbcFreq < 1.0e9)
-	{
-		return 'P';
-	}
-	else if(bbcFreq < 2.0e9)
-	{
-		return 'L';
-	}
-	else if(bbcFreq < 3.0e9)
-	{
-		return 'S';
-	}
-	else if(bbcFreq < 7.9e9)
-	{
-		return 'C';
-	}
-	else if(bbcFreq < 9.5e9)
-	{
-		return 'X';
-	}
-	else if(bbcFreq < 17.0e9)
-	{
-		return 'U';
-	}
-	else if(bbcFreq < 25.0e9)
-	{
-		return 'K';
-	}
-	else if(bbcFreq < 40.5e9)
-	{
-		return 'A';
-	}
-	else if(bbcFreq < 60.0e9)
-	{
-		return 'Q';
-	}
-	else if(bbcFreq < 100.0e9)
-	{
-		return 'W';
-	}
-
-	return '?';
-}
-
-std::string VexIF::bandName() const
-{
-	regex_t rxMatch;
-	regmatch_t matchPtr[2];
-	// Look for a name based on a comment in the Vex file
-
-	if(comment.empty())
-	{
-		return "";
-	}
-
-	regcomp(&rxMatch, " ([0-9]+[cm]m) ", REG_EXTENDED);
-
-	if(regexec(&rxMatch, comment.c_str(), 2, matchPtr, 0) == 0)
-	{
-		char buffer[8];
-		int len = matchPtr[1].rm_eo-matchPtr[1].rm_so;
-
-		comment.copy(buffer, len, matchPtr[1].rm_so);
-		buffer[len] = 0;
-		
-		regfree(&rxMatch);
-
-		return buffer;
-	}
-
-	regfree(&rxMatch);
-
-	return "";
-}
-
-std::string VexIF::VLBABandName() const
-{
-	double bandCenter = ifSSLO;
-	
-	std::string bn = bandName();
-	if(!bn.empty())
-	{
-		return bn;
-	}
-
-	// Calculate the center of the 500-1000 MHz IF range;
-	if(ifSideBand == 'L')
-	{
-		bandCenter -= 750.0e6;
-	}
-	else
-	{
-		bandCenter += 750.0e6;
-	}
-
-	if(bandCenter < 1.0e9)
-	{
-		return "90cm";
-	}
-	else if(bandCenter < 2.0e9)
-	{
-		return "20cm";
-	}
-	else if(bandCenter < 3.0e9)
-	{
-		return "13cm";
-	}
-	else if(bandCenter < 7.9e9)
-	{
-		return "6cm";
-	}
-	else if(bandCenter < 9.5e9)
-	{
-		return "4cm";
-	}
-	else if(bandCenter < 17.0e9)
-	{
-		return "2cm";
-	}
-	else if(bandCenter < 25.0e9)
-	{
-		return "1cm";
-	}
-	else if(bandCenter < 40.5e9)
-	{
-		return "9mm";
-	}
-	else if(bandCenter < 60.0e9)
-	{
-		return "7mm";
-	}
-	else if(bandCenter < 100.0e9)
-	{
-		return "3mm";
-	}
-
-	return "None";
-}
-
-bool operator == (const VexSubband &s1, const VexSubband &s2)
-{
-	if(s1.pol       != s2.pol       ||
-	   s1.freq      != s2.freq      ||
-	   s1.sideBand  != s2.sideBand  ||
-	   s1.bandwidth != s2.bandwidth)
-	{
-		return false;
-	}
-	else
-	{
-		return true;
-	}
-}
-
-bool VexSource::hasSourceName(const std::string &name) const
-{
-	// if result of find is .end(), then it is not in the list
-	return find(sourceNames.begin(), sourceNames.end(), name) != sourceNames.end();
-}
 
 int VexData::sanityCheck()
 {
@@ -905,14 +247,14 @@ bool VexJobGroup::hasScan(const std::string &scanName) const
 	return find(scans.begin(), scans.end(), scanName) != scans.end();
 }
 
-void VexJobGroup::genEvents(const std::list<VexEvent> &eventList)
+void VexJobGroup::genEvents(const std::list<Event> &eventList)
 {
-	for(std::list<VexEvent>::const_iterator it = eventList.begin(); it != eventList.end(); ++it)
+	for(std::list<Event>::const_iterator it = eventList.begin(); it != eventList.end(); ++it)
 	{
-		if(it->eventType == VexEvent::SCAN_START ||
-		   it->eventType == VexEvent::SCAN_STOP ||
-		   it->eventType == VexEvent::ANT_SCAN_START ||
-		   it->eventType == VexEvent::ANT_SCAN_STOP)
+		if(it->eventType == Event::SCAN_START ||
+		   it->eventType == Event::SCAN_STOP ||
+		   it->eventType == Event::ANT_SCAN_START ||
+		   it->eventType == Event::ANT_SCAN_STOP)
 		{
 			if(hasScan(it->scan))
 			{
@@ -932,28 +274,28 @@ void VexJobGroup::genEvents(const std::list<VexEvent> &eventList)
 
 	// initialize inScan
 
-	for(std::list<VexEvent>::const_iterator it = events.begin(); it != events.end(); ++it)
+	for(std::list<Event>::const_iterator it = events.begin(); it != events.end(); ++it)
 	{
-		if(it->eventType == VexEvent::RECORD_START)
+		if(it->eventType == Event::RECORD_START)
 		{
 			inScan[it->name] = false;
 			inScanNow[it->name] = false;
 		}
 	}
 
-	std::list<VexEvent>::iterator rstart, rstop;
+	std::list<Event>::iterator rstart, rstop;
 	for(rstart = events.begin(); rstart != events.end();)
 	{
-		if(rstart->eventType == VexEvent::ANT_SCAN_START)
+		if(rstart->eventType == Event::ANT_SCAN_START)
 		{
 			inScan[rstart->name] = true;
 			inScanNow[rstart->name] = true;
 		}
-		else if(rstart->eventType == VexEvent::ANT_SCAN_STOP)
+		else if(rstart->eventType == Event::ANT_SCAN_STOP)
 		{
 			inScanNow[rstart->name] = false;
 		}
-		if(rstart->eventType == VexEvent::RECORD_START && !inScanNow[rstart->name])
+		if(rstart->eventType == Event::RECORD_START && !inScanNow[rstart->name])
 		{
 			inScan[rstart->name] = inScanNow[rstart->name];
 			for(rstop = rstart, ++rstop; rstop != events.end(); ++rstop)
@@ -963,12 +305,12 @@ void VexJobGroup::genEvents(const std::list<VexEvent> &eventList)
 					continue;
 				}
 
-				if(rstop->eventType == VexEvent::ANT_SCAN_START)
+				if(rstop->eventType == Event::ANT_SCAN_START)
 				{
 					inScan[rstart->name] = true;
 				}
 
-				if(rstop->eventType == VexEvent::RECORD_STOP)
+				if(rstop->eventType == Event::RECORD_STOP)
 				{
 					if(!inScan[rstop->name])
 					{
@@ -1004,7 +346,7 @@ int VexJob::generateFlagFile(const VexData &V, const char *fileName, unsigned in
 	std::map<std::string,int> antIds;
 	unsigned int nAnt = 0;
 	std::ofstream of;
-	const std::list<VexEvent> &eventList = *V.getEvents();
+	const std::list<Event> &eventList = *V.getEvents();
 
 	for(std::vector<std::string>::const_iterator a = jobAntennas.begin(); a != jobAntennas.end(); ++a)
 	{
@@ -1040,23 +382,23 @@ int VexJob::generateFlagFile(const VexData &V, const char *fileName, unsigned in
 	}
 
 	// Then go through each event, adjusting current flag state.  
-	for(std::list<VexEvent>::const_iterator e = eventList.begin(); e != eventList.end(); ++e)
+	for(std::list<Event>::const_iterator e = eventList.begin(); e != eventList.end(); ++e)
 	{
-		if(e->eventType == VexEvent::RECORD_START)
+		if(e->eventType == Event::RECORD_START)
 		{
 			if(antIds.count(e->name) > 0)
 			{
 				flagMask[antIds[e->name]] &= ~VexJobFlag::JOB_FLAG_RECORD;
 			}
 		}
-		else if(e->eventType == VexEvent::RECORD_STOP)
+		else if(e->eventType == Event::RECORD_STOP)
 		{
 			if(antIds.count(e->name) > 0)
 			{
 				flagMask[antIds[e->name]] |= VexJobFlag::JOB_FLAG_RECORD;
 			}
 		}
-		else if(e->eventType == VexEvent::SCAN_START)
+		else if(e->eventType == Event::SCAN_START)
 		{
 			if(hasScan(e->scan))
 			{
@@ -1078,7 +420,7 @@ int VexJob::generateFlagFile(const VexData &V, const char *fileName, unsigned in
 				}
 			}
 		}
-		else if(e->eventType == VexEvent::SCAN_STOP)
+		else if(e->eventType == Event::SCAN_STOP)
 		{
 			if(hasScan(e->scan))
 			{
@@ -1100,21 +442,21 @@ int VexJob::generateFlagFile(const VexData &V, const char *fileName, unsigned in
 				}
 			}
 		}
-		else if(e->eventType == VexEvent::ANT_SCAN_START)
+		else if(e->eventType == Event::ANT_SCAN_START)
 		{
 			if(hasScan(e->scan) && antIds.count(e->name) > 0)
 			{
 				flagMask[antIds[e->name]] &= ~VexJobFlag::JOB_FLAG_POINT;
 			}
 		}
-		else if(e->eventType == VexEvent::ANT_SCAN_STOP)
+		else if(e->eventType == Event::ANT_SCAN_STOP)
 		{
 			if(hasScan(e->scan) && antIds.count(e->name) > 0)
 			{
 				flagMask[antIds[e->name]] |= VexJobFlag::JOB_FLAG_POINT;
 			}
 		}
-		else if(e->eventType == VexEvent::JOB_START)
+		else if(e->eventType == Event::JOB_START)
 		{
 			if(fabs(e->mjd - mjdStart) < 0.5/86400.0)
 			{
@@ -1124,7 +466,7 @@ int VexJob::generateFlagFile(const VexData &V, const char *fileName, unsigned in
 				}
 			}
 		}
-		else if(e->eventType == VexEvent::JOB_STOP)
+		else if(e->eventType == Event::JOB_STOP)
 		{
 			if(fabs(e->mjd - mjdStart) < 0.5/86400.0)
 			{
@@ -1194,7 +536,7 @@ int VexJob::generateFlagFile(const VexData &V, const char *fileName, unsigned in
 
 void VexJobGroup::createJobs(std::vector<VexJob> &jobs, Interval &jobTimeRange, const VexData *V, double maxLength, double maxSize) const
 {
-	std::list<VexEvent>::const_iterator s, e;
+	std::list<Event>::const_iterator s, e;
 	jobs.push_back(VexJob());
 	VexJob *J = &jobs.back();
 	double totalTime, scanTime = 0.0;
@@ -1206,12 +548,12 @@ void VexJobGroup::createJobs(std::vector<VexJob> &jobs, Interval &jobTimeRange, 
 
 	for(e = events.begin(); e != events.end(); ++e)
 	{
-		if(e->eventType == VexEvent::SCAN_START)
+		if(e->eventType == Event::SCAN_START)
 		{
 			s = e;
 			id = e->name;
 		}
-		if(e->eventType == VexEvent::SCAN_STOP)
+		if(e->eventType == Event::SCAN_STOP)
 		{
 			if(id != e->name)
 			{
@@ -1423,21 +765,6 @@ void VexData::reduceScans(int minSubarraySize, const Interval &timerange)
 	}
 }
 
-void VexData::addScanEvents()
-{
-	for(std::vector<VexScan>::const_iterator it = scans.begin(); it != scans.end(); ++it)
-	{
-		addEvent(it->mjdStart, VexEvent::SCAN_START, it->defName, it->defName);
-		addEvent(it->mjdStop,  VexEvent::SCAN_STOP,  it->defName, it->defName);
-		for(std::map<std::string,Interval>::const_iterator sit = it->stations.begin(); sit != it->stations.end(); ++sit)
-		{
-			addEvent(std::max(sit->second.mjdStart, it->mjdStart), VexEvent::ANT_SCAN_START, sit->first, it->defName);
-			addEvent(std::min(sit->second.mjdStop,  it->mjdStop),  VexEvent::ANT_SCAN_STOP,  sit->first, it->defName);
-		}
-	}
-
-}
-
 void VexData::setScanSize(unsigned int num, double size)
 {
 	if(num >= nScan())
@@ -1478,40 +805,6 @@ unsigned int VexData::nAntennasWithRecordedData(const VexScan &scan) const
 	return nAnt;
 }
 
-int VexEOP::setkv(const std::string &key, const std::string &value)
-{
-	std::stringstream ss;
-	int nWarn = 0;
-
-	ss << value;
-
-	if(key == "tai_utc")
-	{
-		ss >> tai_utc;
-	}
-	else if(key == "ut1_utc")
-	{
-		ss >> ut1_utc;
-	}
-	else if(key == "xPole")
-	{
-		ss >> xPole;
-		xPole /= RAD2ASEC;
-	}
-	else if(key == "yPole")
-	{
-		ss >> yPole;
-		yPole /= RAD2ASEC;
-	}
-	else
-	{
-		std::cerr << "Warning: EOP: Unknown parameter '" << key << "'." << std::endl;
-		++nWarn;
-	}
-
-	return nWarn;
-}
-
 VexAntenna *VexData::newAntenna()
 {
 	antennas.push_back(VexAntenna());
@@ -1544,9 +837,9 @@ const VexAntenna *VexData::getAntenna(const std::string &name) const
 
 double VexData::getAntennaStartMJD(const std::string &name) const
 {
-	for(std::list<VexEvent>::const_iterator e = events.begin(); e != events.end(); ++e)
+	for(std::list<Event>::const_iterator e = events.begin(); e != events.end(); ++e)
 	{
-		if(e->eventType == VexEvent::ANTENNA_START && e->name == name)
+		if(e->eventType == Event::ANTENNA_START && e->name == name)
 		{
 			return e->mjd;
 		}
@@ -1557,9 +850,9 @@ double VexData::getAntennaStartMJD(const std::string &name) const
 
 double VexData::getAntennaStopMJD(const std::string &name) const
 {
-	for(std::list<VexEvent>::const_iterator e = events.begin(); e != events.end(); ++e)
+	for(std::list<Event>::const_iterator e = events.begin(); e != events.end(); ++e)
 	{
-		if(e->eventType == VexEvent::ANTENNA_STOP && e->name == name)
+		if(e->eventType == Event::ANTENNA_STOP && e->name == name)
 		{
 			return e->mjd;
 		}
@@ -1568,113 +861,6 @@ double VexData::getAntennaStopMJD(const std::string &name) const
 	return exper.mjdStop + 1.0;
 }
 
-int VexSetup::phaseCalIntervalMHz() const
-{
-	int p;
-	int pc = 0;
-
-	for(std::map<std::string,VexIF>::const_iterator it = ifs.begin(); it != ifs.end(); ++it)
-	{
-		p = it->second.phaseCalIntervalMHz;
-		if(p > 0 && (p < pc || pc == 0))
-		{
-			pc = p;
-		}
-	}
-
-	return pc;
-}
-
-const VexIF *VexSetup::getIF(const std::string &ifName) const
-{
-	for(std::map<std::string,VexIF>::const_iterator it = ifs.begin(); it != ifs.end(); ++it)
-	{
-		if(it->second.name == ifName)
-		{
-			return &it->second;
-		}
-	}
-
-	return 0;
-}
-
-double VexSetup::firstTuningForIF(const std::string &ifName) const	// return Hz
-{
-	double tune = 0.0;
-	std::string cn;
-
-	for(std::vector<VexChannel>::const_iterator ch=channels.begin(); ch != channels.end(); ++ch)
-	{
-		if(ch->ifName == ifName && (cn == "" || ch->name < cn))
-		{
-			cn = ch->name;
-			tune = ch->bbcFreq;
-		}
-	}
-
-	return tune;
-}
-
-void VexSetup::setPhaseCalInterval(int phaseCalIntervalMHz)
-{
-	// change IF phase cal values
-	for(std::map<std::string,VexIF>::iterator it = ifs.begin(); it != ifs.end(); ++it)
-	{
-		it->second.phaseCalIntervalMHz = phaseCalIntervalMHz;
-	}
-
-	// weed out unwanted tones
-	for(std::vector<VexChannel>::iterator it = channels.begin(); it != channels.end(); ++it)
-	{
-		if(phaseCalIntervalMHz <= 0)
-		{
-			it->tones.clear();
-		}
-		else
-		{
-			for(std::vector<int>::iterator tit = it->tones.begin(); tit != it->tones.end(); )
-			{
-				if(*tit % phaseCalIntervalMHz != 0)
-				{
-					tit = it->tones.erase(tit);
-				}
-				else
-				{
-					++tit;
-				}
-			}
-		}
-	}
-}
-
-void VexSetup::selectTones(enum ToneSelection selection, double guardBandMHz)
-{
-	for(std::vector<VexChannel>::iterator it = channels.begin(); it != channels.end(); ++it)
-	{
-		const VexIF *vif = getIF(it->ifName);
-		it->selectTones(vif->phaseCalIntervalMHz, selection, guardBandMHz);
-	}
-}
-
-bool operator ==(const VexChannel &c1, const VexChannel &c2)
-{
-	if( (c1.recordChan  != c2.recordChan)   ||
-	    (c1.subbandId   != c2.subbandId)    ||
-	    (c1.ifName      != c2.ifName)       ||
-	    (c1.bbcFreq     != c2.bbcFreq)      ||
-	    (c1.bbcSideBand != c2.bbcSideBand)  ||
-	    (c1.tones       != c2.tones) )
-	{
-		return false;
-	}
-
-	return true;
-}
-
-bool operator <(const VexChannel &c1, const VexChannel &c2)
-{
-	return c1.name < c2.name;
-}
 
 VexMode *VexData::newMode()
 {
@@ -1934,25 +1120,6 @@ void VexData::addVSN(const std::string &antName, unsigned int datastreamId, cons
 	}
 }
 
-void VexData::addVSNEvents()
-{
-	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); ++it)
-	{
-		for(std::vector<VexDatastream>::const_iterator dit = it->datastreams.begin(); dit != it->datastreams.end(); ++dit)
-		{
-			if(dit->dataSource == DataSourceModule)
-			{
-				for(std::vector<VexBasebandData>::const_iterator vit = dit->vsns.begin(); vit != dit->vsns.end(); ++vit)
-				{
-					addEvent(vit->mjdStart, VexEvent::RECORD_START, it->defName);
-					addEvent(vit->mjdStop,  VexEvent::RECORD_STOP,  it->defName);
-				}
-			}
-		}
-		
-	}
-}
-
 /*
 std::string VexData::getVSN(const std::string &antName, const Interval &timeRange) const
 {
@@ -1989,13 +1156,13 @@ void VexData::setExper(const std::string &name, const Interval &experTimeRange)
 {
 	double a=1.0e7, b=0.0;
 
-	for(std::list<VexEvent>::const_iterator it = events.begin(); it != events.end(); ++it)
+	for(std::list<Event>::const_iterator it = events.begin(); it != events.end(); ++it)
 	{
-		if(it->mjd < a && it->eventType != VexEvent::CLOCK_BREAK)
+		if(it->mjd < a && it->eventType != Event::CLOCK_BREAK)
 		{
 			a = it->mjd;
 		}
-		if(it->mjd > b && it->eventType != VexEvent::CLOCK_BREAK)
+		if(it->mjd > b && it->eventType != Event::CLOCK_BREAK)
 		{
 			b = it->mjd;
 		}
@@ -2011,29 +1178,6 @@ void VexData::setExper(const std::string &name, const Interval &experTimeRange)
 	{
 		exper.mjdStop = b;
 	}
-
-	addEvent(exper.mjdStart, VexEvent::OBSERVE_START, name); 
-	addEvent(exper.mjdStop, VexEvent::OBSERVE_STOP, name); 
-}
-
-const std::list<VexEvent> *VexData::getEvents() const
-{
-	return &events;
-}
-
-void VexData::addEvent(double mjd, VexEvent::EventType eventType, const std::string &name)
-{
-	events.push_back(VexEvent(mjd, eventType, name));
-}
-
-void VexData::addEvent(double mjd, VexEvent::EventType eventType, const std::string &name, const std::string &scan)
-{
-	events.push_back(VexEvent(mjd, eventType, name, scan));
-}
-
-void VexData::sortEvents()
-{
-	events.sort();
 }
 
 void VexData::findLeapSeconds()
@@ -2049,7 +1193,7 @@ void VexData::findLeapSeconds()
 	{
 		if(eops[i-1].tai_utc != eops[i].tai_utc)
 		{
-			addEvent(eops[i].mjd, VexEvent::LEAP_SECOND, "Leap second");
+			addEvent(eops[i].mjd, Event::LEAP_SECOND, "Leap second");
 			std::cout << "Leap second detected at day " << eops[i].mjd << std::endl;
 		}
 	}
@@ -2061,7 +1205,7 @@ void VexData::addBreaks(const std::vector<double> &breaks)
 	{
 		if(exper.contains(*t))
 		{
-			addEvent(*t, VexEvent::MANUAL_BREAK, "");
+			addEvent(*t, Event::MANUAL_BREAK, "");
 		}
 	}
 }
@@ -2140,89 +1284,67 @@ void VexData::setAntennaAxisOffset(const std::string &antName, double axisOffset
 	}
 }
 
-
-std::ostream& operator << (std::ostream &os, const VexSource &x)
+void VexData::addExperEvents(std::vector<Event> &events) const
 {
-	os << "Source " << x.defName << std::endl;
-	for(std::vector<std::string>::const_iterator it = x.sourceNames.begin(); it != x.sourceNames.end(); ++it)
-	{
-		os << "  name=" << *it << std::endl;
-	}
-	os << "  ra=" << x.ra <<
-		"\n  dec=" << x.dec << std::endl;
-
-	return os;
+	addEvent(events, exper.mjdStart, Event::OBSERVE_START, exper.name); 
+	addEvent(events, exper.mjdStop, Event::OBSERVE_STOP, exper.name); 
 }
 
-std::ostream& operator << (std::ostream &os, const VexSubband &x)
+void VexData::addClockEvents(std::vector<Event> &events) const
 {
-	os << "[" << x.freq << " Hz, " << x.bandwidth << " Hz, sb=" << x.sideBand << ", pol=" << x.pol << "]";
-	
-	return os;
-}
-
-std::ostream& operator << (std::ostream &os, const VexChannel &x)
-{
-	os << "[name=" << x.name << " BBC=" << x.bbcName << " IF=" << x.ifName << " s=" << x.subbandId << " -> r=" << x.recordChan << " t=" << x.threadId << " tones=";
-	for(std::vector<int>::const_iterator v = x.tones.begin(); v != x.tones.end(); ++v)
+	for(std::vector<VexAntenna>::const_iterator it = antennas.begin; it != antenna.end; ++it)
 	{
-		if(v != x.tones.begin())
+		for(std::vector<VexClock>::const_iterator cit = it->clocks.begin(); cit != it->clocks.end(); ++it)
 		{
-			os << ",";
+			addEvent(events, cit->mjdStart, Event::CLOCK_BREAK, it->name);
 		}
-		os << *v;
 	}
-	os << "]";
-
-	return os;
 }
 
-std::ostream& operator << (std::ostream &os, const VexIF &x)
+void VexData::addScanEvents(std::vector<Event> &events) const
 {
-	os << "[name=" << x.name << ", SSLO=" << x.ifSSLO << ", sb=" << x.ifSideBand << ", pol=" << x.pol << ", phaseCalInterval=" << x.phaseCalIntervalMHz << " MHz]";
+	for(std::vector<VexScan>::const_iterator it = scans.begin(); it != scans.end(); ++it)
+	{
+		addEvent(events, it->mjdStart, Event::SCAN_START, it->defName, it->defName);
+		addEvent(events, it->mjdStop,  Event::SCAN_STOP,  it->defName, it->defName);
+		for(std::map<std::string,Interval>::const_iterator sit = it->stations.begin(); sit != it->stations.end(); ++sit)
+		{
+			addEvent(events, std::max(sit->second.mjdStart, it->mjdStart), Event::ANT_SCAN_START, sit->first, it->defName);
+			addEvent(events, std::min(sit->second.mjdStop,  it->mjdStop),  Event::ANT_SCAN_STOP,  sit->first, it->defName);
+		}
+	}
 
-	return os;
 }
 
-std::ostream& operator << (std::ostream &os, const VexSetup &x)
+void VexData::addVSNEvents(std::vector<Event> &events) const
 {
-	os << "    Format = [format=" << x.formatName << ", nBit=" << x.nBit << ", nRecordChan=" << x.nRecordChan;
-	for(std::vector<VexChannel>::const_iterator it = x.channels.begin(); it != x.channels.end(); ++it)
+	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); ++it)
 	{
-		os << ", " << *it;
+		for(std::vector<VexDatastream>::const_iterator dit = it->datastreams.begin(); dit != it->datastreams.end(); ++dit)
+		{
+			if(dit->dataSource == DataSourceModule)
+			{
+				for(std::vector<VexBasebandData>::const_iterator vit = dit->vsns.begin(); vit != dit->vsns.end(); ++vit)
+				{
+					addEvent(events, vit->mjdStart, Event::RECORD_START, it->defName);
+					addEvent(events vit->mjdStop,  Event::RECORD_STOP,  it->defName);
+				}
+			}
+		}
+		
 	}
-	os << "]" << std::endl;
-	for(std::map<std::string,VexIF>::const_iterator it = x.ifs.begin(); it != x.ifs.end(); ++it)
-	{
-		os << "    IF: " << it->first << " " << it->second << std::endl;
-	}
-
-	return os;
 }
 
-std::ostream& operator << (std::ostream &os, const VexMode &x)
+void VexData::generateEvents(std::vector<Event> &events) const;
 {
-	unsigned int nSubband = x.subbands.size();
+	events.clear();
 
-	os << "Mode " << x.defName << std::endl;
-	for(unsigned int i = 0; i < nSubband; ++i)
-	{
-		os << "  Subband[" << i << "]=" << x.subbands[i] << std::endl;
-	}
-	for(std::map<std::string,VexSetup>::const_iterator it = x.setups.begin(); it != x.setups.end(); ++it)
-	{
-		os << "  Setup[" << it->first << "]" << std::endl;
-		os << it->second;
-	}
-	
-	return os;
-}
+	addExperEvents(events);
+	addClockEvents(events);
+	addScanEvents(events);
+	addVSNEvents(events);
 
-std::ostream& operator << (std::ostream &os, const VexEOP &x)
-{
-	os << "EOP(" << x.mjd << ", " << x.tai_utc << ", " << x.ut1_utc << ", " << (x.xPole*RAD2ASEC) << ", " << (x.yPole*RAD2ASEC) << ")";
-
-	return os;
+	sort(events.begin(), events.end());
 }
 
 std::ostream& operator << (std::ostream &os, const VexJob &x)
@@ -2260,18 +1382,6 @@ std::ostream& operator << (std::ostream &os, const VexJobGroup &x)
 	os << "Group: scans " << x.scans.front() << " - " << x.scans.back() << " = " << (const Interval &)x << std::endl;
 	os.precision(p);
 	
-	return os;
-}
-
-std::ostream& operator << (std::ostream &os, const VexEvent &x)
-{
-	int d, s;
-
-	d = static_cast<int>(x.mjd);
-	s = static_cast<int>((x.mjd - d)*86400.0 + 0.5);
-
-	os << "mjd=" << d << " sec=" << s << " : " << VexEvent::eventName[x.eventType] << " " << x.name;
-
 	return os;
 }
 
@@ -2325,13 +1435,6 @@ std::ostream& operator << (std::ostream &os, const VexData &x)
 	for(int i = 0; i < n; ++i)
 	{
 		os << "   " << *x.getEOP(i) << std::endl;
-	}
-
-	const std::list<VexEvent> *events = x.getEvents();
-	os << "Events:" << std::endl;
-	for(std::list<VexEvent>::const_iterator iter = events->begin(); iter != events->end(); ++iter)
-	{
-		os << "   " << *iter << std::endl;
 	}
 
 	return os;
