@@ -63,7 +63,6 @@ private:
 	std::vector<VexAntenna> antennas;
 	std::vector<VexEOP> eops;
 
-	std::list<Event> events;	// eventually move this out of VexData
 	std::string directory;
 
 public:
@@ -77,8 +76,6 @@ public:
 	VexMode *newMode();
 	VexAntenna *newAntenna();
 	VexEOP *newEOP();
-	void findLeapSeconds();
-	void addBreaks(const std::vector<double> &breaks);
 	void swapPolarization(const std::string &antName);
 	void setPhaseCalInterval(const std::string &antName, int phaseCalIntervalMHz);
 	void selectTones(const std::string &antName, enum ToneSelection selection, double guardBandMHz);
@@ -86,13 +83,16 @@ public:
 	void setTcalFrequency(const std::string &antName, int tcalFrequency);
 	void setAntennaPosition(const std::string &antName, double X, double Y, double Z);
 	void setAntennaAxisOffset(const std::string &antName, double axisOffset);
-	void addClockEvents(std::vector<Event> &events) const;
-	void addScanEvents(std::vector<Event> &events) const;
-	void addVSNEvents(std::vector<Event> &events) const;
-	void generateEvents(std::vector<Event> &events) const;
+	void addExperEvents(std::list<Event> &events) const;
+	void addClockEvents(std::list<Event> &events) const;
+	void addScanEvents(std::list<Event> &events) const;
+	void addVSNEvents(std::list<Event> &events) const;
+	void addBreakEvents(std::list<Event> &events, const std::vector<double> &breaks) const;
+	void addLeapSecondEvents(std::list<Event> &events) const;
+	void generateEvents(std::list<Event> &events) const;
 
-	double obsStart() const { return events.front().mjd; }
-	double obsStop() const { return events.back().mjd; }
+	double obsStart() const { return exper.mjdStart; }
+	double obsStop() const { return exper.mjdStop; }
 
 
 	const std::string &getDirectory() const { return directory; }
@@ -141,67 +141,10 @@ public:
 	void addVSN(const std::string &antName, unsigned int datastreamId, const std::string &vsn, const Interval &timeRange);
 //	std::string getVSN(const std::string &antName, const Interval &timeRange) const;
 
-	unsigned int nEvent() const { return events.size(); }
-	const std::list<Event> *getEvents() const;
-	void addEvent(double mjd, Event::EventType eventType, const std::string &name);
-	void addEvent(double mjd, Event::EventType eventType, const std::string &name, const std::string &scanName);
-	void sortEvents();
-
 	const VexExper *getExper() const { return &exper; }
 	void setExper(const std::string &name, const Interval &experTimeRange);
 };
 
-class VexJob : public Interval
-{
-public:
-	VexJob() : Interval(0.0, 1000000.0), jobSeries("Bogus"), jobId(-1), dutyCycle(1.0), dataSize(0.0) {}
-
-//	void assignVSNs(const VexData &V);
-//	std::string getVSN(const std::string &antName) const;
-	void assignAntennas(const VexData &V);
-	bool hasScan(const std::string &scanName) const;
-	int generateFlagFile(const VexData &V, const char *fileName, unsigned int invalidMask=0xFFFFFFFF) const;
-
-	// return the approximate number of Operations required to compute this scan
-	double calcOps(const VexData *V, int fftSize, bool doPolar) const;
-	double calcSize(const VexData *V) const;
-
-	std::string jobSeries;
-	int jobId;
-	std::vector<std::string> scans;
-//std::map<std::string,std::string> vsns;	// vsn, indexed by antenna name
-	std::vector<std::string> jobAntennas;	// vector of antennas used in this job
-	double dutyCycle;		// fraction of job spent in scans
-	double dataSize;		// [bytes] estimate of data output size
-};
-
-class VexJobFlag : public Interval
-{
-public:
-	static const unsigned int JOB_FLAG_RECORD = 1 << 0;
-	static const unsigned int JOB_FLAG_POINT  = 1 << 1;
-	static const unsigned int JOB_FLAG_TIME   = 1 << 2;
-	static const unsigned int JOB_FLAG_SCAN   = 1 << 3;
-	VexJobFlag() : antId(-1) {}
-	VexJobFlag(double start, double stop, int ant) : Interval(start, stop), antId(ant) {}
-
-	int antId;
-};
-
-class VexJobGroup : public Interval
-{
-public:
-	std::vector<std::string> scans;
-	std::list<Event> events;
-
-	bool hasScan(const std::string &scanName) const;
-	void genEvents(const std::list<Event> &eventList);
-	void createJobs(std::vector<VexJob> &jobs, Interval &jobTimeRange, const VexData *V, double maxLength, double maxSize) const;
-};
-
-std::ostream& operator << (std::ostream &os, const VexJob &x);
-std::ostream& operator << (std::ostream &os, const VexJobGroup &x);
-std::ostream& operator << (std::ostream &os, const VexJobFlag &x);
 std::ostream& operator << (std::ostream &os, const VexData &x);
 
 #endif

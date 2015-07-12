@@ -124,6 +124,25 @@ int nextPowerOf2(int x)
 	}
 }
 
+/* Modified from http://www-graphics.stanford.edu/~seander/bithacks.html */
+int intlog2(unsigned int v)
+{
+	const unsigned int b[] = {0x2, 0xC, 0xF0, 0xFF00, 0xFFFF0000};
+	const unsigned int S[] = {1, 2, 4, 8, 16};
+	unsigned int r = 0; // result of log2(v) will go here
+
+	for(int i = 4; i >= 0; --i) 
+	{
+		if(v & b[i])
+		{
+			v >>= S[i];
+			r |= S[i];
+		} 
+	}
+
+	return r;
+}
+
 char swapPolarizationCode(char pol)
 {
 	switch(pol)

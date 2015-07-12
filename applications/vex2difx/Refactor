@@ -8,9 +8,13 @@ Don't forget to:
 
 * revisit clocks (especially poly model)
 
+* vex_stream structure
+
 * copy VSNs, files -> Vex struct
 
-* dataSampling, network params to VexDatastream
+* dataSampling, network params to VexStream
+
+* VexData no longer prints events.  Do this elsewhere.
 
 new equivalent for Scan.corrSetup
 
@@ -23,7 +27,3 @@ Operate rules from v2d onto vex structure
 
 figure out what do do with shelf
 
-
-split out VexJob, rename as Job
-
-split out VexXXX

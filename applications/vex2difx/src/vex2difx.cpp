@@ -40,6 +40,7 @@
 #include <difxio/difx_input.h>
 #include <difxmessage.h>
 #include "vextables.h"
+#include "event.h"
 #include "corrparams.h"
 #include "vexload.h"
 #include "freq.h"
@@ -2849,6 +2850,7 @@ int main(int argc, char **argv)
 	VexData *V;
 	const VexScan * S;
 	const SourceSetup * sourceSetup;
+	vector<Event> events;
 	vector<VexJob> J;
 	string shelfFile;
 	string missingDataFile;	// created if file-based and no files for a particular antenna/job are found
@@ -3014,13 +3016,11 @@ int main(int argc, char **argv)
 	}
 
 	calculateScanSizes(V, *P);
-	V->addBreaks(P->manualBreaks);
 	nWarn += applyCorrParams(V, *P);
 	
 	// FIXME: events needs to be defined
 	V->generateEvents(events);
-
-	V->findLeapSeconds();
+	V->addBreakEvents(events, P->manualBreaks);
 
 	// set min and max bandwidths for each setup
 	for(unsigned int s = 0; s < V->nScan(); ++s)

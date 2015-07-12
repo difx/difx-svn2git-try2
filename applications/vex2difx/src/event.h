@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include "interval.h"
 
 class Event
 {
@@ -40,9 +41,15 @@ public:
 	Event(double m, enum EventType e, const std::string &a, const std::string &b) : mjd(m), eventType(e), name(a), scan(b) {}
 };
 
-void addEvent(std::vector<Event> &events, double mjd, Event::EventType eventType, const std::string &name);
+void addEvent(std::list<Event> &events, double mjd, Event::EventType eventType, const std::string &name);
 
-void addEvent(std::vector<Event> &events, double mjd, Event::EventType eventType, const std::string &name, const std::string &scan);
+void addEvent(std::list<Event> &events, double mjd, Event::EventType eventType, const std::string &name, const std::string &scan);
+
+double getAntennaStartMJD(const std::list<Event> &events, const std::string &name);
+
+double getAntennaStopMJD(const std::list<Event> &events, const std::string &name);
+
+void getEventListTimeRange(const std::list<Event> &events, Interval &eventTimeRange);
 
 bool operator < (const Event &a, const Event &b);
 

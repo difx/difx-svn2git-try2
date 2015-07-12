@@ -57,6 +57,9 @@ bool isPowerOf2(int n);
 
 int nextPowerOf2(int x);
 
+/* Modified from http://www-graphics.stanford.edu/~seander/bithacks.html */
+int intlog2(unsigned int v);
+
 char swapPolarizationCode(char pol);
 
 #endif

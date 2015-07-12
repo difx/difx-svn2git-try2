@@ -31,33 +31,39 @@ VEX_DATAMODEL_SRC = \
 	vex_source.h \
 	vex_subband.cpp \
 	vex_subband.h \
-	vextables.h \
-	vextables.cpp
+	vex_data.h \
+	vex_data.cpp
 
 vex2difx_SOURCES = \
 	$(VEX_DATAMODEL_SRC) \
 	event.cpp \
 	event.h \
-	vexload.h \
 	vexload.cpp \
-	corrparams.h \
+	vexload.h \
 	corrparams.cpp \
-	freq.h \
+	corrparams.h \
 	freq.cpp \
-	interval.h \
+	freq.h \
 	interval.cpp \
-	makejobs.h \
+	interval.h \
+	job.cpp \
+	job.h \
+	jobflag.cpp \
+	jobflag.h \
+	jobgroup.cpp \
+	jobgroup.h \
 	makejobs.cpp \
-	mediachange.h \
+	makejobs.h \
 	mediachange.cpp \
-	parserhelp.h \
+	mediachange.h \
 	parserhelp.cpp \
-	sanitycheck.h \
+	parserhelp.h \
 	sanitycheck.cpp \
-	timeutils.h \
+	sanitycheck.h \
 	timeutils.cpp \
-	util.h \
+	timeutils.h \
 	util.cpp \
+	util.h \
 	vex2difx.cpp
 
 # eventually remove event.* from below:
