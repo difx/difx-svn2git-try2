@@ -30,6 +30,7 @@ public:
 	std::string defName;
 
 	std::vector<VexSubband> subbands;
+	std::vector<VexSubband> zoombands;
 	std::map<std::string,VexSetup> setups;	// indexed by antenna name
 };
 

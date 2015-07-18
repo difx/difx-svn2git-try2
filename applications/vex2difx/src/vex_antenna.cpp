@@ -21,56 +21,67 @@ double VexAntenna::getVexClocks(double mjd, double *coeffs) const
 
 bool VexAntenna::hasData(const Interval &timerange) const
 {
-	for(std::vector<VexDatastream>::const_iterator it = datastreams.begin(); it != datastreams.end(); ++it)
+	bool rv = false;
+
+	switch(dataSource)
 	{
-		if(it->hasData(timerange))
+	case DataSourceNone:
+		rv = false;
+		break;
+	case DataSourceNetwork:
+		rv = true;
+		break;
+	case DataSourceFake:
+		rv = true;
+		break;
+	case DataSourceFile:
+		for(std::vector<VexBasebandData>::const_iterator it = files.begin(); it != files.end(); ++it)
 		{
-			return true;
+			if(it->overlap(timerange) > 0.0)
+			{
+				rv = true;
+				break;
+			}
 		}
+		break;
+	case DataSourceModule:
+		for(std::vector<VexBasebandData>::const_iterator it = vsns.begin(); it != vsns.end(); ++it)
+		{
+			if(it->overlap(timerange) > 0.0)
+			{
+				rv = true;
+				break;
+			}
+		}
+		break;
+	case NumDataSources:
+		// Should never come up.  print error?
+		break;
 	}
 
-	return false;
+	return rv;
 }
 
 int VexAntenna::nDatastreamWithData(const Interval &timerange) const
 {
 	int n = 0;
-
-	for(std::vector<VexDatastream>::const_iterator it = datastreams.begin(); it != datastreams.end(); ++it)
+ 
+	if(dataSource == DataSourceFile)
 	{
-		if(it->hasData(timerange))
-		{
-			++n;
-		}
+		return nRepresentedDatastreams(files);
+	}
+	else if(dataSource == DataSourceModule)
+	{
+		return nRepresentedDatastreams(vsns);
 	}
 
 	return n;
 }
 
-enum DataSource VexAntenna::dataSource() const
+void VexAntenna::removeBasebandData(int streamId)
 {
-	enum DataSource ds;
-
-	if(datastreams.size() == 0)
-	{
-		return DataSourceNone;
-	}
-
-	ds = datastreams[0].dataSource;
-	
-	for(std::vector<VexDatastream>::const_iterator it = datastreams.begin(); it != datastreams.end(); ++it)
-	{
-		if(ds == DataSourceNone)
-		{
-			ds = it->dataSource;
-		}
-		else if(ds != it->dataSource && it->dataSource != DataSourceNone)
-		{
-			return NumDataSources;	// an error
-		}
-	}
-
-	return ds;
+	removeBasebandDataByStreamId(vsns, streamId);
+	removeBasebandDataByStreamId(files, streamId);
 }
 
 std::ostream& operator << (std::ostream &os, const VexAntenna &x)
@@ -84,15 +95,11 @@ std::ostream& operator << (std::ostream &os, const VexAntenna &x)
 		"\n  axisOffset=" << x.axisOffset <<
 		"\n  tcalFrequency=" << x.tcalFrequency << std::endl;
 
-	for(std::vector<VexDatastream>::const_iterator it = x.datastreams.begin(); it != x.datastreams.end(); ++it)
-	{
-		os << "  " << *it << std::endl;
-	}
-
 	for(std::vector<VexClock>::const_iterator it = x.clocks.begin(); it != x.clocks.end(); ++it)
 	{
 		os << "  " << *it << std::endl;
 	}
+	// FIXME: print dataSource, files, vsns, ports here
 
 	return os;
 }

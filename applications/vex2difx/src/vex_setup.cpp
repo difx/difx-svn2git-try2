@@ -32,19 +32,31 @@ const VexIF *VexSetup::getIF(const std::string &ifName) const
 
 double VexSetup::firstTuningForIF(const std::string &ifName) const	// return Hz
 {
-	double tune = 0.0;
-	std::string cn;
+	double tune = 0.0;	// [Hz]
+	std::string chanName;
 
 	for(std::vector<VexChannel>::const_iterator ch=channels.begin(); ch != channels.end(); ++ch)
 	{
-		if(ch->ifName == ifName && (cn == "" || ch->name < cn))
+		if(ch->ifName == ifName && (chanName == "" || ch->name < chanName))
 		{
-			cn = ch->name;
+			chanName = ch->name;
 			tune = ch->bbcFreq;
 		}
 	}
 
 	return tune;
+}
+
+double VexSetup::dataRateMbps() const
+{
+	double rate = 0;	// [Mbps]
+
+	for(std::vector<VexStream>::const_iterator it = streams.begin(); it != streams.end(); ++it)
+	{
+		rate += it->dataRateMbps();
+	}
+
+	return rate;
 }
 
 void VexSetup::setPhaseCalInterval(int phaseCalIntervalMHz)
@@ -88,17 +100,32 @@ void VexSetup::selectTones(enum ToneSelection selection, double guardBandMHz)
 	}
 }
 
+int VexSetup::nRecordChan() const
+{
+	int rc = 0;
+
+	for(std::vector<VexStream>::const_iterator it = streams.begin(); it != streams.end(); ++it)
+	{
+		rc += it->nRecordChan;
+	}
+
+	return rc;
+}
+
 std::ostream& operator << (std::ostream &os, const VexSetup &x)
 {
-	os << "    Format = [format=" << x.formatName << ", nBit=" << x.nBit << ", nRecordChan=" << x.nRecordChan;
+	os << "   Setup:" << std::endl;
 	for(std::vector<VexChannel>::const_iterator it = x.channels.begin(); it != x.channels.end(); ++it)
 	{
-		os << ", " << *it;
+		os << "    Channel: " << *it << std::endl;
 	}
-	os << "]" << std::endl;
 	for(std::map<std::string,VexIF>::const_iterator it = x.ifs.begin(); it != x.ifs.end(); ++it)
 	{
 		os << "    IF: " << it->first << " " << it->second << std::endl;
+	}
+	for(std::vector<VexStream>::const_iterator it = x.streams.begin(); it != x.streams.end(); ++it)
+	{
+		os << "    Datastream: " << *it << std::endl;
 	}
 
 	return os;

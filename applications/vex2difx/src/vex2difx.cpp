@@ -2686,7 +2686,7 @@ int applyCorrParams(VexData *V, const CorrParams &params)
 		A = V->getAntenna(a);
 		if(!A)
 		{
-			std::cerr << "Developer error: mergeCorrParams: Antenna number " << a << " cannot be gotten even though nAntenna() reports " << V->nAntenna() << std::endl;
+			std::cerr << "Developer error: applyCorrParams: Antenna number " << a << " cannot be gotten even though nAntenna() reports " << V->nAntenna() << std::endl;
 
 			exit(EXIT_FAILURE);
 		}
@@ -2697,9 +2697,74 @@ int applyCorrParams(VexData *V, const CorrParams &params)
 		}
 	}
 
-	// MODES / SETUPS
+	// Data and data source
+	for(unsigned int a = 0; a < V->nAntenna(); ++a)
+	{
+		const VexAntenna *A = V->getAntenna(a);
+		if(!A)
+		{
+			std::cerr << "Developer error: applyCorrParams: Antenna " << a << " cannot be gotten" << std::endl;
 
-	// change formats
+			exit(EXIT_FAILURE);
+		}
+
+		const AntennaSetup *as = params.getAntennaSetup(a.name);
+		if(!as)
+		{
+			// No antenna setup here, so continue...
+			continue;
+		}
+
+		int nDatastreamSetup = as->datastreamSetups.size();
+		if(nDatastreamSetup <= 0)
+		{
+			// nothing provided
+			continue;
+		}
+
+		for(int i = 0; i < nDatastreamSetup; ++i)
+		{
+			// Here just directly copy updated values from v2d into existing structure
+			const DatastreamSetup &dss = as->datastreamSetups[i];
+			
+			switch(dss.dataSource)
+			{
+			case DataSourceFile:
+				V->setFiles(a, i, dss.files);
+				break;
+			case DataSourceModule:
+				V->setVSN(a, i, dss.vsn);
+				break;
+			case DataSourceNetwork:
+				V->setNetworkParameters(a, i, dss.networkPort, dss.windowSize);
+				break;
+			case DataSourceFake:
+				V->setFake(a, i);
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	// MODES / SETUPS / formats
+
+	for(unsigned int m = 0; m < V->nMode; ++m)
+	{
+		const VexMode *M = getMode(m);
+		if(!M)
+		{
+			std::cerr << "Developer error: applyCorrParams: Mode number " << m << " cannot be gotten even though nMode() reports " << V->nMode() << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+		for(std::map<std::string,VexSetup>::const_iterator it = setups.begin(); it != setups.end(); ++it)
+		{
+		}
+	}
+
+
+	// datastream merging: change formats, channel selection, ...
 	/* mode->setup[ant] = antSetup->getFormat() 
 	
 		but maybe much more interesting -- set threads, streams, ... here too?

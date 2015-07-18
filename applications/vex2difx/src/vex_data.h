@@ -41,7 +41,7 @@
 #include "vex_exper.h"
 #include "vex_basebanddata.h"
 #include "vex_clock.h"
-#include "vex_datastream.h"
+#include "vex_stream.h"
 #include "vex_antenna.h"
 #include "vex_scan.h"
 #include "vex_source.h"
@@ -90,6 +90,10 @@ public:
 	void addBreakEvents(std::list<Event> &events, const std::vector<double> &breaks) const;
 	void addLeapSecondEvents(std::list<Event> &events) const;
 	void generateEvents(std::list<Event> &events) const;
+	void setFiles(int antId, int streamId, std::vector<VexBasebandData> &files);
+	void setModule(int antId, int streamId, const std::string &vsn);
+	void setNetworkParameters(int antId, int streamId, const std::string &networkPort, int windowSize);
+	void setFake(int antId);
 
 	double obsStart() const { return exper.mjdStart; }
 	double obsStop() const { return exper.mjdStop; }
@@ -139,6 +143,8 @@ public:
 
 //	unsigned int nVSN(const std::string &antName) const;
 	void addVSN(const std::string &antName, unsigned int datastreamId, const std::string &vsn, const Interval &timeRange);
+	// If datastreamId < 0, remove data from all associated datastreams
+	void removeBasebandData(const std::string &antName, int datastreamId);
 //	std::string getVSN(const std::string &antName, const Interval &timeRange) const;
 
 	const VexExper *getExper() const { return &exper; }

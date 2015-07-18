@@ -37,7 +37,7 @@
 #include <algorithm>
 #include <unistd.h>
 #include "util.h"
-#include "vextables.h"
+#include "vex_data.h"
 #include "../vex/vex.h"
 #include "../vex/vex_parse.h"
 
@@ -70,11 +70,10 @@ static void fixOhs(std::string &str)
 	}
 }
 
-static int getRecordChannel(const std::string &antName, const std::string &chanName, const std::map<std::string,Tracks> &ch2tracks, const VexSetup &setup, unsigned int n)
+// Move to be a member of stream?
+static int getRecordChannel(const std::string &antName, const std::string &chanName, const std::map<std::string,Tracks> &ch2tracks, const VexStream &stream, unsigned int n)
 {
-	if(setup.formatName == "VLBA1_1" || setup.formatName == "VLBN1_1" || setup.formatName == "MKIV1_1" ||
-	   setup.formatName == "VLBA1_2" || setup.formatName == "VLBN1_2" || setup.formatName == "MKIV1_2" ||
-	   setup.formatName == "VLBA1_4" || setup.formatName == "VLBN1_4" || setup.formatName == "MKIV1_4")
+	if(stream.formatHasFanout())
 	{
 		int delta, track;
 		std::map<std::string,Tracks>::const_iterator it = ch2tracks.find(chanName);
@@ -111,7 +110,7 @@ static int getRecordChannel(const std::string &antName, const std::string &chanN
 			}
 		}
 	}
-	else if(setup.formatName == "MARK5B"||setup.formatName == "KVN5B") 
+	else if(stream.format == VexStream::FormatMark5B || stream.format == VexStream::FormatKVN5B) 
 	{
 		int delta, track;
 		std::map<std::string,Tracks>::const_iterator it = ch2tracks.find(chanName);
@@ -127,7 +126,7 @@ static int getRecordChannel(const std::string &antName, const std::string &chanN
 
 		return (track-2)/delta;
 	}
-	else if(setup.formatName == "LBAVSOP" || setup.formatName == "LBASTD") 
+	else if(stream.isLBAFormat())
 	{
 		int delta, track;
 		std::map<std::string,Tracks>::const_iterator it = ch2tracks.find(chanName);
@@ -143,21 +142,21 @@ static int getRecordChannel(const std::string &antName, const std::string &chanN
 
                 return track/delta;
 	}
-	else if(setup.formatName == "S2" )
+	else if(stream.format == VexStream::FormatS2)
 	{
 		return n;
 	}
-	else if(setup.formatName.substr(0, 4) == "VDIF" || setup.formatName.substr(0, 5) == "VDIFL" || setup.formatName.substr(0, 14) == "INTERLACEDVDIF")
+	else if(stream.isVDIFFormat())
 	{
 		return n;
 	}
-	else if(setup.formatName == "NONE")
+	else if(stream.format == VexStream::FormatNone)
 	{
 		return 0;
 	}
 	else
 	{
-		std::cerr << "Error: Antenna=" << antName << " format \"" << setup.formatName << "\" is not yet supported" << std::endl;
+		std::cerr << "Error: Antenna=" << antName << " format \"" << VexStream::DataFormatNames[stream.format] << "\" is not yet supported" << std::endl;
 		std::cerr << "Contact developer." << std::endl;
 
 		exit(EXIT_FAILURE);
@@ -277,8 +276,6 @@ static int getAntennas(VexData *V, Vex *v)
 		A->name = stn;
 		A->defName = stn;
 		Upper(A->name);
-
-		A->datastreams.push_back(VexDatastream());
 
 		p = (struct site_position *)get_station_lowl(stn, T_SITE_POSITION, B_SITE, v);
 		if(p == 0)
@@ -752,6 +749,7 @@ static int getModes(VexData *V, Vex *v)
 
 			Upper(antName2);
 			VexSetup &setup = M->setups[V->getAntenna(a)->name];
+			VexStream &stream = setup.streams[0];	// the first stream is created by default
 
 			// Get sample rate
 			p = get_all_lowl(antName.c_str(), modeDefName, T_SAMPLE_RATE, B_FREQ, v);
@@ -760,7 +758,7 @@ static int getModes(VexData *V, Vex *v)
 				continue;
 			}
 			vex_field(T_SAMPLE_RATE, p, 1, &link, &name, &value, &units);
-			fvex_double(&value, &units, &setup.sampRate);
+			fvex_double(&value, &units, &stream.sampRate);
 
 			// init array to all zeroes
 			for(p2count = 0; p2count < MAX_IF; ++p2count)
@@ -835,6 +833,7 @@ static int getModes(VexData *V, Vex *v)
 				}
 
 				p2 = p2array[p2count++];
+#if 0
 				if(!p2)
 				{
 					// check if this is a VLBA antenna; these require the comments for proper
@@ -858,6 +857,8 @@ static int getModes(VexData *V, Vex *v)
 						}
 					}
 				}
+#endif
+
 				// carry comment forward as it might contain information about IF
 				vex_field(T_COMMENT, p2, 1, &link, &name, &value, &units);
 				if(value)
@@ -883,50 +884,33 @@ static int getModes(VexData *V, Vex *v)
 
 			// Get datastream assignments and formats
 
-			// Is it a Mark5 mode?
-			if(setup.formatName == "") // Enter here if no format has been specified in the .v2d file
+			p = get_all_lowl(antName.c_str(), modeDefName, T_TRACK_FRAME_FORMAT, B_TRACKS, v);
+			if(p)
 			{
-				p = get_all_lowl(antName.c_str(), modeDefName, T_TRACK_FRAME_FORMAT, B_TRACKS, v);
-				if(p)
-				{
-					vex_field(T_TRACK_FRAME_FORMAT, p, 1, &link, &name, &value, &units);
-					setup.formatName = std::string(value);
-					if(setup.formatName == "Mark4")
-					{
-						setup.formatName = "MKIV";
-					}
-					else if(setup.formatName == "Mark5B")
-					{
-						setup.formatName = "MARK5B";
-					}
-					else if(setup.formatName == "KVN5B")
-					{
-						setup.formatName = "KVN5B";
-					}
-					else if(setup.formatName == "NONE")
-					{
-						setup.formatName = "NONE";
-					}
-				}
-				else
-				{
-					std::cerr << "Unable to determine data format for antenna " << antName << std::endl;
+				vex_field(T_TRACK_FRAME_FORMAT, p, 1, &link, &name, &value, &units);
+				stream.parseFormatString(value);
+			}
+			else
+			{
+				std::cerr << "Unable to determine data format for antenna " << antName << std::endl;
 
-					setup.formatName = "NONE";
-				}
+				stream.format = VexStream::FormatNone;
 			}
 
-			if(setup.formatName == "VLBA" || setup.formatName == "VLBN")
+			// FIXME: move this to a later sanity check
+#if 0
+			if(stream.formatName == "VLBA" || stream.formatName == "VLBN")
 			{
-				float totalDataRate = setup.sampRate*setup.nBit*setup.nRecordChan;
+				double totalDataRateMHz = stream.dataRateMHz();
 
-				if(totalDataRate > 0.0 && totalDataRate < 1.7e7)
+				if(totalDataRate > 0.0 && totalDataRate < 16.0)
 				{
-					std::cout << "*** Warning: a " << setup.formatName << " mode was found with sample rate " << (totalDataRate*10e-6) << " Mbps, which is less than the minimum 16 Mbps that can make use of this record format.  It is likely this mode will produce unusual results.  The suggested fix is to add additional channels in the vex file to bring the total bit rate up to 16 Mbps, which is very likely what the formatter did at the time of recording." << std::endl;
+					std::cout << "*** Warning: a " << stream.formatName << " mode was found with sample rate " << (totalDataRateMHz) << " Mbps, which is less than the minimum 16 Mbps that can make use of this record format.  It is likely this mode will produce unusual results.  The suggested fix is to add additional channels in the vex file to bring the total bit rate up to 16 Mbps, which is very likely what the formatter did at the time of recording." << std::endl;
 				}
 			}
+#endif
 
-			if(setup.formatName == "VLBA" || setup.formatName == "VLBN" || setup.formatName == "MKIV" || setup.formatName == "MARK5B" || setup.formatName == "KVN5B" || setup.formatName.substr(0, 4) == "VDIF" || setup.formatName.substr(0, 5) == "VDIFL")
+			if(stream.isTrackFormat())
 			{
 				for(p = get_all_lowl(antName.c_str(), modeDefName, T_FANOUT_DEF, B_TRACKS, v); p; p = get_all_lowl_next())
 				{
@@ -963,104 +947,57 @@ static int getModes(VexData *V, Vex *v)
 						}
 					}
 				}
-				if(ch2tracks.empty())
-				{
-				  if (setup.formatName.substr(0, 4) == "VDIF" || setup.formatName.substr(0, 5) == "VDIFL")
-					{
-						// non-interlaced:  VDIF/size/bits, use all recorded channels, find 7777 below
-						setup.nRecordChan = 7777;
-						setup.nBit = atoi(setup.formatName.substr(setup.formatName.find_last_of('/') + 1).c_str());
-						setup.formatName = setup.formatName.substr(0, setup.formatName.find_last_of('/'));
-					}
-					else
-					{
-						setup.formatName = "NONE";
-						setup.nRecordChan = 0;
-						setup.nBit = 0;
-					}
-				}
-				else
+				if(!ch2tracks.empty())
 				{
 					int fanout;
 
 					fanout = nTrack/ch2tracks.size()/nBit;
-					if(!(setup.formatName == "MARK5B" || setup.formatName == "KVN5B" || setup.formatName.substr(0, 4) == "VDIF")) 
+					if(stream.formatHasFanout())
 					{
-						switch(fanout)
-						{
-							case 1: 
-								setup.formatName += "1_1"; 
-								break;
-							case 2: 
-								setup.formatName += "1_2"; 
-								break;
-							case 4: 
-								setup.formatName += "1_4"; 
-								break;
-							default: 
-								std::cerr << "Error: Antenna=" << antName << " fanout=" << fanout << " not legal for format " << setup.formatName << ".  This could be a subtle problem in the vex file." << std::endl;
-
-								exit(EXIT_FAILURE);
-						}
+						stream.setFanout(fanout);
 					}
-					setup.nRecordChan = ch2tracks.size();
-					setup.nBit = nBit;
+
+					// FIXME: what to do if nBit and nRecordChan already set but they disagree?
+
+					stream.nRecordChan = ch2tracks.size();
+					stream.nBit = nBit;
 				}
 			}
-			else if(setup.formatName == "LBAVSOP" || setup.formatName == "LBASTD")
+			else if(stream.isLBAFormat())
 			{
 				for(p = get_all_lowl(antName.c_str(), modeDefName, T_FANOUT_DEF, B_TRACKS, v); p; p = get_all_lowl_next())
 				{
-				    std::string chanName;
-				    bool sign;
-				    int dasNum;
-				    
-				    vex_field(T_FANOUT_DEF, p, 2, &link, &name, &value, &units);
-				    chanName = value;
-				    vex_field(T_FANOUT_DEF, p, 3, &link, &name, &value, &units);
-				    sign = (value[0] == 's');
-				    vex_field(T_FANOUT_DEF, p, 4, &link, &name, &value, &units);
-				    sscanf(value, "%d", &dasNum);
+					std::string chanName;
+					bool sign;
+					int dasNum;
 
-				    int chanNum;
-				    
-				    if(vex_field(T_FANOUT_DEF, p, 5, &link, &name, &value, &units) < 0)
-				    {
-				    	break;
-				    }
-				    sscanf(value, "%d", &chanNum);
-				    chanNum += 32*(dasNum-1);
-				    if(sign)
-				    {
-				    	ch2tracks[chanName].sign.push_back(chanNum);
-				    }
-				    else
-				    {
-				    	nBit = 2;
-				    	ch2tracks[chanName].mag.push_back(chanNum);
-				    }
+					vex_field(T_FANOUT_DEF, p, 2, &link, &name, &value, &units);
+					chanName = value;
+					vex_field(T_FANOUT_DEF, p, 3, &link, &name, &value, &units);
+					sign = (value[0] == 's');
+					vex_field(T_FANOUT_DEF, p, 4, &link, &name, &value, &units);
+					sscanf(value, "%d", &dasNum);
 
+					int chanNum;
+
+					if(vex_field(T_FANOUT_DEF, p, 5, &link, &name, &value, &units) < 0)
+					{
+						break;
+					}
+					sscanf(value, "%d", &chanNum);
+					chanNum += 32*(dasNum-1);
+					if(sign)
+					{
+						ch2tracks[chanName].sign.push_back(chanNum);
+					}
+					else
+					{
+						nBit = 2;
+						ch2tracks[chanName].mag.push_back(chanNum);
+					}
 				}
-				setup.nRecordChan = ch2tracks.size();
-				setup.nBit = nBit;
-			}
-			else if(setup.formatName.find("VDIF") != std::string::npos)  // INTERLACEDVDIF...
-			{
-#warning "handling of INTERLACEDVDIF nRecordChan may not be correct in all cases"
-				setup.nBit = atoi(setup.formatName.substr(setup.formatName.find_last_of('/') + 1).c_str());
-				setup.formatName = setup.formatName.substr(0, setup.formatName.find_last_of('/'));
-				setup.nRecordChan = 1;
-				size_t lpos = setup.formatName.find_first_of(':');
-				if(lpos == std::string::npos)
-				{
-					setup.nRecordChan = 7777;	// use all channels of vex file, see below
-				}
-				while(lpos != std::string::npos)	// else
-				{
-					// and an additional channel for every ':' in INTERLACEDVDIF/.../size/bits
-					++setup.nRecordChan;
-					lpos = setup.formatName.find_first_of(':', lpos + 1);
-				}
+				stream.nRecordChan = ch2tracks.size();
+				stream.nBit = nBit;
 			}
 
 			// Is it an S2 mode?
@@ -1071,9 +1008,9 @@ static int getModes(VexData *V, Vex *v)
 				std::string s2mode(value);
 				if(s2mode != "none")
 				{
-					if(setup.formatName == "")
+					if(stream.format == VexStream::FormatNone)
 					{
-						setup.formatName = "S2";
+						stream.format = VexStream::FormatS2;
 					}
 
 					size_t f = s2mode.find_last_of("x");
@@ -1089,23 +1026,24 @@ static int getModes(VexData *V, Vex *v)
 					std::string tracks = s2mode.substr(f+1, g-f-1);
 					std::string bits = s2mode.substr(g+1);
 
-					setup.nBit = atoi(bits.c_str());
-					setup.nRecordChan = atoi(tracks.c_str())/setup.nBit; // should equal bbc2pol.size();
+					// Weird.  Why the first two lines below whent they will just be overwritten?  -WFB
+					stream.nBit = atoi(bits.c_str());
+					stream.nRecordChan = atoi(tracks.c_str())/stream.nBit; // should equal bbc2pol.size();
 					if(ch2tracks.empty())
 					{
-						setup.formatName = "NONE";
-						setup.nRecordChan = 0;
-						setup.nBit = 0;
+						stream.format = VexStream::FormatNone;
+						stream.nRecordChan = 0;
+						stream.nBit = 0;
 					}
 					else
 					{
-						setup.nRecordChan = ch2tracks.size();
-						setup.nBit = nBit;
+						stream.nRecordChan = ch2tracks.size();
+						stream.nBit = nBit;
 					}
 				} 
 			}
 
-			if(setup.formatName == "MARK5B" || setup.formatName == "KVN5B")
+			if(stream.format== VexStream::FormatMark5B || stream.format == VexStream::FormatKVN5B)
 			{
 				// Because Mark5B formatters can apply a bitmask, the track numbers may not be contiguous.  Here we go through and reorder track numbers in sequence, starting with 2
 
@@ -1222,7 +1160,6 @@ static int getModes(VexData *V, Vex *v)
 				char *bbcName;
 				double freq;
 				double bandwidth;
-				double origBandwidth;
 
 				vex_field(T_CHAN_DEF, p, 2, &link, &name, &value, &units);
 				fvex_double(&value, &units, &freq);
@@ -1233,20 +1170,18 @@ static int getModes(VexData *V, Vex *v)
 				vex_field(T_CHAN_DEF, p, 4, &link, &name, &value, &units);
 				fvex_double(&value, &units, &bandwidth);
 
-				origBandwidth = bandwidth;
-
-				if(bandwidth > setup.sampRate/2)
+				if(bandwidth > stream.sampRate/2)
 				{
-					std::cerr << "Error: sample rate = " << setup.sampRate << " bandwidth = " << bandwidth << std::endl;
+					std::cerr << "Error: sample rate = " << stream.sampRate << " bandwidth = " << bandwidth << std::endl;
 					std::cerr << "Sample rate must be no less than twice the bandwidth in all cases." << std::endl;
 
 					exit(EXIT_FAILURE);
 				}
 
-				if(bandwidth < setup.sampRate/2)
+				if(bandwidth < stream.sampRate/2)
 				{
 					// Note: this is tested in a sanity check later.  This behavior is not always desirable.
-					bandwidth = setup.sampRate/2;
+					bandwidth = stream.sampRate/2;
 				}
 
 				vex_field(T_CHAN_DEF, p, 6, &link, &name, &bbcName, &units);
@@ -1258,7 +1193,7 @@ static int getModes(VexData *V, Vex *v)
 				vex_field(T_CHAN_DEF, p, 5, &link, &name, &value, &units);
 				std::string chanName(value);
 
-				recChanId = getRecordChannel(antName, chanName, ch2tracks, setup, nRecordChan);
+				recChanId = getRecordChannel(antName, chanName, ch2tracks, stream, nRecordChan);
 				setup.channels.push_back(VexChannel());
 				setup.channels.back().subbandId = subbandId;
 				setup.channels.back().ifName = bbc2ifName[bbcName];
@@ -1280,15 +1215,13 @@ static int getModes(VexData *V, Vex *v)
 				++nRecordChan;
 			}
 
-			if(setup.nRecordChan == 7777)     // then use the number of that we just counted out
+			if(stream.nRecordChan == 0)     // then use the number of that we just counted out
 			{
-				setup.nRecordChan = nRecordChan;
-				std::cout << "FYI: Antenna=" << antName << " will use the full number of recorded channels, " << setup.nRecordChan << std::endl;
-			}
-
-			if(nRecordChan != setup.nRecordChan && setup.nRecordChan != 0)
-			{
-				std::cerr << "Warning: Antenna=" << antName << " nchan=" << nRecordChan << " != setup.nRecordChan=" << setup.nRecordChan << std::endl;
+				if(stream.nThread > 1)
+				{
+					// FIXME: test that nThread divies into nRecordChan
+				}
+				stream.nRecordChan = nRecordChan;
 			}
 
 			// Sort channels by name and then assign sequential thread Id

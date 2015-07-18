@@ -331,16 +331,11 @@ unsigned int VexData::nAntennasWithRecordedData(const VexScan &scan) const
 {
 	unsigned int nAnt = 0;
 
-	const VexMode *M = getModeByDefName(scan.modeDefName);
-	if(!M)
-	{
-		return 0;
-	}
-
 	for(std::map<std::string,Interval>::const_iterator it = scan.stations.begin(); it != scan.stations.end(); ++it)
 	{
-		std::map<std::string,VexSetup>::const_iterator S = M->setups.find(it->first);
-		if(S != M->setups.end() && S->second.nRecordChan > 0 && S->second.formatName != "NONE" && scan.getRecordEnable(it->first) == true)
+		const VexAntenna *A = getAntenna(it->first);
+
+		if(A->hasData(scan))
 		{
 			++nAnt;
 		}
@@ -417,7 +412,7 @@ unsigned int VexData::nRecordChan(const VexMode &mode, const std::string &antNam
 	std::map<std::string,VexSetup>::const_iterator it = mode.setups.find(antName);
 	if(it != mode.setups.end())
 	{
-		nRecChan = it->second.nRecordChan;
+		nRecChan = it->second.nRecordChan();
 	}
 	else
 	{
@@ -625,20 +620,26 @@ void VexData::addVSN(const std::string &antName, unsigned int datastreamId, cons
 	{
 		if(it->name == antName)
 		{
-			if(datastreamId < it->nDatastream())
-			{
-				it->datastreams[datastreamId].vsns.push_back(VexBasebandData(vsn, timeRange));
-				it->datastreams[datastreamId].dataSource = DataSourceModule;
-			}
-			else
-			{
-				std::cerr << "Error: trying to add VSN " << vsn << " to antenna " << antName << " datastream " << datastreamId << " but the highest datastream there is " << (it->nDatastream()-1) << std::endl;
-			}
+			it->vsns.push_back(VexBasebandData(vsn, datastreamId, timeRange));
+			it->dataSource = DataSourceModule;
+		}
+	}
+}
+
+// removes all baseband data for a given antenna/datastream.  If datastreamId < 0, removes from all datastreams
+void VexData::removeBasebandData(const std::string &antName, int datastreamId)
+{
+	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); ++it)
+	{
+		if(it->name == antName)
+		{
+			it->removeBasebandData(datastreamId);
 		}
 	}
 }
 
 /*
+// Ill-formed: need datastream
 std::string VexData::getVSN(const std::string &antName, const Interval &timeRange) const
 {
 	const VexAntenna *A;
@@ -805,15 +806,12 @@ void VexData::addVSNEvents(std::list<Event> &events) const
 {
 	for(std::vector<VexAntenna>::const_iterator it = antennas.begin(); it != antennas.end(); ++it)
 	{
-		for(std::vector<VexDatastream>::const_iterator dit = it->datastreams.begin(); dit != it->datastreams.end(); ++dit)
+		if(it->dataSource == DataSourceModule)
 		{
-			if(dit->dataSource == DataSourceModule)
+			for(std::vector<VexBasebandData>::const_iterator vit = it->vsns.begin(); vit != it->vsns.end(); ++vit)
 			{
-				for(std::vector<VexBasebandData>::const_iterator vit = dit->vsns.begin(); vit != dit->vsns.end(); ++vit)
-				{
-					addEvent(events, vit->mjdStart, Event::RECORD_START, it->defName);
-					addEvent(events, vit->mjdStop,  Event::RECORD_STOP,  it->defName);
-				}
+				addEvent(events, vit->mjdStart, Event::RECORD_START, it->defName);
+				addEvent(events, vit->mjdStop,  Event::RECORD_STOP,  it->defName);
 			}
 		}
 		
@@ -842,6 +840,39 @@ void VexData::generateEvents(std::list<Event> &events) const
 	addLeapSecondEvents(events);
 
 	events.sort();
+}
+
+void VexData::setFiles(int antId, int streamId, std::vector<VexBasebandData> &files)
+{
+	antennas[antId].removeBasebandData(streamId);
+	for(std::vector<VexBasebandData>::const_iterator it = files.begin(); it != files.end(); ++it)
+	{
+		antennas[antId].files.push_back(VexBasebandData(it->filename, streamId, *it));
+	}
+	antennas[antId].dataSource = DataSourceFile;
+}
+
+void VexData::setModule(int antId, int streamId, const std::string &vsn)
+{
+	antennas[antId].removeBasebandData(streamId);
+	antennas[antId].vsns.push_back(VexBasebandData(vsn, streamId));
+	antennas[antId].dataSource = DataSourceModule;
+}
+
+void VexData::setNetworkParameters(int antId, int streamId, const std::string &networkPort, int windowSize)
+{
+	if(antennas[antId].ports.size() <= streamId)
+	{
+		antennas[antId].ports.resize(streamId+1);
+	}
+	antennas[antId].ports[streamId].networkPort = networkPort;
+	antennas[antId].ports[streamId].windowSize = windowSize;
+	antennas[antId].dataSource = DataSourceNetwork;
+}
+
+void VexData::setFake(int antId)
+{
+	antennas[antId].dataSource = DataSourceFake;
 }
 
 std::ostream& operator << (std::ostream &os, const VexData &x)

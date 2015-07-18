@@ -23,12 +23,16 @@ VEX_DATAMODEL_SRC = \
 	vex_if.h \
 	vex_mode.cpp \
 	vex_mode.h \
+	vex_networkdata.cpp \
+	vex_networkdata.h \
 	vex_scan.cpp \
 	vex_scan.h \
 	vex_setup.cpp \
 	vex_setup.h \
 	vex_source.cpp \
 	vex_source.h \
+	vex_stream.cpp \
+	vex_stream.h \
 	vex_subband.cpp \
 	vex_subband.h \
 	vex_data.h \

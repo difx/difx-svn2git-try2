@@ -8,18 +8,19 @@
 #include <difxio.h>
 #include "interval.h"
 #include "vex_clock.h"
-#include "vex_datastream.h"
+#include "vex_basebanddata.h"
+#include "vex_networkdata.h"
 
 class VexAntenna
 {
 public:
-	VexAntenna() : x(0.0), y(0.0), z(0.0), dx(0.0), dy(0.0), dz(0.0), posEpoch(0.0), axisOffset(0.0), tcalFrequency(0) {}
+	VexAntenna() : x(0.0), y(0.0), z(0.0), dx(0.0), dy(0.0), dz(0.0), posEpoch(0.0), axisOffset(0.0), tcalFrequency(0), dataSource(DataSourceNone) {}
 
 	double getVexClocks(double mjd, double * coeffs) const;
-	int nDatastream() const { return datastreams.size(); }
 	bool hasData(const Interval &timerange) const;
 	int nDatastreamWithData(const Interval &timerange) const;
-	enum DataSource dataSource() const;
+	void removeBasebandData(int streamId);
+	bool hasVSNs() const { return !vsns.empty(); }
 
 	std::string name;
 	std::string defName;	// Sometimes names get changed
@@ -31,7 +32,13 @@ public:
 	double axisOffset;	// (m)
 	std::vector<VexClock> clocks;
 	int tcalFrequency;	// Hz
-	std::vector<VexDatastream> datastreams;
+
+	enum DataSource dataSource;
+
+	// actual baesband data is associated with the antenna
+	std::vector<VexBasebandData> vsns;	// indexed by vsn number
+	std::vector<VexBasebandData> files;	// indexed by file number
+	std::vector<VexNetworkData> ports;	// indexed by stream number
 };
 
 std::ostream& operator << (std::ostream &os, const VexAntenna &x);
