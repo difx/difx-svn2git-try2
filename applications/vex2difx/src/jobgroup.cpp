@@ -117,8 +117,7 @@ void JobGroup::createJobs(std::vector<Job> &jobs, Interval &jobTimeRange, const 
 		{
 			if(id != e->name)
 			{
-				std::cerr << "Programming error: createJobs: id != e->name  (" << id << " != " << e->name << ")" << std::endl;
-				std::cerr << "Contact developer" << std::endl;
+				std::cerr << "Developer error: createJobs: id != e->name  (" << id << " != " << e->name << ")" << std::endl;
 
 				exit(EXIT_FAILURE);
 			}
@@ -126,12 +125,20 @@ void JobGroup::createJobs(std::vector<Job> &jobs, Interval &jobTimeRange, const 
 			scanTimeRange.logicalAnd(jobTimeRange);
 			if(scanTimeRange.duration() > 0.0)
 			{
+				const VexScan *scan = V->getScanByDefName(id);
+				if(!scan)
+				{
+					std::cerr << "Developer error: createJobs: getScanByDefName() returned numm for id = " << id << std::endl;
+					
+					exit(EXIT_FAILURE);
+				}
+				J->modeName = scan->modeDefName;
 				J->scans.push_back(e->name);
 				J->logicalOr(scanTimeRange);
 				scanTime += scanTimeRange.duration();
 
 				// Work in progress: calculate correlated size of scan
-				size += V->getScanByDefName(id)->size;
+				size += scan->size;
 
 				/* start a new job at scan boundary if maxLength exceeded */
 				if(J->duration() > maxLength || size > maxSize)

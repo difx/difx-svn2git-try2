@@ -155,9 +155,8 @@ int VexMode::getMaxBits() const
 int VexMode::getMinSubbands() const
 {
 	int minSubbands = 0;
-	std::map<std::string,VexSetup>::const_iterator it;
 
-	for(it = setups.begin(); it != setups.end(); ++it)
+	for(std::map<std::string,VexSetup>::const_iterator it = setups.begin(); it != setups.end(); ++it)
 	{
 		int s;
 
@@ -169,6 +168,19 @@ int VexMode::getMinSubbands() const
 	}
 
 	return minSubbands;
+}
+
+// return maximum number of datastreams that could be active for this mode
+int VexMode::nStream() const
+{
+	int ns = 0;	
+	
+	for(std::map<std::string,VexSetup>::const_iterator it = setups.begin(); it != setups.end(); ++it)
+	{
+		ns += it->second.streams.size();
+	}
+
+	return ns;
 }
 
 const VexSetup* VexMode::getSetup(const std::string &antName) const

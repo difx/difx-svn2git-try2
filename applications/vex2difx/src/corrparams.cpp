@@ -711,8 +711,6 @@ DatastreamSetup::DatastreamSetup(const std::string &name) : difxName(name)
 
 int DatastreamSetup::setkv(const std::string &key, const std::string &value)
 {
-	std::string::size_type at, last, splitat;
-	std::string nestedkeyval;
 	std::stringstream ss;
 	int nWarn = 0;
 

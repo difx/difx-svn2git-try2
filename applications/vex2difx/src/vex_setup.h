@@ -20,6 +20,7 @@ public:
 	void setPhaseCalInterval(int phaseCalIntervalMHz);
 	void selectTones(enum ToneSelection selection, double guardBandMHz);
 	bool usesFormat(enum VexStream::DataFormat format) const;
+	int nStream() const { return streams.size(); }
 	int nRecordChan() const;
 	int getBits() const;
 	int getMinBits() const;

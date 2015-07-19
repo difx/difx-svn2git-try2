@@ -23,6 +23,7 @@ public:
 
 	std::string jobSeries;
 	int jobId;
+	std::string modeName;
 	std::vector<std::string> scans;
 	std::vector<std::string> jobAntennas;	// vector of antennas used in this job
 	double dutyCycle;		// fraction of job spent in scans

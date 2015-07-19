@@ -35,7 +35,7 @@
 #include "mediachange.h"
 
 // A is assumed to be the first scan in time order
-bool areScansCompatible(const VexScan *A, const VexScan *B, const CorrParams *P)
+static bool areScansCompatible(const VexScan *A, const VexScan *B, const CorrParams *P)
 {
 	if(((B->mjdStart < A->mjdStop) && (fabs(B->mjdStart-A->mjdStop) > 1.0e-8)) ||
 	   (B->mjdStart > A->mjdStop + P->maxGap))

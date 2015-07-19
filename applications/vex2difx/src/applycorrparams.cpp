@@ -3,9 +3,6 @@
 
 int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nError)
 {
-	nWarn = 0;
-	nError = 0;
-
 	// merge sets of EOPs from vex and corr params file
 	if(!params.eops.empty())
 	{
@@ -127,6 +124,8 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 			V->swapPolarization(A->defName);
 		}
 	}
+
+	// FIXME: transfer dataSampling to VexStream
 
 	// Data and data source
 	for(unsigned int a = 0; a < V->nAntenna(); ++a)

@@ -45,6 +45,7 @@
 #include "vexload.h"
 #include "freq.h"
 #include "util.h"
+#include "job.h"
 #include "makejobs.h"
 #include "timeutils.h"
 #include "sanitycheck.h"
@@ -85,7 +86,7 @@ static int calculateWorstcaseGuardNS(double sampleRate, int subintNS, int nBit, 
 	return static_cast<int>(nsAccumulate + MaxEarthGeomSlipRate*subintNS*1.0e-9 + 1.0);
 }
 
-static DifxJob *makeDifxJob(string directory, const VexJob& J, int nAntenna, const string& obsCode, int *n, int nDigit, char ext, const CorrParams *P)
+static DifxJob *makeDifxJob(string directory, const Job& J, int nAntenna, const string& obsCode, int *n, int nDigit, char ext, const CorrParams *P)
 {
 	DifxJob *job;
 	const char *difxVersion;
@@ -193,7 +194,7 @@ static DifxJob *makeDifxJob(string directory, const VexJob& J, int nAntenna, con
 	return job;
 }
 
-static DifxAntenna *makeDifxAntennas(const VexJob& J, const VexData *V, const CorrParams *P, int *n)
+static DifxAntenna *makeDifxAntennas(const Job& J, const VexData *V, const CorrParams *P, int *n)
 {
 	DifxAntenna *A;
 	double mjd;
@@ -267,18 +268,24 @@ static DifxAntenna *makeDifxAntennas(const VexJob& J, const VexData *V, const Co
 	return A;
 }
 
-static DifxDatastream *makeDifxDatastreams(const VexJob& J, const VexData *V, const CorrParams *P, int nSet)
+static DifxDatastream *makeDifxDatastreams(const Job& J, const VexData *V, const CorrParams *P, int nSet)
 {
 	DifxDatastream *datastreams;
 	int nDatastream;
 	int di;
+	const VexMode *M;
 
 	// Determine worst case (but typical) number of datastreams for this job
-	nDatastream = 0;
-	for(std::vector<std::string>::const_iterator it = J.jobAntennas.begin(); it != J.jobAntennas.end(); ++it)
+	M = V->getModeByDefName(J.modeName);
+	if(!M)
 	{
-		nDatastream += it->nDatastream();
+		std::cerr << "Developer error: makeDifxDatastreams: getModeByDefName() returns null for modeName=" << J.modeName << std::endl;
+
+		exit(EXIT_FAILURE);
 	}
+	nDatastream = M->nStream();
+
+	// for each setup these are duplicated
 	nDatastream *= nSet;
 	
 	datastreams = newDifxDatastreamArray(nDatastream);
@@ -291,45 +298,42 @@ static DifxDatastream *makeDifxDatastreams(const VexJob& J, const VexData *V, co
 		{
 			int nd;
 			const VexAntenna *ant = V->getAntenna(*a);
-			const AntennaSetup *antennaSetup = P->getAntennaSetup(ant->name);
 
-			nd = ant->nDatastream();
+			std::map<std::string,VexSetup>::const_iterator sit = M->setups.find(*a);
+			if(sit == M->setups.end())
+			{
+				std::cerr << "Developer error: makeDifxDatastreams: setup for antenna " << *a << " not found in mode " << M->defName << std::endl;
+
+				exit(EXIT_FAILURE);
+			}
+			const VexSetup &setup = sit->second;
+
+			nd = setup.nStream();
 
 // FIXME: read data from VexDatastream objects from here on
 			for(int d = 0; d < nd; ++d)
 			{
 				DifxDatastream *dd = datastreams + di;
-				const DatastreamSetup *datastreamSetup = 0;
-
-				if(antennaSetup)
-				{
-					datastreamSetup = &antennaSetup->datastreamSetups[d];
-				}
+				const VexStream &stream = setup.streams[d];
 
 				dd->antennaId = antennaId;
 				dd->dataSource = ant->dataSource;
 				dd->tSys = 0.0;
-
-				if(datastreamSetup)
+				dd->dataSampling = stream.dataSampling;
+				switch(ant->dataSource)
 				{
-					if(datastreamSetup->dataSampling < NumSamplingTypes)
+				case DataSourceNetwork:
+					dd->windowSize = ant->ports[d].windowSize;
+					snprintf(dd->networkPort, DIFXIO_ETH_DEV_SIZE, "%s", ant->ports[d].networkPort.c_str());
+					break;
+				case DataSourceFile:
 					{
-						dd->dataSampling = datastreamSetup->dataSampling;
-					}
-					
-					if(datastreamSetup->dataSource == DataSourceNetwork)
-					{
-						dd->windowSize = datastreamSetup->windowSize;
-						snprintf(dd->networkPort, DIFXIO_ETH_DEV_SIZE, "%s", datastreamSetup->networkPort.c_str());
-					}
-					else if(datastreamSetup->dataSource == DataSourceFile)
-					{
-						int nFile = datastreamSetup->basebandFiles.size();
+						int nFile = ant->files.size();
 						int count = 0;
 
 						for(int j = 0; j < nFile; ++j)
 						{
-							if(J.overlap(datastreamSetup->basebandFiles[j]) > 0.0)
+							if(ant->files[j].streamId == d && J.overlap(ant->files[j]) > 0.0)
 							{
 								++count;
 							}
@@ -341,35 +345,48 @@ static DifxDatastream *makeDifxDatastreams(const VexJob& J, const VexData *V, co
 
 						for(int j = 0; j < nFile; ++j)
 						{
-							if(J.overlap(datastreamSetup->basebandFiles[j]) > 0.0)
+							if(ant->files[j].streamId == d && J.overlap(ant->files[j]) > 0.0)
 							{
-								dd->file[count] = strdup(datastreamSetup->basebandFiles[j].filename.c_str());
+								dd->file[count] = strdup(ant->files[j].filename.c_str());
 								++count;
 							}
 						}
 					}
-					// For module-based there are two ways to for the information to be made available.
-					else if(datastreamSetup->dataSource == DataSourceModule)
+					break;
+				case DataSourceModule:
 					{
+						int nVSN = ant->vsns.size();
+						int count = 0;
+						
 						DifxDatastreamAllocFiles(dd, 1);
-						if(ant->vsns.empty())	// this should only be populated if 1 ds present and vex provided the vsns
+						for(int j = 0; j < nVSN; ++j)
 						{
-							// 1. 1 or more datastreams are present and the VSNs were provided by DATASTREAMs
-							if(datastreamSetup->basebandFiles.size() != 1)
+							if(ant->vsns[j].streamId == d && J.overlap(ant->vsns[j]) > 0.0)
 							{
-								// FIXME: move this test for exactly one baseband file to a sanity check
-								std::cerr << "Error: using DATASTREAM/ANTENNA-based VSNs but there is not exactly one provided for antenna " << a->first << std::endl;
-
-								exit(EXIT_FAILURE);
+								dd->file[0] = strdup(ant->vsns[j].filename.c_str());
+								++count;
 							}
-							dd->file[0] = strdup(datastreamSetup->basebandFiles[0].filename.c_str());
 						}
-						else
+						if(count > 0)
 						{
-							// 2. a single datastream is used and the VSNs are in the vex file
-							dd->file[0] = strdup(a->second.c_str());
+							std::cerr << "Developer error: got into job creation and antenna " << *a << " datastream " << d << " had more than one module valid in time range of job: " << J << std::endl;
+
+							exit(EXIT_FAILURE);
+						}
+						if(count == 0)
+						{
+							std::cerr << "Developer error: got into job creation and antenna " << *a << " datastream " << d << " had no module valid in time range of job: " << J << std::endl;
+
+							exit(EXIT_FAILURE);
 						}
 					}
+					break;
+				case DataSourceFake:
+					break;
+				default:
+					std::cerr << "Developer error: got into job creation with antenna " << *a << " having unsupported data source " << ant->dataSource << std::endl;
+
+					exit(EXIT_FAILURE);
 				}
 
 				++di;
@@ -1626,7 +1643,7 @@ static bool matchingFreq(const ZoomFreq &zoomfreq, const DifxDatastream *dd, int
 	return true;
 }
 
-static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int os, int verbose, ofstream *of, int nDigit, char ext, int strict)
+static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const std::list<Event> &events, int os, int verbose, ofstream *of, int nDigit, char ext, int strict)
 {
 	DifxInput *D;
 	DifxScan *scan;
@@ -2476,7 +2493,7 @@ static int writeJob(const VexJob& J, const VexData *V, const CorrParams *P, int 
 		}
 
 		// write flag file
-		J.generateFlagFile(*V, D->job->flagFile, P->invalidMask);
+		J.generateFlagFile(*V, events, D->job->flagFile, P->invalidMask);
 
 		if(verbose > 2)
 		{
@@ -2615,8 +2632,8 @@ int main(int argc, char **argv)
 	VexData *V;
 	const VexScan * S;
 	const SourceSetup * sourceSetup;
-	vector<Event> events;
-	vector<VexJob> J;
+	list<Event> events;
+	vector<Job> J;
 	string shelfFile;
 	string missingDataFile;	// created if file-based and no files for a particular antenna/job are found
 	string v2dFile;
@@ -2781,7 +2798,7 @@ int main(int argc, char **argv)
 	}
 
 	calculateScanSizes(V, *P);
-	nWarn += applyCorrParams(V, *P);
+	applyCorrParams(V, *P, nWarn, nError);
 	
 	V->generateEvents(events);
 	V->addBreakEvents(events, P->manualBreaks);
@@ -2861,7 +2878,7 @@ int main(int argc, char **argv)
 					{
 						if(nRecChan % nads != 0)
 						{
-							cerr << "Error: Number of record channels does not divide evenly into number of datastreams.  This error can be avoided by explicitly setting number of channels allocated to each datastream in the DATASTREAM blocks." << endl;
+							cerr << "Error: Number of record channels (" << nRecChan << ") does not divide evenly into number of datastreams (" << nads << ").  This error can be avoided by explicitly setting number of channels allocated to each datastream in the DATASTREAM blocks." << endl;
 							++nError;
 						}
 						antSetup->datastreamSetups[ads].nBand = nRecChan/nads;
@@ -2944,7 +2961,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	makeJobs(J, V, P, removedAntennas, verbose);
+	makeJobs(J, V, P, events, removedAntennas, verbose);
 
 	if(verbose > 1)
 	{
@@ -3013,7 +3030,7 @@ int main(int argc, char **argv)
 		++nDigit;
 	}
 	
-	for(vector<VexJob>::iterator j = J.begin(); j != J.end(); ++j)
+	for(vector<Job>::iterator j = J.begin(); j != J.end(); ++j)
 	{
 		if(verbose > 0)
 		{
@@ -3025,7 +3042,7 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			nJob += writeJob(*j, V, P, -1, verbose, &of, nDigit, 0, strict);
+			nJob += writeJob(*j, V, P, events, -1, verbose, &of, nDigit, 0, strict);
 		}
 	}
 	of.close();

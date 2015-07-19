@@ -1,5 +1,6 @@
 bin_PROGRAMS = \
 	vexpeek \
+	vex2difx \
 	testmerge
 
 LDADD = \

@@ -20,6 +20,7 @@ public:
 	int getMinBits() const;
 	int getMaxBits() const;
 	int getMinSubbands() const;
+	int nStream() const;
 	const VexSetup* getSetup(const std::string &antName) const;
 	double getLowestSampleRate() const;
 	double getHighestSampleRate() const;
