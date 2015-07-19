@@ -432,11 +432,10 @@ static int getToneSetId(vector<vector<int> > &toneSets, const vector<int> &tones
 
 	return toneSets.size() - 1;
 }
-	
-static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<int> >& toneSets, const VexMode *mode, const string &antName, const CorrSetup *corrSetup, enum V2D_Mode v2dMode, const DatastreamSetup *datastreamSetup)
+
+static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<int> >& toneSets, const VexMode *mode, const string &antName, int startBand, const VexSetup &setup, const VexStream &stream, const CorrSetup *corrSetup, enum V2D_Mode v2dMode)
 {
 	vector<pair<int,int> > bandMap;
-	int decimation;
 
 	if(mode == 0)
 	{
@@ -445,215 +444,24 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 		exit(EXIT_FAILURE);
 	}
 
+	// just check to make sure antId is legal
 	int antId = D->datastream[dsId].antennaId;
 	if(antId < 0 || antId >= D->nAntenna)
 	{
-		cerr << "Error: setFormat: antId=" << antId << " while nAntenna=" << D->nAntenna << endl;
+		cerr << "Developer error: setFormat: antId=" << antId << " while nAntenna=" << D->nAntenna << endl;
 		
 		exit(EXIT_FAILURE);
 	}
-	const VexSetup* setup = mode->getSetup(antName);
+	int nRecordChan = stream.nRecordChan;
 
-	unsigned int nBits = setup->nBit;
-
-	if(setup == 0)
-	{
-		cerr << "Developer error: setFormat(ant=" << antName << ", mode=" << mode->defName << ") -> setup=0" << endl;
-
-		exit(EXIT_FAILURE);
-	}
-
-	int nRecordChan = setup->nRecordChan;
-	int startBand = 0;
-	if(datastreamSetup)
-	{
-		if(datastreamSetup->nBand > 0)
-		{
-			nRecordChan = datastreamSetup->nBand;
-			startBand = datastreamSetup->startBand;
-		}
-		else if(datastreamSetup->startBand > 0)
-		{
-			cerr << "Developer error: setFormat(ant=" << antName << ", mode=" << mode->defName << ") -> datastream[" << dsId << "].nBand=0" << endl;
-		}
-	}
-	int n2 = nextPowerOf2(nRecordChan);
-
-	// FIXME: eventually allow other values?
-	decimation = calcDecimation(1);
-
-	if(setup->formatName == string("VLBA1_1"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "VLBA");
-		D->datastream[dsId].dataFrameSize = 2520*setup->nBit*n2;
-	}
-	else if(setup->formatName == string("VLBA1_2"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "VLBA");
-		D->datastream[dsId].dataFrameSize = 5040*setup->nBit*n2;
-	}
-	else if(setup->formatName == string("VLBA1_4"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "VLBA");
-		D->datastream[dsId].dataFrameSize = 10080*setup->nBit*n2;
-	}
-	else if(setup->formatName == string("VLBN1_1"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "VLBN");
-		D->datastream[dsId].dataFrameSize = 2520*setup->nBit*n2;
-	}
-	else if(setup->formatName == string("VLBN1_2"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "VLBN");
-		D->datastream[dsId].dataFrameSize = 5040*setup->nBit*n2;
-	}
-	else if(setup->formatName == string("VLBN1_4"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "VLBN");
-		D->datastream[dsId].dataFrameSize = 10080*setup->nBit*n2;
-	}
-	else if(setup->formatName == string("MKIV1_1"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "MKIV");
-		D->datastream[dsId].dataFrameSize = 2500*setup->nBit*n2;
-	}
-	else if(setup->formatName == string("MKIV1_2"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "MKIV");
-		D->datastream[dsId].dataFrameSize = 5000*setup->nBit*n2;
-	}
-	else if(setup->formatName == string("MKIV1_4"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "MKIV");
-		D->datastream[dsId].dataFrameSize = 10000*setup->nBit*n2;
-	}
-	else if(setup->formatName == string("MARK5B"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "MARK5B");
-		D->datastream[dsId].dataFrameSize = 10016;
-	}
-	else if(setup->formatName == string("KVN5B"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "KVN5B");
-		D->datastream[dsId].dataFrameSize = 10016;
-	}
-	else if(setup->formatName == string("VDIF"))
-	{
-		// look for pure "VDIF".  This implies single thread VDIF.  Assumes 5032 byte frames.  Not recommended to use this route
-		
-		strcpy(D->datastream[dsId].dataFormat, "VDIF");
-		D->datastream[dsId].dataFrameSize = 5032;
-	}
-	else if(setup->formatName.substr(0,4) == string("VDIF"))
-	{
-		// look for VDIF + extra information
-		// Formats supported are  VDIF, VDIFL, VDIFC and VDIFD
-		//   VDIFLxxx		xxxx = frame size
-		//   VDIF/xxxx		xxxx = frame size
-		//   VDIF/xxxx/bb	xxxx = frame size, bb = # bits
-		int strOff;
-		if(setup->formatName.substr(0,5) == string("VDIFL")) 
-		{
-			strcpy(D->datastream[dsId].dataFormat, "VDIFL");
-			strOff = 5;
-		} 
-		else if (setup->formatName.substr(0,5) == string("VDIFC")) 
-		{
-			D->datastream[dsId].dataSampling = SamplingComplex;
-			strcpy(D->datastream[dsId].dataFormat, "VDIF");
-			strOff = 5;
-		}
-		else if (setup->formatName.substr(0,5) == string("VDIFD")) 
-		{
-			D->datastream[dsId].dataSampling = SamplingComplexDSB;
-			strcpy(D->datastream[dsId].dataFormat, "VDIF");
-			strOff = 5;
-		}
-		else 
-		{
-			if(usesCannonicalVDIFThreadIds(antName.c_str()))
-			{
-				char sep = '/';
-				std::stringstream threadSS;
-				for(unsigned int threadId = 0; threadId < setup->channels.size(); ++threadId)
-				{
-					threadSS << sep;
-					threadSS << setup->channels[threadId].threadId;
-					sep = ':';
-				}
-				snprintf(D->datastream[dsId].dataFormat, DIFXIO_FORMAT_LENGTH, "INTERLACEDVDIF%s", threadSS.str().c_str());
-			}
-			else
-			{
-				strcpy(D->datastream[dsId].dataFormat, "VDIF");
-			}
-			strOff = 4;
-		}
-
-
-		size_t p = setup->formatName.find_first_of('/');
-		if(p == string::npos)
-		{
-			// VDIFxxxx case
-			D->datastream[dsId].dataFrameSize = atoi(setup->formatName.substr(strOff).c_str());
-		}
-		else
-		{
-			string fstr = setup->formatName.substr(p+1);
-
-			p = fstr.find_last_of('/');
-			if (p == string::npos)
-			{
-				// VDIF/xxxx  case
-				D->datastream[dsId].dataFrameSize = atoi(fstr.c_str());
-			} 
-			else 
-			{
-				// VDIF/xxxx/xxxx  case
-				D->datastream[dsId].dataFrameSize = atoi(fstr.substr(0,p).c_str());
-				nBits = atoi(fstr.substr(p+1).c_str());
-			}
-		}
-	}
-	else if(setup->formatName.substr(0,14) == string("INTERLACEDVDIF"))
-	{
-		// here we assume a string of the form INTERLACEDVDIF:y:y:y:y.../xxxx
-		// where xxxx is the frame size and each y is a thread id.
-		// this forces multi-thread vdif with the supplied characteristics
-
-		strncpy(D->datastream[dsId].dataFormat, setup->formatName.substr(0,setup->formatName.find_last_of('/')).c_str(), DIFXIO_NAME_LENGTH-1);
-		D->datastream[dsId].dataFormat[DIFXIO_NAME_LENGTH-1] = 0;
-		D->datastream[dsId].dataFrameSize = atoi(setup->formatName.substr(setup->formatName.find_last_of('/')+1).c_str());
-	}
-	else if(setup->formatName == string("S2"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "LBAVSOP");
-		D->datastream[dsId].dataFrameSize = 4096 + 10*setup->nBit*n2*static_cast<int>(setup->sampRate+0.5)/8;
-		cerr << "Warning: S2 data can be in LBAVSOP or LBASTD format - defaulting to LBAVSOP!!" << endl;
-	}
-	else if(setup->formatName == string("LBAVSOP"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "LBAVSOP");
-		D->datastream[dsId].dataFrameSize = 4096 + 10*setup->nBit*n2*static_cast<int>(setup->sampRate+0.5)/8;
-	}
-	else if(setup->formatName == string("LBASTD"))
-	{
-		strcpy(D->datastream[dsId].dataFormat, "LBASTD");
-		D->datastream[dsId].dataFrameSize = 4096 + 10*setup->nBit*n2*static_cast<int>(setup->sampRate+0.5)/8;
-	}
-	else
-	{
-		cerr << "Error: setFormat: format " << setup->formatName << " not currently supported.  Mode=" << mode->defName << ", ant=" << antName << "." << endl;
-
-		return 0;
-	}
-
-	D->datastream[dsId].quantBits = nBits;
+	stream.snprintDifxFormatName(D->datastream[dsId].dataFormat, DIFXIO_FORMAT_LENGTH);
+	D->datastream[dsId].dataFrameSize = stream.dataFrameSize();
+	D->datastream[dsId].quantBits = stream.nBit;
 	DifxDatastreamAllocBands(D->datastream + dsId, nRecordChan);
 
 	for(int i = 0; i < nRecordChan; ++i)
 	{
-		const VexChannel *ch = &setup->channels[i + startBand];
+		const VexChannel *ch = &setup.channels[i + startBand];
 		if(ch->subbandId < 0 || ch->subbandId >= static_cast<int>(mode->subbands.size()))
 		{
 			cerr << "Error: setFormat: index to subband=" << ch->subbandId << " is out of range" << endl;
@@ -675,7 +483,7 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 				exit(EXIT_FAILURE);
 			}
 			
-			if(v2dMode == V2D_MODE_PROFILE || setup->phaseCalIntervalMHz() == 0)
+			if(v2dMode == V2D_MODE_PROFILE || setup.phaseCalIntervalMHz() == 0)
 			{
 				// In profile mode don't extract any tones
 				toneSetId = 0;
@@ -685,7 +493,7 @@ static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<
 				toneSetId = getToneSetId(toneSets, ch->tones);
 			}
 			
-			fqId = getFreqId(freqs, subband.freq, subband.bandwidth, subband.sideBand, corrSetup->FFTSpecRes, corrSetup->outputSpecRes, decimation, 0, toneSetId);	// 0 means not zoom band
+			fqId = getFreqId(freqs, subband.freq, subband.bandwidth, subband.sideBand, corrSetup->FFTSpecRes, corrSetup->outputSpecRes, 1, 0, toneSetId);	// 0 means not zoom band
 			
 			D->datastream[dsId].recBandFreqId[r] = getBand(bandMap, fqId);
 			D->datastream[dsId].recBandPolName[r] = subband.pol;
@@ -2034,50 +1842,43 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 		int d = 0;
 
 		// first iterate over all antennas, making sure all recorded bands are allocated
-		for(int antennaId = 0; antennaId < D->nAntenna; ++antennaId)
+		for(std::map<std::string,VexSetup>::const_iterator it = mode->setups.begin(); it != mode->setups.end(); ++it)
 		{
-			string antName = J.jobAntennas[antennaId];
-			setFormat(D, D->nDatastream, freqs, toneSets, mode, antName, corrSetup, P->v2dMode, 0);
+			const std::string &antName = it->first;
+			const VexSetup &setup = it->second;
+			int startBand;
+			startBand = 0;
+			for(int ds = 0; ds < setup.nStream(); ++ds)
+			{
+				const VexStream &stream = setup.streams[ds];
+				// the zero below is just to provide a legal slot to do some prodding.  the loop below will properly populate all datastreams.
+				setFormat(D, 0, freqs, toneSets, mode, antName, startBand, setup, stream, corrSetup, P->v2dMode);
+				startBand += stream.nRecordChan;
+			}
 		}
 
 		minChans = corrSetup->minInputChans();
-		for(int antennaId = 0; antennaId < D->nAntenna; ++antennaId)
+		for(std::map<std::string,VexSetup>::const_iterator it = mode->setups.begin(); it != mode->setups.end(); ++it)
 		{
-			int nads;	// number of datastreams for this antenna
-			string antName = J.jobAntennas[antennaId];
-			const VexAntenna *antenna;
+			const std::string &antName = it->first;
+			const VexSetup &setup = it->second;
+			int startBand;
+			startBand = 0;
 
-			antenna = V->getAntenna(antName);
-			setup = mode->getSetup(antName);
+			const VexAntenna *antenna = V->getAntenna(antName);
 			antennaSetup = P->getAntennaSetup(antName);
 
-			if(antennaSetup)
+			for(int ds = 0; ds < setup.nStream(); ++ds)
 			{
-				nads = antennaSetup->datastreamSetups.size();
-			}
-			else
-			{
-				nads = 1;
-			}
-
-			for(int ads = 0; ads < nads; ++ads)
-			{
-				const DatastreamSetup *datastreamSetup;
-				if(antennaSetup)
-				{
-					datastreamSetup = &antennaSetup->datastreamSetups[ads];
-				}
-				else
-				{
-					datastreamSetup = 0;
-				}
-				int v = setFormat(D, D->nDatastream, freqs, toneSets, mode, antName, corrSetup, P->v2dMode, datastreamSetup);
+				const VexStream &stream = setup.streams[ds];
+				int v = setFormat(D, D->nDatastream, freqs, toneSets, mode, antName, startBand, setup, stream, corrSetup, P->v2dMode);
 				if(v)
 				{
 					dd = D->datastream + D->nDatastream;
-					dd->phaseCalIntervalMHz = setup->phaseCalIntervalMHz();
+					dd->phaseCalIntervalMHz = setup.phaseCalIntervalMHz();
 					dd->tcalFrequency = antenna->tcalFrequency;
 
+					// FIXME: eventually zoom bands will migrate to the VexMode/VexSetup infrastructure.  until then, use antenanSetup directly
 					if(antennaSetup)
 					{
 						nZoomBands = 0;
@@ -2104,13 +1905,30 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 										parentFreqIndices[i] = j;
 									}
 								}
-								if(nads > 1 && parentFreqIndices[i] < 0)
+								if(parentFreqIndices[i] < 0)
 								{
-									cerr << "Error: Cannot find a parent freq for zoom band " << i << " of datastream " << antennaId << endl;
-									cerr << "Note: This might be caused by a frequency offset that is not a multiple of the spectral resolution" << endl;
-								
-									exit(EXIT_FAILURE);
+									if(setup.nStream() == 1)
+									{
+										// definitely an error
+										cerr << "Error: Cannot find a parent freq for zoom band " << i << " of datastream " << ds << " for antenna " << antName << endl;
+										cerr << "Note: This might be caused by a frequency offset that is not a multiple of the spectral resolution" << endl;
+									
+										exit(EXIT_FAILURE);
+									}
+									else
+									{
+										static bool first = true;
+										if(first)
+										{
+											cerr << "Warning: Cannot find a parent freq for zoom band " << i << " of datastream " << ds << " for antenna " << antName << endl;
+											cerr << "Note: This might be caused by a frequency offset that is not a multiple of the spectral resolution" << endl;
+											cerr << "More likely it is because there are multiple datastreams and it could be that a different datastream hosts this zoom band." << endl;
+											cerr << "Similar warnings will be suppressed" << endl;
+										}
+										first = false;
+									}
 								}
+
 								zoomChans = static_cast<int>(zf.bandwidth/corrSetup->FFTSpecRes);
 								fqId = getFreqId(freqs, zf.frequency, zf.bandwidth, 'U', corrSetup->FFTSpecRes, corrSetup->outputSpecRes, decimation, 1, 0);	// final zero points to the noTone pulse cal setup.
 								if(zoomChans < minChans)
@@ -2122,7 +1940,7 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 								nZoomBands += dd->nRecPol[parentFreqIndices[i]];
 								if(!zf.correlateparent)
 								{
-									blockedfreqids[antennaId].insert(dd->recFreqId[parentFreqIndices[i]]);
+									blockedfreqids[dd->antennaId].insert(dd->recFreqId[parentFreqIndices[i]]);
 								}
 								++nZoom;
 							}
@@ -2181,11 +1999,11 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 								
 								exit(EXIT_FAILURE);
 							}
-							for(int i = 0; i < datastreamSetup->nBand; ++i)
+							for(int i = 0; i < D->datastream[D->nDatastream].nRecFreq; ++i)
 							{
-								D->datastream[D->nDatastream].clockOffset[i] = antennaSetup->freqClockOffs.at(datastreamSetup->startBand + i);
-								D->datastream[D->nDatastream].clockOffsetDelta[i] = antennaSetup->freqClockOffsDelta.at(datastreamSetup->startBand + i);
-								D->datastream[D->nDatastream].phaseOffset[i] = antennaSetup->freqPhaseDelta.at(datastreamSetup->startBand + i);
+								D->datastream[D->nDatastream].clockOffset[i] = antennaSetup->freqClockOffs.at(startBand + i);
+								D->datastream[D->nDatastream].clockOffsetDelta[i] = antennaSetup->freqClockOffsDelta.at(startBand + i);
+								D->datastream[D->nDatastream].phaseOffset[i] = antennaSetup->freqPhaseDelta.at(startBand + i);
 							}
 						}
 
@@ -2198,9 +2016,9 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 
 								exit(EXIT_FAILURE);
 							}
-							for(int i = 0; i < datastreamSetup->nBand; ++i)
+							for(int i = 0; i < D->datastream[D->nDatastream].nRecFreq; ++i)
 							{
-								D->datastream[D->nDatastream].freqOffset[i] = antennaSetup->loOffsets.at(datastreamSetup->startBand + i);
+								D->datastream[D->nDatastream].freqOffset[i] = antennaSetup->loOffsets.at(startBand + i);
 							}
 						}
 					} // if antennaSetup
@@ -2208,6 +2026,7 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 					++D->nDatastream;
 					++d;
 				} // if valid format
+				startBand += stream.nRecordChan;
 			} // datastream loop
 		} // antenna loop
 		if(corrSetup->xmacLength > minChans)

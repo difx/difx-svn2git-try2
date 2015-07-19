@@ -8,8 +8,6 @@ Don't forget to:
 
 * revisit clocks (especially poly model)
 
-* copy VSNs, files -> Vex struct
-
 * VexData no longer prints events.  Do this elsewhere.
 
 * VDIF: nthread = 1 or set by ::::'s ;  nChanPerThread = nRecordChan / nThread

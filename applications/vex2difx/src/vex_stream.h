@@ -30,24 +30,27 @@ public:
 
 	static char DataFormatNames[NumDataFormats+1][16];
 
-	VexStream() : sampRate(0.0), nBit(0), nRecordChan(0), dataFrameSize(0), singleThread(false), dataSampling(SamplingReal) {}
+	VexStream() : sampRate(0.0), nBit(0), nRecordChan(0), VDIFFrameSize(0), singleThread(false), dataSampling(SamplingReal) {}
 	double dataRateMbps() const { return sampRate*nBit*nRecordChan/1000000.0; }
 	static enum DataFormat stringToDataFormat(const std::string &str);
 	static bool isSingleThreadVDIF(const std::string &str);
 	bool parseThreads(const std::string &threadList);	// colon separated list of numbers
+	void setVDIFSubformat(const std::string &str);
 	bool parseFormatString(const std::string &formatName);
 	bool isTrackFormat() const;	// true for formats where tracks are assigned
 	bool isVDIFFormat() const;
 	bool isLBAFormat() const;
 	bool formatHasFanout() const;
 	void setFanout(int fan);
+	int snprintDifxFormatName(char *outString, int maxLength) const;
+	int dataFrameSize() const;
 
 	double sampRate;		// [Hz]
 	unsigned int nBit;		// bits per sample
 	unsigned int nRecordChan;	// number of recorded channels (per thread, for VDIF)
 	unsigned int nThread;		// number of threads
 	unsigned int fanout;		// 1, 2 or 4 (VLBA, Mark4 and related formats only)
-	unsigned int dataFrameSize;	// size of one logical block of data
+	unsigned int VDIFFrameSize;	// size of one logical block of data
 	bool singleThread;		// true for single thread VDIF
 	std::vector<int> threads;	// ordered list of threads for VDIF
 	enum DataFormat format;

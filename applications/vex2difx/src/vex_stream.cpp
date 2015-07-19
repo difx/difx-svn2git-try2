@@ -2,6 +2,7 @@
 #include <cstring>
 #include <regex.h>
 #include "vex_stream.h"
+#include "util.h"
 
 regex_t VexStream::matchType1;
 regex_t VexStream::matchType2;
@@ -87,7 +88,7 @@ char VexStream::DataFormatNames[NumDataFormats+1][16] =
 	"NONE",
 	"VDIF",
 	"VDIFL",
-	"Mark5B",
+	"MARK5B",
 	"VLBA",
 	"VLBN",
 	"MKIV",
@@ -113,7 +114,11 @@ bool VexStream::isSingleThreadVDIF(const std::string &str)
 enum VexStream::DataFormat VexStream::stringToDataFormat(const std::string &str)
 {
 	if(strcasecmp(str.c_str(), "VDIF") == 0 ||
-	   strcasecmp(str.c_str(), "INTERLACEDVDIF") == 0)
+	   strcasecmp(str.c_str(), "VDIFC") == 0 ||
+	   strcasecmp(str.c_str(), "VDIFD") == 0 ||
+	   strcasecmp(str.c_str(), "INTERLACEDVDIF") == 0 ||
+	   strcasecmp(str.c_str(), "INTERLACEDVDIFC") == 0 ||
+	   strcasecmp(str.c_str(), "INTERLACEDVDIFD") == 0)
 	{
 		return FormatVDIF;
 	}
@@ -214,15 +219,27 @@ bool VexStream::parseThreads(const std::string &threadList)
 
 // Accepts strings of the following formats and populates appropriate members:
 
-// VDIF/<size>/<bits>  -> format=VDIF,  dataFrameSize=<size>, nBit = <bits>, nThread=1, threads=[]
-// VDIFL/<size>/<bits> -> format=VDIFL, dataFrameSize=<size>, nBit = <bits>, nThread=1, threads=[]
-// VDIF_<size>-<Mbps>-<nChan>-<bits>   -> format=VDIF,  dataFrameSize=<size>+32, nBit=<bits>, nThread=1, threads=[], nChan=<nChan>
-// VDIFL_<size>-<Mbps>-<nChan>-<bits>  -> format=VDIFL, dataFrameSize=<size>+16, nBit=<bits>, nThread=1, threads=[], nChan=<nChan>
+// VDIF/<size>/<bits>  -> format=VDIF,  VDIFFrameSize=<size>, nBit = <bits>, nThread=1, threads=[]
+// VDIFL/<size>/<bits> -> format=VDIFL, VDIFFrameSize=<size>, nBit = <bits>, nThread=1, threads=[]
+// VDIF_<size>-<Mbps>-<nChan>-<bits>   -> format=VDIF,  VDIFFrameSize=<size>+32, nBit=<bits>, nThread=1, threads=[], nChan=<nChan>
+// VDIFL_<size>-<Mbps>-<nChan>-<bits>  -> format=VDIFL, VDIFFrameSize=<size>+16, nBit=<bits>, nThread=1, threads=[], nChan=<nChan>
 // INTERLACEDVDIF/0:1:16:17/1032/2
 
 static int matchInt(const std::string &str, const regmatch_t &match)
 {
 	return atoi(str.substr(match.rm_so, match.rm_eo-match.rm_so).c_str());
+}
+
+void VexStream::setVDIFSubformat(const std::string &str)
+{
+	if(strcasecmp(str.c_str(), "VDIFC") == 0 || strcasecmp(str.c_str(), "INTERLACEDVDIFC") == 0)
+	{
+		dataSampling = SamplingComplex;
+	}
+	else if(strcasecmp(str.c_str(), "VDIFD") == 0 || strcasecmp(str.c_str(), "INTERLACEDVDIFD") == 0)
+	{
+		dataSampling = SamplingComplexDSB;
+	}
 }
 
 bool VexStream::parseFormatString(const std::string &formatName)
@@ -254,8 +271,9 @@ bool VexStream::parseFormatString(const std::string &formatName)
 		{
 			return false;
 		}
+		setVDIFSubformat(formatName.substr(0, match[1].rm_eo));
 		nThread = matchInt(formatName, match[2]);
-		dataFrameSize = matchInt(formatName, match[3]);
+		VDIFFrameSize = matchInt(formatName, match[3]);
 		nBit = matchInt(formatName, match[4]);
 
 		return true;
@@ -268,7 +286,8 @@ bool VexStream::parseFormatString(const std::string &formatName)
 		{
 			return false;
 		}
-		dataFrameSize = matchInt(formatName, match[2]);
+		setVDIFSubformat(formatName.substr(0, match[1].rm_eo));
+		VDIFFrameSize = matchInt(formatName, match[2]);
 		nBit = matchInt(formatName, match[3]);
 		singleThread = isSingleThreadVDIF(formatName);
 
@@ -282,7 +301,8 @@ bool VexStream::parseFormatString(const std::string &formatName)
 		{
 			return false;
 		}
-		dataFrameSize = matchInt(formatName, match[2]);
+		setVDIFSubformat(formatName.substr(0, match[1].rm_eo));
+		VDIFFrameSize = matchInt(formatName, match[2]);
 		singleThread = isSingleThreadVDIF(formatName);
 
 		return true;
@@ -313,6 +333,7 @@ bool VexStream::parseFormatString(const std::string &formatName)
 		{
 			return false;
 		}
+		setVDIFSubformat(formatName.substr(0, match[1].rm_eo));
 		fanout = matchInt(formatName, match[2]);
 		singleThread = isSingleThreadVDIF(formatName);
 
@@ -388,6 +409,65 @@ bool VexStream::isVDIFFormat() const
 void VexStream::setFanout(int fan)
 {
 	fanout = fan;
+}
+
+int VexStream::snprintDifxFormatName(char *outString, int maxLength) const
+{
+	if(format == FormatVDIF)
+	{
+		if(singleThread)
+		{
+			return snprintf(outString, maxLength, "%s", DataFormatNames[format]);
+		}
+		else
+		{
+			std::stringstream fn;
+			char sep;
+			sep = '/';
+			fn << "INTERLACEDVDIF";
+			for(std::vector<int>::const_iterator it = threads.begin(); it != threads.end(); ++it)
+			{
+				fn << sep;
+				fn << *it;
+				sep = ':';
+			}
+			return snprintf(outString, maxLength, "%s", fn.str().c_str());
+		}
+	}
+	else if(format == FormatS2)
+	{
+		std::cerr << "Warning: S2 format encounted.  This could be LBAVSOP or LBASTD.  Defaulting to LBAVSOP!" << std::endl;
+		return snprintf(outString, maxLength, "%s", DataFormatNames[FormatLBAVSOP]);
+	}
+	else
+	{
+		return snprintf(outString, maxLength, "%s", DataFormatNames[format]);
+	}
+}
+
+int VexStream::dataFrameSize() const
+{
+	switch(format)
+	{
+	case FormatVDIF:
+	case FormatLegacyVDIF:
+		return VDIFFrameSize;
+	case FormatVLBA:
+	case FormatVLBN:
+		return 2520*fanout*nBit*nextPowerOf2(nRecordChan);
+	case FormatMark4:
+		return 2520*fanout*nBit*nextPowerOf2(nRecordChan);
+	case FormatMark5B:
+	case FormatKVN5B:
+		return 10016;
+	case FormatS2:
+	case FormatLBAVSOP:
+	case FormatLBASTD:
+		return 4096 + 10*nBit*nextPowerOf2(nRecordChan)*static_cast<int>(sampRate+0.5)/8;
+	default:
+		std::cerr << "Developer error: Format " << format << " not handled in VexStream::dataFrameSize().  This format may be called " << DataFormatNames[format] << std::endl;
+		exit(EXIT_FAILURE);
+	}
 }
 
 std::ostream& operator << (std::ostream &os, const VexStream &x)
