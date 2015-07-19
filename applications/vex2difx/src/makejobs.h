@@ -34,7 +34,7 @@
 #include <utility>
 #include <vector>
 #include <string>
-#include "vextables.h"
+#include "vex_data.h"
 #include "corrparams.h"
 
 void makeJobs(std::vector<VexJob>& J, VexData *V, const CorrParams *P, std::list<std::pair<int,std::string> > &removedAntennas, int verbose);

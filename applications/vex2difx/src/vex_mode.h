@@ -18,6 +18,7 @@ public:
 	int getPols(char *pols) const;
 	int getBits() const;
 	int getMinBits() const;
+	int getMaxBits() const;
 	int getMinSubbands() const;
 	const VexSetup* getSetup(const std::string &antName) const;
 	double getLowestSampleRate() const;

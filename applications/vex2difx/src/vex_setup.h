@@ -20,6 +20,12 @@ public:
 	void setPhaseCalInterval(int phaseCalIntervalMHz);
 	void selectTones(enum ToneSelection selection, double guardBandMHz);
 	int nRecordChan() const;
+	int getBits() const;
+	int getMinBits() const;
+	int getMaxBits() const;
+	double getLowestSampleRate() const;
+	double getHighestSampleRate() const;
+	double getAverageSampleRate() const;
 
 	std::map<std::string,VexIF> ifs;		// Indexed by name in the vex file, such as IF_A
 	std::vector<VexChannel> channels;

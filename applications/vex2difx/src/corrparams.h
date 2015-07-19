@@ -40,7 +40,7 @@
 
 #include "interval.h"
 #include "freq.h"
-#include "vextables.h"
+#include "vex_data.h"
 
 extern const double MJD_UNIX0;	// MJD at beginning of unix time
 extern const double SEC_DAY;

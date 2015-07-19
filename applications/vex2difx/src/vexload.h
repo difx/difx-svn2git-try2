@@ -31,7 +31,7 @@
 #define __VEXLOAD_H__
 
 #include <string>
-#include <vextables.h>
+#include <vex_data.h>
 
 VexData *loadVexFile(const std::string &vexFile, int *numWarnings);
 

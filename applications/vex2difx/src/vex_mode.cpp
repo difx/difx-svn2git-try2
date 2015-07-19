@@ -86,24 +86,26 @@ int VexMode::getPols(char *pols) const
 int VexMode::getBits() const
 {
 	static int firstTime = 1;
-	unsigned int nBit = setups.begin()->second.nBit;
+	unsigned int nBit = setups.begin()->second.getBits();
 	std::map<std::string,VexSetup>::const_iterator it;
 
 	for(it = setups.begin(); it != setups.end(); ++it)
 	{
-		if(it->second.nBit != nBit)
+		int nb = it->second.getBits();
+
+		if(nb != nBit)
 		{
-			if(nBit != 0 && it->second.nBit != 0 && firstTime)
+			if(nBit != 0 && nb != 0 && firstTime)
 			{
-				std::cerr << "Warning: getBits: differing number of bits: " << nBit << "," << it->second.nBit << std::endl;
+				std::cerr << "Warning: getBits: differing number of bits: " << nBit << "," << nb << std::endl;
 				std::cerr << "  Will proceed, but note that some metadata may be incorrect." << std::endl;
 
 				firstTime = 0;
 			}
 
-			if(it->second.nBit > nBit)
+			if(nb > nBit)
 			{
-				nBit = it->second.nBit;
+				nBit = nb;
 			}
 		}
 
@@ -119,14 +121,35 @@ int VexMode::getMinBits() const
 
 	for(it = setups.begin(); it != setups.end(); ++it)
 	{
-		if(it->second.nBit > 0 && (it->second.nBit < minBit || minBit == 0))
+		int mb = it->second.getMinBits();
+
+		if(mb > 0 && (mb < minBit || minBit == 0))
 		{
-			minBit = it->second.nBit;
+			minBit = mb;
 		}
 
 	}
 
 	return minBit;
+}
+
+int VexMode::getMaxBits() const
+{
+	unsigned int maxBit = 0;
+	std::map<std::string,VexSetup>::const_iterator it;
+
+	for(it = setups.begin(); it != setups.end(); ++it)
+	{
+		int mb = it->second.getMaxBits();
+
+		if(mb > 0 && (mb > maxBit || maxBit == 0))
+		{
+			maxBit = mb;
+		}
+
+	}
+
+	return maxBit;
 }
 
 int VexMode::getMinSubbands() const
@@ -175,9 +198,11 @@ double VexMode::getLowestSampleRate() const
 		
 		for(std::map<std::string,VexSetup>::const_iterator it = setups.begin(); it != setups.end(); ++it)
 		{
-			if(it->second.sampRate < sr && it->second.sampRate > 0.0)
+			double lsr = it->second.getLowestSampleRate();
+
+			if(lsr < sr && lsr > 0.0)
 			{
-				sr = it->second.sampRate;
+				sr = lsr;
 			}
 		}
 
@@ -202,9 +227,11 @@ double VexMode::getHighestSampleRate() const
 		
 		for(std::map<std::string,VexSetup>::const_iterator it = setups.begin(); it != setups.end(); ++it)
 		{
-			if(it->second.sampRate > sr)
+			double hsr = it->second.getHighestSampleRate();
+
+			if(hsr > sr)
 			{
-				sr = it->second.sampRate;
+				sr = hsr;
 			}
 		}
 
@@ -224,7 +251,7 @@ double VexMode::getAverageSampleRate() const
 		
 		for(std::map<std::string,VexSetup>::const_iterator it = setups.begin(); it != setups.end(); ++it)
 		{
-			sr += it->second.sampRate;
+			sr += it->second.getAverageSampleRate();
 		}
 
 		sr /= setups.size();

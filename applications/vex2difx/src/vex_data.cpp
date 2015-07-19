@@ -842,7 +842,7 @@ void VexData::generateEvents(std::list<Event> &events) const
 	events.sort();
 }
 
-void VexData::setFiles(int antId, int streamId, std::vector<VexBasebandData> &files)
+void VexData::setFiles(int antId, int streamId, const std::vector<VexBasebandData> &files)
 {
 	antennas[antId].removeBasebandData(streamId);
 	for(std::vector<VexBasebandData>::const_iterator it = files.begin(); it != files.end(); ++it)

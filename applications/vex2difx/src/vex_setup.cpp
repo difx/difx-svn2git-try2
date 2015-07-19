@@ -112,6 +112,116 @@ int VexSetup::nRecordChan() const
 	return rc;
 }
 
+int VexSetup::getBits() const
+{
+	int b1, b2;
+	bool first = true;
+
+	b1 = getMinBits();
+	b2 = getMaxBits();
+
+	if(b1 != b2)
+	{
+		if(first)
+		{
+			first = false;
+			std::cerr << "Warning: VexSetup::getBits(): different number of bits on different datastreams for one antenna." << std::endl;
+		}
+	}
+
+	return b2;
+}
+
+int VexSetup::getMinBits() const
+{
+	int nBit = 0;
+
+	for(std::vector<VexStream>::const_iterator it = streams.begin(); it != streams.end(); ++it)
+	{
+		if(nBit == 0 && it->nBit > 0)
+		{
+			nBit = it->nBit;
+		}
+		else if(it->nBit < nBit)
+		{
+			nBit = it->nBit;
+		}
+	}
+
+	return nBit;
+}
+
+int VexSetup::getMaxBits() const
+{
+	int nBit = 0;
+
+	for(std::vector<VexStream>::const_iterator it = streams.begin(); it != streams.end(); ++it)
+	{
+		if(it->nBit > nBit)
+		{
+			nBit = it->nBit;
+		}
+	}
+
+	return nBit;
+}
+
+double VexSetup::getLowestSampleRate() const
+{
+	double sr = 0.0;
+
+	for(std::vector<VexStream>::const_iterator it = streams.begin(); it != streams.end(); ++it)
+	{
+		if(sr == 0.0 && it->sampRate > 0.0)
+		{
+			sr = it->sampRate;
+		}
+		else if(it->sampRate < sr)
+		{
+			sr = it->sampRate;
+		}
+	}
+
+	return sr;
+}
+
+double VexSetup::getHighestSampleRate() const
+{
+	double sr = 0.0;
+
+	for(std::vector<VexStream>::const_iterator it = streams.begin(); it != streams.end(); ++it)
+	{
+		if(it->sampRate > sr)
+		{
+			sr = it->sampRate;
+		}
+	}
+
+	return sr;
+}
+
+double VexSetup::getAverageSampleRate() const
+{
+	double sr = 0.0;
+	int n = 0;
+
+	for(std::vector<VexStream>::const_iterator it = streams.begin(); it != streams.end(); ++it)
+	{
+		if(it->sampRate > 0.0)
+		{
+			sr += it->sampRate;
+			++n;
+		}
+	}
+
+	if(n > 0)
+	{
+		sr /= n;
+	}
+
+	return sr;
+}
+
 std::ostream& operator << (std::ostream &os, const VexSetup &x)
 {
 	os << "   Setup:" << std::endl;

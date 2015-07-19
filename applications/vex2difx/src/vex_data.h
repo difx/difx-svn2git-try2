@@ -90,7 +90,7 @@ public:
 	void addBreakEvents(std::list<Event> &events, const std::vector<double> &breaks) const;
 	void addLeapSecondEvents(std::list<Event> &events) const;
 	void generateEvents(std::list<Event> &events) const;
-	void setFiles(int antId, int streamId, std::vector<VexBasebandData> &files);
+	void setFiles(int antId, int streamId, const std::vector<VexBasebandData> &files);
 	void setModule(int antId, int streamId, const std::string &vsn);
 	void setNetworkParameters(int antId, int streamId, const std::string &networkPort, int windowSize);
 	void setFake(int antId);

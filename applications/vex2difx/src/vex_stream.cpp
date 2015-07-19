@@ -3,6 +3,14 @@
 #include <regex.h>
 #include "vex_stream.h"
 
+regex_t VexStream::matchType1;
+regex_t VexStream::matchType2;
+regex_t VexStream::matchType3;
+regex_t VexStream::matchType4;
+regex_t VexStream::matchType5;
+regex_t VexStream::matchType6;
+regex_t VexStream::matchType7;
+
 bool VexStream::isInit(Init());	// force execution of the function below to initialize regular expressions
 bool VexStream::Init()
 {
@@ -27,7 +35,7 @@ bool VexStream::Init()
 	}
 
 	// of form <fmt><size>			VDIF only
-	v = regcomp(&matchType3, "^([A-Z]*VDIF[A-Z]*])([1-9]+[0-9]*)$", REG_EXTENDED);
+	v = regcomp(&matchType3, "^([A-Z]*VDIF[A-Z]*)([1-9]+[0-9]*)$", REG_EXTENDED);
 	if(v != 0)
 	{
 		std::cerr << "Developer Error: VexStream::Init(): compiling matchType3 failed" << std::endl;
@@ -36,7 +44,7 @@ bool VexStream::Init()
 	}
 
 	// of form <fmt>1_<fanout>	VLBA, Mark4, VLBN only
-	v = regcomp(&matchType4, "^([A-Z]+])1_([124])$", REG_EXTENDED);
+	v = regcomp(&matchType4, "^([A-Z]+)1_([124])$", REG_EXTENDED);
 	if(v != 0)
 	{
 		std::cerr << "Developer Error: VexStream::Init(): compiling matchType4 failed" << std::endl;
@@ -70,7 +78,7 @@ bool VexStream::Init()
 
 		exit(EXIT_FAILURE);
 	}
-	
+
 	return true;
 }
 
@@ -249,6 +257,8 @@ bool VexStream::parseFormatString(const std::string &formatName)
 		nThread = matchInt(formatName, match[2]);
 		dataFrameSize = matchInt(formatName, match[3]);
 		nBit = matchInt(formatName, match[4]);
+
+		return true;
 	}
 	else if(regexec(&matchType2, formatName.c_str(), 4, match, 0) == 0)
 	{
@@ -261,6 +271,8 @@ bool VexStream::parseFormatString(const std::string &formatName)
 		dataFrameSize = matchInt(formatName, match[2]);
 		nBit = matchInt(formatName, match[3]);
 		singleThread = isSingleThreadVDIF(formatName);
+
+		return true;
 	}
 	else if(regexec(&matchType3, formatName.c_str(), 3, match, 0) == 0)
 	{
@@ -272,6 +284,8 @@ bool VexStream::parseFormatString(const std::string &formatName)
 		}
 		dataFrameSize = matchInt(formatName, match[2]);
 		singleThread = isSingleThreadVDIF(formatName);
+
+		return true;
 	}
 	else if(regexec(&matchType4, formatName.c_str(), 3, match, 0) == 0)
 	{
@@ -288,6 +302,8 @@ bool VexStream::parseFormatString(const std::string &formatName)
 			return false;
 		}
 		fanout = matchInt(formatName, match[2]);
+
+		return true;
 	}
 	else if(regexec(&matchType5, formatName.c_str(), 6, match, 0) == 0)
 	{
@@ -299,6 +315,8 @@ bool VexStream::parseFormatString(const std::string &formatName)
 		}
 		fanout = matchInt(formatName, match[2]);
 		singleThread = isSingleThreadVDIF(formatName);
+
+		return true;
 	}
 	else if(regexec(&matchType6, formatName.c_str(), 5, match, 0) == 0)
 	{
@@ -312,6 +330,8 @@ bool VexStream::parseFormatString(const std::string &formatName)
 		nRecordChan = matchInt(formatName, match[3]);
 		nBit = matchInt(formatName, match[4]);
 		singleThread = isSingleThreadVDIF(formatName);
+
+		return true;
 	}
 	else if(regexec(&matchType7, formatName.c_str(), 6, match, 0) == 0)
 	{
@@ -331,7 +351,11 @@ bool VexStream::parseFormatString(const std::string &formatName)
 		// Mbps not captured
 		nRecordChan = matchInt(formatName, match[4]);
 		nBit = matchInt(formatName, match[5]);
+
+		return true;
 	}
+
+	format = FormatNone;
 
 	return false;
 }

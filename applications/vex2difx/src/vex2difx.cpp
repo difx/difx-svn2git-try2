@@ -39,7 +39,7 @@
 #include <sys/stat.h>
 #include <difxio/difx_input.h>
 #include <difxmessage.h>
-#include "vextables.h"
+#include "vex_data.h"
 #include "event.h"
 #include "corrparams.h"
 #include "vexload.h"
@@ -2708,7 +2708,7 @@ int applyCorrParams(VexData *V, const CorrParams &params)
 			exit(EXIT_FAILURE);
 		}
 
-		const AntennaSetup *as = params.getAntennaSetup(a.name);
+		const AntennaSetup *as = params.getAntennaSetup(A->defName);
 		if(!as)
 		{
 			// No antenna setup here, so continue...
@@ -2730,7 +2730,7 @@ int applyCorrParams(VexData *V, const CorrParams &params)
 			switch(dss.dataSource)
 			{
 			case DataSourceFile:
-				V->setFiles(a, i, dss.files);
+				V->setFiles(a, i, dss.basebandFiles);
 				break;
 			case DataSourceModule:
 				V->setVSN(a, i, dss.vsn);
@@ -2739,7 +2739,7 @@ int applyCorrParams(VexData *V, const CorrParams &params)
 				V->setNetworkParameters(a, i, dss.networkPort, dss.windowSize);
 				break;
 			case DataSourceFake:
-				V->setFake(a, i);
+				V->setFake(a);
 				break;
 			default:
 				break;
@@ -2749,16 +2749,16 @@ int applyCorrParams(VexData *V, const CorrParams &params)
 
 	// MODES / SETUPS / formats
 
-	for(unsigned int m = 0; m < V->nMode; ++m)
+	for(unsigned int m = 0; m < V->nMode(); ++m)
 	{
-		const VexMode *M = getMode(m);
+		const VexMode *M = V->getMode(m);
 		if(!M)
 		{
 			std::cerr << "Developer error: applyCorrParams: Mode number " << m << " cannot be gotten even though nMode() reports " << V->nMode() << std::endl;
 
 			exit(EXIT_FAILURE);
 		}
-		for(std::map<std::string,VexSetup>::const_iterator it = setups.begin(); it != setups.end(); ++it)
+		for(std::map<std::string,VexSetup>::const_iterator it = M->setups.begin(); it != M->setups.end(); ++it)
 		{
 		}
 	}
@@ -2770,55 +2770,6 @@ int applyCorrParams(VexData *V, const CorrParams &params)
 		but maybe much more interesting -- set threads, streams, ... here too?
 
 	*/
-
-	// change data sources
-	for(unsigned int a = 0; a < V->nAntenna(); ++a)
-	{
-		const VexAntenna *A;
-
-		A = V->getAntenna(a);
-		if(!A)
-		{
-			std::cerr << "Developer error: mergeCorrParams: Antenna number " << a << " cannot be gotten even though nAntenna() reports " << V->nAntenna() << std::endl;
-
-			exit(EXIT_FAILURE);
-		}
-
-		const AntennaSetup *as = params.getAntennaSetup(A->defName);
-		if(!as)
-		{
-			continue;
-		}
-		unsigned int nDatastream = as->datastreamSetups.size();
-		int totalBands = 0;
-		for(unsigned dsId = 0; dsId < nDatastream; ++dsId)
-		{
-			const DatastreampSetup *ds = &(as->datastreamSetups[dsId]);
-			if(A->datastreams.size() <= dsId)
-			{
-				// need to add another one
-				A->datastreams.push_back(VexDatastream());
-			}
-			VexDatastream *vs = &(A->datastreams[dsId]);
-
-			if(!ds->networkPort.empty())
-			{
-				vs->networkPort = ds->networkPort;
-			}
-			if(ds->windowSize != 0)
-			{
-				vs->windowSize = ds->windowSize;
-			}
-
-// VSN and files get copied over.....
-
-			if(ds->nBand > 0)
-			{
-				
-				totalBands += ds->nBand;
-			}
-		}
-	}
 
 	// Tones
 	for(unsigned int a = 0; a < V->nAntenna(); ++a)

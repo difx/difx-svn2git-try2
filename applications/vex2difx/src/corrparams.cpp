@@ -95,12 +95,12 @@ int loadBasebandFilelist(const std::string &fileName, std::vector<VexBasebandDat
 		}
 		else if(l == 1)
 		{
-			basebandFiles.push_back(VexBasebandData(tokens[0]));
+			basebandFiles.push_back(VexBasebandData(tokens[0], 0));
 			++n;
 		}
 		else if(l == 3)
 		{
-			basebandFiles.push_back(VexBasebandData(tokens[0],
+			basebandFiles.push_back(VexBasebandData(tokens[0], 0,
 				parseTime(tokens[1]),
 				parseTime(tokens[2]) ));
 			++n;
@@ -757,7 +757,7 @@ int DatastreamSetup::setkv(const std::string &key, const std::string &value)
 			++nWarn;
 		}
 		dataSource = DataSourceFile;
-		basebandFiles.push_back(VexBasebandData(value));
+		basebandFiles.push_back(VexBasebandData(value, 0));
 	}
 	else if(key == "filelist")
 	{
@@ -818,7 +818,7 @@ int DatastreamSetup::setkv(const std::string &key, const std::string &value)
 	{
 		dataSource = DataSourceFake;
 		basebandFiles.clear();
-		basebandFiles.push_back(VexBasebandData(value));
+		basebandFiles.push_back(VexBasebandData(value, 0));
 	}
 	else
 	{
@@ -1200,7 +1200,7 @@ int AntennaSetup::setkv(const std::string &key, const std::string &value)
 			++nWarn;
 		}
 		defaultDatastreamSetup.dataSource = DataSourceFile;
-		defaultDatastreamSetup.basebandFiles.push_back(VexBasebandData(value));
+		defaultDatastreamSetup.basebandFiles.push_back(VexBasebandData(value, 0));
 	}
 	else if(key == "filelist")
 	{

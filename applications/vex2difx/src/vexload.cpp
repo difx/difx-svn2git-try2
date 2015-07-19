@@ -889,6 +889,7 @@ static int getModes(VexData *V, Vex *v)
 			{
 				vex_field(T_TRACK_FRAME_FORMAT, p, 1, &link, &name, &value, &units);
 				stream.parseFormatString(value);
+std::cout << "XXX Antenna: " << antName << " format string = " << value << " -> " << VexStream::DataFormatNames[stream.format] << std::endl;
 			}
 			else
 			{
@@ -912,6 +913,7 @@ static int getModes(VexData *V, Vex *v)
 
 			if(stream.isTrackFormat())
 			{
+std::cout << "XXX FYI: is track format" << std::endl;
 				for(p = get_all_lowl(antName.c_str(), modeDefName, T_FANOUT_DEF, B_TRACKS, v); p; p = get_all_lowl_next())
 				{
 					std::string chanName;
@@ -965,6 +967,7 @@ static int getModes(VexData *V, Vex *v)
 			}
 			else if(stream.isLBAFormat())
 			{
+std::cout << "XXX FYI: getting LBA" << std::endl;
 				for(p = get_all_lowl(antName.c_str(), modeDefName, T_FANOUT_DEF, B_TRACKS, v); p; p = get_all_lowl_next())
 				{
 					std::string chanName;
@@ -1004,6 +1007,7 @@ static int getModes(VexData *V, Vex *v)
 			p = get_all_lowl(antName.c_str(), modeDefName, T_S2_RECORDING_MODE, B_TRACKS, v);
 			if(p)
 			{
+std::cout << "XXX FYI: getting S2" << std::endl;
 				vex_field(T_S2_RECORDING_MODE, p, 1, &link, &name, &value, &units);
 				std::string s2mode(value);
 				if(s2mode != "none")
@@ -1043,7 +1047,7 @@ static int getModes(VexData *V, Vex *v)
 				} 
 			}
 
-			if(stream.format== VexStream::FormatMark5B || stream.format == VexStream::FormatKVN5B)
+			if(stream.format == VexStream::FormatMark5B || stream.format == VexStream::FormatKVN5B)
 			{
 				// Because Mark5B formatters can apply a bitmask, the track numbers may not be contiguous.  Here we go through and reorder track numbers in sequence, starting with 2
 
@@ -1064,13 +1068,13 @@ static int getModes(VexData *V, Vex *v)
 					{
 						if(*b < 0 || *b > MaxTrackNumber)
 						{
-							cerr << "Error: track number " << *b << " is out of range (0.." << MaxTrackNumber << ").  Must quit." << endl;
+							cerr << "Error: sign track number " << *b << " for channel " << it->first << " is out of range (0.." << MaxTrackNumber << ").  Must quit." << endl;
 
 							exit(EXIT_FAILURE);
 						}
 						if(order[*b] != 0)
 						{
-							cerr << "Error: track number " << *b << " is repeated.  Must quit." << endl;
+							cerr << "Error: sign track number " << *b << " for channel " << it->first << " is repeated.  Must quit." << endl;
 
 							exit(EXIT_FAILURE);
 						}
@@ -1081,13 +1085,13 @@ static int getModes(VexData *V, Vex *v)
 					{
 						if(*b < 0 || *b > MaxTrackNumber)
 						{
-							cerr << "Error: track number " << *b << " is out of range (0.." << MaxTrackNumber << ").  Must quit." << endl;
+							cerr << "Error: mag track number " << *b << " for channel " << it->first << " is out of range (0.." << MaxTrackNumber << ").  Must quit." << endl;
 
 							exit(EXIT_FAILURE);
 						}
 						if(order[*b] != 0)
 						{
-							cerr << "Error: track number " << *b << " is repeated.  Must quit." << endl;
+							cerr << "Error: mag track number " << *b << " for channel " << it->first << " is repeated.  Must quit." << endl;
 
 							exit(EXIT_FAILURE);
 						}

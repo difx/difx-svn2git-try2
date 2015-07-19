@@ -2,6 +2,9 @@ bin_PROGRAMS = \
 	vex2difx \
 	vexpeek
 
+noinst_PROGRAMS = \
+	testmerge
+
 LDADD = \
 	$(top_builddir)/vex/libvex.la
 
@@ -14,8 +17,6 @@ VEX_DATAMODEL_SRC = \
 	vex_channel.h \
 	vex_clock.cpp \
 	vex_clock.h \
-	vex_datastream.cpp \
-	vex_datastream.h \
 	vex_eop.cpp \
 	vex_eop.h \
 	vex_exper.h \
@@ -69,6 +70,26 @@ vex2difx_SOURCES = \
 	util.cpp \
 	util.h \
 	vex2difx.cpp
+
+testmerge_SOURCES = \
+	$(VEX_DATAMODEL_SRC) \
+	event.cpp \
+	event.h \
+	vexload.cpp \
+	vexload.h \
+	corrparams.cpp \
+	corrparams.h \
+	interval.cpp \
+	interval.h \
+	mediachange.cpp \
+	mediachange.h \
+	parserhelp.cpp \
+	parserhelp.h \
+	timeutils.cpp \
+	timeutils.h \
+	util.cpp \
+	util.h \
+	testmerge.cpp
 
 # eventually remove event.* from below:
 
