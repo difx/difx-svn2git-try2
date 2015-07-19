@@ -8,7 +8,7 @@
 class VexSource
 {
 public:
-	VexSource() : ra(0.0), dec(0.0) {}
+	VexSource() : ra(0.0), dec(0.0), calCode(' ') {}
 	bool hasSourceName(const std::string &name) const;
 
 	std::string defName;			// in the "def ... ;" line in Vex
@@ -16,6 +16,7 @@ public:
 	std::vector<std::string> sourceNames;	// from source_name statements
 	double ra;		// (rad)
 	double dec;		// (rad)
+	char calCode;
 
 	static const unsigned int MAX_SRCNAME_LENGTH = 12;
 };

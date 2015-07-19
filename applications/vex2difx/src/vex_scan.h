@@ -14,6 +14,7 @@ public:
 
 	std::string modeDefName;
 	std::string sourceDefName;	
+	std::string corrSetupName;			// link to corrparams
 	std::map<std::string,Interval> stations;
 	std::map<std::string,bool> recordEnable;	// This is true of the drive number is non-zero
 	double size;					// [bytes] approx. correlated size

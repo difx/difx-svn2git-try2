@@ -29,7 +29,7 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 		A = V->getAntenna(a);
 		if(!A)
 		{
-			std::cerr << "Developer error: mergeCorrParams: Antenna number " << a << " cannot be gotten even though nAntenna() reports " << V->nAntenna() << std::endl;
+			std::cerr << "Developer error: applyCorrParams: Antenna number " << a << " cannot be gotten even though nAntenna() reports " << V->nAntenna() << std::endl;
 
 			exit(EXIT_FAILURE);
 		}
@@ -40,6 +40,69 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 		else
 		{
 			++a;
+		}
+	}
+
+	// apply source parameters
+	for(unsigned int s = 0; s < V->nSource(); ++s)
+	{
+		const VexSource *S = V->getSource(s);
+		if(!S)
+		{
+			std::cerr << "Developer error: applyCorrParams: Source number " << s << " cannot be gotten even though nSource() reports " << V->nSource() << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+		
+		const SourceSetup *ss = params.getSourceSetup(S->defName);
+		if(ss)
+		{
+			if(ss->pointingCentre.calCode != ' ')
+			{
+				V->setSourceCalCode(S->defName, ss->pointingCentre.calCode);
+			}
+		}
+
+		// FIXME: here put multiphasecenter things, eventually
+
+	}
+
+	// remove scans that are not linked from v2d setups
+	for(unsigned int s = 0; s < V->nScan(); )
+	{
+		const VexScan *S = V->getScan(s);
+		if(!S)
+		{
+			std::cerr << "Developer error: applyCorrParams: Scan number " << s << " cannot be gotten even though nScan() reports " << V->nScan() << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+
+		const VexSource *src = V->getSourceByDefName(S->defName);
+		if(!src)
+		{
+			std::cerr << "Developer error: applyCorrParams: Source " << S->defName << " not found" << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+
+		const std::string &corrSetupName = params.findSetup(S->defName, S->sourceDefName, S->modeDefName);
+
+		if(corrSetupName == "" || corrSetupName == "SKIP")
+		{
+			V->removeScan(S->defName);
+		}
+		else
+		{
+			if(params.getCorrSetup(corrSetupName) == 0)
+			{
+				std::cerr << "Error: Scan=" << S->defName << " correlator setup " << corrSetupName << " not defined!" << std::endl;
+
+				exit(EXIT_FAILURE);
+			}
+
+			V->setScanCorrSetup(S->defName, corrSetupName);
+			++s;
 		}
 	}
 

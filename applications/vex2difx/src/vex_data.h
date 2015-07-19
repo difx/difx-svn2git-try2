@@ -81,8 +81,6 @@ public:
 	void selectTones(const std::string &antName, enum ToneSelection selection, double guardBandMHz);
 	void setClock(const std::string &antName, const VexClock &clock);
 	void setTcalFrequency(const std::string &antName, int tcalFrequency);
-	void setAntennaPosition(const std::string &antName, double X, double Y, double Z);
-	void setAntennaAxisOffset(const std::string &antName, double axisOffset);
 	void addExperEvents(std::list<Event> &events) const;
 	void addClockEvents(std::list<Event> &events) const;
 	void addScanEvents(std::list<Event> &events) const;
@@ -111,6 +109,7 @@ public:
 	const VexSource *getSource(unsigned int num) const;
 	const VexSource *getSourceByDefName(const std::string &defName) const;
 	const VexSource *getSourceBySourceName(const std::string &name) const;
+	void setSourceCalCode(const std::string &name, char calCode);
 
 	unsigned int nScan() const { return scans.size(); }
 	const VexScan *getScan(unsigned int num) const;
@@ -120,6 +119,8 @@ public:
 	void setScanSize(unsigned int num, double size);
 	void getScanList(std::list<std::string> &scans) const;
 	unsigned int nAntennasWithRecordedData(const VexScan &scan) const;
+	bool removeScan(const std::string &name);
+	void setScanCorrSetup(const std::string &name, const std::string &corrSetupName);
 
 	unsigned int nAntenna() const { return antennas.size(); }
 	int getAntennaIdByName(const std::string &antName) const;
@@ -128,6 +129,8 @@ public:
 	const VexAntenna *getAntenna(const std::string &name) const;
 	double getAntennaStartMJD(const std::string &name) const;
 	double getAntennaStopMJD(const std::string &name) const;
+	void setAntennaPosition(const std::string &antName, double X, double Y, double Z);
+	void setAntennaAxisOffset(const std::string &antName, double axisOffset);
 	int getNumAntennaRecChans(const std::string &name) const;
 	bool removeAntenna(const std::string &name);
 

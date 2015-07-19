@@ -2783,9 +2783,21 @@ int main(int argc, char **argv)
 	calculateScanSizes(V, *P);
 	nWarn += applyCorrParams(V, *P);
 	
-	// FIXME: events needs to be defined
 	V->generateEvents(events);
 	V->addBreakEvents(events, P->manualBreaks);
+	// find a function for this
+	for(std::vector<AntennaSetup>::const_iterator as = P->antennaSetups.begin(); as != P->antennaSetups.end(); ++as)
+	{
+		if(as->mjdStart > 0.0)
+		{
+			addEvent(events, as->mjdStart, Event::ANTENNA_START, as->vexName);
+		}
+		if(as->mjdStop > 0.0)
+		{
+			addEvent(events, as->mjdStop, Event::ANTENNA_STOP, as->vexName);
+		}
+	}
+	events.sort();
 
 	// set min and max bandwidths for each setup
 	for(unsigned int s = 0; s < V->nScan(); ++s)

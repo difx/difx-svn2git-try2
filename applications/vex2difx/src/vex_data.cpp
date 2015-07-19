@@ -137,6 +137,17 @@ const VexSource *VexData::getSourceBySourceName(const std::string &name) const
 	return 0;
 }
 
+void VexData::setSourceCalCode(const std::string &name, char calCode)
+{
+	for(std::vector<VexSource>::iterator it = sources.begin(); it != sources.end(); ++it)
+	{
+		if(it->defName == name)
+		{
+			it->calCode = calCode;
+		}
+	}
+}
+
 
 VexScan *VexData::newScan()
 {
@@ -342,6 +353,37 @@ unsigned int VexData::nAntennasWithRecordedData(const VexScan &scan) const
 	}
 
 	return nAnt;
+}
+
+bool VexData::removeScan(const std::string &name)
+{
+	int removed = false;
+
+	for(std::vector<VexScan>::iterator it = scans.begin(); it != scans.end(); )
+	{
+		if(it->defName == name)
+		{
+			it = scans.erase(it);
+			removed = true;
+		}
+		else
+		{
+			++it;
+		}
+	}
+
+	return removed;
+}
+
+void VexData::setScanCorrSetup(const std::string &name, const std::string &corrSetupName)
+{
+	for(std::vector<VexScan>::iterator it = scans.begin(); it != scans.end(); )
+	{
+		if(it->defName == name)
+		{
+			it->corrSetupName = corrSetupName;
+		}
+	}
 }
 
 VexAntenna *VexData::newAntenna()
