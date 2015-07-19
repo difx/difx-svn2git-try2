@@ -780,9 +780,9 @@ void VexData::addClockEvents(std::list<Event> &events) const
 {
 	for(std::vector<VexAntenna>::const_iterator it = antennas.begin(); it != antennas.end(); ++it)
 	{
-		for(std::vector<VexClock>::const_iterator cit = it->clocks.begin(); cit != it->clocks.end(); ++it)
+		for(std::vector<VexClock>::const_iterator cit = it->clocks.begin(); cit != it->clocks.end(); ++cit)
 		{
-			addEvent(events, cit->mjdStart, Event::CLOCK_BREAK, it->name);
+			addEvent(events, cit->mjdStart, Event::CLOCK_BREAK, it->defName);
 		}
 	}
 }
@@ -873,6 +873,137 @@ void VexData::setNetworkParameters(int antId, int streamId, const std::string &n
 void VexData::setFake(int antId)
 {
 	antennas[antId].dataSource = DataSourceFake;
+}
+
+void VexData::setCanonicalVDIF(const std::string &modeName, const std::string &antName)
+{
+	int modeId = getModeIdByDefName(modeName);
+
+	if(modeId >= 0)
+	{
+		VexMode &M = modes[modeId];
+		std::map<std::string,VexSetup>::iterator it = M.setups.find(antName);
+		if(it != M.setups.end())
+		{
+			for(std::vector<VexStream>::iterator sit = it->second.streams.begin(); sit != it->second.streams.end(); ++sit)
+			{
+				if(sit->format == VexStream::FormatVDIF && sit->nThread == 0)
+				{
+					sit->nBit = 2;
+					sit->nThread = sit->nRecordChan;
+					sit->threads.clear();
+					for(int c = 0; c < sit->nRecordChan; ++c)
+					{
+						sit->threads.push_back(c);
+					}
+				}
+			}
+		}
+		else
+		{
+			std::cerr << "Developer error: setCanonicalVDIF being called with antName = " << antName << " which is not found in mode " << modeName << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+	}
+	else
+	{
+		std::cerr << "Developer error: setCanonicalVDIF being called with modeName = " << modeName << " which returned modeId " << modeId << std::endl;
+
+		exit(EXIT_FAILURE);
+	}
+}
+
+void VexData::cloneStreams(const std::string &modeName, const std::string &antName, int copies)
+{
+	int modeId = getModeIdByDefName(modeName);
+
+	if(modeId >= 0)
+	{
+		VexMode &M = modes[modeId];
+		std::map<std::string,VexSetup>::iterator it = M.setups.find(antName);
+		if(it != M.setups.end())
+		{
+			it->second.streams.resize(copies);
+			if(copies > 1)
+			{
+				for(int c = 1; c < copies; ++c)
+				{
+					it->second.streams[c] = it->second.streams[0];
+				}
+			}
+		}
+		else
+		{
+			std::cerr << "Developer error: cloneStreams being called with antName = " << antName << " which is not found in mode " << modeName << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+	}
+	else
+	{
+		std::cerr << "Developer error: cloneStreams being called with modeName = " << modeName << " which returned modeId " << modeId << std::endl;
+
+		exit(EXIT_FAILURE);
+	}
+}
+
+bool VexData::setFormat(const std::string &modeName, const std::string &antName, int dsId, const std::string &formatName)
+{
+	int modeId = getModeIdByDefName(modeName);
+
+	if(modeId >= 0)
+	{
+		VexMode &M = modes[modeId];
+		std::map<std::string,VexSetup>::iterator it = M.setups.find(antName);
+		if(it != M.setups.end())
+		{
+			return it->second.streams[dsId].parseFormatString(formatName);
+		}
+		else
+		{
+			std::cerr << "Developer error: setFormat being called with antName = " << antName << " which is not found in mode " << modeName << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+	}
+	else
+	{
+		std::cerr << "Developer error: setFormat being called with modeName = " << modeName << " which returned modeId " << modeId << std::endl;
+
+		exit(EXIT_FAILURE);
+	}
+}
+
+void VexData::setStreamBands(const std::string &modeName, const std::string &antName, int dsId, int nBand, int startBand)
+{
+	int modeId = getModeIdByDefName(modeName);
+
+	if(modeId >= 0)
+	{
+		VexMode &M = modes[modeId];
+		std::map<std::string,VexSetup>::iterator it = M.setups.find(antName);
+		if(it != M.setups.end())
+		{
+			if(nBand > 0)
+			{
+				it->second.streams[dsId].nRecordChan = nBand;
+			}
+			// FIXME: handle startBand / bandmap
+		}
+		else
+		{
+			std::cerr << "Developer error: setStreamBands being called with antName = " << antName << " which is not found in mode " << modeName << std::endl;
+
+			exit(EXIT_FAILURE);
+		}
+	}
+	else
+	{
+		std::cerr << "Developer error: setStreamBands being called with modeName = " << modeName << " which returned modeId " << modeId << std::endl;
+
+		exit(EXIT_FAILURE);
+	}
 }
 
 std::ostream& operator << (std::ostream &os, const VexData &x)

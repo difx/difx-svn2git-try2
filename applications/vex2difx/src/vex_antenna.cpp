@@ -1,3 +1,4 @@
+#include <cstring>
 #include "vex_antenna.h"
 
 // get the clock epoch as a MJD value (with fractional component), negative 
@@ -82,6 +83,44 @@ void VexAntenna::removeBasebandData(int streamId)
 {
 	removeBasebandDataByStreamId(vsns, streamId);
 	removeBasebandDataByStreamId(files, streamId);
+}
+
+bool isVLBA(const std::string &antName)
+{
+	if(strcasecmp(antName.c_str(), "Br") == 0 ||
+	   strcasecmp(antName.c_str(), "Fd") == 0 ||
+	   strcasecmp(antName.c_str(), "Hn") == 0 ||
+	   strcasecmp(antName.c_str(), "Kp") == 0 ||
+	   strcasecmp(antName.c_str(), "La") == 0 ||
+	   strcasecmp(antName.c_str(), "Mk") == 0 ||
+	   strcasecmp(antName.c_str(), "Nl") == 0 ||
+	   strcasecmp(antName.c_str(), "Ov") == 0 ||
+	   strcasecmp(antName.c_str(), "Pt") == 0 ||
+	   strcasecmp(antName.c_str(), "Sc") == 0)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool usesCanonicalVDIF(const std::string &antName)
+{
+	// Add here any known antennas that use VDIF thread ids that start at 0 for the first record channel and increment by 1 for each additional record channel
+	if(isVLBA(antName) ||
+	   strcasecmp(antName.c_str(), "Gb") == 0 ||
+	   strcasecmp(antName.c_str(), "Eb") == 0 ||
+	   strcasecmp(antName.c_str(), "Ar") == 0 ||
+	   strcasecmp(antName.c_str(), "Y") == 0)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 std::ostream& operator << (std::ostream &os, const VexAntenna &x)

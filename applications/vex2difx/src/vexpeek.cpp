@@ -36,7 +36,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
-#include "vextables.h"
+#include "vex_data.h"
 #include "vexload.h"
 
 const std::string program("vexpeek");
@@ -122,7 +122,7 @@ void antennaSummary(const VexData *V, int doFormat, int doUsage)
 					const VexSetup *S = M->getSetup(it->first);
 					if(S)
 					{
-						af[it->first] = S->formatName;
+						af[it->first] = VexStream::DataFormatNames[S->streams[0].format];
 					}
 				}
 			}

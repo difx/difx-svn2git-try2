@@ -112,6 +112,19 @@ int VexSetup::nRecordChan() const
 	return rc;
 }
 
+bool VexSetup::usesFormat(enum VexStream::DataFormat format) const
+{
+	for(std::vector<VexStream>::const_iterator it = streams.begin(); it != streams.end(); ++it)
+	{
+		if(it->format == format)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 int VexSetup::getBits() const
 {
 	int b1, b2;

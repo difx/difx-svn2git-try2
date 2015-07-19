@@ -19,6 +19,7 @@ public:
 	double dataRateMbps() const;
 	void setPhaseCalInterval(int phaseCalIntervalMHz);
 	void selectTones(enum ToneSelection selection, double guardBandMHz);
+	bool usesFormat(enum VexStream::DataFormat format) const;
 	int nRecordChan() const;
 	int getBits() const;
 	int getMinBits() const;

@@ -838,16 +838,7 @@ static int getModes(VexData *V, Vex *v)
 				{
 					// check if this is a VLBA antenna; these require the comments for proper
 					// observe-time operation, so exit in that case
-					if( strcmp(antName.c_str(), "Sc") == 0 ||
-						strcmp(antName.c_str(), "Hn") == 0 ||
-						strcmp(antName.c_str(), "Nl") == 0 ||
-						strcmp(antName.c_str(), "Fd") == 0 ||
-						strcmp(antName.c_str(), "La") == 0 ||
-						strcmp(antName.c_str(), "Pt") == 0 ||
-						strcmp(antName.c_str(), "Kp") == 0 ||
-						strcmp(antName.c_str(), "Ov") == 0 ||
-						strcmp(antName.c_str(), "Br") == 0 ||
-						strcmp(antName.c_str(), "Mk") == 0 )
+					if(isVLBA(antName))
 					{
 						static bool first = true;
 						if(first)
@@ -889,7 +880,6 @@ static int getModes(VexData *V, Vex *v)
 			{
 				vex_field(T_TRACK_FRAME_FORMAT, p, 1, &link, &name, &value, &units);
 				stream.parseFormatString(value);
-std::cout << "XXX Antenna: " << antName << " format string = " << value << " -> " << VexStream::DataFormatNames[stream.format] << std::endl;
 			}
 			else
 			{
@@ -913,7 +903,6 @@ std::cout << "XXX Antenna: " << antName << " format string = " << value << " -> 
 
 			if(stream.isTrackFormat())
 			{
-std::cout << "XXX FYI: is track format" << std::endl;
 				for(p = get_all_lowl(antName.c_str(), modeDefName, T_FANOUT_DEF, B_TRACKS, v); p; p = get_all_lowl_next())
 				{
 					std::string chanName;
@@ -967,7 +956,6 @@ std::cout << "XXX FYI: is track format" << std::endl;
 			}
 			else if(stream.isLBAFormat())
 			{
-std::cout << "XXX FYI: getting LBA" << std::endl;
 				for(p = get_all_lowl(antName.c_str(), modeDefName, T_FANOUT_DEF, B_TRACKS, v); p; p = get_all_lowl_next())
 				{
 					std::string chanName;
@@ -1007,7 +995,6 @@ std::cout << "XXX FYI: getting LBA" << std::endl;
 			p = get_all_lowl(antName.c_str(), modeDefName, T_S2_RECORDING_MODE, B_TRACKS, v);
 			if(p)
 			{
-std::cout << "XXX FYI: getting S2" << std::endl;
 				vex_field(T_S2_RECORDING_MODE, p, 1, &link, &name, &value, &units);
 				std::string s2mode(value);
 				if(s2mode != "none")

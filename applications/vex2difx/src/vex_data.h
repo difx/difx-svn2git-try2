@@ -94,6 +94,10 @@ public:
 	void setModule(int antId, int streamId, const std::string &vsn);
 	void setNetworkParameters(int antId, int streamId, const std::string &networkPort, int windowSize);
 	void setFake(int antId);
+	void setCanonicalVDIF(const std::string &modeName, const std::string &antName);
+	void cloneStreams(const std::string &modeName, const std::string &antName, int copies);
+	bool setFormat(const std::string &modeName, const std::string &antName, int dsId, const std::string &formatName);
+	void setStreamBands(const std::string &modeName, const std::string &antName, int dsId, int nBand, int startBand);
 
 	double obsStart() const { return exper.mjdStart; }
 	double obsStop() const { return exper.mjdStop; }

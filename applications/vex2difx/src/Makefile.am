@@ -1,8 +1,5 @@
 bin_PROGRAMS = \
-	vex2difx \
-	vexpeek
-
-noinst_PROGRAMS = \
+	vexpeek \
 	testmerge
 
 LDADD = \
@@ -41,6 +38,8 @@ VEX_DATAMODEL_SRC = \
 
 vex2difx_SOURCES = \
 	$(VEX_DATAMODEL_SRC) \
+	applycorrparams.cpp \
+	applycorrparams.h \
 	event.cpp \
 	event.h \
 	vexload.cpp \
@@ -73,6 +72,8 @@ vex2difx_SOURCES = \
 
 testmerge_SOURCES = \
 	$(VEX_DATAMODEL_SRC) \
+	applycorrparams.cpp \
+	applycorrparams.h \
 	event.cpp \
 	event.h \
 	vexload.cpp \

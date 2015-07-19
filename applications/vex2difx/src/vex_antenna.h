@@ -41,6 +41,10 @@ public:
 	std::vector<VexNetworkData> ports;	// indexed by stream number
 };
 
+bool isVLBA(const std::string &antName);
+
+bool usesCanonicalVDIF(const std::string &antName);
+
 std::ostream& operator << (std::ostream &os, const VexAntenna &x);
 
 #endif
