@@ -50,6 +50,7 @@
 #include "timeutils.h"
 #include "sanitycheck.h"
 #include "applycorrparams.h"
+#include "shelves.h"
 #include "../config.h"
 
 using namespace std;
@@ -189,7 +190,7 @@ static DifxJob *makeDifxJob(string directory, const Job& J, int nAntenna, const 
 	return job;
 }
 
-static DifxAntenna *makeDifxAntennas(const Job& J, const VexData *V, const CorrParams *P, int *n)
+static DifxAntenna *makeDifxAntennas(const Job &J, const VexData *V, const CorrParams *P, int *n)
 {
 	DifxAntenna *A;
 	double mjd;
@@ -263,7 +264,7 @@ static DifxAntenna *makeDifxAntennas(const Job& J, const VexData *V, const CorrP
 	return A;
 }
 
-static DifxDatastream *makeDifxDatastreams(const Job& J, const VexData *V, const CorrParams *P, int nSet)
+static DifxDatastream *makeDifxDatastreams(const Job& J, const VexData *V, const CorrParams *P, int nSet, DifxAntenna *difxAntennas, const Shelves &shelves)
 {
 	DifxDatastream *datastreams;
 	int nDatastream;
@@ -293,6 +294,7 @@ static DifxDatastream *makeDifxDatastreams(const Job& J, const VexData *V, const
 		{
 			int nd;
 			const VexAntenna *ant = V->getAntenna(*a);
+			std::string shelf;
 
 			std::map<std::string,VexSetup>::const_iterator sit = M->setups.find(*a);
 			if(sit == M->setups.end())
@@ -305,7 +307,7 @@ static DifxDatastream *makeDifxDatastreams(const Job& J, const VexData *V, const
 
 			nd = setup.nStream();
 
-// FIXME: read data from VexDatastream objects from here on
+			shelf.clear();
 			for(int d = 0; d < nd; ++d)
 			{
 				DifxDatastream *dd = datastreams + di;
@@ -374,6 +376,11 @@ static DifxDatastream *makeDifxDatastreams(const Job& J, const VexData *V, const
 
 							exit(EXIT_FAILURE);
 						}
+						if(!shelf.empty())
+						{
+							shelf += ",";
+						}
+						shelf += shelves.getShelf(dd->file[0]);
 					}
 					break;
 				case DataSourceFake:
@@ -386,6 +393,8 @@ static DifxDatastream *makeDifxDatastreams(const Job& J, const VexData *V, const
 
 				++di;
 			}
+
+			snprintf(difxAntennas[antennaId].shelf, DIFXIO_SHELF_LENGTH, "%s", shelf.c_str());
 
 			++antennaId;
 		}
@@ -1447,7 +1456,7 @@ static bool matchingFreq(const ZoomFreq &zoomfreq, const DifxDatastream *dd, int
 	return true;
 }
 
-static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const std::list<Event> &events, int os, int verbose, ofstream *of, int nDigit, char ext, int strict)
+static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const std::list<Event> &events, const Shelves &shelves, int os, int verbose, ofstream *of, int nDigit, char ext, int strict)
 {
 	DifxInput *D;
 	DifxScan *scan;
@@ -1763,7 +1772,9 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 	}
 
 	// configure datastreams
-	D->datastream = makeDifxDatastreams(J, V, P, D->nConfig);
+	
+	// Shelves are a bit awkward...  They are currently tied to an antenna, but really they belong to a datastream.
+	D->datastream = makeDifxDatastreams(J, V, P, D->nConfig, D->antenna, shelves);
 	D->nDatastream = 0;
 	for(int configId = 0; configId < D->nConfig; ++configId)
 	{
@@ -2451,8 +2462,9 @@ int main(int argc, char **argv)
 {
 	CorrParams *P;
 	VexData *V;
-	const VexScan * S;
-	const SourceSetup * sourceSetup;
+	Shelves shelves;
+	const VexScan *S;
+	const SourceSetup *sourceSetup;
 	list<Event> events;
 	vector<Job> J;
 	string shelfFile;
@@ -2601,7 +2613,12 @@ int main(int argc, char **argv)
 
 	shelfFile = P->vexFile.substr(0, P->vexFile.find_last_of('.'));
 	shelfFile += string(".shelf");
-	nWarn += P->loadShelves(shelfFile);
+	nWarn += shelves.load(shelfFile);
+
+	if(verbose > 1 && !shelves.empty())
+	{
+		std::cout << shelves << std::endl;
+	}
 
 	// delete "no data" file before starting
 	missingDataFile = v2dFile.substr(0, v2dFile.find_last_of('.'));
@@ -2782,12 +2799,17 @@ int main(int argc, char **argv)
 		}
 	}
 
-	makeJobs(J, V, P, events, removedAntennas, verbose);
-
 	if(verbose > 1)
 	{
 		cout << *V << endl;
 		cout << *P << endl;
+	}
+
+	makeJobs(J, V, P, events, removedAntennas, verbose);
+
+	if(verbose > 2)
+	{
+		printEventList(events);
 	}
 
 	if(deleteOld)
@@ -2863,7 +2885,7 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			nJob += writeJob(*j, V, P, events, -1, verbose, &of, nDigit, 0, strict);
+			nJob += writeJob(*j, V, P, events, shelves, -1, verbose, &of, nDigit, 0, strict);
 		}
 	}
 	of.close();

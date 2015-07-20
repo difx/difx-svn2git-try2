@@ -4,23 +4,33 @@ Goal: all data from which difx schedules are derived come from VexTables
 Exceptions: zoom bands, machines
 
 
-Don't forget to:
+Urgent:
 
 * revisit clocks (especially poly model)
 
-* VexData no longer prints events.  Do this elsewhere.
-
 * VDIF: nthread = 1 or set by ::::'s ;  nChanPerThread = nRecordChan / nThread
 
-* datasource set for first time in apply...
+* The removedAntennas list needs to be restored in makeJobs
+
+* calculateJobSize needs help
+
+Eventually:
 
 * RECORD flag... how to handle?
+  - Handled OK for now.  Eventually maybe RECORD flags should be done per datastream???
 
-* zoom bands are property of setup
+* zoom bands are property of corrparams
+  - OK for now.  Eventually migrate to VexSetup
 
 * name mappings (sources, antennas, ...) as specified in v2d file end up in a renaming map
 
-new equivalent for Scan.corrSetup
+To test:
+
+* shelves
+* clock offsets
+* LO offsets
+* polarization swap
+* various ways to specify VDIF format
 
 
 Operate rules from v2d onto vex structure
@@ -28,16 +38,4 @@ Operate rules from v2d onto vex structure
  - sources and the scans they are in?
  - explicit scan names?
 
-Datastream linked from Setup, not antenna
 
-Data linked from Antenna (includes VSN)
-
-
-figure out what do do with shelf
-
-
-General program flow:
-
-1. load/parse v2d file
-
-2. load/parse 

@@ -52,6 +52,8 @@ double getAntennaStopMJD(const std::list<Event> &events, const std::string &name
 
 void getEventListTimeRange(const std::list<Event> &events, Interval &eventTimeRange);
 
+void printEventList(const std::list<Event> &events);
+
 bool operator < (const Event &a, const Event &b);
 
 std::ostream& operator << (std::ostream &os, const Event &x);

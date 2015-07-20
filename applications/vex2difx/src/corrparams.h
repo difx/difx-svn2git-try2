@@ -305,9 +305,6 @@ public:
 	CorrParams(const std::string &fileName);
 	int checkSetupValidity();
 
-	int loadShelves(const std::string &fileName);
-	const char *getShelf(const std::string &vsn) const;
-
 	int setkv(const std::string &key, const std::string &value);
 	int load(const std::string &fileName);
 	void defaults();
@@ -399,7 +396,6 @@ public:
 private:
 	void addAntenna(const std::string &antName);
 	void addBaseline(const std::string &baselineName);
-	std::map<std::string,std::string> shelves;
 };
 
 std::ostream& operator << (std::ostream &os, const DatastreamSetup &x);

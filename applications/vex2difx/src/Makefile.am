@@ -65,6 +65,8 @@ vex2difx_SOURCES = \
 	parserhelp.h \
 	sanitycheck.cpp \
 	sanitycheck.h \
+	shelves.cpp \
+	shelves.h \
 	timeutils.cpp \
 	timeutils.h \
 	util.cpp \

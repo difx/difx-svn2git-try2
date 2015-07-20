@@ -117,6 +117,15 @@ void getEventListTimeRange(const std::list<Event> &events, Interval &eventTimeRa
 	}
 }
 
+void printEventList(const std::list<Event> &events)
+{
+	std::cout << "Event list:" << std::endl;
+	for(std::list<Event>::const_iterator it = events.begin(); it != events.end(); ++it)
+	{
+		std::cout << "  " << *it << std::endl;
+	}
+}
+
 std::ostream& operator << (std::ostream &os, const Event &x)
 {
 	int d, s;
