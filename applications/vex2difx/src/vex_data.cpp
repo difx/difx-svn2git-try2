@@ -377,7 +377,7 @@ bool VexData::removeScan(const std::string &name)
 
 void VexData::setScanCorrSetup(const std::string &name, const std::string &corrSetupName)
 {
-	for(std::vector<VexScan>::iterator it = scans.begin(); it != scans.end(); )
+	for(std::vector<VexScan>::iterator it = scans.begin(); it != scans.end(); ++it)
 	{
 		if(it->defName == name)
 		{
@@ -934,7 +934,7 @@ void VexData::setCanonicalVDIF(const std::string &modeName, const std::string &a
 					sit->nBit = 2;
 					sit->nThread = sit->nRecordChan;
 					sit->threads.clear();
-					for(int c = 0; c < sit->nRecordChan; ++c)
+					for(unsigned int c = 0; c < sit->nRecordChan; ++c)
 					{
 						sit->threads.push_back(c);
 					}

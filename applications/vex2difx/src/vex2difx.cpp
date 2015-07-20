@@ -62,11 +62,6 @@ const string author("Walter Brisken/Adam Deller");
 
 const int defaultMaxNSBetweenACAvg = 2000000;	// 2ms, good default for use with transient detection
 
-static int calcDecimation(int overSamp)
-{
-	return 1;
-}
-
 static int calculateWorstcaseGuardNS(double sampleRate, int subintNS, int nBit, int nSubband)
 {
 	double sampleTimeNS = 1.0e9/sampleRate;
@@ -367,9 +362,9 @@ static DifxDatastream *makeDifxDatastreams(const Job& J, const VexData *V, const
 								++count;
 							}
 						}
-						if(count > 0)
+						if(count > 1)
 						{
-							std::cerr << "Developer error: got into job creation and antenna " << *a << " datastream " << d << " had more than one module valid in time range of job: " << J << std::endl;
+							std::cerr << "Developer error: got into job creation and antenna " << *a << " datastream " << d << " had " << count << " > 1module valid in time range of job: " << J << std::endl;
 
 							exit(EXIT_FAILURE);
 						}
@@ -576,6 +571,7 @@ static void populateFreqTable(DifxInput *D, const vector<freq>& freqs, const vec
 		df->nChan = static_cast<int>(freqs[f].bw/freqs[f].inputSpecRes + 0.5);	// df->nChan is the number of pre-averaged channels
 		df->specAvg = freqs[f].specAvg();
 		df->decimation = freqs[f].decimation;
+		df->overSamp = 1;	// FIXME: eventually provide this again.
 
 		chanBW = freqs[f].outputSpecRes*1e-6;
 		if(chanBW > 0.51 && firstChanBWWarning)
@@ -1461,7 +1457,6 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 	const PhaseCentre *phaseCentre;
 	const PhaseCentre * pointingCentre;
 	const AntennaSetup *antennaSetup;
-	const VexSetup* setup;
 	const VexScan *S;
 	set<string> configSet;
 	set<string> spacecraftSet;
@@ -1786,7 +1781,7 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 		}
 
 		// Currently only this is supported
-		decimation = calcDecimation(1);
+		decimation = 1;
 
 		corrSetup = P->getCorrSetup(configs[configId].second);
 		if(corrSetup == 0)
@@ -2439,9 +2434,16 @@ static void calculateScanSizes(VexData *V, const CorrParams &P)
 		scan = V->getScan(s);
 		mode = V->getModeByDefName(scan->modeDefName);
 		setup = P.getCorrSetup(scan->corrSetupName);
-		nSubband = mode->subbands.size();
-		nBaseline = scan->stations.size()*(scan->stations.size()+1)/2;
-		V->setScanSize(s, scan->duration()*86400*nBaseline*nSubband*setup->bytesPerSecPerBLPerBand());
+		if(!setup)
+		{
+			cerr << "Warning: calculateScanSizes: CorrSetup for scan " << scan->corrSetupName << " not found" << endl;
+		}
+		else
+		{
+			nSubband = mode->subbands.size();
+			nBaseline = scan->stations.size()*(scan->stations.size()+1)/2;
+			V->setScanSize(s, scan->duration()*86400*nBaseline*nSubband*setup->bytesPerSecPerBLPerBand());
+		}
 	}
 }
 

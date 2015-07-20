@@ -75,10 +75,10 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 			exit(EXIT_FAILURE);
 		}
 
-		const VexSource *src = V->getSourceByDefName(S->defName);
+		const VexSource *src = V->getSourceByDefName(S->sourceDefName);
 		if(!src)
 		{
-			std::cerr << "Developer error: applyCorrParams: Source " << S->defName << " not found" << std::endl;
+			std::cerr << "Developer error: applyCorrParams: Scan " << S->defName << " (current index is " << s << ") not found" << std::endl;
 
 			exit(EXIT_FAILURE);
 		}
