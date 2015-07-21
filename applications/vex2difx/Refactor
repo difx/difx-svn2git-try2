@@ -6,13 +6,7 @@ Exceptions: zoom bands, machines
 
 Urgent:
 
-* revisit clocks (especially poly model)
-
-* VDIF: nthread = 1 or set by ::::'s ;  nChanPerThread = nRecordChan / nThread
-
 * The removedAntennas list needs to be restored in makeJobs
-
-* calculateJobSize needs help
 
 Eventually:
 
@@ -24,6 +18,11 @@ Eventually:
 
 * name mappings (sources, antennas, ...) as specified in v2d file end up in a renaming map
 
+* move all relevant functionality into applyCorrParams()
+  - clocks
+  - zoom
+  - correlator parameters
+
 To test:
 
 * shelves
@@ -31,7 +30,7 @@ To test:
 * LO offsets
 * polarization swap
 * various ways to specify VDIF format
-
+* test multi-thread multi-channel VDIF simply by specifying fewer threads than record chans
 
 Operate rules from v2d onto vex structure
  - setups/modes and scans using them

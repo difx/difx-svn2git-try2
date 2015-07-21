@@ -375,17 +375,6 @@ bool VexData::removeScan(const std::string &name)
 	return removed;
 }
 
-void VexData::setScanCorrSetup(const std::string &name, const std::string &corrSetupName)
-{
-	for(std::vector<VexScan>::iterator it = scans.begin(); it != scans.end(); ++it)
-	{
-		if(it->defName == name)
-		{
-			it->corrSetupName = corrSetupName;
-		}
-	}
-}
-
 VexAntenna *VexData::newAntenna()
 {
 	antennas.push_back(VexAntenna());
@@ -639,23 +628,6 @@ bool VexData::usesMode(const std::string &modeDefName) const
 	return false;
 }
 
-/*
-unsigned int VexData::nVSN(const std::string &antName) const
-{
-	const VexAntenna *A;
-
-	A = getAntenna(antName);
-	if(!A)
-	{
-		return 0;
-	}
-	else
-	{
-		return A->vsns.size();
-	}
-}
-*/
-
 void VexData::addVSN(const std::string &antName, unsigned int datastreamId, const std::string &vsn, const Interval &timeRange)
 {
 	for(std::vector<VexAntenna>::iterator it = antennas.begin(); it != antennas.end(); ++it)
@@ -679,39 +651,6 @@ void VexData::removeBasebandData(const std::string &antName, int datastreamId)
 		}
 	}
 }
-
-/*
-// Ill-formed: need datastream
-std::string VexData::getVSN(const std::string &antName, const Interval &timeRange) const
-{
-	const VexAntenna *A;
-	double best = 0.0;
-	std::string bestVSN("None");
-
-	A = getAntenna(antName);
-	if(!A)
-	{
-		return bestVSN;
-	}
-
-	if(A->dataSource != DataSourceModule)
-	{
-		return bestVSN;
-	}
-
-	for(std::vector<VexBasebandData>::const_iterator v = A->vsns.begin(); v != A->vsns.end(); ++v)
-	{
-		double timeOverlap = timeRange.overlap(*v);
-		if(timeOverlap > best)
-		{
-			best = timeOverlap;
-			bestVSN = v->filename;
-		}
-	}
-
-	return bestVSN;
-}
-*/
 
 void VexData::setExper(const std::string &name, const Interval &experTimeRange)
 {

@@ -98,7 +98,6 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 				exit(EXIT_FAILURE);
 			}
 
-			V->setScanCorrSetup(S->defName, corrSetupName);
 			++s;
 		}
 	}

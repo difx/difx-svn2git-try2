@@ -91,12 +91,14 @@ static void genJobGroups(std::vector<JobGroup> &JGs, const VexData *V, const Cor
 		scans.pop_front();
 
 		const VexScan *scan1 = V->getScanByDefName(JG.scans.back());
-		const CorrSetup *corrSetup1 = P->getCorrSetup(scan1->corrSetupName);
+		const std::string &corrSetupName1 = P->findSetup(scan1->defName, scan1->sourceDefName, scan1->modeDefName);
+		const CorrSetup *corrSetup1 = P->getCorrSetup(corrSetupName1);
 
 		for(std::list<std::string>::iterator it = scans.begin(); it != scans.end();)
 		{
 			const VexScan *scan2 = V->getScanByDefName(*it);
-			const CorrSetup *corrSetup2 = P->getCorrSetup(scan2->corrSetupName);
+			const std::string &corrSetupName2 = P->findSetup(scan2->defName, scan2->sourceDefName, scan2->modeDefName);
+			const CorrSetup *corrSetup2 = P->getCorrSetup(corrSetupName2);
 
 			// Skip any scans that don't overlap with .v2d mjdStart and mjdStop
 			if(P->overlap(*scan2) <= 0.0)

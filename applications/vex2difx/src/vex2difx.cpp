@@ -237,7 +237,8 @@ static DifxAntenna *makeDifxAntennas(const Job &J, const VexData *V, const CorrP
 			{
 				snprintf(A[i].name, DIFXIO_NAME_LENGTH, "%s", antSetup->difxName.c_str());
 			}
-// FIXME: below here should be done in the applyCorrParams function
+
+			// FIXME: below here should probably be done in the applyCorrParams function
 			A[i].clockcoeff[0] += antSetup->deltaClock*1.0e6;	// convert to us from sec
 			A[i].clockcoeff[1] += antSetup->deltaClockRate*1.0e6;	// convert to us/sec from sec/sec
 			A[i].clockorder  = antSetup->clockorder;
@@ -257,8 +258,6 @@ static DifxAntenna *makeDifxAntennas(const Job &J, const VexData *V, const CorrP
 				cerr << "Crazy clock order " << A[i].clockorder << "!" << endl;
 			}
 		}
-
-		//snprintf(A[i].shelf, DIFXIO_SHELF_LENGTH, "%s", P->getShelf(a->second));
 	}
 
 	return A;
@@ -1119,10 +1118,11 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 	int64_t tintNS;
 	int nDatastream;
 
-	corrSetup = P->getCorrSetup(S->corrSetupName);
+	const std::string &corrSetupName = P->findSetup(S->defName, S->sourceDefName, S->modeDefName);
+	corrSetup = P->getCorrSetup(corrSetupName);
 	if(corrSetup == 0)
 	{
-		cerr << "Error: correlator setup[" << S->corrSetupName << "] == 0" << endl;
+		cerr << "Error: correlator setup[" << corrSetupName << "] == 0" << endl;
 		
 		exit(EXIT_FAILURE);
 	}
@@ -1139,7 +1139,7 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 	for(int i = 0; i < nConfig; ++i)
 	{
 		if(configs[i].first  == S->modeDefName &&
-		   configs[i].second == S->corrSetupName)
+		   configs[i].second == corrSetupName)
 		{
 			return i;
 		}
@@ -1161,14 +1161,14 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 		}
 	}
 
-	configName = S->modeDefName + string("_") + S->corrSetupName;
+	configName = S->modeDefName + string("_") + corrSetupName;
 
-	configs.push_back(pair<string,string>(S->modeDefName, S->corrSetupName));
+	configs.push_back(pair<string,string>(S->modeDefName, corrSetupName));
 	config = D->config + nConfig;
 	snprintf(config->name, DIFXIO_NAME_LENGTH, "%s", configName.c_str());
 	for(int i = 0; i < D->nRule; ++i)
 	{
-		if(S->corrSetupName == D->rule[i].configName)
+		if(corrSetupName == D->rule[i].configName)
 		{
 			snprintf(D->rule[i].configName, DIFXIO_NAME_LENGTH, "%s", configName.c_str());
 		}
@@ -1460,7 +1460,6 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 {
 	DifxInput *D;
 	DifxScan *scan;
-	string corrSetupName;
 	const CorrSetup *corrSetup;
 	const SourceSetup *sourceSetup;
 	const PhaseCentre *phaseCentre;
@@ -1502,7 +1501,7 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 
 		exit(EXIT_FAILURE);
 	}
-	corrSetupName = S->corrSetupName;
+	const std::string &corrSetupName = P->findSetup(S->defName, S->sourceDefName, S->modeDefName);
 	corrSetup = P->getCorrSetup(corrSetupName);
 	if(!corrSetup)
 	{
@@ -1523,7 +1522,7 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 
 			exit(EXIT_FAILURE);
 		}
-		configName = S->modeDefName + string("_") + S->corrSetupName;
+		configName = S->modeDefName + string("_") + corrSetupName;
 		configSet.insert(configName);
 	}
 
@@ -1584,7 +1583,7 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 		Interval scanInterval(*S);
 		scanInterval.logicalAnd(J);
 
-		corrSetup = P->getCorrSetup(S->corrSetupName);
+		corrSetup = P->getCorrSetup(corrSetupName);
 		sourceSetup = P->getSourceSetup(src->sourceNames);
 		if(!sourceSetup)
 		{
@@ -2444,10 +2443,11 @@ static void calculateScanSizes(VexData *V, const CorrParams &P)
 		
 		scan = V->getScan(s);
 		mode = V->getModeByDefName(scan->modeDefName);
-		setup = P.getCorrSetup(scan->corrSetupName);
+		const std::string &corrSetupName = P.findSetup(scan->defName, scan->sourceDefName, scan->modeDefName);
+		setup = P.getCorrSetup(corrSetupName);
 		if(!setup)
 		{
-			cerr << "Warning: calculateScanSizes: CorrSetup for scan " << scan->corrSetupName << " not found" << endl;
+			cerr << "Warning: calculateScanSizes: CorrSetup for scan " << corrSetupName << " not found" << endl;
 		}
 		else
 		{
@@ -2658,7 +2658,8 @@ int main(int argc, char **argv)
 	for(unsigned int s = 0; s < V->nScan(); ++s)
 	{
 		const VexScan *scan = V->getScan(s);
-		CorrSetup *corrSetup = P->getNonConstCorrSetup(scan->corrSetupName);
+		const std::string &corrSetupName = P->findSetup(scan->defName, scan->sourceDefName, scan->modeDefName);
+		CorrSetup *corrSetup = P->getNonConstCorrSetup(corrSetupName);
 		const VexMode *mode = V->getModeByDefName(scan->modeDefName);
 		for(map<string,VexSetup>::const_iterator sp = mode->setups.begin(); sp != mode->setups.end(); ++sp)
 		{

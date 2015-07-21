@@ -120,7 +120,6 @@ public:
 	void getScanList(std::list<std::string> &scans) const;
 	unsigned int nAntennasWithRecordedData(const VexScan &scan) const;
 	bool removeScan(const std::string &name);
-	void setScanCorrSetup(const std::string &name, const std::string &corrSetupName);
 
 	unsigned int nAntenna() const { return antennas.size(); }
 	int getAntennaIdByName(const std::string &antName) const;
@@ -148,11 +147,9 @@ public:
 	bool usesAntenna(const std::string &antennaName) const;
 	bool usesMode(const std::string &modeDefName) const;
 
-//	unsigned int nVSN(const std::string &antName) const;
 	void addVSN(const std::string &antName, unsigned int datastreamId, const std::string &vsn, const Interval &timeRange);
 	// If datastreamId < 0, remove data from all associated datastreams
 	void removeBasebandData(const std::string &antName, int datastreamId);
-//	std::string getVSN(const std::string &antName, const Interval &timeRange) const;
 
 	const VexExper *getExper() const { return &exper; }
 	void setExper(const std::string &name, const Interval &experTimeRange);

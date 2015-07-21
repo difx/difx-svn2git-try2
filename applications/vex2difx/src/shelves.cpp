@@ -10,6 +10,7 @@ int Shelves::load(const std::string &fileName)
 {
 	char s[1024], a[32], v[32], ms[32];
 	std::ifstream is;
+	int nWarn = 0;
 
 	is.open(fileName.c_str());
 	if(is.fail())
@@ -40,15 +41,17 @@ int Shelves::load(const std::string &fileName)
 
 		if(sscanf(s, "%31s%31s%31s", a, v, ms) != 3)
 		{
-			std::cerr << "Error: line " << lineNum << " of " << fileName << " not parsable." << std::endl;
+			std::cerr << "Warning: line " << lineNum << " of " << fileName << " not parsable." << std::endl;
 
-			exit(EXIT_FAILURE);
+			++nWarn;
 		}
 
 		shelfMap[v] = ms;
 	}
 
 	is.close();
+
+	return nWarn;
 }
 
 const std::string &Shelves::getShelf(const std::string &vsn) const

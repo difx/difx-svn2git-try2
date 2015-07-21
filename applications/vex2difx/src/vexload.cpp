@@ -667,29 +667,6 @@ static int getScans(VexData *V, Vex *v)
 			exit(EXIT_FAILURE);
 		}
 
-
-/* FIXME
-
-This functionality needs to be put in somewhere...
-
-		std::string corrSetupName = params.findSetup(scanDefName, sourceDefName, modeDefName);
-
-		if(corrSetupName == "" || corrSetupName == "SKIP")
-		{
-			continue;
-		}
-
-		if(params.getCorrSetup(corrSetupName) == 0)
-		{
-			std::cerr << "Error: Scan=" << scanDefName << " correlator setup " << corrSetupName << " not defined!" << std::endl;
-
-			exit(EXIT_FAILURE);
-		}
-
-And then this:
-		S->corrSetupName = corrSetupName;
-*/
-
 		// Make scan
 		S = V->newScan();
 		S->setTimeRange(Interval(startScan, stopScan));
