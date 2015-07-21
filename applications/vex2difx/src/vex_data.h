@@ -88,10 +88,10 @@ public:
 	void addBreakEvents(std::list<Event> &events, const std::vector<double> &breaks) const;
 	void addLeapSecondEvents(std::list<Event> &events) const;
 	void generateEvents(std::list<Event> &events) const;
-	void setFiles(int antId, int streamId, const std::vector<VexBasebandData> &files);
-	void setModule(int antId, int streamId, const std::string &vsn);
-	void setNetworkParameters(int antId, int streamId, const std::string &networkPort, int windowSize);
-	void setFake(int antId);
+	void setFiles(unsigned int antId, unsigned int streamId, const std::vector<VexBasebandData> &files);
+	void setModule(unsigned int antId, unsigned int streamId, const std::string &vsn);
+	void setNetworkParameters(unsigned int antId, unsigned int streamId, const std::string &networkPort, int windowSize);
+	void setFake(unsigned int antId);
 	void setCanonicalVDIF(const std::string &modeName, const std::string &antName);
 	void cloneStreams(const std::string &modeName, const std::string &antName, int copies);
 	bool setFormat(const std::string &modeName, const std::string &antName, int dsId, const std::string &formatName);

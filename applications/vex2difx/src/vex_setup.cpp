@@ -76,7 +76,7 @@ void VexSetup::setPhaseCalInterval(int phaseCalIntervalMHz)
 		}
 		else
 		{
-			for(std::vector<int>::iterator tit = it->tones.begin(); tit != it->tones.end(); )
+			for(std::vector<unsigned int>::iterator tit = it->tones.begin(); tit != it->tones.end(); )
 			{
 				if(*tit % phaseCalIntervalMHz != 0)
 				{
@@ -125,9 +125,9 @@ bool VexSetup::usesFormat(enum VexStream::DataFormat format) const
 	return false;
 }
 
-int VexSetup::getBits() const
+unsigned int VexSetup::getBits() const
 {
-	int b1, b2;
+	unsigned int b1, b2;
 	bool first = true;
 
 	b1 = getMinBits();
@@ -145,9 +145,9 @@ int VexSetup::getBits() const
 	return b2;
 }
 
-int VexSetup::getMinBits() const
+unsigned int VexSetup::getMinBits() const
 {
-	int nBit = 0;
+	unsigned int nBit = 0;
 
 	for(std::vector<VexStream>::const_iterator it = streams.begin(); it != streams.end(); ++it)
 	{
@@ -164,9 +164,9 @@ int VexSetup::getMinBits() const
 	return nBit;
 }
 
-int VexSetup::getMaxBits() const
+unsigned int VexSetup::getMaxBits() const
 {
-	int nBit = 0;
+	unsigned int nBit = 0;
 
 	for(std::vector<VexStream>::const_iterator it = streams.begin(); it != streams.end(); ++it)
 	{

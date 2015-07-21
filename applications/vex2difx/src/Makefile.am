@@ -1,7 +1,6 @@
 bin_PROGRAMS = \
 	vexpeek \
-	vex2difx \
-	testmerge
+	vex2difx
 
 LDADD = \
 	$(top_builddir)/vex/libvex.la
@@ -73,34 +72,13 @@ vex2difx_SOURCES = \
 	util.h \
 	vex2difx.cpp
 
-testmerge_SOURCES = \
-	$(VEX_DATAMODEL_SRC) \
-	applycorrparams.cpp \
-	applycorrparams.h \
-	event.cpp \
-	event.h \
-	vexload.cpp \
-	vexload.h \
-	corrparams.cpp \
-	corrparams.h \
-	interval.cpp \
-	interval.h \
-	mediachange.cpp \
-	mediachange.h \
-	parserhelp.cpp \
-	parserhelp.h \
-	timeutils.cpp \
-	timeutils.h \
-	util.cpp \
-	util.h \
-	testmerge.cpp
 
 # eventually remove event.* from below:
 
 vexpeek_SOURCES = \
+	$(VEX_DATAMODEL_SRC) \
 	event.cpp \
 	event.h \
-	$(VEX_DATAMODEL_SRC) \
 	vexload.cpp \
 	vexload.h \
 	timeutils.h \

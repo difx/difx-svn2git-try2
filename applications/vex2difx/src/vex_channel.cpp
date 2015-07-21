@@ -4,7 +4,7 @@
 void VexChannel::selectTones(int toneIntervalMHz, enum ToneSelection selection, double guardBandMHz)
 {
 	double epsilonHz = 1.0;
-	int tonesInBand;
+	unsigned int tonesInBand;
 	int firstToneMHz;
 
 	if(toneIntervalMHz <= 0)
@@ -19,20 +19,20 @@ void VexChannel::selectTones(int toneIntervalMHz, enum ToneSelection selection, 
 
 	if(bbcSideBand == 'U')
 	{
-		int m = static_cast<int>( (bbcFreq + epsilonHz)*1.0e-6/toneIntervalMHz );
+		unsigned int m = static_cast<int>( (bbcFreq + epsilonHz)*1.0e-6/toneIntervalMHz );
 		firstToneMHz = (m+1)*toneIntervalMHz;
 		tonesInBand = static_cast<int>((bbcFreq + bbcBandwidth)*1.0e-6 - firstToneMHz)/toneIntervalMHz + 1;
 	}
 	else
 	{
-		int m = static_cast<int>( (bbcFreq - epsilonHz)*1.0e-6/toneIntervalMHz );
+		unsigned int m = static_cast<int>( (bbcFreq - epsilonHz)*1.0e-6/toneIntervalMHz );
 		firstToneMHz = m*toneIntervalMHz;
 		tonesInBand = static_cast<int>(firstToneMHz - (bbcFreq - bbcBandwidth)*1.0e-6)/toneIntervalMHz + 1;
 	}
 
 	if(selection == ToneSelectionVex)
 	{
-		std::vector<int>::iterator it;
+		std::vector<unsigned int>::iterator it;
 
 		// Here what we do is turn negative tone indices (i.e., counting from end of band) to positive ones
 		for(it = tones.begin(); it != tones.end(); ++it)
@@ -68,7 +68,7 @@ void VexChannel::selectTones(int toneIntervalMHz, enum ToneSelection selection, 
 		}
 		break;
 	case ToneSelectionAll:
-		for(int i = 0; i < tonesInBand; ++i)
+		for(unsigned int i = 0; i < tonesInBand; ++i)
 		{
 			tones.push_back(i);
 		}
@@ -85,7 +85,7 @@ void VexChannel::selectTones(int toneIntervalMHz, enum ToneSelection selection, 
 		}
 		else if(tonesInBand > 2)
 		{
-			for(int i = 0; i < tonesInBand; ++i)
+			for(unsigned int i = 0; i < tonesInBand; ++i)
 			{
 				if(bbcSideBand == 'U')
 				{
@@ -127,7 +127,7 @@ void VexChannel::selectTones(int toneIntervalMHz, enum ToneSelection selection, 
 		}
 		break;
 	case ToneSelectionMost:
-		for(int i = 0; i < tonesInBand; ++i)
+		for(unsigned int i = 0; i < tonesInBand; ++i)
 		{
 			if(bbcSideBand == 'U')
 			{
@@ -228,7 +228,7 @@ bool operator <(const VexChannel &c1, const VexChannel &c2)
 std::ostream& operator << (std::ostream &os, const VexChannel &x)
 {
 	os << "[name=" << x.name << " BBC=" << x.bbcName << " IF=" << x.ifName << " s=" << x.subbandId << " -> r=" << x.recordChan << " t=" << x.threadId << " tones=";
-	for(std::vector<int>::const_iterator v = x.tones.begin(); v != x.tones.end(); ++v)
+	for(std::vector<unsigned int>::const_iterator v = x.tones.begin(); v != x.tones.end(); ++v)
 	{
 		if(v != x.tones.begin())
 		{

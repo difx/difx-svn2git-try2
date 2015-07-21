@@ -707,7 +707,7 @@ static int getModes(VexData *V, Vex *v)
 			void *p, *p2;
 			const std::string &antName = V->getAntenna(a)->defName;
 			std::string antName2 = V->getAntenna(a)->defName;
-			std::map<std::string,std::vector<int> > pcalMap;
+			std::map<std::string,std::vector<unsigned int> > pcalMap;
 			std::map<std::string,char> bbc2pol;
 			std::map<std::string,std::string> bbc2ifName;
 			std::map<std::string,Tracks> ch2tracks;
@@ -1093,7 +1093,7 @@ static int getModes(VexData *V, Vex *v)
 			for(p = get_all_lowl(antName.c_str(), modeDefName, T_PHASE_CAL_DETECT, B_PHASE_CAL_DETECT, v); p; p = get_all_lowl_next())
 			{
 				vex_field(T_PHASE_CAL_DETECT, p, 1, &link, &name, &value, &units);
-				std::vector<int> &Q = pcalMap[std::string(value)];
+				std::vector<unsigned int> &Q = pcalMap[std::string(value)];
 				
 				for(int q = 2; ; ++q)
 				{

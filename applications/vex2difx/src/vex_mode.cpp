@@ -91,7 +91,7 @@ int VexMode::getBits() const
 
 	for(it = setups.begin(); it != setups.end(); ++it)
 	{
-		int nb = it->second.getBits();
+		unsigned int nb = it->second.getBits();
 
 		if(nb != nBit)
 		{
@@ -121,7 +121,7 @@ int VexMode::getMinBits() const
 
 	for(it = setups.begin(); it != setups.end(); ++it)
 	{
-		int mb = it->second.getMinBits();
+		unsigned int mb = it->second.getMinBits();
 
 		if(mb > 0 && (mb < minBit || minBit == 0))
 		{
@@ -140,7 +140,7 @@ int VexMode::getMaxBits() const
 
 	for(it = setups.begin(); it != setups.end(); ++it)
 	{
-		int mb = it->second.getMaxBits();
+		unsigned int mb = it->second.getMaxBits();
 
 		if(mb > 0 && (mb > maxBit || maxBit == 0))
 		{

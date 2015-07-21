@@ -22,9 +22,9 @@ public:
 	bool usesFormat(enum VexStream::DataFormat format) const;
 	int nStream() const { return streams.size(); }
 	int nRecordChan() const;
-	int getBits() const;
-	int getMinBits() const;
-	int getMaxBits() const;
+	unsigned int getBits() const;
+	unsigned int getMinBits() const;
+	unsigned int getMaxBits() const;
 	double getLowestSampleRate() const;
 	double getHighestSampleRate() const;
 	double getAverageSampleRate() const;

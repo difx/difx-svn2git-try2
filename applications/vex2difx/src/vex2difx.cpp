@@ -420,9 +420,9 @@ static int getBand(vector<pair<int,int> >& bandMap, int fqId)
 	return bandMap.size() - 1;
 }
 
-static int getToneSetId(vector<vector<int> > &toneSets, const vector<int> &tones)
+static int getToneSetId(vector<vector<unsigned int> > &toneSets, const vector<unsigned int> &tones)
 {
-	for(vector<vector<int> >::const_iterator it = toneSets.begin(); it != toneSets.end(); ++it)
+	for(vector<vector<unsigned int> >::const_iterator it = toneSets.begin(); it != toneSets.end(); ++it)
 	{
 		if(*it == tones)
 		{
@@ -436,7 +436,7 @@ static int getToneSetId(vector<vector<int> > &toneSets, const vector<int> &tones
 	return toneSets.size() - 1;
 }
 
-static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<int> >& toneSets, const VexMode *mode, const string &antName, int startBand, const VexSetup &setup, const VexStream &stream, const CorrSetup *corrSetup, enum V2D_Mode v2dMode)
+static int setFormat(DifxInput *D, int dsId, vector<freq>& freqs, vector<vector<unsigned int> >& toneSets, const VexMode *mode, const string &antName, int startBand, const VexSetup &setup, const VexStream &stream, const CorrSetup *corrSetup, enum V2D_Mode v2dMode)
 {
 	vector<pair<int,int> > bandMap;
 
@@ -562,7 +562,7 @@ static void populateRuleTable(DifxInput *D, const CorrParams *P)
 	}
 }
 
-static void populateFreqTable(DifxInput *D, const vector<freq>& freqs, const vector<vector<int> > &toneSets)
+static void populateFreqTable(DifxInput *D, const vector<freq>& freqs, const vector<vector<unsigned int> > &toneSets)
 {
 	D->nFreq = freqs.size();
 	D->freq = newDifxFreqArray(D->nFreq);
@@ -592,7 +592,7 @@ static void populateFreqTable(DifxInput *D, const vector<freq>& freqs, const vec
 		{
 			cerr << "Developer error: populateFreqTable: toneSetId=" << freqs[f].toneSetId << " nToneSet=" << toneSets.size() << endl;
 		}
-		const vector<int> &tones = toneSets[freqs[f].toneSetId];
+		const vector<unsigned int> &tones = toneSets[freqs[f].toneSetId];
 
 		if(!tones.empty())
 		{
@@ -1470,7 +1470,7 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 	set<string> spacecraftSet;
 	vector<pair<string,string> > configs;
 	vector<freq> freqs;
-	vector<vector<int> > toneSets;
+	vector<vector<unsigned int> > toneSets;
 	int nPulsar=0;
 	int nTotalPhaseCentres, nbin, maxPulsarBins, maxScanPhaseCentres, fftDurNS;
 	double srcra, srcdec, radiff, decdiff;
@@ -1483,7 +1483,7 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 	vector<set <int> > blockedfreqids;	// vector index is over antennaId
 
 	// Initialize toneSets with the trivial case, which is used for all zoom bands
-	vector<int> noTones;
+	vector<unsigned int> noTones;
 	toneSets.push_back(noTones);
 
 	// Assume same correlator setup for all scans

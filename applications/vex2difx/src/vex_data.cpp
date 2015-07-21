@@ -823,7 +823,7 @@ void VexData::generateEvents(std::list<Event> &events) const
 	events.sort();
 }
 
-void VexData::setFiles(int antId, int streamId, const std::vector<VexBasebandData> &files)
+void VexData::setFiles(unsigned int antId, unsigned int streamId, const std::vector<VexBasebandData> &files)
 {
 	antennas[antId].removeBasebandData(streamId);
 	for(std::vector<VexBasebandData>::const_iterator it = files.begin(); it != files.end(); ++it)
@@ -833,14 +833,14 @@ void VexData::setFiles(int antId, int streamId, const std::vector<VexBasebandDat
 	antennas[antId].dataSource = DataSourceFile;
 }
 
-void VexData::setModule(int antId, int streamId, const std::string &vsn)
+void VexData::setModule(unsigned int antId, unsigned int streamId, const std::string &vsn)
 {
 	antennas[antId].removeBasebandData(streamId);
 	antennas[antId].vsns.push_back(VexBasebandData(vsn, streamId));
 	antennas[antId].dataSource = DataSourceModule;
 }
 
-void VexData::setNetworkParameters(int antId, int streamId, const std::string &networkPort, int windowSize)
+void VexData::setNetworkParameters(unsigned int antId, unsigned int streamId, const std::string &networkPort, int windowSize)
 {
 	if(antennas[antId].ports.size() <= streamId)
 	{
@@ -851,7 +851,7 @@ void VexData::setNetworkParameters(int antId, int streamId, const std::string &n
 	antennas[antId].dataSource = DataSourceNetwork;
 }
 
-void VexData::setFake(int antId)
+void VexData::setFake(unsigned int antId)
 {
 	antennas[antId].dataSource = DataSourceFake;
 }
