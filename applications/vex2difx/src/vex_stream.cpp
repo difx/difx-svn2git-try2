@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <regex.h>
+#include <sstream>
 #include "vex_stream.h"
 #include "util.h"
 
@@ -413,11 +414,20 @@ void VexStream::setFanout(int fan)
 
 int VexStream::snprintDifxFormatName(char *outString, int maxLength) const
 {
+	int n;
+
+	if(format < 0 || format > NumDataFormats)
+	{
+		std::cerr << "Developer error: VexStream::snprintDifxFormatName: format has illegal value" << std::endl;
+		std::cerr << "VexStream =" << *this << std::endl;
+
+		exit(EXIT_FAILURE);
+	}
 	if(format == FormatVDIF)
 	{
 		if(singleThread)
 		{
-			return snprintf(outString, maxLength, "%s", DataFormatNames[format]);
+			n = snprintf(outString, maxLength, "%s", DataFormatNames[format]);
 		}
 		else
 		{
@@ -431,48 +441,73 @@ int VexStream::snprintDifxFormatName(char *outString, int maxLength) const
 				fn << *it;
 				sep = ':';
 			}
-			return snprintf(outString, maxLength, "%s", fn.str().c_str());
+			
+			n = snprintf(outString, maxLength, "%s", fn.str().c_str());
 		}
 	}
 	else if(format == FormatS2)
 	{
 		std::cerr << "Warning: S2 format encounted.  This could be LBAVSOP or LBASTD.  Defaulting to LBAVSOP!" << std::endl;
-		return snprintf(outString, maxLength, "%s", DataFormatNames[FormatLBAVSOP]);
+
+		n = snprintf(outString, maxLength, "%s", DataFormatNames[FormatLBAVSOP]);
 	}
 	else
 	{
-		return snprintf(outString, maxLength, "%s", DataFormatNames[format]);
+		n = snprintf(outString, maxLength, "%s", DataFormatNames[format]);
 	}
+
+	return n;
 }
 
 int VexStream::dataFrameSize() const
 {
+	int s = 0;
+
 	switch(format)
 	{
 	case FormatVDIF:
 	case FormatLegacyVDIF:
-		return VDIFFrameSize;
+		s = VDIFFrameSize;
+		break;
 	case FormatVLBA:
 	case FormatVLBN:
-		return 2520*fanout*nBit*nextPowerOf2(nRecordChan);
+		s = 2520*fanout*nBit*nextPowerOf2(nRecordChan);
+		break;
 	case FormatMark4:
-		return 2520*fanout*nBit*nextPowerOf2(nRecordChan);
+		s = 2500*fanout*nBit*nextPowerOf2(nRecordChan);
+		break;
 	case FormatMark5B:
 	case FormatKVN5B:
-		return 10016;
+		s = 10016;
+		break;
 	case FormatS2:
 	case FormatLBAVSOP:
 	case FormatLBASTD:
-		return 4096 + 10*nBit*nextPowerOf2(nRecordChan)*static_cast<int>(sampRate+0.5)/8;
+		s = 4096 + 10*nBit*nextPowerOf2(nRecordChan)*static_cast<int>(sampRate+0.5)/8;
+		break;
 	default:
 		std::cerr << "Developer error: Format " << format << " not handled in VexStream::dataFrameSize().  This format may be called " << DataFormatNames[format] << std::endl;
+
 		exit(EXIT_FAILURE);
 	}
+	
+	return s;
 }
 
 std::ostream& operator << (std::ostream &os, const VexStream &x)
 {
-	os << " [format=" << VexStream::DataFormatNames[x.format] << ", nBit=" << x.nBit << ", nRecordChan=" << x.nRecordChan << ", nThread=" << x.nThread << ", singleThread=" << x.singleThread << ", sampRate=" << x.sampRate;
+	std::stringstream formatName;
+
+	if(x.format >= 0 && x.format < VexStream::NumDataFormats)
+	{
+		formatName << VexStream::DataFormatNames[x.format];
+	}
+	else
+	{
+		formatName << "Illegal(" << x.format << ")";
+	}
+
+	os << " [format=" << formatName.str() << ", nBit=" << x.nBit << ", nRecordChan=" << x.nRecordChan << ", nThread=" << x.nThread << ", singleThread=" << x.singleThread << ", sampRate=" << x.sampRate;
 	if(!x.threads.empty())
 	{
 		for(std::vector<int>::const_iterator it = x.threads.begin(); it != x.threads.end(); ++it)

@@ -706,7 +706,6 @@ static int getModes(VexData *V, Vex *v)
 			char *value, *units;
 			void *p, *p2;
 			const std::string &antName = V->getAntenna(a)->defName;
-			std::string antName2 = V->getAntenna(a)->defName;
 			std::map<std::string,std::vector<unsigned int> > pcalMap;
 			std::map<std::string,char> bbc2pol;
 			std::map<std::string,std::string> bbc2ifName;
@@ -724,16 +723,18 @@ static int getModes(VexData *V, Vex *v)
 			bbc2ifName.clear();
 			ch2tracks.clear();
 
-			Upper(antName2);
-			VexSetup &setup = M->setups[V->getAntenna(a)->name];
-			VexStream &stream = setup.streams[0];	// the first stream is created by default
-
 			// Get sample rate
 			p = get_all_lowl(antName.c_str(), modeDefName, T_SAMPLE_RATE, B_FREQ, v);
 			if(p == 0)
 			{
 				continue;
 			}
+
+			// if we made it this far the antenna is involved in this mode
+
+			VexSetup &setup = M->setups[V->getAntenna(a)->name];
+			VexStream &stream = setup.streams[0];	// the first stream is created by default
+
 			vex_field(T_SAMPLE_RATE, p, 1, &link, &name, &value, &units);
 			fvex_double(&value, &units, &stream.sampRate);
 

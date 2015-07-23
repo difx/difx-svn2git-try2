@@ -358,7 +358,7 @@ void makeJobs(std::vector<Job>& J, const VexData *V, const CorrParams *P, std::l
 		addEvent(events, j->mjdStop,  Event::JOB_STOP,  name.str());
 
 		// finds antennas that are active during at least a subset of the jobs scans and have media
-		j->assignAntennas(*V);
+		j->assignAntennas(*V, removedAntennas);
 		
 		// If fewer than minSubarray antennas remain, then mark the job as bad and exclude writing it later.
 		if(j->jobAntennas.size() < P->minSubarraySize)

@@ -1404,6 +1404,7 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 	}
 	
 	DifxConfigAllocDatastreamIds(config, config->nDatastream, D->nConfig*config->nDatastream);
+std::cout << "XXX alloc dsIds: " << config->nDatastream << " " << D->nConfig << std::endl;
 	DifxConfigAllocBaselineIds(config, config->nBaseline, nConfig*config->nBaseline);
 
 	config->nPol = mode->getPols(config->pol);
@@ -1456,7 +1457,7 @@ static bool matchingFreq(const ZoomFreq &zoomfreq, const DifxDatastream *dd, int
 	return true;
 }
 
-static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const std::list<Event> &events, const Shelves &shelves, int os, int verbose, ofstream *of, int nDigit, char ext, int strict)
+static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const std::list<Event> &events, const Shelves &shelves, int verbose, ofstream *of, int nDigit, char ext, int strict)
 {
 	DifxInput *D;
 	DifxScan *scan;
@@ -2367,6 +2368,7 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 	if(D->nBaseline > 0 || P->minSubarraySize == 1)
 	{
 		// clean up and return that job was created
+		D->config->IF = 0;
 		deleteDifxInput(D);
 
 		return 1;
@@ -2456,6 +2458,33 @@ static void calculateScanSizes(VexData *V, const CorrParams &P)
 			V->setScanSize(s, scan->duration()*86400*nBaseline*nSubband*setup->bytesPerSecPerBLPerBand());
 		}
 	}
+}
+
+void writeRemovedAntennasFile(const std::string &missingDataFile, const list<pair<int,string> > &removedAntennas)
+{
+	ofstream of;
+	int lastJobId = -1;
+	int n = 0;
+
+	of.open(missingDataFile.c_str());
+	of << "The following job numbers have had antennas removed because they have no baseband data files:";
+	for(list<pair<int,string> >::const_iterator it = removedAntennas.begin(); it != removedAntennas.end(); ++it)
+	{
+		if(it->first != lastJobId)
+		{
+			of << endl;
+			of << "job " << it->first << " :";
+			lastJobId = it->first;
+			++n;
+		}
+		of << " " << it->second;
+	}
+	of << endl;
+	of.close();
+
+	cout << endl;
+	cout << "Warning: " << n << " jobs had one or more antennas removed due to missing baseband data." << endl;
+	cout << "See " << missingDataFile << " for details." << endl;
 }
 
 int main(int argc, char **argv)
@@ -2886,7 +2915,9 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			nJob += writeJob(*j, V, P, events, shelves, -1, verbose, &of, nDigit, 0, strict);
+std::cerr << "XXX 1 " << *j << std::endl;
+			nJob += writeJob(*j, V, P, events, shelves, verbose, &of, nDigit, 0, strict);
+std::cerr << "XXX 2 " << *j << std::endl;
 		}
 	}
 	of.close();
@@ -2903,29 +2934,7 @@ int main(int argc, char **argv)
 
 	if(!removedAntennas.empty())
 	{
-		ofstream of;
-		int lastJobId = -1;
-		int n = 0;
-
-		of.open(missingDataFile.c_str());
-		of << "The following job numbers have had antennas removed because they have no baseband data files:";
-		for(list<pair<int,string> >::const_iterator it = removedAntennas.begin(); it != removedAntennas.end(); ++it)
-		{
-			if(it->first != lastJobId)
-			{
-				of << endl;
-				of << "job " << it->first << " :";
-				lastJobId = it->first;
-				++n;
-			}
-			of << " " << it->second;
-		}
-		of << endl;
-		of.close();
-
-		cout << endl;
-		cout << "Warning: " << n << " jobs had one or more antennas removed due to missing baseband data." << endl;
-		cout << "See " << missingDataFile << " for details." << endl;
+		writeRemovedAntennasFile(missingDataFile, removedAntennas);
 	}
 
 	delete V;

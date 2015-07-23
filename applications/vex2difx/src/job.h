@@ -13,7 +13,7 @@ class Job : public Interval
 public:
 	Job() : Interval(0.0, 1000000.0), jobSeries("Bogus"), jobId(-1), dutyCycle(1.0), dataSize(0.0) {}
 
-	void assignAntennas(const VexData &V);
+	void assignAntennas(const VexData &V, std::list<std::pair<int,std::string> > &removedAntennas);
 	bool hasScan(const std::string &scanName) const;
 	int generateFlagFile(const VexData &V, const std::list<Event> events, const char *fileName, unsigned int invalidMask=0xFFFFFFFF) const;
 

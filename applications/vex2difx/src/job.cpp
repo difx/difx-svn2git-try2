@@ -3,7 +3,7 @@
 #include "jobflag.h"
 #include "util.h"
 
-void Job::assignAntennas(const VexData &V)
+void Job::assignAntennas(const VexData &V, std::list<std::pair<int,std::string> > &removedAntennas)
 {
 	jobAntennas.clear();
 
@@ -19,6 +19,10 @@ void Job::assignAntennas(const VexData &V)
 				if(A->hasData(*S))
 				{
 					jobAntennas.push_back(a->first);
+				}
+				else
+				{
+					removedAntennas.push_back(std::pair<int,std::string>(jobId, a->first));
 				}
 			}
 		}
