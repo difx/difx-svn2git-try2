@@ -705,6 +705,7 @@ DatastreamSetup::DatastreamSetup(const std::string &name) : difxName(name)
 	windowSize = 0;
 	dataSource = DataSourceNone;
 	dataSampling = NumSamplingTypes;	// flag that no sampling is is identified here
+	startBand = -1;
 	nBand = 0;				// Zero implies all.
 }
 
@@ -2583,22 +2584,24 @@ bool baselineMatch(const std::pair<std::string,std::string> &bl, const std::stri
 
 bool CorrParams::useAntenna(const std::string &antName) const
 {
+	bool rv = false;
 	std::list<std::string>::const_iterator it;
 
 	if(antennaList.empty())
 	{
-		return true;
+		rv = true;
 	}
 
 	for(it = antennaList.begin(); it != antennaList.end(); ++it)
 	{
 		if(antennaMatch(*it, antName))
 		{
-			return true;
+			rv = true;
+			break;
 		}
 	}
 
-	return false;
+	return rv;
 }
 
 bool CorrParams::useBaseline(const std::string &ant1, const std::string &ant2) const

@@ -131,7 +131,7 @@ public:
 	void setAntennaPosition(const std::string &antName, double X, double Y, double Z);
 	void setAntennaAxisOffset(const std::string &antName, double axisOffset);
 	int getNumAntennaRecChans(const std::string &name) const;
-	bool removeAntenna(const std::string &name);
+	bool removeAntenna(const std::string name);	// Note: cannot pass name as reference!
 
 	unsigned int nMode() const { return modes.size(); }
 	int getModeIdByDefName(const std::string &defName) const;

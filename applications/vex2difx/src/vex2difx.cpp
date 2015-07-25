@@ -1404,7 +1404,6 @@ static int getConfigIndex(vector<pair<string,string> >& configs, DifxInput *D, c
 	}
 	
 	DifxConfigAllocDatastreamIds(config, config->nDatastream, D->nConfig*config->nDatastream);
-std::cout << "XXX alloc dsIds: " << config->nDatastream << " " << D->nConfig << std::endl;
 	DifxConfigAllocBaselineIds(config, config->nBaseline, nConfig*config->nBaseline);
 
 	config->nPol = mode->getPols(config->pol);
@@ -1870,6 +1869,11 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 			const VexSetup &setup = it->second;
 			int startBand;
 			startBand = 0;
+
+			if(find(J.jobAntennas.begin(), J.jobAntennas.end(), antName) == J.jobAntennas.end())
+			{
+				continue;
+			}
 
 			const VexAntenna *antenna = V->getAntenna(antName);
 			antennaSetup = P->getAntennaSetup(antName);
@@ -2400,7 +2404,7 @@ static void usage(int argc, char **argv)
 	cout << "     --output      create a v2d file with all defaults populated." << endl;
 	cout << endl;
 	cout << "     -d" << endl;
-	cout << "     --delete-old  delete all jobs in this series before running." << endl;
+	cout << "     --delete-old  delete all job(s) in this series before running." << endl;
 	cout << endl;
 	cout << "     -f" << endl;
 	cout << "     --force       continue desipte warnings." << endl;
@@ -2483,7 +2487,7 @@ void writeRemovedAntennasFile(const std::string &missingDataFile, const list<pai
 	of.close();
 
 	cout << endl;
-	cout << "Warning: " << n << " jobs had one or more antennas removed due to missing baseband data." << endl;
+	cout << "Warning: " << n << " job(s) had one or more antennas removed due to missing baseband data." << endl;
 	cout << "See " << missingDataFile << " for details." << endl;
 }
 
@@ -2915,9 +2919,7 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-std::cerr << "XXX 1 " << *j << std::endl;
 			nJob += writeJob(*j, V, P, events, shelves, verbose, &of, nDigit, 0, strict);
-std::cerr << "XXX 2 " << *j << std::endl;
 		}
 	}
 	of.close();

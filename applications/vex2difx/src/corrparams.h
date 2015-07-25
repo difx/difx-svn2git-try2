@@ -168,7 +168,7 @@ public:
 	enum DataSource dataSource;
 	enum SamplingType dataSampling;
 
-	int startBand;		// within the antenna's baseband channels (defined in vex order), where does this datastream start? [0-based]
+	int startBand;		// within the antenna's baseband channels (defined in vex order), where does this datastream start? [0-based]; -1 indicates not initialized
 	int nBand;		// number of baseband channels provided by this datastream
 };
 

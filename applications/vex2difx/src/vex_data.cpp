@@ -346,7 +346,13 @@ unsigned int VexData::nAntennasWithRecordedData(const VexScan &scan) const
 	{
 		const VexAntenna *A = getAntenna(it->first);
 
-		if(A->hasData(scan))
+if(A == 0)
+{
+std::cerr << "VexData::nAntennasWithRecordedData : getAntenna( " << it->first << " ) returned null" << std::endl;
+continue;
+}
+
+		if(A->hasData(scan) && scan.getRecordEnable(it->first))
 		{
 			++nAnt;
 		}
@@ -507,7 +513,7 @@ int VexData::getNumAntennaRecChans(const std::string &antName) const
 
 // returns false if antenna was not there.  Otherwise true
 // this function essentially wipes out any record of this antenna being part of observing
-bool VexData::removeAntenna(const std::string &name)
+bool VexData::removeAntenna(const std::string name)
 {
 	bool rv = false;
 
@@ -529,6 +535,7 @@ bool VexData::removeAntenna(const std::string &name)
 	for(std::vector<VexScan>::iterator it = scans.begin(); it != scans.end(); )
 	{
 		it->stations.erase(name);
+		it->recordEnable.erase(name);
 
 		if(it->stations.empty())
 		{

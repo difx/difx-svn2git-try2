@@ -6,8 +6,6 @@ Exceptions: zoom bands, machines
 
 Urgent:
 
-* The removedAntennas list needs to be restored in makeJobs
-
 Eventually:
 
 * RECORD flag... how to handle?
@@ -23,6 +21,20 @@ Eventually:
   - zoom
   - correlator parameters
 
+* restore decimation / oversampling?
+
+
+Test status:
+
+dq522:
+  e.g., job 2: phase cal: choosing 1,15 rather than 2, 13
+  some antenna coords differ in their last digit
+  flag: flag file is empty	 (maybe OK, because new vex2difx excluded the antenna)
+
+td091a:
+  phase cal issues
+
+
 To test:
 
 * shelves
@@ -31,6 +43,7 @@ To test:
 * polarization swap
 * various ways to specify VDIF format
 * test multi-thread multi-channel VDIF simply by specifying fewer threads than record chans
+* multi-phase-center
 
 Operate rules from v2d onto vex structure
  - setups/modes and scans using them

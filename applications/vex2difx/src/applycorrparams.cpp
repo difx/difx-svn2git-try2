@@ -19,7 +19,7 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 	}
 
 	// remove unwanted antennas
-	for(unsigned int a = 0; a < V->nAntenna(); ++a)
+	for(unsigned int a = 0; a < V->nAntenna(); )
 	{
 		const VexAntenna *A;
 
@@ -30,9 +30,9 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 
 			exit(EXIT_FAILURE);
 		}
-		if(!params.useAntenna(A->defName))
+		if(!params.useAntenna(A->name))
 		{
-			V->removeAntenna(A->defName);
+			V->removeAntenna(A->name);
 		}
 		else
 		{
