@@ -361,7 +361,7 @@ continue;
 	return nAnt;
 }
 
-bool VexData::removeScan(const std::string &name)
+bool VexData::removeScan(const std::string name)
 {
 	int removed = false;
 
@@ -861,6 +861,14 @@ void VexData::setNetworkParameters(unsigned int antId, unsigned int streamId, co
 void VexData::setFake(unsigned int antId)
 {
 	antennas[antId].dataSource = DataSourceFake;
+}
+
+void VexData::setSampling(const std::string &antName, unsigned int streamId, enum SamplingType dataSampling)
+{
+	for(std::vector<VexMode>::iterator it = modes.begin(); it != modes.end(); ++it)
+	{
+		setSampling(antName, streamId, dataSampling);
+	}
 }
 
 void VexData::setCanonicalVDIF(const std::string &modeName, const std::string &antName)

@@ -92,6 +92,7 @@ public:
 	void setModule(unsigned int antId, unsigned int streamId, const std::string &vsn);
 	void setNetworkParameters(unsigned int antId, unsigned int streamId, const std::string &networkPort, int windowSize);
 	void setFake(unsigned int antId);
+	void setSampling(const std::string &antName, unsigned int streamId, enum SamplingType dataSampling);
 	void setCanonicalVDIF(const std::string &modeName, const std::string &antName);
 	void cloneStreams(const std::string &modeName, const std::string &antName, int copies);
 	bool setFormat(const std::string &modeName, const std::string &antName, int dsId, const std::string &formatName);
@@ -119,7 +120,7 @@ public:
 	void setScanSize(unsigned int num, double size);
 	void getScanList(std::list<std::string> &scans) const;
 	unsigned int nAntennasWithRecordedData(const VexScan &scan) const;
-	bool removeScan(const std::string &name);
+	bool removeScan(const std::string name);	// Note: cannot pass name as reference!
 
 	unsigned int nAntenna() const { return antennas.size(); }
 	int getAntennaIdByName(const std::string &antName) const;

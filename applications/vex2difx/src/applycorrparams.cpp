@@ -118,13 +118,11 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 			exit(EXIT_FAILURE);
 		}
 
-		if(params.swapPol(A->defName))
+		if(params.swapPol(A->name))
 		{
-			V->swapPolarization(A->defName);
+			V->swapPolarization(A->name);
 		}
 	}
-
-	// FIXME: transfer dataSampling to VexStream
 
 	// Data and data source
 	for(unsigned int a = 0; a < V->nAntenna(); ++a)
@@ -137,7 +135,7 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 			exit(EXIT_FAILURE);
 		}
 
-		const AntennaSetup *as = params.getAntennaSetup(A->defName);
+		const AntennaSetup *as = params.getAntennaSetup(A->name);
 		if(!as)
 		{
 			// No antenna setup here, so continue...
@@ -172,6 +170,11 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 				break;
 			default:
 				break;
+			}
+
+			if(dss.dataSampling != NumSamplingTypes)
+			{
+				V->setSampling(A->name, i, dss.dataSampling);
 			}
 		}
 	}
@@ -227,7 +230,6 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 					bool v;
 
 					v = V->setFormat(M->defName, it->first, ds, DS.format);
-
 					if(!v)
 					{
 						std::cerr << "Error: format " << DS.format << " did not parse sensibly," << std::endl;
@@ -248,15 +250,6 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 			}
 		}
 	}
-
-
-	// datastream merging: change formats, channel selection, ...
-	/* mode->setup[ant] = antSetup->getFormat() 
-	
-		but maybe much more interesting -- set threads, streams, ... here too?
-
-	*/
-
 
 	// Tones
 	for(unsigned int a = 0; a < V->nAntenna(); ++a)

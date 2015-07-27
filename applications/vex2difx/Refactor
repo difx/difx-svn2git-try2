@@ -28,26 +28,32 @@ Eventually:
 
 Test status:
 
-bd178e1:
+bd178e1: (Module swaps, pulsar)
 
-dq522:
+dq522:  (Many modes)
   some antenna coords differ in their last digit
   flag: flag file is empty	 (maybe OK, because new vex2difx excluded the antenna)
 
-td091a:
+td091a:  
   some antenna coords differ in their last digit
 
-rv111:
+rv111:   (VDIF, Mark4)
+
+bf115q:  (Mark5B)
+  slight differences in antenna coords
+  slight differences in flag file
+
+ts036h:  (Files)
 
 To test:
 
-* shelves
 * clock offsets
 * LO offsets
 * polarization swap
-* various ways to specify VDIF format
-* test multi-thread multi-channel VDIF simply by specifying fewer threads than record chans
+... * various ways to specify VDIF format
+x   * test multi-thread multi-channel VDIF simply by specifying fewer threads than record chans
 * multi-phase-center
+x   * file-based
 
 Operate rules from v2d onto vex structure
  - setups/modes and scans using them

@@ -274,7 +274,8 @@ double VexMode::getAverageSampleRate() const
 
 void VexMode::swapPolarization(const std::string &antName)
 {
-	for(std::map<std::string,VexSetup>::iterator it = setups.begin(); it != setups.end(); ++it)
+	std::map<std::string,VexSetup>::iterator it = setups.find(antName);
+	if(it != setups.end())
 	{
 		if(it->first == antName)
 		{
@@ -294,9 +295,28 @@ void VexMode::swapPolarization(const std::string &antName)
 	}
 }
 
+void VexMode::setSampling(const std::string &antName, unsigned int streamId, enum SamplingType dataSampling)
+{
+	std::map<std::string,VexSetup>::iterator it = setups.find(antName);
+	if(it != setups.end())
+	{
+		if(it->first == antName)
+		{
+			if(streamId >= it->second.nStream())
+			{
+				std::cerr << "Developer Error: VexMode::setSampling: streamId = " << streamId << " which is too big.  Number of streams in mode " << defName << " antenna " << antName << " is " << it->second.nStream() << std::endl;
+
+				exit(EXIT_FAILURE);
+			}
+			it->second.streams[streamId].dataSampling = dataSampling;
+		}
+	}
+}
+
 void VexMode::setPhaseCalInterval(const std::string &antName, int phaseCalIntervalMHz)
 {
-	for(std::map<std::string,VexSetup>::iterator it = setups.begin(); it != setups.end(); ++it)
+	std::map<std::string,VexSetup>::iterator it = setups.find(antName);
+	if(it != setups.end())
 	{
 		if(it->first == antName)
 		{

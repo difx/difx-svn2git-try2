@@ -2674,8 +2674,8 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	calculateScanSizes(V, *P);
 	applyCorrParams(V, *P, nWarn, nError);
+	calculateScanSizes(V, *P);
 	
 	V->generateEvents(events);
 	V->addBreakEvents(events, P->manualBreaks);

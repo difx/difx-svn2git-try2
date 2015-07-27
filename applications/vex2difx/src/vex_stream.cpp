@@ -18,8 +18,9 @@ bool VexStream::Init()
 {
 	int v;
 
-	// of form <fmt>/<threads>/<size>/<bits>	VDIF only
-	v = regcomp(&matchType1, "^([A-Z]*VDIF[A-Z]*)/([1-9]+[0-9]*)/([1-9]+[0-9]*)/([1-9]+[0-9]*)$", REG_EXTENDED);
+	// of form <fmt>/<threads>/<size>/<bits>	VDIF only     ex: INTERLACEDVDIF/3:2:1:0/5032/2
+	// <threads> is colon or comma separated list of thread Ids.  ex: 1:2:3:4 or 5,7,9,11,13,15,17,18,19
+	v = regcomp(&matchType1, "^([A-Z]*VDIF[A-Z]*)/([0-9:,]*)/([1-9]+[0-9]*)/([1-9]+[0-9]*)$", REG_EXTENDED);
 	if(v != 0)
 	{
 		std::cerr << "Developer Error: VexStream::Init(): compiling matchType1 failed" << std::endl;
@@ -188,7 +189,7 @@ bool VexStream::parseThreads(const std::string &threadList)
 			t *= 10;
 			t += (c - '0');
 		}
-		else if(c == ',' || c == 0)
+		else if(c == ':' || c == ',' || c == 0)
 		{
 			if(t < 0)
 			{
@@ -248,8 +249,6 @@ bool VexStream::parseFormatString(const std::string &formatName)
 	const int MaxMatches = 6;
 	regmatch_t match[MaxMatches];
 
-	nRecordChan = 0;
-	nBit = 0;
 	nThread = 0;
 	singleThread = false;
 
@@ -273,7 +272,12 @@ bool VexStream::parseFormatString(const std::string &formatName)
 			return false;
 		}
 		setVDIFSubformat(formatName.substr(0, match[1].rm_eo));
-		nThread = matchInt(formatName, match[2]);
+		bool rv = parseThreads(formatName.substr(match[2].rm_so, match[2].rm_eo-match[2].rm_so));
+		if(rv == false)
+		{
+			std::cerr << "Error parsing colon separated thread numbers.  String was '" << formatName.substr(match[2].rm_so, match[2].rm_eo-match[2].rm_so) << "'." << std::endl;
+		}
+		nThread = threads.size();
 		VDIFFrameSize = matchInt(formatName, match[3]);
 		nBit = matchInt(formatName, match[4]);
 
@@ -496,7 +500,7 @@ int VexStream::dataFrameSize() const
 		s = 4096 + 10*nBit*nextPowerOf2(nRecordChan)*static_cast<int>(sampRate+0.5)/8;
 		break;
 	default:
-		std::cerr << "Developer error: Format " << format << " not handled in VexStream::dataFrameSize().  This format may be called " << DataFormatNames[format] << std::endl;
+		std::cerr << "Developer error: Format " << format << " not handled in VexStream::dataFrameSize().  This format may be called '" << DataFormatNames[format] << "'." << std::endl;
 
 		exit(EXIT_FAILURE);
 	}
