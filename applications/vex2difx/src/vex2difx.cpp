@@ -2466,22 +2466,28 @@ static void calculateScanSizes(VexData *V, const CorrParams &P)
 
 void writeRemovedAntennasFile(const std::string &missingDataFile, const list<pair<int,string> > &removedAntennas)
 {
+	set<string> uniq;
 	ofstream of;
 	int lastJobId = -1;
 	int n = 0;
 
 	of.open(missingDataFile.c_str());
-	of << "The following job number(s) have had antennas removed because they have no baseband data files:";
+	of << "The following job number(s) had antennas removed because they have no baseband data files:";
 	for(list<pair<int,string> >::const_iterator it = removedAntennas.begin(); it != removedAntennas.end(); ++it)
 	{
 		if(it->first != lastJobId)
 		{
+			uniq.clear();
 			of << endl;
 			of << "job " << it->first << " :";
 			lastJobId = it->first;
 			++n;
 		}
-		of << " " << it->second;
+		if(uniq.find(it->second) == uniq.end())
+		{
+			of << " " << it->second;
+			uniq.insert(it->second);
+		}
 	}
 	of << endl;
 	of.close();

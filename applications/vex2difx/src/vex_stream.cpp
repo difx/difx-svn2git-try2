@@ -376,6 +376,16 @@ bool VexStream::parseFormatString(const std::string &formatName)
 
 		return true;
 	}
+	else
+	{
+		format = stringToDataFormat(formatName);
+		if(format == NumDataFormats)
+		{
+			return false;
+		}
+
+		return true;
+	}
 
 	format = FormatNone;
 
