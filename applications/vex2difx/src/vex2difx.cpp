@@ -365,7 +365,7 @@ static DifxDatastream *makeDifxDatastreams(const Job& J, const VexData *V, const
 						}
 						if(count > 1)
 						{
-							std::cerr << "Developer error: got into job creation and antenna " << *a << " datastream " << d << " had " << count << " > 1module valid in time range of job: " << J << std::endl;
+							std::cerr << "Developer error: got into job creation and antenna " << *a << " datastream " << d << " had " << count << " > 1 module valid in time range of job: " << J << std::endl;
 
 							exit(EXIT_FAILURE);
 						}
@@ -2471,7 +2471,7 @@ void writeRemovedAntennasFile(const std::string &missingDataFile, const list<pai
 	int n = 0;
 
 	of.open(missingDataFile.c_str());
-	of << "The following job numbers have had antennas removed because they have no baseband data files:";
+	of << "The following job number(s) have had antennas removed because they have no baseband data files:";
 	for(list<pair<int,string> >::const_iterator it = removedAntennas.begin(); it != removedAntennas.end(); ++it)
 	{
 		if(it->first != lastJobId)
@@ -2837,6 +2837,13 @@ int main(int argc, char **argv)
 	{
 		cout << *V << endl;
 		cout << *P << endl;
+	}
+
+	if(verbose > 3)
+	{
+
+		cout << "Pre-job making events:" << endl;
+		printEventList(events);
 	}
 
 	makeJobs(J, V, P, events, removedAntennas, verbose);

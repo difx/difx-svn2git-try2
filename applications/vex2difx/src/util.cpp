@@ -27,6 +27,8 @@
  *
  *==========================================================================*/
 
+#include <set>
+#include <string>
 #include <cstdio>
 #include <cstdlib>
 #include "util.h"
@@ -34,44 +36,49 @@
 /* Function to look through a file to make sure it is not DOS formatted */
 int checkCRLF(const char *filename)
 {
+	static std::set<std::string> processedFiles;
 	const int bufferSize = 1024;
 	const char cr = 0x0d;
 	FILE *in;
 	char buffer[bufferSize];
 	int n;
 
-	printf("Checking %s\n", filename);
-
-	in = fopen(filename, "rb");
-	if(!in)
+	if(processedFiles.find(filename) == processedFiles.end())
 	{
-		fprintf(stderr, "Error: cannot open %s\n", filename);
+		printf("Checking %s\n", filename);
+		processedFiles.insert(filename);
 
-		return -1;
-	}
-
-	for(;;)
-	{
-		n = fread(buffer, 1, bufferSize, in);
-		if(n < 1)
+		in = fopen(filename, "rb");
+		if(!in)
 		{
-			break;
+			fprintf(stderr, "Error: cannot open %s\n", filename);
+
+			return -1;
 		}
 
-		for(int i = 0; i < n; ++i)
+		for(;;)
 		{
-			if(buffer[i] == cr)
+			n = fread(buffer, 1, bufferSize, in);
+			if(n < 1)
 			{
-				fprintf(stderr, "Error: %s appears to be in DOS format.  Please run dos2unix or equivalent and try again.\n", filename);
+				break;
+			}
 
-				fclose(in);
+			for(int i = 0; i < n; ++i)
+			{
+				if(buffer[i] == cr)
+				{
+					fprintf(stderr, "Error: %s appears to be in DOS format.  Please run dos2unix or equivalent and try again.\n", filename);
 
-				return -1;
+					fclose(in);
+
+					return -1;
+				}
 			}
 		}
-	}
 
-	fclose(in);
+		fclose(in);
+	}
 
 	return 0;
 }

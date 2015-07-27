@@ -23,6 +23,8 @@ Eventually:
 
 * restore decimation / oversampling?
 
+* dead code removal from JobGroup::genEvents
+
 
 Test status:
 
@@ -32,8 +34,7 @@ dq522:
   flag: flag file is empty	 (maybe OK, because new vex2difx excluded the antenna)
 
 td091a:
-  phase cal issues
-
+  phase cal (same as above)
 
 To test:
 

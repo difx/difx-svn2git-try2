@@ -175,6 +175,7 @@ static void genJobs(std::vector<Job> &Js, const JobGroup &JG, const VexData *V, 
 
 	scanRange.logicalAnd(*P);	// Shrink time range to v2d start / stop interval
 
+
 	// populate changes, times, and usage
 	for(std::list<Event>::const_iterator e = JG.events.begin(); e != JG.events.end(); ++e)
 	{

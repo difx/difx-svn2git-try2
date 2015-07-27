@@ -19,7 +19,7 @@ void JobGroup::genEvents(const std::list<Event> &eventList)
 			if(hasScan(it->scan))
 			{
 				events.push_back(*it);
-			}
+			}	
 		}
 		else
 		{
@@ -27,6 +27,7 @@ void JobGroup::genEvents(const std::list<Event> &eventList)
 		}
 	}
 
+#if 0
 	// Now remove any module changes that don't occur within scans
 
 	std::map<std::string,bool> inScan;
@@ -92,6 +93,7 @@ void JobGroup::genEvents(const std::list<Event> &eventList)
 			++rstart;
 		}
 	}
+#endif
 }
 
 void JobGroup::createJobs(std::vector<Job> &jobs, Interval &jobTimeRange, const VexData *V, double maxLength, double maxSize) const
