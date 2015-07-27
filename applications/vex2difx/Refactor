@@ -28,13 +28,16 @@ Eventually:
 
 Test status:
 
+bd178e1:
+
 dq522:
-  e.g., job 2: phase cal: choosing 1,15 rather than 2, 13
   some antenna coords differ in their last digit
   flag: flag file is empty	 (maybe OK, because new vex2difx excluded the antenna)
 
 td091a:
-  phase cal (same as above)
+  some antenna coords differ in their last digit
+
+rv111:
 
 To test:
 

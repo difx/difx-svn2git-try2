@@ -271,11 +271,12 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 			exit(EXIT_FAILURE);
 		}
 
-		const AntennaSetup *as = params.getAntennaSetup(A->defName);
+
+		const AntennaSetup *as = params.getAntennaSetup(A->name);
 		if(!as)
 		{
 			// No antenna setup implies doing "smart" tone extraction (-1.0 implies 1/8 band guard)
-			V->selectTones(A->defName, ToneSelectionSmart, -1.0);
+			V->selectTones(A->name, ToneSelectionSmart, -1.0);
 
 			continue;
 		}
@@ -283,7 +284,7 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 		if(as->toneSelection == ToneSelectionNone)
 		{
 			// change to having no injected tones
-			V->setPhaseCalInterval(A->defName, -1);
+			V->setPhaseCalInterval(A->name, -1);
 
 			continue;
 		}
@@ -292,12 +293,12 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 		{
 			// this sets phase cal interval and removes tones that are not multiples of it
 			// interval = 0 implies no pulse cal
-			V->setPhaseCalInterval(A->defName, as->phaseCalIntervalMHz);
+			V->setPhaseCalInterval(A->name, as->phaseCalIntervalMHz);
 		}
 
 		if(as->toneSelection != ToneSelectionVex)
 		{
-			V->selectTones(A->defName, as->toneSelection, as->toneGuardMHz);
+			V->selectTones(A->name, as->toneSelection, as->toneGuardMHz);
 		}
 		
 	}
