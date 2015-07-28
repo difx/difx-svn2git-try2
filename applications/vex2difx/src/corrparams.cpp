@@ -963,10 +963,10 @@ int DatastreamSetup::merge(const DatastreamSetup *dss)
 AntennaSetup::AntennaSetup(const std::string &name) : vexName(name), defaultDatastreamSetup(name)
 {
 	polSwap = false;
-	X = 0.0;
-	Y = 0.0;
-	Z = 0.0;
-	axisOffset = -1e6;
+	X = ANTENNA_COORD_NOT_SET;
+	Y = ANTENNA_COORD_NOT_SET;
+	Z = ANTENNA_COORD_NOT_SET;
+	axisOffset = AXIS_OFFSET_NOT_SET;
 	deltaClock = 0.0;
 	deltaClockRate = 0.0;
 	clock.mjdStart = -1e9;
@@ -1123,7 +1123,7 @@ int AntennaSetup::setkv(const std::string &key, const std::string &value)
 	}
 	else if(key == "X" || key == "x")
 	{
-		if(X != 0.0)
+		if(X != ANTENNA_COORD_NOT_SET)
 		{
 			std::cerr << "Warning: antenna " << vexName << " has multiple X definitions" << std::endl;
 			++nWarn;
@@ -1132,7 +1132,7 @@ int AntennaSetup::setkv(const std::string &key, const std::string &value)
 	}
 	else if(key == "Y" || key == "y")
 	{
-		if(Y != 0.0)
+		if(Y != ANTENNA_COORD_NOT_SET)
 		{
 			std::cerr << "Warning: antenna " << vexName << " has multiple Y definitions" << std::endl;
 			++nWarn;
@@ -1141,7 +1141,7 @@ int AntennaSetup::setkv(const std::string &key, const std::string &value)
 	}
 	else if(key == "Z" || key == "z")
 	{
-		if(Z != 0.0)
+		if(Z != ANTENNA_COORD_NOT_SET)
 		{
 			std::cerr << "Warning: antenna " << vexName << " has multiple Z definitions" << std::endl;
 			++nWarn;
@@ -1150,7 +1150,7 @@ int AntennaSetup::setkv(const std::string &key, const std::string &value)
 	}
 	else if(key == "axisOffset")
 	{
-		if(axisOffset > -1.0e5)
+		if(axisOffset > AXIS_OFFSET_NOT_SET)
 		{
 			std::cerr << "Warning: antenna " << vexName << " has multiple axisOffset definitions" << std::endl;
 

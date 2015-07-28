@@ -45,15 +45,20 @@ bf115q:  (Mark5B)
 
 ts036h:  (Files)
 
+bb320k1: (zoom, spacecraft)
+  looks OK!
+
 To test:
 
-* clock offsets
-* LO offsets
-* polarization swap
+* clock break in .vex.obs file
+x   * clock offsets
+x   * LO offsets
+x   * polarization swap
 ... * various ways to specify VDIF format
 x   * test multi-thread multi-channel VDIF simply by specifying fewer threads than record chans
 * multi-phase-center
 x   * file-based
+x   * zoom
 
 Operate rules from v2d onto vex structure
  - setups/modes and scans using them

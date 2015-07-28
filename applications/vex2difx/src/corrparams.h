@@ -46,6 +46,9 @@ extern const double MJD_UNIX0;	// MJD at beginning of unix time
 extern const double SEC_DAY;
 extern const double MUSEC_DAY;
 
+#define AXIS_OFFSET_NOT_SET	-999
+#define ANTENNA_COORD_NOT_SET	-9e10
+
 #define MAX_DX_ORDER	4
 
 enum V2D_Mode

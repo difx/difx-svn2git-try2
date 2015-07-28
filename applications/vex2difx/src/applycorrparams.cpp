@@ -309,31 +309,37 @@ int applyCorrParams(VexData *V, const CorrParams &params, int &nWarn, int &nErro
 			exit(EXIT_FAILURE);
 		}
 
-		const AntennaSetup *as = params.getAntennaSetup(A->defName);
+		const AntennaSetup *as = params.getAntennaSetup(A->name);
 		if(!as)
 		{
 			continue;
 		}
 
-		const VexClock *paramClock = params.getAntennaClock(A->defName);
+		const VexClock *paramClock = params.getAntennaClock(A->name);
 		if(paramClock)
 		{
-			V->setClock(A->defName, *paramClock);
+			V->setClock(A->name, *paramClock);
 		}
 
-		if(as->X != 0.0 || as->Y != 0.0 || as->Z != 0.0)
+		if(as->X != ANTENNA_COORD_NOT_SET || as->Y != ANTENNA_COORD_NOT_SET || as->Z != ANTENNA_COORD_NOT_SET)
 		{
-			V->setAntennaPosition(A->defName, as->X, as->Y, as->Z);
+			if(as->X == ANTENNA_COORD_NOT_SET || as->Y == ANTENNA_COORD_NOT_SET || as->Z == ANTENNA_COORD_NOT_SET)
+			{
+				std::cerr << std::endl;
+				std::cerr << "Error: Antenna " << A->name << " has some antenna position coordinates set but not all three.  When explicitly setting coordinates all three of X, Y and Z must be provided." << std::endl;
+				++nError;
+			}
+			V->setAntennaPosition(A->name, as->X, as->Y, as->Z);
 		}
 
 		if(as->tcalFrequency != 0)
 		{
-			V->setTcalFrequency(A->defName, as->tcalFrequency);
+			V->setTcalFrequency(A->name, as->tcalFrequency);
 		}
 
-		if(as->axisOffset != 0.0)
+		if(as->axisOffset != AXIS_OFFSET_NOT_SET)
 		{
-			V->setAntennaAxisOffset(A->defName, as->axisOffset);
+			V->setAntennaAxisOffset(A->name, as->axisOffset);
 		}
 	}
 

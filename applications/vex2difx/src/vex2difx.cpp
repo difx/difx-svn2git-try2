@@ -1999,12 +1999,14 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 							   D->datastream[D->nDatastream].nRecFreq != nFreqClockOffsetsDelta ||
 							   D->datastream[D->nDatastream].nRecFreq != nFreqPhaseDelta)
 							{
+								cerr << endl;
 								cerr << "Error: AntennaSetup for " << antName << " has only " << nFreqClockOffsets << " freqClockOffsets specified but " << dd->nRecFreq << " recorded frequencies" << endl;
 
 								exit(EXIT_FAILURE);
 							}
 							if(antennaSetup->freqClockOffs.front() != 0.0)
 							{
+								cerr << endl;
 								cerr << "Error: AntennaSetup for " << antName << " has a non-zero clock offset for the first" << " frequency offset. This is not allowed for model " << "accountability reasons." << endl;
 								
 								exit(EXIT_FAILURE);
@@ -2022,6 +2024,7 @@ static int writeJob(const Job& J, const VexData *V, const CorrParams *P, const s
 						{
 							if(D->datastream[D->nDatastream].nRecFreq != nLoOffsets)
 							{
+								cerr << endl;
 								cerr << "Error: AntennaSetup for " << antName << " has only " << nLoOffsets << " loOffsets specified but " << dd->nRecFreq << " recorded frequencies" << endl;
 
 								exit(EXIT_FAILURE);
@@ -2472,7 +2475,7 @@ void writeRemovedAntennasFile(const std::string &missingDataFile, const list<pai
 	int n = 0;
 
 	of.open(missingDataFile.c_str());
-	of << "The following job number(s) had antennas removed because they have no baseband data files:";
+	of << "The following job number(s) had antennas removed because they have no baseband data:";
 	for(list<pair<int,string> >::const_iterator it = removedAntennas.begin(); it != removedAntennas.end(); ++it)
 	{
 		if(it->first != lastJobId)
@@ -2493,7 +2496,7 @@ void writeRemovedAntennasFile(const std::string &missingDataFile, const list<pai
 	of.close();
 
 	cout << endl;
-	cout << "Warning: " << n << " job(s) had one or more antennas removed due to missing baseband data." << endl;
+	cout << "Note: " << n << " job(s) had one or more antennas removed due to missing baseband data." << endl;
 	cout << "See " << missingDataFile << " for details." << endl;
 }
 
@@ -2775,7 +2778,11 @@ int main(int argc, char **argv)
 
 	if(nError > 0)
 	{
-		cerr << nError << " fatal errors encountered.  Quitting " << endl;
+		cerr << endl;
+		cerr << nError << " fatal errors encountered.  Quitting." << endl;
+		cerr << endl;
+
+		exit(EXIT_FAILURE);
 	}
 
 	nWarn += P->sanityCheck();
