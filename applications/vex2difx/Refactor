@@ -23,8 +23,6 @@ Eventually:
 
 * restore decimation / oversampling?
 
-* dead code removal from JobGroup::genEvents
-
 
 Test status:
 
@@ -48,15 +46,21 @@ ts036h:  (Files)
 bb320k1: (zoom, spacecraft)
   looks OK!
 
+bd179a9: (multi phase center)
+  looks OK!
+
+bh207g4: (clock break)
+  looks OK!
+
 To test:
 
-* clock break in .vex.obs file
+x   * clock break in .vex.obs file
 x   * clock offsets
 x   * LO offsets
 x   * polarization swap
 ... * various ways to specify VDIF format
 x   * test multi-thread multi-channel VDIF simply by specifying fewer threads than record chans
-* multi-phase-center
+x   * multi-phase-center
 x   * file-based
 x   * zoom
 
