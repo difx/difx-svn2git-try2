@@ -7,8 +7,8 @@ from string import lower, upper, split, strip
 
 program = 'db2wx'
 author = 'Walter Brisken and Daniel Lyons'
-version = '0.2'
-verdate = '20150312'
+version = '0.3'
+verdate = '20150730'
 
 
 
@@ -66,13 +66,11 @@ verdate = '20150312'
 
 # fetch the weather data for the observation
 
-def getVLBAWeather(start, stop, station, filename):
-
-	arguments = { 'host' : (lower(station) + '-cc'), 'from': '%14.8f' % (start - 0.1), 'to': '%14.8f' % (stop + 0.1) }
+def fetchVLBAWeather(start, stop):
+	
 	dbAccess = environ['VLBAMPTS_DB']
 
-	out = open(filename, 'w')
-	print 'Collecting %s Weather data from vlbampts db (may take a couple minutes)' % upper(station)
+	arguments = { 'from': '%14.8f' % (start - 0.1), 'to': '%14.8f' % (stop + 0.1) }
 
 	db = pg.connect(dbAccess).cursor()
 	db.execute("""
@@ -92,8 +90,7 @@ def getVLBAWeather(start, stop, station, filename):
 	       monpointname,
 	       monpointvalue
 	     FROM mcdata
-	     WHERE hostname = %(host)s AND
-		   devicename = 'WEATHER' AND
+	     WHERE devicename = 'WEATHER' AND
 		   monpointname IN ('Temperature', 'DewPointTemperature', 'Pressure', 'WindSpeed',
 				    'WindDirection', 'Rain', 'WindGust') AND
 		   timestamp BETWEEN %(from)s AND %(to)s
@@ -109,10 +106,23 @@ def getVLBAWeather(start, stop, station, filename):
 		  Rain double precision,
 		  WindGust double precision)""", arguments)
 
+	wxData = db.fetchall()
+
+	return wxData
+
+def getVLBAWeather(wxData, start, stop, station, filename):
+
+	out = open(filename, 'w')
+	print 'Collecting %s Weather data from vlbampts db (may take a couple minutes)' % upper(station)
+
 	print 'Writing %s' % filename
-	out.write('# GB Weather data produced by %s ver. %s\n' % (program, version) )
+	out.write('# VLBA Weather data produced by %s ver. %s\n' % (program, version) )
 	out.write('# Ant MJD temp(C) pressure(mbar) dewpoint(C) WindSpeed(m/s) winddir(degrees) rain(cm) gust(m/s)\n')
-	for host, time, Temperature, DewPointTemperature, Pressure, WindSpeed, WindDirection, Rain, WindGust in db.fetchall():
+	for host, time, Temperature, DewPointTemperature, Pressure, WindSpeed, WindDirection, Rain, WindGust in wxData:
+		if host != station:
+			continue
+		if time < start or time > stop:
+			continue
 		out.write('%s %f %f %f %f %f %f %f %f\n' % (host, time, Temperature, Pressure, DewPointTemperature, WindSpeed, WindDirection, Rain, WindGust) )
 	
 	out.close()
@@ -371,6 +381,19 @@ ignored = ''
 
 print '\n%s is now collecting weather data...' % program
 
+start = 1.0e12
+stop = -1.0e12
+for a in antennas:
+	if not a in ['BR', 'FD', 'HN', 'KP', 'LA', 'MK', 'NL', 'OV', 'PT', 'SC']:
+		continue
+	if antennaTimes[a][0] < start:
+		start = antennaTimes[a][0]
+	if antennaTimes[a][1] > stop:
+		stop = antennaTimes[a][1]
+
+if start < stop:
+	vlbaWxData = fetchVLBAWeather(start-0.04, stop+0.04)
+
 for a in antennas:
 	if a == 'GB':
 		wxFile = '%s%s.%s.weather' % (lower(obsCode), lower(obsSeg), lower(a))
@@ -380,7 +403,7 @@ for a in antennas:
 		getVLAWeather(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, wxFile)
 	elif a in ['BR', 'FD', 'HN', 'KP', 'LA', 'MK', 'NL', 'OV', 'PT', 'SC']:
 		wxFile = '%s%s.%s.weather.db2wx' % (lower(obsCode), lower(obsSeg), lower(a))
-		getVLBAWeather(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, a, wxFile)
+		getVLBAWeather(vlbaWxData, antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, a, wxFile)
 	else:
 		ignored += ' %s' % a
 

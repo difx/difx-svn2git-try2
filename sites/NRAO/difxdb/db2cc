@@ -15,8 +15,8 @@ except:
 
 program = 'db2cc'
 author = 'Walter Brisken'
-version = '0.1'
-verdate = '20150309'
+version = '0.2'
+verdate = '20150730'
 
 # Name of the Postgres VLBA database based on EVLA
 databaseName = getenv("VLBAMPTS_DB")
@@ -140,7 +140,7 @@ def calcMJD(t):
 def day2mjd(year, doy):
 	return (datetime.datetime(int(year), 1, 1) + datetime.timedelta(int(doy)-1) - mjd0).days
 
-def getCableCalsFromDB(db, startMJD, stopMJD, stn, verbose):
+def getCableCalsFromDB(db, startMJD, stopMJD, verbose):
 
 	start = mjd2date(startMJD)
 	stop  = mjd2date(stopMJD)
@@ -158,15 +158,14 @@ def getCableCalsFromDB(db, startMJD, stopMJD, stn, verbose):
                monpointname,
                monpointvalue
              FROM mcdata
-             WHERE hostname = '%s-cc' AND
-                   devicename = 'RTPHASE' AND
+             WHERE devicename = 'RTPHASE' AND
                    monpointname IN ('RTP_inphase', 'RTP_quadphase') AND
                    timestamp BETWEEN %14.8f AND %14.8f
              ORDER BY 1,2 $$,
           $$ VALUES ('RTP_inphase'), ('RTP_quadphase') $$
           ) AS ct(hostname_timestamp text,
                   RTP_inphase double precision,
-                  RTP_quadphase double precision)""" % (lower(stn), startMJD, stopMJD)
+                  RTP_quadphase double precision)""" % (startMJD, stopMJD)
 
 	if(verbose):
 		print 'Executing query: %s' % query
@@ -192,6 +191,17 @@ def processVexFile(vexFile, force, verbose):
 	stations = stationTimes.keys()
 	stations.sort()
 
+	begin = 1.0e12
+	end = -1.02e12
+	for stn in stations:
+		if stationTimes[stn][0] < begin:
+			begin = stationTimes[stn][0]
+		if stationTimes[stn][1] > end:
+			end = stationTimes[stn][1]
+
+	print 'Doing database query for all stations...'
+	ccdata = getCableCalsFromDB(db, begin, end, verbose)
+
 	for stn in stations:
 		print 'Getting cable cal values for %s:' % stn
 
@@ -201,18 +211,33 @@ def processVexFile(vexFile, force, verbose):
 			continue
 
 		out = open(outfile, 'w')
-		out.write('# Cable cal data extracted from VLBA Monitor Database by %s ver. %s\n' % (program, version))
+		out.write('# Cable cal data extracted from VLBA Monitor Database %s by %s ver. %s\n' % (split(databaseName)[0], program, version))
 		out.write('# Ant MJD dur(days) C.Cal(psec)\n')
 
-		ccdata = getCableCalsFromDB(db, stationTimes[stn][0], stationTimes[stn][1], stn, verbose)
 		for cc in ccdata:
-			cin = cc[2]*512.0/36.0*3276.8;
+			if cc[0] != stn:
+				continue
+			if cc[1] < stationTimes[stn][0] or cc[1] > stationTimes[stn][1]:
+				continue
+			# logic below modeled after old VLBA control code in module/getrtm.c
+			# calc cf as shown on page 9 of VLBA Technical Report #5
+			# 36.0/512.0 is the scale factor used by mon2xml
+			# 3267.8 is a final scale factor used by mon2xml
+			cin = cc[2]*512.0/36.0*3276.8
 			cquad = cc[3]*512.0/36.0*3276.8
+
+			# correct for mon2xml getting signedness confused.  These should be unsigned values.
+			if cin < 0.0:
+				cin += 16777216
+			if cquad < 0.0:
+				cquad += 16777216
+
 			cf = cin / CMAX
 			if (cin <  CHALF and cquad >= CHALFM) or (cin >= CHALF and cquad >= CHALFP):
-				cf = 2.0-cf;
+				cf = 2.0 - cf
+			picosec = cf * 500.0
 
-			out.write('%s %14.8f 0.0 %10.6f  %14.10f %14.10f\n' % (upper(stn), cc[1], cf, cc[2], cc[3]))
+			out.write('%s %14.8f 0.0 %10.6f  %14.10f %14.10f\n' % (upper(stn), cc[1], picosec, cc[2], cc[3]))
 
 		out.close()
 

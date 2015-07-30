@@ -1,3 +1,15 @@
+Version 1.19
+~~~~~~~~~~~~
+* Post DiFX-2.4
+* db2cc
+  - fix scaling of output
+  - correct for mon2xml bug
+  - do single database query instead of one per antenna
+* db2wx
+  - do single database query for all VLBA antennas; GB, Y are still separate
+* db2flag
+  - do single database query for all VLBA antennas
+
 Version 1.18
 ~~~~~~~~~~~~
 * difxqueue: actually respect "DIFX_LABEL" env var

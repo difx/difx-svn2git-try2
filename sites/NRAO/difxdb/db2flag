@@ -7,14 +7,52 @@ from string import lower, upper, split, strip
 
 program = 'db2flag'
 author = 'Walter Brisken'
-version = '0.3'
-verdate = '20150323'
+version = '0.4'
+verdate = '20150730'
+
+def fetchVLBAMon2xmlFlags(start, stop):
+
+	print 'Getting Mon2xml FLAGGER records from database.  Be patient...'
+
+	dbAccess = environ['VLBAMPTS_DB']
+
+	# query to get VME alerts that were funneled into the VLBAMPTS database via mon2xml
+	query = """
+	SELECT hostname, timestamp, monpointvalue from mcdata 
+	WHERE devicename = 'FLAGGER' 
+	  AND monpointname = 'upper_flag'
+	  AND timestamp between %14.8f AND %14.8f
+	ORDER BY timestamp""" % (start, stop) 
+
+	db = pg.connect(dbAccess).cursor()
+	db.execute(query)
+	
+	return db.fetchall()
 
 
-def getVLBAFlags(start, stop, station, filename):
+def fetchVLBAMibFlags(start, stop):
+
+	print 'Getting MIB alert records from database.  Be patient...'
+
+	dbAccess = environ['VLBAMPTS_DB']
+
+	# look for MIB-native alerts
+	#   For now, just look for subreflector problems.  Later, there may be more...
+	query = """
+	SELECT hostname, timestamp, alert from alertdata 
+	WHERE devicename='M402'
+	  AND monpointname='Ell_Cmd_Stat_Mismatch'
+	  AND timestamp between %14.8f AND %14.8f
+	ORDER BY timestamp""" % (start, stop)
+
+	db = pg.connect(dbAccess).cursor()
+	db.execute(query)
+
+	return db.fetchall()
+
+def getVLBAFlags(mon2xmlFlags, mibFlags, start, stop, station, filename):
 
 	nRec = 0
-	dbAccess = environ['VLBAMPTS_DB']
 
 	# The reasons below must be <= 24 chars between single quotes
 	flagbits = \
@@ -32,23 +70,16 @@ def getVLBAFlags(start, stop, station, filename):
 	flagstart = [-1] * nBit
 
 	out = open(filename, 'w')
-	print 'Collecting %s Flag data from vlbampts db (may take a couple minutes)' % upper(station)
-
-	# First query to get VME alerts that were funneled into the VLBAMPTS database via mon2xml
-	query = """
-	SELECT timestamp, monpointvalue from mcdata 
-	WHERE hostname = '%s-cc' 
-	  AND devicename = 'FLAGGER' 
-	  AND monpointname = 'upper_flag'
-	  AND timestamp between %14.8f AND %14.8f
-	ORDER BY timestamp""" % (lower(station), start, stop) 
-
-	db = pg.connect(dbAccess).cursor()
-	db.execute(query)
+	print 'Formatting %s flag data' % upper(station)
 
 	lastflag = 0
 
-	for timestamp, value in db.fetchall():
+	for hostname, timestamp, value in mon2xmlFlags:
+		if lower(hostname[0:2]) != lower(station):
+			continue
+		if timestamp < start or timestamp > stop:
+			continue
+			
 		nRec += 1
 		flag = int(value)
 
@@ -65,23 +96,16 @@ def getVLBAFlags(start, stop, station, filename):
 		if lastflag & flagbits[b][0]:
 			out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart[b], stop, -1, flagbits[b][1]))
 
-	# Now look for MIB-native alerts
-	#   For now, just look for subreflector problems.  Later, there may be more...
-	query = """
-	SELECT timestamp, alert from alertdata 
-	WHERE hostname='%s-m401'
-	  AND devicename='M402'
-	  AND monpointname='Ell_Cmd_Stat_Mismatch'
-	  AND timestamp between %14.8f AND %14.8f
-	ORDER BY timestamp""" % (lower(station), start, stop)
-
-	db = pg.connect(dbAccess).cursor()
-	db.execute(query)
 
 	flagstart = 0
 	lastflag = 0
 
-	for timestamp, alert in db.fetchall():
+	for hostname, timestamp, alert in mibFlags:
+		if lower(hostname[0:2]) != lower(station):
+			continue
+		if timestamp < start or timestamp > stop:
+			continue
+
 		nRec += 1
 		flag = int(alert)
 
@@ -166,9 +190,16 @@ def exptTimeRange(antennaTimes):
 	return [start, stop]
 
 def usage(pgm):
-	print '\n%s ver. %s  %s  %s' % (program, version, author, verdate)
+	print '\n%s ver. %s  %s  %s\n' % (program, version, author, verdate)
+	print 'Usage: db2flag [options] <vexFile> [ant1 [ant2 ... ] ]\n'
+	print 'Options can be:\n'
+	print '  --help'
+	print '  -h       print this help information\n'
+	print '  --verbose'
+	print '  -v       be more verbose in execution\n'
+	print '  --force'
+	print '  -f       force operation on unrecognized antenna\n'
 
-# Usage:  db2wx [options] <vexFile> [ant1 [ant2 ... ] ]
 
 vexFile = None
 antennas = []
@@ -221,6 +252,20 @@ ignored = ''
 
 print '\n%s is now collecting flag data...' % program
 
+start = 1.0e12
+stop = -1.0e12
+for a in antennas:
+	if not a in ['BR', 'FD', 'HN', 'KP', 'LA', 'MK', 'NL', 'OV', 'PT', 'SC']:
+		continue
+	if antennaTimes[a][0] < start:
+		start = antennaTimes[a][0]
+	if antennaTimes[a][1] > stop:
+		stop = antennaTimes[a][1]
+
+if start < stop:
+	vlbaMon2xmlFlags = fetchVLBAMon2xmlFlags(start, stop)
+	vlbaMibFlags = fetchVLBAMibFlags(start, stop)
+
 for a in antennas:
 	if a == 'GB':
 		wxFile = '%s%s.%s.flag' % (lower(obsCode), lower(obsSeg), lower(a))
@@ -230,7 +275,7 @@ for a in antennas:
 		getVLAFlags(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, wxFile)
 	elif a in ['BR', 'FD', 'HN', 'KP', 'LA', 'MK', 'NL', 'OV', 'PT', 'SC']:
 		wxFile = '%s%s.%s.flag' % (lower(obsCode), lower(obsSeg), lower(a))
-		getVLBAFlags(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, a, wxFile)
+		getVLBAFlags(vlbaMon2xmlFlags, vlbaMibFlags, antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, a, wxFile)
 	else:
 		ignored += ' %s' % a
 
