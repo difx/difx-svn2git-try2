@@ -9,6 +9,7 @@ Version 1.19
   - do single database query for all VLBA antennas; GB, Y are still separate
 * db2flag
   - do single database query for all VLBA antennas
+  - generate flags from L404 devices
 
 Version 1.18
 ~~~~~~~~~~~~

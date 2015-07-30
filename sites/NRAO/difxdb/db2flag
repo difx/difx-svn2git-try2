@@ -10,6 +10,9 @@ author = 'Walter Brisken'
 version = '0.4'
 verdate = '20150730'
 
+# Note: if more MIB-based flags are to be supported there are two places in
+# the code, identified in comments, where additions need to be made.
+
 def fetchVLBAMon2xmlFlags(start, stop):
 
 	print 'Getting Mon2xml FLAGGER records from database.  Be patient...'
@@ -37,11 +40,14 @@ def fetchVLBAMibFlags(start, stop):
 	dbAccess = environ['VLBAMPTS_DB']
 
 	# look for MIB-native alerts
-	#   For now, just look for subreflector problems.  Later, there may be more...
+	#   For now, just look for subreflector problems and L404 unlock.  Later, there may be more...
+	# NOTE: now I assume 1 L404 per site, with side A wired to replace L104-1 and B for L104-2.
+
+	# Here is the first place where additions are needed if more MIB-based flags are to be supported.
 	query = """
-	SELECT hostname, timestamp, alert from alertdata 
-	WHERE devicename='M402'
-	  AND monpointname='Ell_Cmd_Stat_Mismatch'
+	SELECT hostname, timestamp, devicename, monpointname, alert from alertdata 
+	WHERE    ( ( devicename='M402' AND monpointname='Ell_Cmd_Stat_Mismatch' )
+	        OR ( devicename='L404' AND ( monpointname='Lock_Detect_A' OR monpointname='Lock_Detect_B' ) ) )
 	  AND timestamp between %14.8f AND %14.8f
 	ORDER BY timestamp""" % (start, stop)
 
@@ -54,20 +60,21 @@ def getVLBAFlags(mon2xmlFlags, mibFlags, start, stop, station, filename):
 
 	nRec = 0
 
-	# The reasons below must be <= 24 chars between single quotes
-	flagbits = \
-	[ \
-		( 0x0001, "'Synth 1 out of lock'" ), \
-		( 0x0002, "'Synth 2 out of lock'" ), \
-		( 0x0004, "'Synth 3 out of lock'" ), \
-		( 0x0080, "'Source change'" ), \
-		( 0x1000, "'Subreflector posn error'" ), \
-		( 0x4000, "'Antenna not pointing'" ), \
-		( 0x8000, "'Antenna position error'") \
-	]
-	nBit = len(flagbits)
+	# First do Legacy portion (alerts from mon2xml via database)
 
-	flagstart = [-1] * nBit
+	# The reasons below must be <= 24 chars between single quotes
+	legacyFlagTypes = \
+	[ \
+		( 0x00001, "'Synth 1 out of lock'" ), \
+		( 0x00002, "'Synth 2 out of lock'" ), \
+		( 0x00004, "'Synth 3 out of lock'" ), \
+		( 0x00080, "'Source change'" ), \
+		( 0x01000, "'Subreflector posn error'" ), \
+		( 0x04000, "'Antenna not pointing'" ), \
+		( 0x08000, "'Antenna position error'") \
+	]
+
+	flagstart = [-1] * len(legacyFlagTypes)
 
 	out = open(filename, 'w')
 	print 'Formatting %s flag data' % upper(station)
@@ -77,49 +84,75 @@ def getVLBAFlags(mon2xmlFlags, mibFlags, start, stop, station, filename):
 	for hostname, timestamp, value in mon2xmlFlags:
 		if lower(hostname[0:2]) != lower(station):
 			continue
-		if timestamp < start or timestamp > stop:
-			continue
 			
-		nRec += 1
 		flag = int(value)
 
-		for b in range(nBit):
-			if (flag & flagbits[b][0]) != (lastflag & flagbits[b][0]):
-				if flag & flagbits[b][0]:
-					flagstart[b] = timestamp
+		for b in range(len(legacyFlagTypes)):
+			if (flag & legacyFlagTypes[b][0]) != (lastflag & legacyFlagTypes[b][0]):
+				if flag & legacyFlagTypes[b][0]:
+					if timestamp > start:
+						flagstart[b] = timestamp
+					else:
+						flagstart[b] = start
 				else:
-					out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart[b], timestamp, -1, flagbits[b][1]))
+					if timestamp > start:
+						# only bother to write flag if part of it happened during the timerange
+						out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart[b], timestamp, -1, legacyFlagTypes[b][1]))
+						nRec += 1
+					flagstart[b] = -1
 
 		lastflag = flag
 
-	for b in range(nBit):
-		if lastflag & flagbits[b][0]:
-			out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart[b], stop, -1, flagbits[b][1]))
+	for b in range(len(legacyFlagTypes)):
+		if flagstart[b] > 0:
+			out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart[b], stop, -1, legacyFlagTypes[b][1]))
+			nRec += 1
 
+	# Do MIB portion
 
-	flagstart = 0
-	lastflag = 0
+	# Here is the second place where new MIB-based flags are generated.
+	# The device name and mon points in this table are case-insensitive.
+	# For modules types that have multiple instances at one site, add -1 or -2 to the device name as appropriate
+	mibFlagTypes = \
+	[ \
+		("M402.Ell_Cmd_Stat_Mismatch", "'Ellipsoid posn error'"), \
+		("L404-1.Lock_Detect_A",       "'Syn 1 out of lock (L404)'"), \
+		("L404-1.Lock_Detect_B",       "'Syn 2 out of lock (L404)'") \
+	]
 
-	for hostname, timestamp, alert in mibFlags:
+	flagstart = [-1] * len(mibFlagTypes)
+
+	for hostname, timestamp, devicename, monpointname, alert in mibFlags:
+
 		if lower(hostname[0:2]) != lower(station):
 			continue
-		if timestamp < start or timestamp > stop:
-			continue
 
-		nRec += 1
-		flag = int(alert)
+		if hostname[-2] == '-':
+			# device of form L404-1 or L404-2
+			flagDescriptor = lower(devicename + hostname[-2:] + '.' + monpointname)
+		else:
+			flagDescriptor = lower(devicename + '.' + monpointname)
 
-		if flag != lastflag:
-			if flag:
-				flagstart = timestamp
-			else:
-				out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart, timestamp, -1, "'Ellipsoid pos error'"))
+		for b in range(len(mibFlagTypes)):
+			if lower(mibFlagTypes[b][0]) == flagDescriptor:
+				if alert and flagstart[b] < 0:
+					if timestamp > start:
+						flagstart[b] = timestamp
+					else:
+						flagstart[b] = start
+				elif not alert and flagstart[b] > 0:
+					if timestamp > start:
+						# only bother to write flag if part of it happened during the timerange
+						out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart[b], timestamp, -1, mibFlagTypes[b][1]))
+						nRec += 1
+					flagstart[b] = -1
+				break
 
-		lastflag = flag
+	for b in range(len(mibFlagTypes)):
+		if flagstart[b] > 0:
+			out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart[b], stop, -1, mibFlagTypes[b][1]))
+			nRec += 1
 	
-	if lastflag:
-		out.write('%s %12.6f %12.6f %d %s\n' % (upper(station), flagstart, stop, -1, "'Ellipsoid pos error'"))
-
 	print '  %d records found' % nRec
 
 	out.close()
@@ -127,10 +160,10 @@ def getVLBAFlags(mon2xmlFlags, mibFlags, start, stop, station, filename):
 
 	return nRec;
 
-def getGBFlags(start, stop, filename):
+def getGBFlags(start, stop, guardTime, filename):
 	pass
 
-def getVLAFlags(start, stop, filename):
+def getVLAFlags(start, stop, guardTime, filename):
 	pass
 
 				
@@ -205,6 +238,7 @@ vexFile = None
 antennas = []
 verbose = 0
 force = False
+guardTime = 0.04	# [days] : extend time before experiment to get pre-existing conditions
 
 for a in argv[1:]:
 	if a[0] == '-':
@@ -263,19 +297,19 @@ for a in antennas:
 		stop = antennaTimes[a][1]
 
 if start < stop:
-	vlbaMon2xmlFlags = fetchVLBAMon2xmlFlags(start, stop)
-	vlbaMibFlags = fetchVLBAMibFlags(start, stop)
+	vlbaMon2xmlFlags = fetchVLBAMon2xmlFlags(start-guardTime, stop)
+	vlbaMibFlags = fetchVLBAMibFlags(start-guardTime, stop)
 
 for a in antennas:
 	if a == 'GB':
-		wxFile = '%s%s.%s.flag' % (lower(obsCode), lower(obsSeg), lower(a))
-		getGBFlags(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, wxFile)
+		flagFile = '%s%s.%s.flag' % (lower(obsCode), lower(obsSeg), lower(a))
+		getGBFlags(antennaTimes[a][0], antennaTimes[a][1], guardTime, flagFile)
 	elif a == 'Y':
-		wxFile = '%s%s.%s.flag' % (lower(obsCode), lower(obsSeg), lower(a))
-		getVLAFlags(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, wxFile)
+		flagFile = '%s%s.%s.flag' % (lower(obsCode), lower(obsSeg), lower(a))
+		getVLAFlags(antennaTimes[a][0], antennaTimes[a][1], guardTime, flagFile)
 	elif a in ['BR', 'FD', 'HN', 'KP', 'LA', 'MK', 'NL', 'OV', 'PT', 'SC']:
-		wxFile = '%s%s.%s.flag' % (lower(obsCode), lower(obsSeg), lower(a))
-		getVLBAFlags(vlbaMon2xmlFlags, vlbaMibFlags, antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, a, wxFile)
+		flagFile = '%s%s.%s.flag' % (lower(obsCode), lower(obsSeg), lower(a))
+		getVLBAFlags(vlbaMon2xmlFlags, vlbaMibFlags, antennaTimes[a][0], antennaTimes[a][1], a, flagFile)
 	else:
 		ignored += ' %s' % a
 
