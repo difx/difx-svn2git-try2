@@ -226,7 +226,7 @@ const DifxInput *DifxInput2FitsMC(const DifxInput *D,
 
 				deltatn = 1.0;
 				c1 = 0.0;
-				for(j = 0; j < D->antenna[antId].clockorder; ++j)
+				for(j = 0; j <= D->antenna[antId].clockorder; ++j)
 				{
 					c1 = c1 + D->antenna[antId].clockcoeff[j] * deltatn;
 					deltatn = deltatn * deltat;
@@ -234,7 +234,7 @@ const DifxInput *DifxInput2FitsMC(const DifxInput *D,
 				deltat2 = deltat + P->validDuration/86400.0;
 				deltatn = 1.0;
 				c2 = 0.0;
-				for(j=0; j<D->antenna[antId].clockorder; ++j)
+				for(j = 0; j <= D->antenna[antId].clockorder; ++j)
 				{
 					c2 = c2 + D->antenna[antId].clockcoeff[j] * deltatn;
 					deltatn = deltatn * deltat2;
