@@ -33,9 +33,11 @@ mk5daemon_SOURCES = \
 	mk5daemon.h \
 	options.cpp \
 	mark6.cpp \
+	mark6.h \
 	mark6diskdevice.h \
 	mark6diskdevice.cpp \
 	Mark6Meta.cpp \
+	Mark6Meta.h \
 	$(streamstor_sources)
 
 mk5daemon_LDADD = -ludev
