@@ -7,8 +7,8 @@ from string import lower, upper, split, strip
 
 program = 'db2wx'
 author = 'Walter Brisken and Daniel Lyons'
-version = '0.3'
-verdate = '20150730'
+version = '0.4'
+verdate = '20151021'
 
 
 
@@ -402,7 +402,7 @@ for a in antennas:
 		wxFile = '%s%s.%s.weather' % (lower(obsCode), lower(obsSeg), lower(a))
 		getVLAWeather(antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, wxFile)
 	elif a in ['BR', 'FD', 'HN', 'KP', 'LA', 'MK', 'NL', 'OV', 'PT', 'SC']:
-		wxFile = '%s%s.%s.weather.db2wx' % (lower(obsCode), lower(obsSeg), lower(a))
+		wxFile = '%s%s.%s.weather' % (lower(obsCode), lower(obsSeg), lower(a))
 		getVLBAWeather(vlbaWxData, antennaTimes[a][0]-0.04, antennaTimes[a][1]+0.04, a, wxFile)
 	else:
 		ignored += ' %s' % a
