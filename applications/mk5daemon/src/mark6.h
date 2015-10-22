@@ -1,7 +1,8 @@
 #include <string>
 #include <vector>
 
-#include "mark6diskdevice.h"
+#include "Mark6DiskDevice.h"
+#include "Mark6Module.h"
 
 /**
  * Custom exception class for reporting Mark6 related errors
@@ -10,7 +11,7 @@ class Mark6Exception : public std::exception
 {
 private:
     std::string err_msg;
-
+    
 public:
     Mark6Exception(std::string msg) : err_msg(msg) {};
     ~Mark6Exception() throw() {};
@@ -35,15 +36,15 @@ public:
 class Mark6
 {
 private:
-	
+	static const int NUMSLOTS = 4;   // number of slots per mark6 unit
 	int fd;		// file descriptor for the udev monitor
         struct udev *udev_m;
         struct udev_monitor *mon;
 	std::vector<Mark6DiskDevice> mountedDevices_m;
-	std::vector<std::string> removedDevices_m;
+	std::vector<Mark6DiskDevice> removedDevices_m;
         std::vector<Mark6DiskDevice> newDevices_m;
         std::string mountPath_m;
-        std::string slotMSN_m[4];
+        Mark6Module modules_m[NUMSLOTS];
         void manageDevices();
 	void validateMountDevices();
 public:
@@ -55,13 +56,15 @@ public:
         int addPartitionDevice(std::string partitionName);
         bool isMounted(std::string deviceName);
         Mark6DiskDevice *getMountedDevice(std::string deviceName);
-        void removeMountedDevice(std::string deviceName);
+        void removeMountedDevice(Mark6DiskDevice device);
         void enumerateDevices();
         void cleanUp();
-        void createLinks();
+        void createMountLinks();
+        int getSlot(std::string eMSN);
+        int  getFreeSlot();
         std::vector<Mark6DiskDevice> getMountedDevices() const {
             return mountedDevices_m;
         }
-
+        
 };
 

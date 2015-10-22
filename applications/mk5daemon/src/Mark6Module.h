@@ -10,20 +10,24 @@
 
 #include <string>
 #include <vector>
+#include "Mark6DiskDevice.h"
 
 class Mark6Module {
 public:
     Mark6Module();
     Mark6Module(const Mark6Module& orig);
     virtual ~Mark6Module();
-    void addDiskDevice(std::string deviceName);
-    void removeDiskDevice(std::string deviceName);
+    void addDiskDevice(Mark6DiskDevice device);
+    void removeDiskDevice(Mark6DiskDevice device);
+    Mark6DiskDevice *getDiskDevice(int index);
     std::string getEMSN();
+    void setEMSN(std::string eMSN);
+    int getNumDiskDevices();
     
 private:
     static const int MAXDISKS = 8;   // number of disks per mark6 module
     std::string eMSN_m;
-    std::vector<std::string > diskDevices_m;   // holds the device names for each of the disks
+    std::vector<Mark6DiskDevice > diskDevices_m;   // holds the device names for each of the disks
 };
 
 #endif	/* MARK6MODULE_H */

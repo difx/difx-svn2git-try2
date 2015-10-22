@@ -14,13 +14,27 @@
 
 class Mark6DiskDevice {
 public:
+    
+    struct Mark6Partition
+    {
+        std::string deviceName;
+        std::string mountPath;
+        std::string linkPath;
+        // sort Mark6Partition by deviceName
+        static bool sortByName(const Mark6Partition &lhs, const Mark6Partition &rhs) { return lhs.deviceName < rhs.deviceName; }
+    };
+    
+    bool sortByName(const Mark6Partition &lhs, const Mark6Partition &rhs); 
+    
     Mark6DiskDevice(std::string deviceName);
     virtual ~Mark6DiskDevice();
     void addPartition(std::string partitionName);
-    std::vector<std::string> getPartitions() const;
+    std::vector<Mark6Partition> getPartitions() const;
     std::string getName() const;
     int mountDisk(std::string mountPath);
     void unmountDisk(std::string mountPath);
+    int linkDisk(std::string linkRoot, int slot);
+    int unlinkDisk();
     bool isMounted();
     void setFsType(std::string fsType_m);
     std::string getFsType() const;
@@ -29,18 +43,21 @@ public:
     int getDiskId() const;
     void setSlotId(int slotId_m);
     int getSlotId() const;
-    //std::string getEMSN() const;
+
+
 private:
+
+    
     std::string name_m;
-    std::vector<std::string> partitions_m;
+    std::vector<Mark6Partition> partitions_m;
     bool isMounted_m;
-    std::string mountPath_m;
+    //std::string mountPath_m;
+    //std::string linkPath_m;
     std::string fsType_m;
     Mark6Meta meta_m;
     int slotId_m;
     int diskId_m;
     
-   // std::string eMSN_m;
 };
 
 #endif	/* MARK6DISKDEVICE_H */
