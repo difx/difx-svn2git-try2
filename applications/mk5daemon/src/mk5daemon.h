@@ -38,6 +38,8 @@
 #include "config.h"
 #include "logger.h"
 #include "../mk5dir/mark5directorystructs.h"
+#include "Mark6.h"
+
 #ifdef HAVE_XLRAPI_H
 #include "smart.h"
 #endif
@@ -237,6 +239,7 @@ typedef struct
 	unsigned int addressRejects;
 	unsigned int lengthRejects;
 	unsigned int fscRejects;
+        Mark6 mark6;
 } Mk5Daemon;
 
 int Mk5Daemon_loadMon(Mk5Daemon *D, double mjd);
@@ -297,6 +300,7 @@ int handleVSIS(Mk5Daemon *D, int sock);
 
 int handleVSIS(Mk5Daemon *D, int sock);
 void handleMk5Status(Mk5Daemon *D, const DifxMessageGeneric *G);
+void handleMark6Status(Mk5Daemon *D, const DifxMessageGeneric *G);
 void handleCommand(Mk5Daemon *D, const DifxMessageGeneric *G);
 void handleDriveStats(Mk5Daemon *D, const DifxMessageGeneric *G);
 

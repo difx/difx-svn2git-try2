@@ -6,7 +6,7 @@
  */
 
 #include "Mark6DiskDevice.h"
-#include "mark6.h"
+#include "Mark6.h"
 #include "Mark6Meta.h"
 
 #include <algorithm>

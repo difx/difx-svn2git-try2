@@ -32,8 +32,8 @@ mk5daemon_SOURCES = \
 	mk5daemon.cpp \
 	mk5daemon.h \
 	options.cpp \
-	mark6.cpp \
-	mark6.h \
+	Mark6.cpp \
+	Mark6.h \
 	Mark6DiskDevice.h \
 	Mark6DiskDevice.cpp \
 	Mark6Meta.cpp \

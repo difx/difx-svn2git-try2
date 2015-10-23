@@ -11,8 +11,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-
-#include "mark6.h"
+#include "Mark6.h"
 #include "Mark6DiskDevice.h"
 #include "Mark6Meta.h"
 #include <sys/mount.h>
@@ -456,13 +455,14 @@ void Mark6::pollDevices()
 	int changeCount = 0;
 
 	// while there are hotplug events to process
-	while(poll(items, 1, 50) > 0)
+	while(poll(items, 1, 100) > 0)
 	{
 		
 	       // receive the relevant device
 		udev_device* dev = udev_monitor_receive_device(mon);
 		if(!dev)
 		{
+                    cout << "Cannot receive device information" << endl;
 		    // error receiving device, skip it
 		    continue;
 		}

@@ -1,3 +1,13 @@
+/* 
+ * File:   Mark6Meta.cpp
+ * Author: Helge Rottmann (MPIfR)
+ * 
+ * Created on 30. September 2015, 12:23
+ */
+
+#ifndef MARK6_H
+#define	MARK6_H
+
 #include <string>
 #include <vector>
 
@@ -68,3 +78,4 @@ public:
         
 };
 
+#endif	/* MARK6_H */

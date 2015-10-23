@@ -53,7 +53,7 @@
 #include "../config.h"
 #include "logger.h"
 #include "proc.h"
-#include "mark6.h"
+#include "Mark6.h"
 #ifdef HAVE_XLRAPI_H
 #include "watchdog.h"
 #endif
@@ -154,7 +154,7 @@ static void usage(const char *pgm)
 	fprintf(stderr, "  -m             Force mk5daemon on this host to act as Mark5 regardless of hostname\n"); 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "  --isMk6 \n");
-	fprintf(stderr, "  -m             Force mk5daemon on this host to act as Mark6 regardless of hostname\n"); 
+	fprintf(stderr, "  -6             Force mk5daemon on this host to act as Mark6 regardless of hostname\n"); 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "  --embedded\n");
 	fprintf(stderr, "  -e             Configure for running within a pipe and with messages to stdout\n");
@@ -840,6 +840,9 @@ void handleDifxMessage(Mk5Daemon *D, int noSu)
 		{
 			switch(G.type)
 			{
+                        case DIFX_MESSAGE_MARK6STATUS:
+				handleMark6Status(D, &G);
+				break;
 			case DIFX_MESSAGE_MARK5STATUS:
 				handleMk5Status(D, &G);
 				break;
@@ -1256,7 +1259,10 @@ int main(int argc, char **argv)
 					Mk5Daemon_getModules(D);
 				}
 
-				mark6.pollDevices();
+                                // check for new modules on a mark6
+                                if (options.isMk6)
+                                    //mark6.pollDevices();
+                                    D->mark6.pollDevices();
 			}
 			// determine streamstor version for mk5s once at startup
 			if(t - firstTime > 15 && D->isMk5 && isMk5)
