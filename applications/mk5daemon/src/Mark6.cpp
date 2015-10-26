@@ -440,6 +440,40 @@ void Mark6::enumerateDevices()
 }
 
 /**
+ * Obtains the sequence number of the disk device on the SAS controller by parsing the contents of the sas_device attribute provided by UDEV.
+ * If cabeling of the Mark6 SAS controller 
+ * is done correctly this sequence number should correspond to the module LEDs on the frontpack of the diskpack.
+ * @returns the disk id; -1 if the id could not be parsed from the given sas address
+ */
+long Mark6::parseDiskId(std::string sasAddress)
+{
+    //cout << "DiskID = " << strtoul(sasAddress.substr(11,1).c_str(), NULL, 16) << " " << sasAddress << " " << sasAddress.substr(11,1) << sasAddress.substr(1,1) << endl;
+    if (sasAddress.size() < 11)     
+        return(-1);
+    
+    return(strtol(sasAddress.substr(11,1).c_str(), NULL, 16));
+}
+
+/**
+ * Obtains the controller id (should be either 0 or 1) by parsing the output 
+ * of the devpath information provided by UDEV. If the internal cabeling
+ * of the Mark6 machine is done correctly module slots 1 and 2 should be
+ * located on controller id=1 whereas slots 3 and 4 should have a controller id=0
+ * @returns the controller id; -1 if no controller id was found in the devpath
+ */
+int Mark6::parseControllerId(string devpath)
+{
+    size_t found = devpath.find("host0");
+    if (found != string::npos)
+        return(0);
+    
+    found = devpath.find("host1");
+    if (found != string::npos)
+        return(1);
+    
+    return(-1);
+}
+/**
  * Look for devices that were added or removed 
  */
 void Mark6::pollDevices()
@@ -474,16 +508,19 @@ void Mark6::pollDevices()
 		cout << udev_device_get_subsystem(dev) << ",";
 		cout << udev_device_get_devtype(dev) << ",";
                 cout << endl;
-/*
+
 		cout << " devpath="<< udev_device_get_devpath(dev) << endl;
 		cout << " syspath="<< udev_device_get_syspath(dev) << endl;
 		cout << " sysname="<< udev_device_get_sysname(dev) << endl;
 		cout << " devnode="<< udev_device_get_devnode(dev) << endl;
 		cout << " devnum="<< udev_device_get_devnum(dev) << endl;
+                //cout << " range="<< udev_device_get_sysattr_value(dev,"range")<< endl;
 		
 		udev_device  *parent = udev_device_get_parent(dev);
                 cout << "parent ";
-		cout << " subsystem = " << udev_device_get_subsystem(parent) ;
+                
+                /*
+                 * 		cout << " subsystem = " << udev_device_get_subsystem(parent) ;
                 cout << " devtype = " << udev_device_get_devtype(parent);
                 cout << " devpath="<< udev_device_get_devpath(parent) << endl;
 		cout << " syspath="<< udev_device_get_syspath(parent) << endl;
@@ -495,10 +532,20 @@ void Mark6::pollDevices()
 		{
                     if (devtype == "disk")
                     {
+                        //cout << " serial_short="<< udev_device_get_property_value(dev,"ID_SERIAL_SHORT") << endl;
+                        //cout << " sas_address="<< udev_device_get_sysattr_value(parent,"sas_address") << endl;
+                       
+                       
                         // add new disk device
                         Mark6DiskDevice disk(string(udev_device_get_sysname(dev)));
+                        disk.setControllerId( parseControllerId(udev_device_get_devpath(dev)) );
+                        disk.setDiskId(parseDiskId(udev_device_get_sysattr_value(parent,"sas_address")));
+                        disk.setSerial(udev_device_get_property_value(dev,"ID_SERIAL_SHORT") );
                         newDevices_m.push_back(disk);			
                         changeCount++;
+                        cout << "Controller ID=" << disk.getControllerId() << endl;
+                        cout << "Disk ID=" << disk.getDiskId() << endl;
+                        cout << "Disk serial =" << disk.getSerial() << endl;
                     }
                     else if (devtype == "partition")
                     {   

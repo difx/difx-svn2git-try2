@@ -57,6 +57,8 @@ private:
         Mark6Module modules_m[NUMSLOTS];
         void manageDevices();
 	void validateMountDevices();
+        int parseControllerId(std::string devpath);
+        long parseDiskId(std::string sasAddress);
 public:
         Mark6();
 	~Mark6();

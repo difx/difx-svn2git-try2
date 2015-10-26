@@ -1261,8 +1261,8 @@ int main(int argc, char **argv)
 
                                 // check for new modules on a mark6
                                 if (options.isMk6)
-                                    //mark6.pollDevices();
-                                    D->mark6.pollDevices();
+                                    mark6.pollDevices();
+                                    //D->mark6.pollDevices();
 			}
 			// determine streamstor version for mk5s once at startup
 			if(t - firstTime > 15 && D->isMk5 && isMk5)

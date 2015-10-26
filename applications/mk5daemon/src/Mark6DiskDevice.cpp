@@ -246,11 +246,11 @@ Mark6Meta Mark6DiskDevice::getMeta() const {
     return meta_m;
 }
 
-void Mark6DiskDevice::setDiskId(int diskId_m) {
+void Mark6DiskDevice::setDiskId(long diskId_m) {
     this->diskId_m = diskId_m;
 }
 
-int Mark6DiskDevice::getDiskId() const {
+long Mark6DiskDevice::getDiskId() const {
     return diskId_m;
 }
 
@@ -260,6 +260,22 @@ void Mark6DiskDevice::setSlotId(int slotId_m) {
 
 int Mark6DiskDevice::getSlotId() const {
     return slotId_m;
+}
+
+void Mark6DiskDevice::setControllerId(int controllerId_m) {
+    this->controllerId_m = controllerId_m;
+}
+
+int Mark6DiskDevice::getControllerId() const {
+    return controllerId_m;
+}
+
+void Mark6DiskDevice::setSerial(std::string serial_m) {
+    this->serial_m = serial_m;
+}
+
+std::string Mark6DiskDevice::getSerial() const {
+    return serial_m;
 }
 
 /*std::string Mark6DiskDevice::getMountPath() const {

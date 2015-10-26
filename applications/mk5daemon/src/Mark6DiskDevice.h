@@ -39,10 +39,15 @@ public:
     void setFsType(std::string fsType_m);
     std::string getFsType() const;
     Mark6Meta getMeta() const;
-    void setDiskId(int diskId_m);
-    int getDiskId() const;
+    void setDiskId(long diskId_m);
+    long getDiskId() const;
     void setSlotId(int slotId_m);
     int getSlotId() const;
+    void setControllerId(int controllerId_m);
+    int getControllerId() const;
+    void setSerial(std::string serial_m);
+    std::string getSerial() const;
+    
 
 
 private:
@@ -56,7 +61,9 @@ private:
     std::string fsType_m;
     Mark6Meta meta_m;
     int slotId_m;
-    int diskId_m;
+    long diskId_m;
+    int controllerId_m;
+    std::string serial_m;
     
 };
 
