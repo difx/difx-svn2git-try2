@@ -1061,47 +1061,48 @@ int parseCmd (int argc, char **argv, Options &options)
 int main(int argc, char **argv)
 {
 	
-  try
-  {
-	// FIXME: catch exceptions
-	// FIXME: fixed length string arrays should be revisited
-	Mk5Daemon *D;
-	time_t t, lastTime;
-	char message[DIFX_MESSAGE_LENGTH];
-	char str[16];
-	//int isHeadNode = 0;
-	//int isEmbedded = 0;
-	//int noSu = 0;
-	int i;
-	//const char *logPath;
-	const char *p, *u;
-	//const char *userID;
-	//const char *providedHostname = 0;
-	double mjd;
-	fd_set socks;
-	struct timeval timeout;
-	int readSocks;
-	int highSock;
-	int v;
-	Options options;
-	Mark6 mark6;
-#ifdef HAVE_XLRAPI_H
-	time_t firstTime;
-	int halfInterval;
-	int ok = 0;	/* FIXME: combine with D->ready? */
-	int justStarted = 1;
-	int recordFD;
-	int isMk5 = 1;
-	
 
-	if(XLRDeviceFind() < 1)
-	{
-		isMk5 = 0;
-	}
+    // FIXME: catch exceptions
+    // FIXME: fixed length string arrays should be revisited
+    Mk5Daemon *D;
+    time_t t, lastTime;
+    char message[DIFX_MESSAGE_LENGTH];
+    char str[16];
+    //int isHeadNode = 0;
+    //int isEmbedded = 0;
+    //int noSu = 0;
+    int i;
+    //const char *logPath;
+    const char *p, *u;
+    //const char *userID;
+    //const char *providedHostname = 0;
+    double mjd;
+    fd_set socks;
+    struct timeval timeout;
+    int readSocks;
+    int highSock;
+    int v;
+    Options options;
+    Mark6 mark6;
+#ifdef HAVE_XLRAPI_H
+    time_t firstTime;
+    int halfInterval;
+    int ok = 0;	/* FIXME: combine with D->ready? */
+    int justStarted = 1;
+    int recordFD;
+    int isMk5 = 1;
+
+
+    if(XLRDeviceFind() < 1)
+    {
+            isMk5 = 0;
+    }
 #else
-	int isMk5 = 0;
+    int isMk5 = 0;
 #endif
 
+    try
+    {
 	// Prevent any zombies
 	signal(SIGCHLD, SIG_IGN);
 
@@ -1261,7 +1262,10 @@ int main(int argc, char **argv)
 
                                 // check for new modules on a mark6
                                 if (options.isMk6)
+                                {
                                     mark6.pollDevices();
+                                    mark6.sendStatusMessage();
+                                }
                                     //D->mark6.pollDevices();
 			}
 			// determine streamstor version for mk5s once at startup
@@ -1441,13 +1445,26 @@ int main(int argc, char **argv)
    }
    catch(Mark6Exception& ex)
    {
-	cerr << "The following error has occured: " << ex.what() << endl;
-	cerr << "This might be caused by insufficient permissions. On a Mark6 machine mk5daemon must be started as root!" << endl;
-	cerr << "Aborting" << endl;
-	return(EXIT_FAILURE);
+        if (options.isMk6)
+            mark6.cleanUp();
+        
+        cerr << "The following error has occured: " << ex.what() << endl;
+        cerr << "This might be caused by insufficient permissions. On a Mark6 machine mk5daemon must be started as root!" << endl;
+        cerr << "Aborting" << endl;
+        return(EXIT_FAILURE);
    }
+   catch(exception& ex)
+   {
+        cerr << "The following error has occured: " << ex.what() << endl;
+        cerr << "This might be caused by insufficient permissions. On a Mark6 machine mk5daemon must be started as root!" << endl;
+        cerr << "Aborting" << endl;
+        return(EXIT_FAILURE);
+       
+   }    
    catch(...)
    {
+        if (options.isMk6)
+            mark6.cleanUp();
 	cerr << "An unexpected error has occured. Aborting" << endl;
 	return(EXIT_FAILURE);
 

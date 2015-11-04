@@ -4,12 +4,14 @@
 #include <stdlib.h>
 #include <iostream>
 #include <sstream>
+#include <cstring>
 #include <string>
 #include <vector>
 #include <stdexcept>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <difxmessage.h>
 
 #include "Mark6.h"
 #include "Mark6DiskDevice.h"
@@ -23,22 +25,33 @@ using namespace std;
  */
 Mark6::Mark6(void)
 {
-        /* Create the udev object */
-        udev_m = udev_new();
-        if (!udev_m) {
-                throw Mark6Exception (string("Cannot create new udev object.") );
-        }
-	mon = udev_monitor_new_from_netlink(udev_m, "udev");
-        udev_monitor_filter_add_match_subsystem_devtype(mon, "block", NULL);
-        udev_monitor_enable_receiving(mon);
-        
-        // Get the file descriptor (fd) for the monitor. This fd will get passed to select() 
-        fd = udev_monitor_get_fd(mon);
+    //set defaults 
+    linkRootData_m = "/mnt/disks/";               
+    linkRootMeta_m =  linkRootData_m + ".meta/";
+    
+    for (int i=0; i < NUMSLOTS; i++)
+    {
+        stringstream ss;
+        ss << i+1;
+        slotIds_m[i] = ss.str();
+    }
+    
+    // Create the udev object 
+    udev_m = udev_new();
+    if (!udev_m) {
+            throw Mark6Exception (string("Cannot create new udev object.") );
+    }
+    mon = udev_monitor_new_from_netlink(udev_m, "udev");
+    udev_monitor_filter_add_match_subsystem_devtype(mon, "block", NULL);
+    udev_monitor_enable_receiving(mon);
 
-	// check if required mount points exists; create them if not        
-	validateMountPoints();
-        
-        cleanUp();
+    // Get the file descriptor (fd) for the monitor. This fd will get passed to select() 
+    fd = udev_monitor_get_fd(mon);
+
+    // check if required mount points exists; create them if not        
+    validateMountPoints();
+
+    cleanUp();
 }
 
 /**
@@ -117,6 +130,21 @@ int  Mark6::getFreeSlot()
     return(-1); 
 }
 
+void Mark6::sendStatusMessage()
+{
+    DifxMessageMark6Status dm;
+    
+    memset(&dm, 0, sizeof(DifxMessageMark6Status));
+    
+    modules_m[0].getEMSN();
+    strncpy(dm.msn1, modules_m[0].getEMSN().c_str(), DIFX_MESSAGE_MARK6_MSN_LENGTH);
+    strncpy(dm.msn2, modules_m[1].getEMSN().c_str(), DIFX_MESSAGE_MARK6_MSN_LENGTH);
+    strncpy(dm.msn3, modules_m[2].getEMSN().c_str(), DIFX_MESSAGE_MARK6_MSN_LENGTH);
+    strncpy(dm.msn4, modules_m[3].getEMSN().c_str(), DIFX_MESSAGE_MARK6_MSN_LENGTH);
+    
+    difxMessageSendMark6Status(&dm);
+}
+
 /**
  * Loops over all disks in all mounted modules and sets a symbolic link to each mount point at the location expected
  * by the mark6 reading code.
@@ -127,12 +155,20 @@ void Mark6::createMountLinks()
     for (int slot=0; slot < NUMSLOTS; slot++)
     {
         //loop over all disk devices
-        for (int disk=0; disk < modules_m[slot].getNumDiskDevices(); disk++)
+        for (int disk=0; disk < Mark6Module::MAXDISKS; disk++)
         { 
+            
+            if (modules_m[slot].getDiskDevice(disk) == NULL)
+                continue;
+            
+            cout << " procssing " << slot << "/" << disk << endl;
+            
             // check if in list of currently mounted devices 
             if (modules_m[slot].getDiskDevice(disk)->isMounted())
             {
-                modules_m[slot].getDiskDevice(disk)->linkDisk("/mnt/disks", slot);
+                cout << "setting link" << endl;
+                modules_m[slot].getDiskDevice(disk)->linkDisk(linkRootData_m, linkRootMeta_m, slot);
+                cout << "set link" << endl;
             }
             else
             {
@@ -146,9 +182,10 @@ void Mark6::createMountLinks()
 }
 
 /**
- * Manages devices that were added or removed by turning the Mark6 keys. Newly added devices will be mounted; removed devices will be unmounted
+ * Manages devices that were added or removed by turning the Mark6 keys. Newly added devices will be mounted; removed devices will be unmounted. 
+ * Prior to mounting validation is done to check if the new device is a Mark6 disk,
  */
-void Mark6::manageDevices()
+void Mark6::manageDeviceChange()
 {
     vector<Mark6DiskDevice> tempDevices;
     vector<Mark6DiskDevice> tempRemoveDevices;
@@ -162,54 +199,52 @@ void Mark6::manageDevices()
         // validate all new devices
         for(std::vector<Mark6DiskDevice>::size_type i = 0; i != tempDevices.size(); i++) {
        
-            // too many partitions for a valid mark6 disk
-            if (tempDevices[i].getPartitions().size() > 2)
+            if (tempDevices[i].isValid() == false)
             {
-                cout << "disk " << tempDevices[i].getName() << " has more than 2 partitions. Discarding.";
+                cout << "disk " << tempDevices[i].getName() << " is not a valid Mark6 disk device. Discarding.";
                 continue;
             }
-            // if less than 2 partitions keep in list of newdevices  
-            else if (tempDevices[i].getPartitions().size() < 2)
+                 
+            //create the mount points for both partitions
+            createMountPoint(mountPath_m + tempDevices[i].getPartitions()[0].deviceName);
+            createMountPoint(mountPath_m + tempDevices[i].getPartitions()[1].deviceName);
+
+            // mount both partitions 
+            tempDevices[i].mountDisk(mountPath_m);
+
+            if (tempDevices[i].isMounted())
             {
-                cout << "disk " << tempDevices[i].getName() << " has only 1 partition. Keeping it for now.";
-                newDevices_m.push_back(tempDevices[i]);
+                cout << "mounted " << tempDevices[i].getPartitions()[0].deviceName << " " << tempDevices[i].getPartitions()[1].deviceName << endl;
+
+                mountedDevices_m.push_back(tempDevices[i]);
+
+                int slot = tempDevices[i].getSlot();
+                if(slot == -1)
+                {
+                    cout << "Cannot determine bank for disk " << tempDevices[i].getName() << ". Discarding.";
+                    continue;
+                }
+                // check if a disk from the same module has already been mounted
+                /*int slot = getSlot(tempDevices[i].getMeta().getEMSN());
+                if (slot == -1)
+                {
+                    // ...if not get the next free slot
+                    if ((slot = getFreeSlot()) == -1)
+                    {                 
+                        throw new Mark6Exception("Error registering slot for eMSN: " + tempDevices[i].getMeta().getEMSN() + ". All slots already occupied.");
+                    }
+                }
+                */
+                modules_m[slot].setEMSN(tempDevices[i].getMeta().getEMSN());
+                modules_m[slot].addDiskDevice(tempDevices[i]);
+
             }
             else
             {
-                createMountPoint(mountPath_m + tempDevices[i].getPartitions()[0].deviceName);
-                createMountPoint(mountPath_m + tempDevices[i].getPartitions()[1].deviceName);
-                
-                tempDevices[i].mountDisk(mountPath_m);
-                          
-                if (tempDevices[i].isMounted())
-                {
-                    cout << "mounted " << tempDevices[i].getPartitions()[0].deviceName << " " << tempDevices[i].getPartitions()[1].deviceName << endl;
-                    
-                    
-                    mountedDevices_m.push_back(tempDevices[i]);
-                    
-                    // check if a disk from the same module has already been mounted
-                    int slot = getSlot(tempDevices[i].getMeta().getEMSN());
-                    if (slot == -1)
-                    {
-                        // ...if not get the next free slot
-                        if ((slot = getFreeSlot()) == -1)
-                        {                 
-                            throw new Mark6Exception("Error registering slot for eMSN: " + tempDevices[i].getMeta().getEMSN() + ". All slots already occupied.");
-                        }
-                    }
-
-                    modules_m[slot].setEMSN(tempDevices[i].getMeta().getEMSN());
-                    modules_m[slot].addDiskDevice(tempDevices[i]);
-                   
-               
-                }
-                else
-                {
-                    cout << "mount failed " << tempDevices[i].getPartitions()[0].deviceName << " " << tempDevices[i].getPartitions()[1].deviceName << " will try again" << endl;
-                    newDevices_m.push_back(tempDevices[i]);
-                }
-            } 
+                cout << "mount failed " << tempDevices[i].getPartitions()[0].deviceName << " " << tempDevices[i].getPartitions()[1].deviceName << " will try again" << endl;
+                newDevices_m.push_back(tempDevices[i]);
+            }
+            
         }  
     }
     
@@ -253,6 +288,8 @@ void Mark6::manageDevices()
             
         }        
     }
+    
+    cout << "done" << endl; 
 }
 
 /**
@@ -261,13 +298,12 @@ void Mark6::manageDevices()
 */
 void  Mark6::validateMountPoints()
 {
-        string rootPath = "/mnt/disks/";
-        string metaPath = rootPath + ".meta/";
+        string rootPath = linkRootData_m;
+        string metaPath = linkRootMeta_m;
+        
         string tmpRootPath = "/tmp/";
        
-	string slots[] = {"1","2","3","4"};
-	//string disks[] = {"0","1","2","3","4","5","6","7"};
-	//string meta[] = {"0m","1m","2m","3m","4m","5m","6m","7m"};
+	//string slots[] = {"1","2","3","4"};
                 
         // create mount points in /tmp
         string path = tmpRootPath + "mark6/";
@@ -278,15 +314,15 @@ void  Mark6::validateMountPoints()
         // set the mount path
         mountPath_m = path;
                 
-        // create directories under /mnt for hosting sybolic links to the mount points 
+        // create directories under /mnt for hosting symbolic links to the mount points 
 	createMountPoint(rootPath);
         createMountPoint(metaPath);
       
-	for(int i=0; i < 4; i++)
+	for(int i=0; i < NUMSLOTS; i++)
 	{
-            string path = rootPath + slots[i];
-            createMountPoint(rootPath + slots[i]);
-            createMountPoint(metaPath + slots[i]);
+            string path = rootPath + slotIds_m[i];
+            createMountPoint(rootPath + slotIds_m[i]);
+            createMountPoint(metaPath + slotIds_m[i]);
 
             /*for(int j=0; j < 8; j++)
             {
@@ -376,10 +412,51 @@ void Mark6::removeMountedDevice(Mark6DiskDevice device)
  */
 void Mark6::cleanUp()
 {
+    // remove all symbolic links to the mount points
+    for (int iSlot=0; iSlot < NUMSLOTS; iSlot++)
+    {
+        for (int iDisk = 0; iDisk < Mark6Module::MAXDISKS; iDisk++)
+        {
+            stringstream ss, ssMeta;
+            struct stat file;
+            ss << linkRootData_m << slotIds_m[iSlot] << "/" << iDisk;
+            ssMeta << linkRootMeta_m << slotIds_m[iSlot] << "/" << iDisk;
+            
+            string linkPath = ss.str();
+            string linkPathMeta = ssMeta.str();
+            // check if link exists
+            if (stat(linkPath.c_str(), &file) == 0)
+            {
+                // check if this is really a symbolic link    
+                lstat(linkPath.c_str(), &file);
+                if (S_ISLNK(file.st_mode))
+                {
+                    cout << "removing link: " << linkPath << endl;
+                    if( remove( linkPath.c_str() ) != 0 )
+                    {
+                        throw new Mark6Exception("Cannot remove symbolic link: " + linkPath);
+                    }   
+                }
+            }
+            if (stat(linkPathMeta.c_str(), &file) == 0)
+            {
+                lstat(linkPathMeta.c_str(), &file);
+                if (S_ISLNK(file.st_mode))
+                {
+                    cout << "removing link: " << linkPathMeta << endl;
+                    if( remove( linkPathMeta.c_str() ) != 0 )
+                    {
+                        throw new Mark6Exception("Cannot remove symbolic link: " + linkPathMeta);
+                    }    
+                }
+            }                                 
+        }
+    }
+    
+    
     // unmount any remaining devices 
     DIR *pdir = NULL;
     struct dirent *pent = NULL;
-    
     
     pdir = opendir (mountPath_m.c_str()); 
     if (pdir == NULL)
@@ -500,6 +577,9 @@ void Mark6::pollDevices()
 		    // error receiving device, skip it
 		    continue;
 		}
+                // parent device
+                udev_device  *parent = udev_device_get_parent(dev);
+                
 		string action(udev_device_get_action(dev));
                 string devtype(udev_device_get_devtype(dev));
 
@@ -508,7 +588,7 @@ void Mark6::pollDevices()
 		cout << udev_device_get_subsystem(dev) << ",";
 		cout << udev_device_get_devtype(dev) << ",";
                 cout << endl;
-
+/*
 		cout << " devpath="<< udev_device_get_devpath(dev) << endl;
 		cout << " syspath="<< udev_device_get_syspath(dev) << endl;
 		cout << " sysname="<< udev_device_get_sysname(dev) << endl;
@@ -519,7 +599,7 @@ void Mark6::pollDevices()
 		udev_device  *parent = udev_device_get_parent(dev);
                 cout << "parent ";
                 
-                /*
+                
                  * 		cout << " subsystem = " << udev_device_get_subsystem(parent) ;
                 cout << " devtype = " << udev_device_get_devtype(parent);
                 cout << " devpath="<< udev_device_get_devpath(parent) << endl;
@@ -541,11 +621,12 @@ void Mark6::pollDevices()
                         disk.setControllerId( parseControllerId(udev_device_get_devpath(dev)) );
                         disk.setDiskId(parseDiskId(udev_device_get_sysattr_value(parent,"sas_address")));
                         disk.setSerial(udev_device_get_property_value(dev,"ID_SERIAL_SHORT") );
+                        
                         newDevices_m.push_back(disk);			
                         changeCount++;
                         cout << "Controller ID=" << disk.getControllerId() << endl;
                         cout << "Disk ID=" << disk.getDiskId() << endl;
-                        cout << "Disk serial =" << disk.getSerial() << endl;
+                        cout << "Disk serial=" << disk.getSerial() << endl;
                     }
                     else if (devtype == "partition")
                     {   
@@ -574,10 +655,12 @@ void Mark6::pollDevices()
 
 	if (changeCount > 0)
 	{
-		manageDevices();
+		manageDeviceChange();
                 
                 createMountLinks();
                 
+                
+
                 cout << "Currently mounted devices:" << endl;
                 for (std::vector<Mark6DiskDevice>::size_type i=0; i < mountedDevices_m.size(); i++)
                 {
@@ -588,6 +671,7 @@ void Mark6::pollDevices()
                 cout << "Currently mounted modules:" << endl;
                 for (int iSlot=0; iSlot < 4; iSlot++)
                 {
+                    modules_m[iSlot].isComplete();
                     cout << "Slot " << iSlot << " = " << modules_m[iSlot].getEMSN() << " (" << modules_m[iSlot].getNumDiskDevices() << " disks)" << endl;
                 }
                 cout << endl;

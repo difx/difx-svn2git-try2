@@ -12,6 +12,7 @@
 #include <vector>
 #include "Mark6Meta.h"
 
+
 class Mark6DiskDevice {
 public:
     
@@ -28,12 +29,13 @@ public:
     
     Mark6DiskDevice(std::string deviceName);
     virtual ~Mark6DiskDevice();
+    void reset();
     void addPartition(std::string partitionName);
     std::vector<Mark6Partition> getPartitions() const;
     std::string getName() const;
     int mountDisk(std::string mountPath);
     void unmountDisk(std::string mountPath);
-    int linkDisk(std::string linkRoot, int slot);
+    int linkDisk(std::string linkRootData, std::string linkRootMeta, int slot);
     int unlinkDisk();
     bool isMounted();
     void setFsType(std::string fsType_m);
@@ -41,26 +43,23 @@ public:
     Mark6Meta getMeta() const;
     void setDiskId(long diskId_m);
     long getDiskId() const;
-    void setSlotId(int slotId_m);
-    int getSlotId() const;
     void setControllerId(int controllerId_m);
     int getControllerId() const;
     void setSerial(std::string serial_m);
     std::string getSerial() const;
+    bool isValid();
+    int getSlot() const;
+    int getPosition() const;
     
 
 
 private:
 
-    
     std::string name_m;
     std::vector<Mark6Partition> partitions_m;
     bool isMounted_m;
-    //std::string mountPath_m;
-    //std::string linkPath_m;
     std::string fsType_m;
     Mark6Meta meta_m;
-    int slotId_m;
     long diskId_m;
     int controllerId_m;
     std::string serial_m;

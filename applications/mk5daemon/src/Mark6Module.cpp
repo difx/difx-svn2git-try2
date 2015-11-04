@@ -5,15 +5,22 @@
  * Created on 20. Oktober 2015, 15:08
  */
 
+#include "Mark6.h"
 #include "Mark6Module.h"
 #include "Mark6DiskDevice.h"
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 
 using namespace std;
 
 Mark6Module::Mark6Module() {
     eMSN_m = "";
+    
+    for (int i=0; i < MAXDISKS; i++)
+    {
+        diskDevices_m[i] = NULL;
+    }
 }
 
 Mark6Module::Mark6Module(const Mark6Module& orig) {
@@ -28,8 +35,23 @@ Mark6Module::~Mark6Module() {
  */
 void Mark6Module::addDiskDevice(Mark6DiskDevice device)
 {
-    device.setDiskId(diskDevices_m.size());
-    diskDevices_m.push_back(device);
+    
+    int pos = device.getPosition();
+    
+    if (pos == -1)
+    {
+        throw new Mark6Exception("diskId for device " + device.getName() + " is not set. Cannot add device to module");
+    }
+    
+    if ((pos < 0 ) || (pos > MAXDISKS))
+    {
+        throw new Mark6Exception("Illegal diskId for device " + device.getName() );
+    }
+    
+    
+    diskDevices_m[pos] = new Mark6DiskDevice(device);
+    
+    cout << " added device " << device.getName() << " at position " << pos << endl;;
 }
 
 /**
@@ -42,21 +64,21 @@ void Mark6Module::addDiskDevice(Mark6DiskDevice device)
 void Mark6Module::removeDiskDevice(Mark6DiskDevice device)
 {    
     // loop over all devices
-    for( vector<Mark6DiskDevice>::iterator iter = diskDevices_m.begin(); iter != diskDevices_m.end(); ++iter )
+    for(int i = 0; i < MAXDISKS; i++)
     {
         //find the device to be removed
-        if( (*iter).getName() == device.getName() )
+        if( diskDevices_m[i]->getName() == device.getName() )
         {
             // remove symbolic links maintained to this device
-            (*iter).unlinkDisk();
+            diskDevices_m[i]->unlinkDisk();
            
-            diskDevices_m.erase( iter );         
+            diskDevices_m[i] = NULL;
             break;
         }
     }
    
     // if this was the last disk of the module clear the eMSN
-    if (diskDevices_m.size() == 0)
+    if (getNumDiskDevices() == 0)
         eMSN_m = "";
 }
 
@@ -67,10 +89,14 @@ void Mark6Module::removeDiskDevice(Mark6DiskDevice device)
  */
 Mark6DiskDevice *Mark6Module::getDiskDevice(int index)
 {
-    if (index > diskDevices_m.size())
-        return(NULL);
-    
-    return(&diskDevices_m[index]);
+    if ((index < 0 ) || (index > MAXDISKS))
+    {
+        stringstream message;
+        message << "Illegal disk index requested (" << index << ") Must be between 0 and " << MAXDISKS;
+        throw new Mark6Exception( message.str());
+    }
+        
+    return(diskDevices_m[index]);
     
 }
 
@@ -97,6 +123,63 @@ void Mark6Module::setEMSN(std::string eMSN) {
  */
 int Mark6Module::getNumDiskDevices()
 {
-    return(diskDevices_m.size());
+    int count = 0;
+    
+    for (int i=0; i < MAXDISKS; i++)
+    {
+        if (diskDevices_m[i] != NULL)
+            count++;
+    }
+    
+    return(count);
 }
 
+/**
+ * Compares the expected serial numbers found in the meta data against the
+ * disk serial numbers obtained via udev during the mounting process.
+ * Only if all expected disks are presently mounted completeness of the module
+ * is indicated.
+ * @return true if the module is complete; false otherwise
+ */
+bool Mark6Module::isComplete(){
+    
+    string *serials;
+    
+    // obtain expected disk serials for this module from the meta data
+    // since meta data on all th disks of this module should be identical 
+    // let's use the meta from the first not empty disk device
+    for (int i=0; i < MAXDISKS; i++)
+    {
+        if (diskDevices_m[i] != NULL)
+        {  
+            serials = diskDevices_m[i]->getMeta().getSerials();
+            break;
+        }
+    }
+    
+    // loop over 
+    for (int i=0; i < MAXDISKS; i++)
+    {
+        cout << "Processing " << serials[i];
+        if (serials[i] != "")
+        {
+            
+            if (diskDevices_m[i] != NULL)
+            {
+                if (diskDevices_m[i]->getSerial() != serials[i])
+                {
+                    cout << " false" << endl;
+                    return(false);
+                }
+            }
+            else
+            {
+                cout << " false" << endl;
+                return(false);
+            }
+        }
+    }
+    
+    cout << " true" << endl;
+    return(true);
+}

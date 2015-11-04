@@ -10,6 +10,7 @@
 
 #include <string>
 #include <vector>
+#include "Mark6Module.h"
 
 /**
  * Custom exception class for reporting Mark6 related metadata errors
@@ -28,17 +29,17 @@ public:
 class Mark6Meta {
 public:
     Mark6Meta();
-    //Mark6Meta(const Mark6Meta& orig);
+    Mark6Meta(const Mark6Meta& orig);
     virtual ~Mark6Meta();
     std::string getEMSN() const;
     void parse(std::string);
+    void reset();
+    std::string *getSerials() ;
   
 private:
-    std::vector<std::string> serials_m;
     std::string eMSN_m;
     std::vector<std::string> group_m;
-    
-
+    std::string serials_m[Mark6Module::MAXDISKS];
 };
 
 #endif	/* MARK6META_H */

@@ -26,11 +26,21 @@ using namespace std;
  */
 Mark6DiskDevice::Mark6DiskDevice(string deviceName) {
     name_m = deviceName;
+    
+    reset();
+   
+}
+
+/**
+ * Resets the disk device to the initial state
+ */
+void Mark6DiskDevice::reset()
+{
     isMounted_m = false;
-   // mountPath_m = "";
     fsType_m = "xfs";
+    controllerId_m = -1;
     diskId_m = -1;
-    slotId_m = -1;
+    serial_m = "";
 }
 
 vector<Mark6DiskDevice::Mark6Partition> Mark6DiskDevice::getPartitions() const {
@@ -42,6 +52,67 @@ vector<Mark6DiskDevice::Mark6Partition> Mark6DiskDevice::getPartitions() const {
  */
 std::string Mark6DiskDevice::getName() const {
     return name_m;
+}
+
+/**
+ * Checks whether this is a vaid Mark6 disk device.
+ * @returns true if valid; false otherwise 
+ */
+bool Mark6DiskDevice::isValid()
+{
+    
+    if (diskId_m == -1)
+        return(false);
+    if (controllerId_m == -1)
+        return(false);
+    
+    return(true);
+}
+
+/**
+ * Determines the position of the disk device within the module. This number should range from 0 to 7.
+ * @return the position of the disk with in the module
+ */
+int Mark6DiskDevice::getPosition() const {
+    
+    if (diskId_m == -1)
+        return(-1);
+    
+    if ((diskId_m >= 0) && (diskId_m <= 7))
+        return(diskId_m);
+    else if ((diskId_m >= 8) && (diskId_m <= 15))
+        return(diskId_m - 8);
+    else
+        return(-1);
+    
+}
+/**
+ * Determines the slot (bank) in which the device is located by inspecting the controllerId and the diskId. 
+ * NOTE: numbering of the slots is off by 1 compared to the bank labels written on the Mark6; e.g. slot=0 refers to bank=1 and so on. 
+ * @return the slot number of the disk device (0-3)
+ */
+int Mark6DiskDevice::getSlot() const {
+    
+    cout << "device: " << name_m << " diskid= " << diskId_m << " controllerid= " << controllerId_m << endl;
+    if ((controllerId_m == -1) || (diskId_m == -1))
+        return(-1);
+   
+    if (controllerId_m == 0)
+    {
+        if (diskId_m <= 7)
+            return(2);
+        else if ((diskId_m > 7) && (diskId_m <= 15))
+            return(3);
+    }
+    else if (controllerId_m == 1)
+    {
+        if (diskId_m <= 7)
+            return(0);
+        else if ((diskId_m > 7) && (diskId_m <= 15))
+            return(1);
+    }
+    else
+        return(-1);
 }
 
 
@@ -94,11 +165,18 @@ int Mark6DiskDevice::unlinkDisk()
         if (linkPath == "")
             continue;
         
+        // check that link exists
+        if (stat(linkPath.c_str(), &file) != 0)    
+        {
+            errorCount++;
+            continue;
+        }
         // check if this is really a symbolic link    
         lstat(linkPath.c_str(), &file);
         if (!S_ISLNK(file.st_mode))
         {
             errorCount++;
+            continue;
         }
         
         if( remove( linkPath.c_str() ) != 0 )
@@ -122,11 +200,12 @@ int Mark6DiskDevice::unlinkDisk()
  * - the first partition is assumed to contain the mark6 data. It is linked under linkPath/slot/disk
  * - the second partition is assumed to contain the meta data. It is linked under linkPath/.meta/slot/disk
  * where slot runs from 1-4, and disk runs from 0-7
- * @param[in] linkPath the full path of the root directory under which the symbolic links are to be created
+ * @param[in] linkRootData the full path of the root directory under which the symbolic links for the data partitions are to be created
+ * @param[in] linkRootMeta the full path of the root directory under which the symbolic links for the meta partitions are to be created
  * @param[in] slot the number of the module slot 
  * @return EXIT_SUCCESS in case of success, EXIT_FAILURE otherwise
  */
-int Mark6DiskDevice::linkDisk(std::string linkRoot, int slot)
+int Mark6DiskDevice::linkDisk(std::string linkRootData, std::string linkRootMeta, int slot)
 {       
     
     
@@ -146,9 +225,9 @@ int Mark6DiskDevice::linkDisk(std::string linkRoot, int slot)
         // build link path
         stringstream ss;
         if (i == 0)
-            ss << linkRoot << "/" << slot+1 << "/" <<  diskId_m;
+            ss << linkRootData << "/" << slot+1 << "/" <<  diskId_m;
         else if (i ==1)
-            ss << linkRoot << "/.meta/" << slot+1 << "/" <<  diskId_m;
+            ss << linkRootMeta << "/" << slot+1 << "/" <<  diskId_m;
         
         string linkPath = ss.str();
         cout << " creating symbolic link " <<  partitions_m[i].mountPath << " to " << linkPath << endl;
@@ -250,16 +329,14 @@ void Mark6DiskDevice::setDiskId(long diskId_m) {
     this->diskId_m = diskId_m;
 }
 
+/**
+ * Gets the id (= position) of the disk on the SAS controller. This number will range from 0 to 15 as there
+ * are two modules per controller. If you want to get the position of the device within a module use 
+ * getPosition() instead.
+ * @return the disk id 
+ */
 long Mark6DiskDevice::getDiskId() const {
     return diskId_m;
-}
-
-void Mark6DiskDevice::setSlotId(int slotId_m) {
-    this->slotId_m = slotId_m;
-}
-
-int Mark6DiskDevice::getSlotId() const {
-    return slotId_m;
 }
 
 void Mark6DiskDevice::setControllerId(int controllerId_m) {

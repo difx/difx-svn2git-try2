@@ -46,7 +46,9 @@ public:
 class Mark6
 {
 private:
-	static const int NUMSLOTS = 4;   // number of slots per mark6 unit
+	static const int NUMSLOTS = 4;                                      // number of slots per mark6 unit
+       
+        
 	int fd;		// file descriptor for the udev monitor
         struct udev *udev_m;
         struct udev_monitor *mon;
@@ -55,7 +57,11 @@ private:
         std::vector<Mark6DiskDevice> newDevices_m;
         std::string mountPath_m;
         Mark6Module modules_m[NUMSLOTS];
-        void manageDevices();
+        std::string linkRootData_m;                 // default path for creating symbolic links to the mount points of the data partitions
+        std::string linkRootMeta_m;                 // default path for creating symbolic links to the mount points of the meta partitions
+        std::string slotIds_m[NUMSLOTS];
+        
+        void manageDeviceChange();
 	void validateMountDevices();
         int parseControllerId(std::string devpath);
         long parseDiskId(std::string sasAddress);
@@ -73,7 +79,8 @@ public:
         void cleanUp();
         void createMountLinks();
         int getSlot(std::string eMSN);
-        int  getFreeSlot();
+        int getFreeSlot();
+        void sendStatusMessage();
         std::vector<Mark6DiskDevice> getMountedDevices() const {
             return mountedDevices_m;
         }
