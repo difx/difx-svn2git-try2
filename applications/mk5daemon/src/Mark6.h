@@ -75,7 +75,7 @@ public:
         bool isMounted(std::string deviceName);
         Mark6DiskDevice *getMountedDevice(std::string deviceName);
         void removeMountedDevice(Mark6DiskDevice device);
-        void enumerateDevices();
+        int enumerateDevices();
         void cleanUp();
         void createMountLinks();
         int getSlot(std::string eMSN);

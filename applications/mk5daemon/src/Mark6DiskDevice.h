@@ -28,6 +28,8 @@ public:
     bool sortByName(const Mark6Partition &lhs, const Mark6Partition &rhs); 
     
     Mark6DiskDevice(std::string deviceName);
+    Mark6DiskDevice();
+    Mark6DiskDevice(const Mark6DiskDevice &device);
     virtual ~Mark6DiskDevice();
     void reset();
     void addPartition(std::string partitionName);
@@ -40,7 +42,7 @@ public:
     bool isMounted();
     void setFsType(std::string fsType_m);
     std::string getFsType() const;
-    Mark6Meta getMeta() const;
+    Mark6Meta &getMeta(); 
     void setDiskId(long diskId_m);
     long getDiskId() const;
     void setControllerId(int controllerId_m);
@@ -52,17 +54,16 @@ public:
     int getPosition() const;
     
 
-
 private:
 
     std::string name_m;
     std::vector<Mark6Partition> partitions_m;
     bool isMounted_m;
     std::string fsType_m;
-    Mark6Meta meta_m;
     long diskId_m;
     int controllerId_m;
     std::string serial_m;
+    Mark6Meta meta_m;
     
 };
 

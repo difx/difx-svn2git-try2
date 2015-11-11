@@ -10,6 +10,8 @@
 
 #include <string>
 #include <vector>
+#include <map>
+
 class Mark6DiskDevice;
 
 class Mark6Module {
@@ -18,18 +20,24 @@ public:
     Mark6Module();
     Mark6Module(const Mark6Module& orig);
     virtual ~Mark6Module();
-    void addDiskDevice(Mark6DiskDevice device);
-    void removeDiskDevice(Mark6DiskDevice device);
+    void addDiskDevice(Mark6DiskDevice &device);
+    void removeDiskDevice(Mark6DiskDevice &device);
     Mark6DiskDevice *getDiskDevice(int index);
     std::string getEMSN();
     void setEMSN(std::string eMSN);
     int getNumDiskDevices();
+    int getNumTargetDisks();
     bool isComplete();
+    void setGroupMembers(std::vector<std::string> groupMembers_m);
+    std::vector<std::string> getGroupMembers() const;
     
 private:
     
     std::string eMSN_m;
-    Mark6DiskDevice *diskDevices_m[MAXDISKS];   
+    //Mark6DiskDevice *diskDevices_m;   
+    std::vector<std::string> groupMembers_m;
+    std::map<int,Mark6DiskDevice> diskDevices_m;
+    
     
 };
 

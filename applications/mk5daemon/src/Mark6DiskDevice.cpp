@@ -27,8 +27,28 @@ using namespace std;
 Mark6DiskDevice::Mark6DiskDevice(string deviceName) {
     name_m = deviceName;
     
-    reset();
-   
+    reset();   
+}
+
+Mark6DiskDevice::Mark6DiskDevice() {
+    
+    reset(); 
+}
+
+/**
+ * Copy construcor
+ * @param device
+ */
+Mark6DiskDevice::Mark6DiskDevice(const Mark6DiskDevice &device)
+{
+    name_m = device.name_m;
+    partitions_m = device.partitions_m;
+    isMounted_m = device.isMounted_m;
+    fsType_m = device.fsType_m;
+    diskId_m = device.diskId_m;
+    controllerId_m = device.controllerId_m;
+    serial_m = device.serial_m;
+    meta_m = device.meta_m;
 }
 
 /**
@@ -36,6 +56,7 @@ Mark6DiskDevice::Mark6DiskDevice(string deviceName) {
  */
 void Mark6DiskDevice::reset()
 {
+    meta_m = Mark6Meta();
     isMounted_m = false;
     fsType_m = "xfs";
     controllerId_m = -1;
@@ -93,7 +114,7 @@ int Mark6DiskDevice::getPosition() const {
  */
 int Mark6DiskDevice::getSlot() const {
     
-    cout << "device: " << name_m << " diskid= " << diskId_m << " controllerid= " << controllerId_m << endl;
+    //cout << "device: " << name_m << " diskid= " << diskId_m << " controllerid= " << controllerId_m << endl;
     if ((controllerId_m == -1) || (diskId_m == -1))
         return(-1);
    
@@ -159,7 +180,7 @@ int Mark6DiskDevice::unlinkDisk()
         struct stat file;
         string linkPath = partitions_m[i].linkPath;
         
-        cout << "trying to unlink partition " << i << " on disk " << name_m << " " << linkPath << endl;
+        //cout << "trying to unlink partition " << i << " on disk " << name_m << " " << linkPath << endl;
         
         // check if partition is linked
         if (linkPath == "")
@@ -181,9 +202,9 @@ int Mark6DiskDevice::unlinkDisk()
         
         if( remove( linkPath.c_str() ) != 0 )
         {
-            throw new Mark6Exception("Cannot remove symbolic link: " + linkPath);
+            throw Mark6Exception("Cannot remove symbolic link: " + linkPath);
         }
-        cout << " removed symbolic link " << linkPath << endl;
+        //cout << " removed symbolic link " << linkPath << endl;
         partitions_m[i].linkPath = "";     
     }
     
@@ -225,16 +246,16 @@ int Mark6DiskDevice::linkDisk(std::string linkRootData, std::string linkRootMeta
         // build link path
         stringstream ss;
         if (i == 0)
-            ss << linkRootData << "/" << slot+1 << "/" <<  diskId_m;
+            ss << linkRootData << "/" << slot+1 << "/" <<  getPosition();
         else if (i ==1)
-            ss << linkRootMeta << "/" << slot+1 << "/" <<  diskId_m;
+            ss << linkRootMeta << "/" << slot+1 << "/" <<  getPosition();
         
         string linkPath = ss.str();
-        cout << " creating symbolic link " <<  partitions_m[i].mountPath << " to " << linkPath << endl;
+        //cout << " creating symbolic link " <<  partitions_m[i].mountPath << " to " << linkPath << endl;
         
         if (symlink(partitions_m[i].mountPath.c_str(), linkPath.c_str()) != 0)
         {
-            throw new Mark6Exception("Cannot create symbolic link: " + partitions_m[i].mountPath + " -> " +  linkPath);
+            throw  Mark6Exception("Cannot create symbolic link: " + partitions_m[i].mountPath + " -> " +  linkPath);
         }
         
         partitions_m[i].linkPath = linkPath;
@@ -280,7 +301,7 @@ int Mark6DiskDevice::mountDisk(string mountPath)
    
     // now read metadata
     meta_m.parse(dest);    
-    
+        
     isMounted_m = true;
     //mountPath_m = dest;
     
@@ -321,7 +342,7 @@ std::string Mark6DiskDevice::getFsType() const {
     return fsType_m;
 }
 
-Mark6Meta Mark6DiskDevice::getMeta() const {
+Mark6Meta &Mark6DiskDevice::getMeta() {
     return meta_m;
 }
 
@@ -357,10 +378,6 @@ std::string Mark6DiskDevice::getSerial() const {
 
 /*std::string Mark6DiskDevice::getMountPath() const {
     return mountPath_m;
-}*/
-
-/*std::string Mark6DiskDevice::getEMSN() const {
-    return eMSN_m;
 }*/
 
 /**

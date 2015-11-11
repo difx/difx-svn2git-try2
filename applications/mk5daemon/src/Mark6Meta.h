@@ -10,6 +10,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include "Mark6Module.h"
 
 /**
@@ -34,12 +35,13 @@ public:
     std::string getEMSN() const;
     void parse(std::string);
     void reset();
-    std::string *getSerials() ;
+    const std::map<int, std::string> &getSerials();
+    std::vector<std::string> getGroup() const;
   
 private:
     std::string eMSN_m;
     std::vector<std::string> group_m;
-    std::string serials_m[Mark6Module::MAXDISKS];
+    std::map<int,std::string> serials_m;
 };
 
 #endif	/* MARK6META_H */

@@ -54,6 +54,7 @@
 #include "logger.h"
 #include "proc.h"
 #include "Mark6.h"
+#include "Mark6Meta.h"
 #ifdef HAVE_XLRAPI_H
 #include "watchdog.h"
 #endif
@@ -1060,7 +1061,7 @@ int parseCmd (int argc, char **argv, Options &options)
 
 int main(int argc, char **argv)
 {
-	
+    Options options;
 
     // FIXME: catch exceptions
     // FIXME: fixed length string arrays should be revisited
@@ -1082,8 +1083,9 @@ int main(int argc, char **argv)
     int readSocks;
     int highSock;
     int v;
-    Options options;
-    Mark6 mark6;
+    Mark6 *mark6;
+
+   
 #ifdef HAVE_XLRAPI_H
     time_t firstTime;
     int halfInterval;
@@ -1101,8 +1103,11 @@ int main(int argc, char **argv)
     int isMk5 = 0;
 #endif
 
+    	
     try
     {
+       
+
 	// Prevent any zombies
 	signal(SIGCHLD, SIG_IGN);
 
@@ -1217,8 +1222,15 @@ int main(int argc, char **argv)
 			setWatchdogStream(stdout);
 		}
 	}
+        
+
 #endif
 
+        if (options.isMk6)
+        {
+            mark6 = new Mark6();
+        }
+        
 	while(!D->dieNow)
 	{
 		t = time(0);
@@ -1263,8 +1275,8 @@ int main(int argc, char **argv)
                                 // check for new modules on a mark6
                                 if (options.isMk6)
                                 {
-                                    mark6.pollDevices();
-                                    mark6.sendStatusMessage();
+                                    mark6->pollDevices();
+                                    mark6->sendStatusMessage();
                                 }
                                     //D->mark6.pollDevices();
 			}
@@ -1445,15 +1457,13 @@ int main(int argc, char **argv)
    }
    catch(Mark6Exception& ex)
    {
-        if (options.isMk6)
-            mark6.cleanUp();
-        
+    
         cerr << "The following error has occured: " << ex.what() << endl;
         cerr << "This might be caused by insufficient permissions. On a Mark6 machine mk5daemon must be started as root!" << endl;
         cerr << "Aborting" << endl;
         return(EXIT_FAILURE);
    }
-   catch(exception& ex)
+   catch(Mark6MountException& ex)
    {
         cerr << "The following error has occured: " << ex.what() << endl;
         cerr << "This might be caused by insufficient permissions. On a Mark6 machine mk5daemon must be started as root!" << endl;
@@ -1461,10 +1471,15 @@ int main(int argc, char **argv)
         return(EXIT_FAILURE);
        
    }    
+   catch(Mark6InvalidMetadata& ex)
+   {
+        cerr << "The following error has occured: " << ex.what() << endl;
+        cerr << "Aborting" << endl;
+        return(EXIT_FAILURE);
+       
+   }   
    catch(...)
    {
-        if (options.isMk6)
-            mark6.cleanUp();
 	cerr << "An unexpected error has occured. Aborting" << endl;
 	return(EXIT_FAILURE);
 
