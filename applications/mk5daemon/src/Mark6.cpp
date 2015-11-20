@@ -25,6 +25,7 @@ using namespace std;
  */
 Mark6::Mark6(void)
 {
+    clog << "mark6 started" << endl;
     //set defaults 
     linkRootData_m = "/mnt/disks/";               
     linkRootMeta_m =  linkRootData_m + ".meta/";
@@ -149,6 +150,7 @@ void Mark6::sendStatusMessage()
     memset(&dm, 0, sizeof(DifxMessageMark6Status));
     
     // set bank MSNs  
+    strncpy(dm.msn1, modules_m[0].getEMSN().c_str(), DIFX_MESSAGE_MARK6_MSN_LENGTH);
     strncpy(dm.msn2, modules_m[1].getEMSN().c_str(), DIFX_MESSAGE_MARK6_MSN_LENGTH);
     strncpy(dm.msn3, modules_m[2].getEMSN().c_str(), DIFX_MESSAGE_MARK6_MSN_LENGTH);
     strncpy(dm.msn4, modules_m[3].getEMSN().c_str(), DIFX_MESSAGE_MARK6_MSN_LENGTH);
@@ -197,7 +199,7 @@ void Mark6::sendStatusMessage()
         }
         else if (slot ==3)
         {
-            strncpy(dm.msn3, msn.c_str(), DIFX_MESSAGE_MARK6_MSN_LENGTH);
+            strncpy(dm.msn4, msn.c_str(), DIFX_MESSAGE_MARK6_MSN_LENGTH);
             strncpy(dm.group4, group.c_str(), DIFX_MESSAGE_MARK6_GROUP_LENGTH);
             dm.bank4Disks = modules_m[slot].getNumDiskDevices();
             dm.bank4MissingDisks = missing;
@@ -361,6 +363,7 @@ void Mark6::manageDeviceChange()
 */
 void  Mark6::validateMountPoints()
 {
+	clog << "validateMountPoints" << endl;
         string rootPath = linkRootData_m;
         string metaPath = linkRootMeta_m;
         
@@ -551,6 +554,8 @@ int Mark6::enumerateDevices()
         
     // obtain the list of currently present block devices
 
+	clog << "enumerateDevices" << endl;
+
     enumerate = udev_enumerate_new(udev_m);
     udev_enumerate_add_match_subsystem(enumerate, "block");
     udev_enumerate_scan_devices(enumerate);
@@ -660,7 +665,7 @@ int Mark6::parseControllerId(string devpath)
  */
 void Mark6::pollDevices()
 {
-    cout << "Polling for new devices" << endl;
+    clog << "Polling for new devices" << endl;
   
 
 	// create the poll item
@@ -776,6 +781,7 @@ void Mark6::pollDevices()
 */
                 
                 cout << "Currently mounted modules:" << endl;
+                clog << "Currently mounted modules:" << endl;
                 for (int iSlot=0; iSlot < 4; iSlot++)
                 {
                     //modules_m[iSlot].isComplete();

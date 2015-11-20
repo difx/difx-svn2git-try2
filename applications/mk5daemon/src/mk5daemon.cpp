@@ -33,6 +33,7 @@
 #include <cerrno>
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <algorithm>
 #include <unistd.h>
 #include <time.h>
@@ -1226,10 +1227,14 @@ int main(int argc, char **argv)
 
 #endif
 
+	ofstream out("my_log");
+	  clog.rdbuf(out.rdbuf());
         if (options.isMk6)
         {
+
+	clog << "test" << endl;
             mark6 = new Mark6();
-        }
+	}
         
 	while(!D->dieNow)
 	{
@@ -1275,6 +1280,7 @@ int main(int argc, char **argv)
                                 // check for new modules on a mark6
                                 if (options.isMk6)
                                 {
+clog << "pre poll" << endl;
                                     mark6->pollDevices();
                                     mark6->sendStatusMessage();
                                 }

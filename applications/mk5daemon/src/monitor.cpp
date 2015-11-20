@@ -75,6 +75,13 @@ int messageForMe(const Mk5Daemon *D, const DifxMessageGeneric *G)
 				return 1;
 			}
 		}
+		else if (D->isMk6)
+		{
+			ifstrcasecmp("mark6", G->to[t]) == 0)
+                        {
+                                return 1;
+                        }
+		}
 		else
 		{
 			if(strcasecmp("swc", G->to[t]) == 0)
