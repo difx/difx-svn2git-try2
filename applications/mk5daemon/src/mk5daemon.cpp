@@ -353,14 +353,14 @@ void getLocalAddresses(std::list<std::string> *addrList)
 	freeifaddrs(localAddrs);
 }
 
-Mk5Daemon *newMk5Daemon(const char *logPath, const char *userID, int isMk5)
+Mk5Daemon *newMk5Daemon(Options options)
 {
 	Mk5Daemon *D;
 	int n;
 
 	D = (Mk5Daemon *)calloc(1, sizeof(Mk5Daemon));
 	
-	D->log = newLogger(logPath);
+	D->log = newLogger(options.logPath);
 	D->process = PROCESS_NONE;
 	D->loadMonInterval = 10;	/* seconds */
 	D->macList = new std::map<MAC,bool>;
@@ -369,25 +369,37 @@ Mk5Daemon *newMk5Daemon(const char *logPath, const char *userID, int isMk5)
         {
                 procGetCoresFromCpuInfo(&D->load.nCore);
         }
-
+	// hostname 
 	gethostname(D->hostName, MK5DAEMON_HOSTNAME_LENGTH);
 	D->hostName[MK5DAEMON_HOSTNAME_LENGTH-1] = 0;
+
+	// isMk5
 	D->isMk5 = strcasestr(D->hostName, "mark5") == 0 ? 0 : 1;
-	if(isMk5)
+	if(options.isMk5)
 	{
 		D->isMk5 = 1;
 	}
-	n = snprintf(D->userID, MAX_USERID_LENGTH, "%s", userID);
+	// isMk6
+	D->isMk6 = strcasestr(D->hostName, "mark6") == 0 ? 0 : 1;
+	if(options.isMk6)
+	{
+		D->isMk6 = 1;
+	}
+	// userid
+	n = snprintf(D->userID, MAX_USERID_LENGTH, "%s", options.userID);
 	if(n >= MAX_USERID_LENGTH)
 	{
-		fprintf(stderr, "Error: userID = %s is too long.  Won't use it!\n", userID);
+		fprintf(stderr, "Error: userID = %s is too long.  Won't use it!\n", options.userID);
 
 		snprintf(D->userID, MAX_USERID_LENGTH, "%s", DefaultDifxUser);
 	}
 	else
 	{
-		snprintf(D->userID, MAX_USERID_LENGTH, "%s", userID);
+		snprintf(D->userID, MAX_USERID_LENGTH, "%s", options.userID);
 	}
+	D->isHeadNode = options.isHeadNode;
+	D->isEmbedded = options.isEmbedded;
+
 	printf("isMk5 = %d hostname = %s\n", D->isMk5, D->hostName);
 	printf("isMk6 = %d hostname = %s\n", D->isMk6, D->hostName);
 	printf("spawned process userid = %s\n", D->userID);
@@ -1064,27 +1076,19 @@ int main(int argc, char **argv)
 {
     Options options;
 
-    // FIXME: catch exceptions
     // FIXME: fixed length string arrays should be revisited
     Mk5Daemon *D;
     time_t t, lastTime;
     char message[DIFX_MESSAGE_LENGTH];
     char str[16];
-    //int isHeadNode = 0;
-    //int isEmbedded = 0;
-    //int noSu = 0;
     int i;
-    //const char *logPath;
     const char *p, *u;
-    //const char *userID;
-    //const char *providedHostname = 0;
     double mjd;
     fd_set socks;
     struct timeval timeout;
     int readSocks;
     int highSock;
     int v;
-    Mark6 *mark6;
 
    
 #ifdef HAVE_XLRAPI_H
@@ -1189,11 +1193,7 @@ int main(int argc, char **argv)
 
 	difxMessagePrint();
 
-	D = newMk5Daemon(options.logPath, options.userID, options.isMk5);
-	printf ("isMk6 = %d\n", options.isMk6);
-	D->isMk6 = options.isMk6;
-	D->isHeadNode = options.isHeadNode;
-	D->isEmbedded = options.isEmbedded;
+	D = newMk5Daemon(options);
 
 	snprintf(message, DIFX_MESSAGE_LENGTH, "Starting %s ver. %s\n", program, version);
 	Logger_logData(D->log, message);
@@ -1233,7 +1233,7 @@ int main(int argc, char **argv)
         {
 
 	clog << "test" << endl;
-            mark6 = new Mark6();
+            D->mark6 = new Mark6();
 	}
         
 	while(!D->dieNow)
@@ -1281,8 +1281,8 @@ int main(int argc, char **argv)
                                 if (options.isMk6)
                                 {
 clog << "pre poll" << endl;
-                                    mark6->pollDevices();
-                                    mark6->sendStatusMessage();
+                                    D->mark6->pollDevices();
+                                    D->mark6->sendStatusMessage();
                                 }
                                     //D->mark6.pollDevices();
 			}

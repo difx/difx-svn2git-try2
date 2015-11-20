@@ -2,6 +2,7 @@
 
 #include "mk5daemon.h"
 
+using namespace std;
 /**
  * Constructor
  **/

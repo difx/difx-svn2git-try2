@@ -239,7 +239,7 @@ typedef struct
 	unsigned int addressRejects;
 	unsigned int lengthRejects;
 	unsigned int fscRejects;
-        Mark6 mark6;
+        Mark6 *mark6;
 } Mk5Daemon;
 
 int Mk5Daemon_loadMon(Mk5Daemon *D, double mjd);
