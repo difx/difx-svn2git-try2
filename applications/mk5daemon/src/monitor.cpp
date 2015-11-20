@@ -77,7 +77,7 @@ int messageForMe(const Mk5Daemon *D, const DifxMessageGeneric *G)
 		}
 		else if (D->isMk6)
 		{
-			ifstrcasecmp("mark6", G->to[t]) == 0)
+			if(strcasecmp("mark6", G->to[t]) == 0)
                         {
                                 return 1;
                         }
@@ -405,6 +405,10 @@ void handleCommand(Mk5Daemon *D, const DifxMessageGeneric *G)
 		if(D->isMk5)
 		{
 			Mk5Daemon_getModules(D);
+		}
+		if(D->isMk6)
+		{
+			D->mark6->sendStatusMessage();
 		}
 	}
 	else if(strncasecmp(cmd, "ResetMark5", 10) == 0)
