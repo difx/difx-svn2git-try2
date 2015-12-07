@@ -214,6 +214,7 @@ doForce = False
 doPretend = False
 doOverride = False
 stationFilter = []
+collisions = {}
 
 for a in argv[1:]:
 	if a in ['--help', '-h']:
@@ -287,29 +288,53 @@ for s in stns:
 			continue;
 
 		dt = mjd0 + datetime.timedelta(max(startMJD, b[0]))
+		epoch = "to_date('%d/%02d/%02d:%02d:%02d:%02d', 'yyyy/mm/dd:hh24:mi:ss')" % (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
 
 		vsn = zero2oh(b[2])
 
 		if doOverride:
-			cmd = "DELETE from TAPE WHERE STAID='%s' and EPOCH=to_date('%d/%02d/%02d:%02d:%02d:%02d', 'yyyy/mm/dd:hh24:mi:ss')" % (upper(s), dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+			cmd = "DELETE from TAPE WHERE STAID='%s' and EPOCH=%s" % (upper(s), epoch)
 			print cmd
 			if not doPretend:
 				cursor.execute(cmd)
 
 		elif doForce:
-			cmd = "DELETE from TAPE WHERE PROPOSAL='%s' and SEGMENT='%s' and STAID='%s' and EPOCH=to_date('%d/%02d/%02d:%02d:%02d:%02d', 'yyyy/mm/dd:hh24:mi:ss')" % (obsCode, obsSeg, upper(s), dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+			cmd = "DELETE from TAPE WHERE PROPOSAL='%s' and SEGMENT='%s' and STAID='%s' and EPOCH=%s" % (obsCode, obsSeg, upper(s), epoch)
 			print cmd
 			if not doPretend:
 				cursor.execute(cmd)
 
-		cmd = "INSERT into TAPE VALUES ('%s', '%s', '%s', to_date('%d/%02d/%02d:%02d:%02d:%02d', 'yyyy/mm/dd:hh24:mi:ss'), '%s', '%d')" % (obsCode, obsSeg, upper(s), dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, vsn, b[3]+2)
+		cmd = "INSERT into TAPE VALUES ('%s', '%s', '%s', %s, '%s', '%d')" % (obsCode, obsSeg, upper(s), epoch, vsn, b[3]+2)
 		print cmd
 		if not doPretend:
-			cursor.execute(cmd)
-			print 'Executed'
+			try:
+				cursor.execute(cmd)
+			except cx_Oracle.IntegrityError:
+				collide = False
+				cmd2 = "SELECT * from TAPE where STAID='%s' and EPOCH=%s" % (upper(s), epoch)
+				cursor.execute(cmd2)
+				results = cursor.fetchall()
+				for R in results:
+					if R[0] == obsCode and R[1] == obsSeg and R[2] == upper(s) and R[4] == vsn and R[5] == b[3]+2:
+						pass
+					else:
+						if collide == False:
+							collide = True
+							print 'Insert command failed: Database uniqueness constraint violation: another entry already exists in the database with the same station and start time:'
+						print '  %s %s  %s  %s' % (R[0], R[1], R[2], R[4])
+						collisions[R[0]+R[1]] = 1
+			else:
+				print 'Executed'
 
 if not doPretend:
 	oldDb.commit()
 	print 'Committed'
 else:
 	print 'None of this actually happened because pretend mode was used.'
+
+if len(collisions) > 0:
+	print '\nThe following projects prevented proper insertion of new data into the database:'
+	for C in collisions:
+		print '  %s' % C
+	print 'Run this program again with the --override option to force overwriting this data with scans from this project.\n'
+	
