@@ -9,8 +9,8 @@ from os import getenv, environ, popen, umask, getcwd, system
 
 program = 'mark5c2db'
 author = 'Walter Brisken'
-version = '0.10'
-verdate = '20141006'
+version = '0.11'
+verdate = '20151207'
 
 # Name of the Oracle VLBA legacy database
 databaseName = getenv("VLBA_DB")
