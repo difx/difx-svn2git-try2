@@ -347,7 +347,7 @@ int main(int argc, char *argv[])
       csevere << startl << "Error creating command monitoring thread!" << endl;
     else {
       //wait for commandmonthread to be initialised
-      while(!config->commandThreadInitialised() && !config->commandThreadFailed()) {
+      while(!config->commandThreadInitialised()) {
 	usleep(1);
       }
     }
