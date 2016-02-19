@@ -47,7 +47,7 @@ AC_SUBST(mathcflags, [${MATH_CFLAGS}])
 dnl **********************************************************
 dnl **** Find difxmessage library                         ****
 dnl **********************************************************
-PKG_CHECK_MODULES(DIFXMESSAGE, [difxmessage >= 2.4.0 difxmessage < 7])
+PKG_CHECK_MODULES(DIFXMESSAGE, [difxmessage >= 2.4.3 difxmessage < 7])
 
 dnl **********************************************************
 dnl **** Find vdifio library                              ****
