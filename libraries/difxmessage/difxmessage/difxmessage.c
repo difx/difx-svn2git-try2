@@ -157,6 +157,11 @@ int isDifxMessageInUse()
 	return difxMessageInUse;
 }
 
+int isDifxMessageUnicast()
+{
+	return difxMessageUnicast;
+}
+
 /* does case insensitive comparison */
 enum DriveStatsType stringToDriveStatsType(const char *str)
 {
