@@ -1,0 +1,5 @@
+#! /bin/bash
+. /home/usno/users/difxmgr/difx/DiFX-trunk/setup_difx
+cd $1
+echo "Hostname="`uname -n`" Dir="`pwd`
+builddifx
