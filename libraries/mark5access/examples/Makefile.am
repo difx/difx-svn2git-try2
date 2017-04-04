@@ -93,3 +93,10 @@ zerocorr_SOURCES = \
 
 install-exec-hook:
 	mv $(DESTDIR)$(bindir)/zerocorr_makeconfig.py $(DESTDIR)$(bindir)/zerocorr_makeconfig
+if DEBUG
+AM_CFLAGS = -g3 -O0
+AM_CXXFLAGS = -g3 -O0
+else
+AM_CFLAGS = -O2
+AM_CXXFLAGS = -O2
+endif

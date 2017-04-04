@@ -15,6 +15,7 @@ c_sources = \
 	mark5_format_d2k.c \
 	format_vdif.c \
 	format_vdifb.c \
+	format_codif.c \
 	blanker_none.c \
 	blanker_mark5.c \
 	mark5bfix.c \
@@ -31,3 +32,10 @@ lib_LTLIBRARIES = \
 libmark5access_la_SOURCES = $(h_sources) $(c_sources)
 libmark5access_la_LDFLAGS = -version-info $(LIBRARY_VERSION)
 
+if DEBUG
+AM_CFLAGS = -g3 -O0
+AM_CXXFLAGS = -g3 -O0
+else
+AM_CFLAGS = -O2
+AM_CXXFLAGS = -O2
+endif
