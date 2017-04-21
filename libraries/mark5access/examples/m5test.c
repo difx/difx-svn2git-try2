@@ -206,7 +206,7 @@ int main(int argc, char **argv)
 	if(argc == 2)
 	{
 		struct mark5_format *mf;
-		int bufferlen = 1<<11;
+		int bufferlen = 5e4;
 		char *buffer;
 		FILE *in;
 
@@ -226,12 +226,6 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			mf = new_mark5_format_from_stream(
-				new_mark5_stream_memory(buffer, bufferlen/2));
-
-			print_mark5_format(mf);
-			delete_mark5_format(mf);
-
 			mf = new_mark5_format_from_stream(
 				new_mark5_stream_memory(buffer, bufferlen/2));
 

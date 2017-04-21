@@ -1,6 +1,6 @@
 /***************************************************************************
  *   Copyright (C) 2006-2011 by Walter Brisken                             *
- *   Copyright (C) 2012 by Chris Phillips                                  *
+ *   Copyright (C) 2012-2017 by Chris Phillips                             *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 3 of the License, or     *
@@ -69,6 +69,9 @@ int main(int argc, char **argv) {
   struct mark5_stream *ms;
   long long offset = 0;
 
+  
+
+  
   if(argc < 3 )	{
     usage(argv[0]);
     return EXIT_FAILURE;

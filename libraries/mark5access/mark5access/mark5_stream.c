@@ -39,6 +39,7 @@
 #include <string.h>
 #include <math.h>
 #include <errno.h>
+
 #include "mark5access/mark5_stream.h"
 
 FILE* m5stderr = (FILE*)NULL;
@@ -221,6 +222,7 @@ static int set_stream(struct mark5_stream *ms, const struct mark5_stream_generic
 
 static int set_format(struct mark5_stream *ms, const struct mark5_format_generic *f)
 {
+  printf("DEBUG: mark5_stream: set_format\n");
 	if(f && ms)
 	{
 		ms->init_format = f->init_format;
@@ -301,6 +303,8 @@ struct mark5_stream *mark5_stream_open(const char *filename, int nbit, int fanou
 	struct mark5_format_generic *f;
 	struct mark5_stream *ms;
 	int status, ntrack;
+
+	printf("DEBUG: mark5_stream:mark5_strem_open\n");
 	
 	s = new_mark5_stream_file(filename, offset);
 	if(!s)
@@ -551,6 +555,10 @@ struct mark5_format_generic *new_mark5_format_generic_from_string( const char *f
 
 		return new_mark5_format_vdif(a, b, c, d, e, 16, 1);
 	}
+	else if(strncasecmp(formatname, "CODIF", 5) == 0)
+	{
+	    return new_mark5_format_codif(1024,2,2,1,100,64,0);
+	}
 	else if(strncasecmp(formatname, "VLBN1_", 6) == 0)
 	{
 		r = sscanf(formatname+6, "%d-%d-%d-%d/%d", &a, &b, &c, &d, &e);
@@ -576,7 +584,7 @@ struct mark5_format_generic *new_mark5_format_generic_from_string( const char *f
 /* a string containg a list of supported formats */
 const char *mark5_stream_list_formats()
 {
-	return "VLBA1_*-*-*-*[/*], MKIV1_*-*-*-*[/*], MARK5B-*-*-*[/*], VDIF_*-*-*-*[/*], VDIFC_*-*-*-*[/*], VLBN1_*-*-*-*[/*], VDIFB_*-*-*-*, VDIFL_*-*-*-*[/*], VDIFCL_*-*-*-*[/*], KVN5B-*-*-*[/*], D2K-*-*-*[/*]";
+	return "VLBA1_*-*-*-*[/*], MKIV1_*-*-*-*[/*], MARK5B-*-*-*[/*], VDIF_*-*-*-*[/*], VDIFC_*-*-*-*[/*], VLBN1_*-*-*-*[/*], VDIFB_*-*-*-*, VDIFL_*-*-*-*[/*], VDIFCL_*-*-*-*[/*], KVN5B-*-*-*[/*], D2K-*-*-*[/*], CODIF";
 }
 
 /* given a format string, populate a structure with info about format */
@@ -830,6 +838,15 @@ struct mark5_format *new_mark5_format_from_name(const char *formatname)
 			decimation = e;
 		}
 	}
+	/* for CODIF */
+	else if(strncasecmp(formatname, "CODIF", 5) == 0)
+	{
+		F = MK5_FORMAT_CODIF;
+		databytes = 0;
+		framebytes = 0;
+		framens = 0;
+		decimation = 1;
+	}
 	else if(strncasecmp(formatname, "VLBN1_", 6) == 0)
 	{
 		r = sscanf(formatname+6, "%d-%d-%d-%d/%d", &a, &b, &c, &d, &e);
@@ -875,8 +892,9 @@ struct mark5_format *new_mark5_format_from_stream(struct mark5_stream_generic *s
 	struct mark5_format *mf;
 	int status, ntrack;
 	size_t offset;
-	int framesize;
+	int framesize, headersize;
 
+	printf("DEBUG: mark5_steam:new_mark5_format_from_stream **\n");
 	mark5_library_consistent();
 	
 	if(!s)
@@ -1055,6 +1073,45 @@ struct mark5_format *new_mark5_format_from_stream(struct mark5_stream_generic *s
 		}
 	}
 
+	/* CODIF */
+	framesize = 0;
+	headersize = 0;
+	if (find_codif_frame(ms->datawindow, ms->datawindowsize, &offset, &framesize, &headersize) >= 0)
+	{
+	    void * header;
+	    header = (void*)ms->datawindow+offset;
+
+	    ms->frameoffset = offset;
+	    f = new_mark5_format_codif(
+		  get_codif_rate(header),
+		  get_codif_chans_per_thread(header),
+		  get_codif_quantization_bits(header),
+		  1,
+		  framesize-headersize,
+		  headersize,
+		  get_codif_complex(header));
+
+	    set_format(ms, f);
+	    status = mark5_format_init(ms);
+	    if(status < 0)
+	      {
+		  if(f->final_format)
+		    {
+			f->final_format(ms);
+		    }
+		  free(f);
+	      }
+	    else
+	      {
+		  copy_format(ms, mf);
+		  mf->format = MK5_FORMAT_CODIF;
+		  mf->ntrack = get_codif_threads(ms->datawindow+offset, ms->datawindowsize-offset, framesize);
+		  delete_mark5_stream(ms);
+		  
+		  return mf;
+	      }
+	}
+	
 #ifdef K5WORKS
 	/* k5 */
 	f = new_mark5_format_k5(0, 0, 0, -1);
@@ -1101,7 +1158,7 @@ void print_mark5_format(const struct mark5_format *mf)
 	fprintf(m5stdout, "  framebytes = %d\n", mf->framebytes);
 	fprintf(m5stdout, "  framens = %f\n", mf->framens);
 	fprintf(m5stdout, "  mjd = %d sec = %d ns = %d\n", mf->mjd, mf->sec, mf->ns);
-	if(mf->format == MK5_FORMAT_VDIF || mf->format == MK5_FORMAT_VDIFL || mf->format == MK5_FORMAT_VDIFB)
+	if(mf->format == MK5_FORMAT_VDIF || mf->format == MK5_FORMAT_VDIFL || mf->format == MK5_FORMAT_VDIFB || mf->format == MK5_FORMAT_CODIF)
 	{
 		fprintf(m5stdout, "  nthread = %d\n", mf->ntrack);
 	}
@@ -1129,6 +1186,7 @@ struct mark5_stream *new_mark5_stream(const struct mark5_stream_generic *s, cons
 	struct mark5_stream *ms;
 	int status;
 
+	printf("DEBUG: mark5_stream:new_mark5_stream\n");
 	mark5_library_consistent();
 
 	ms = (struct mark5_stream *)calloc(1, sizeof(struct mark5_stream));
@@ -1186,6 +1244,7 @@ struct mark5_stream *new_mark5_stream_absorb(struct mark5_stream_generic *s, str
 {
 	struct mark5_stream *ms;
 	int failed = 0;
+	printf("DEBUG: mark5_stream:new_mark5_stream_absorb\n");
 
 	mark5_library_consistent();
 

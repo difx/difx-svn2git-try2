@@ -107,6 +107,7 @@ static int decode_short(const char *filename, const char *formatname, const char
 	FILE *in;
 	int edv4 = 0;
 
+	printf("DEBUG: m5d: decode_short\n");
 	total = unpacked = 0;
 
 	in = fopen(filename, "r");

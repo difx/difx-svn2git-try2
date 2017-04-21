@@ -50,6 +50,7 @@ typedef float complex  mark5_float_complex;
 
 #include <stdint.h>
 #include <stdio.h>
+#include "codifio.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,7 +68,8 @@ enum Mark5Format
 	MK5_FORMAT_VLBN    =  6,		/* VLBA format without NRZM */
 	MK5_FORMAT_KVN5B   =  7,		/* Same framing, different bit pattern as Mark5B */
 	MK5_FORMAT_VDIFB   =  8,		/* Not to be propagated as an external format */
-	MK5_FORMAT_D2K     =  9			/* Not to be propagated as an external format */
+	MK5_FORMAT_D2K     =  9,		/* Not to be propagated as an external format */
+	MK5_FORMAT_CODIF   = 10
 };
 
 #define MAXBLANKZONES		32
@@ -79,7 +81,8 @@ enum Mark5Blanker
 {
 	MK5_BLANKER_NONE  = 0,
 	MK5_BLANKER_MARK5 = 1,
-	MK5_BLANKER_VDIF  = 2
+	MK5_BLANKER_VDIF  = 2,
+	MK5_BLANKER_CODIF = 3
 };
 
 struct mark5_stream
@@ -304,6 +307,22 @@ int get_vdifb_complex(const unsigned char *data);
 
 int get_vdifb_threads(const unsigned char *data, size_t length, int dataframesize);
 
+  /* CODIF format: beta */
+
+struct mark5_format_generic *new_mark5_format_codif(int Mbps, int nchan, int nbit, int decimation, int databytesperpacket, int frameheadersize, int usecomplex);
+
+int find_codif_frame(const unsigned char *data, int length, size_t *offset, int *framesize, int *headersize);
+
+int get_codif_chans_per_thread(const codif_header *header);
+
+int get_codif_quantization_bits(const codif_header *header);
+
+double get_codif_rate(const codif_header *header);
+
+int get_codif_complex(const codif_header *data);
+
+int get_codif_threads(const unsigned char *data, size_t length, int dataframesize);
+
 /*   K5 format: not yet complete */
 
 struct mark5_format_generic *new_mark5_format_k5(int Mbps, int nchan, int nbit, int submode);
@@ -337,6 +356,10 @@ int blanker_mark4(struct mark5_stream *ms);
 
 int blanker_vdif(struct mark5_stream *ms);
 
+  /* Blanker for CODIF data stored on Mark5 modules */
+
+int blanker_codif(struct mark5_stream *ms);
+
 /* TO PARTIALLY DETERMINE DATA FORMAT FROM DATA OR DESCRIPTION */
 
 /* contains information that can be determined by a glance at data or name */
@@ -349,7 +372,7 @@ struct mark5_format
 	int databytes;		  /* bytes of data in a frame */
 	double framens;		  /* duration of a frame in nanosec */
 	int mjd, sec, ns;	  /* date and time of first frame */
-	int ntrack;		  /* for Mark4 and VLBA formats only; used for threads in VDIF */
+	int ntrack;		  /* for Mark4 and VLBA formats only; used for threads in VDIF and CODIF */
 	int fanout;		  /* for Mark4 and VLBA formats only */
 	int decimation;
 };

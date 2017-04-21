@@ -24,7 +24,7 @@ c_sources = \
 library_includedir = $(includedir)/mark5access
 library_include_HEADERS = $(h_sources)
 
-AM_CPPFLAGS = -I$(top_srcdir)
+AM_CPPFLAGS = -I$(top_srcdir) $(CODIFIO_CFLAGS)
 
 lib_LTLIBRARIES = \
 	libmark5access.la
@@ -32,10 +32,3 @@ lib_LTLIBRARIES = \
 libmark5access_la_SOURCES = $(h_sources) $(c_sources)
 libmark5access_la_LDFLAGS = -version-info $(LIBRARY_VERSION)
 
-if DEBUG
-AM_CFLAGS = -g3 -O0
-AM_CXXFLAGS = -g3 -O0
-else
-AM_CFLAGS = -O2
-AM_CXXFLAGS = -O2
-endif
