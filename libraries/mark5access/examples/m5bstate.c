@@ -429,7 +429,8 @@ double std_dev2(double a[], int n) {
         return 0.0;
     double sum = 0;
     double sq_sum = 0;
-    for(int i = 0; i < n; ++i) {
+    int i;
+    for(i = 0; i < n; ++i) {
        sum += a[i];
        sq_sum += a[i] * a[i];
     }
