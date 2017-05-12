@@ -348,6 +348,8 @@ struct mark5_stream_generic *new_mark5_stream_file(const char *filename, long lo
 	int in;
 	int err;
 
+	printf("DEBUG: mark5_stream_file.c new_mark5_stream_file\n");
+	
 	if(strcmp(filename, "-") == 0)
 	{
 		in = 0; /* stdin */

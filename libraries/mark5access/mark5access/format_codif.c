@@ -73,14 +73,16 @@ struct mark5_format_codif
 
 #warning "********FIXME***** CODIF supports offset binary and 2s complement. Update luts"
 
+int set_decoder(int nbit, int nchan, int usecomplex, decodeFunc *decode, complex_decodeFunc *complex_decode, countFunc *count);
+
+
 static void initluts()
 {
 	/* Warning: these are different than for VLBA/Mark4/Mark5B! */
-	const float lut2level[2] = {-1.0, 1.0};
-	const float lut4level[4] = {-HiMag, -1.0, 1.0, HiMag};
-	const float lut16level[16] = {-8/FourBit1sigma,-7/FourBit1sigma,-6/FourBit1sigma,-5/FourBit1sigma,-4/FourBit1sigma,
-				      -3/FourBit1sigma,-2/FourBit1sigma,-1/FourBit1sigma,0,1/FourBit1sigma,2/FourBit1sigma,
-				      3/FourBit1sigma,4/FourBit1sigma,5/FourBit1sigma,6/FourBit1sigma,7/FourBit1sigma};
+	const float lut2level[2] = {1.0, -1.0};
+	const float lut4level[4] = {1.0, HiMag, -HiMag, -1.0};
+	const float lut16level[16] = {0,1/FourBit1sigma,2/FourBit1sigma,3/FourBit1sigma,4/FourBit1sigma,5/FourBit1sigma,6/FourBit1sigma,7/FourBit1sigma
+				      -8/FourBit1sigma,-7/FourBit1sigma,-6/FourBit1sigma,-5/FourBit1sigma,-4/FourBit1sigma,-3/FourBit1sigma,-2/FourBit1sigma,-1/FourBit1sigma};
 	int b, i, l, li;
 	
 	for(i = 0; i < 8; i++)
@@ -121,7 +123,7 @@ static void initluts()
 		}
 
 		/* lut8bit */
-		lut8bit[b] = (b*2-255)/71.0;	/* This scaling mimics 2-bit data reasonably well. */
+		lut8bit[b] = (float)((int8_t)((uint8_t)b))/71.0;
 
 		/* Complex lookups */
 
@@ -153,9 +155,9 @@ static void initluts()
 static int mark5_stream_frame_time_codif(const struct mark5_stream *ms, int *mjd, int *sec, double *ns)
 {
 	struct mark5_format_codif *v;
-	uint32_t word0, word1, word3;
 	int seconds, days;
 	int refepoch;
+	codif_header *header;
 
 	/* table below is valid for year 2000.0 to 2032.0 and contains mjd on Jan 1 and Jul 1
 	 * for each year. */
@@ -178,30 +180,13 @@ static int mark5_stream_frame_time_codif(const struct mark5_stream *ms, int *mjd
 	v = (struct mark5_format_codif *)(ms->formatdata);
 
 #ifdef WORDS_BIGENDIAN
-	{
-		unsigned char *headerbytes;
-
-		/* Motorola byte order requires some fiddling */
-		headerbytes = ms->frame;
-		word0 = (headerbytes[0] << 24) | (headerbytes[1] << 16) | (headerbytes[2] << 8) | headerbytes[3];
-		headerbytes = ms->frame + 4;
-		word1 = (headerbytes[0] << 24) | (headerbytes[1] << 16) | (headerbytes[2] << 8) | headerbytes[3];
-		headerbytes = ms->frame + 8;
-		word3 = (headerbytes[0] << 24) | (headerbytes[1] << 16) | (headerbytes[2] << 8) | headerbytes[3];
-	}
-#else
-	{
-	        uint32_t *headerwords = (uint32_t*)(ms->frame);
-
-		/* Intel byte order does not */
-		word0 = headerwords[0];
-		word1 = headerwords[1];
-		word3 = headerwords[3];
-	}
+#error "bigendian not supported"
 #endif
+	header = (codif_header*)(ms->frame);
 
-	seconds = word0 & 0x3FFFFFFF;	/* bits 0 to 29 */
-	refepoch = (word3 >> 26) & 0x3F;
+
+	seconds = getCODIFFrameEpochSecOffset(header);
+	refepoch = getCODIFEpoch(header);
 
 #warning "***** Where does leapseconds come from"
 	seconds += v->leapsecs;
@@ -219,8 +204,7 @@ static int mark5_stream_frame_time_codif(const struct mark5_stream *ms, int *mjd
 	}
 	if(ns)
 	{
-#warning "*** Need to calculate ns ";	       
-		*ns = (word1)*ms->framens;
+	        *ns = getCODIFFrameNumber(header)*ms->framens;
 	}
 
 	return 0;
@@ -3805,12 +3789,18 @@ static int mark5_format_codif_make_formatname(struct mark5_stream *ms)
 
 static int mark5_format_codif_init(struct mark5_stream *ms)
 {
+    printf("DEBUG format_cofig.c: mark5_format_codif_init\n");
+    
 	struct mark5_format_codif *f;
 	unsigned int word2;
-	const unsigned char *headerbytes;
-	unsigned char bitspersample;
-	int framensNum, framensDen, dataarraylength;
+	uint8_t bitspersample=0;
+	int framensNum, framensDen, dataarraylength, status;
 	double dns;
+	codif_header *header;
+
+#ifdef WORDS_BIGENDIAN
+		#error "bigendian not supported"
+#endif
 
 	if(!ms)
 	{
@@ -3821,12 +3811,91 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 
 	f = (struct mark5_format_codif *)(ms->formatdata);
 
-	bitspersample = ms->nbit;
-	if(ms->complex_decode)
+	ms->framens = 0; // It gets set later
+        ms->framegranularity = 1; // Should get set later
+
+	/* We have some data to look at to further refine the format... */
+	if(ms->datawindow)
 	{
-		bitspersample *= 2;
+		ms->frame = ms->datawindow + ms->frameoffset;
+		ms->payload = ms->frame + ms->payloadoffset;
+
+		header = (codif_header*)ms->frame;
+
+
+		
+		if(f->frameheadersize != 0 && f->frameheadersize != CODIF_HEADER_BYTES)
+		{
+			fprintf(m5stderr, "CODIF Warning: Changing frameheadersize from %d to 64\n",
+				f->frameheadersize);
+		}
+		f->frameheadersize = CODIF_HEADER_BYTES;
+
+		dataarraylength = getCODIFFrameBytes(header);
+
+		if(f->databytesperpacket != 0 && f->databytesperpacket != dataarraylength)
+		{
+			fprintf(m5stderr, "CODIF Warning: Changing databytesperpacket from %d to %d\n",
+				f->databytesperpacket, dataarraylength);
+		}
+		f->databytesperpacket = dataarraylength;
+		printf("DEBUG:  dataarray=%d\n", dataarraylength);
+
+		if (ms->nchan != 0 && ms->nchan != header->nchan)
+		{
+			fprintf(m5stderr, "CODIF Warning: Changing nchan from %d to %d\n",
+				ms->nchan, header->nchan);
+		}
+		ms->nchan = header->nchan;
+
+		if (ms->nbit != 0 && ms->nbit != header->nbits)
+		{
+			fprintf(m5stderr, "CODIF Warning: Changing nbit from %d to %d\n",
+				ms->nbit, header->nbits);
+		}
+		ms->nbit = header->nbits;
+		ms->Mbps = get_codif_rate(header);
+		bitspersample = ms->nbit;
+		if (header->iscomplex) bitspersample *=2;
+
+		ms->payloadoffset = f->frameheadersize;
+		ms->databytes = f->databytesperpacket;
+		ms->framebytes = f->databytesperpacket + f->frameheadersize;
+		ms->framesamples = ms->databytes*8/(ms->nchan*bitspersample*ms->decimation);
+
+		printf("DEBUG: framesamples = %d\n", ms->framesamples);
+		printf("  %d %d %d %d\n", ms->databytes, ms->nchan, bitspersample, ms->decimation);
+
+
+		ms->framegranularity = get_codif_framegranularity(header);
+		
+		ms->framens = get_codif_framens(header);
+		
+		/* get time again so ms->framens is used */
+		ms->gettime(ms, &ms->mjd, &ms->sec, &dns);
+		ms->ns = (int)(dns + 0.5);
+
+		status = set_decoder(ms->nbit, ms->nchan, header->iscomplex, &ms->decode, &ms->complex_decode, &ms->count);
+	
+	if (!status) {
+	  fprintf(m5stderr, "CODIF: Unsupported combination channels=%d and bits=%d\n", ms->nchan, ms->nbit);
+
+	  return 0;
 	}
 
+
+		
+	}
+	
+#warning "Need to set complex decode"
+
+	if (bitspersample==0) {
+          bitspersample = ms->nbit;
+	  if (ms->complex_decode)
+	  {
+            bitspersample *= 2;
+          }
+        }
 	ms->payloadoffset = f->frameheadersize;
 	ms->databytes = f->databytesperpacket;
 	ms->framebytes = f->databytesperpacket + f->frameheadersize;
@@ -3844,14 +3913,20 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 	// Don't think these are needed..... CJP
         f->completesamplesperword = 32/(bitspersample*ms->nchan);
 
-        ms->framegranularity = 1;
         if(ms->Mbps > 0)
         {
-		framensNum = ms->databytes*8*1000;     
-		framensDen = ms->Mbps;
 
-		ms->framens = (double)framensNum/(double)framensDen;
+    // This block sets framens, framegranularity and samprate - want to set framens above.
+               if (ms->framens==0) { // Don't reset if calculated above
+    
+                  framensNum = ms->databytes*8*1000;     
+		  framensDen = ms->Mbps;
 
+		  ms->framens = (double)framensNum/(double)framensDen;
+                }
+
+#if 0
+		// This is too hard if we don't have full access to CODIF header
 		for(ms->framegranularity = 1; ms->framegranularity < 128; ms->framegranularity *= 2)
 		{
 			if((ms->framegranularity*framensNum) % framensDen == 0)
@@ -3866,6 +3941,7 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 			framensNum, framensDen);
 			ms->framegranularity = 1;
 		}
+#endif
 		ms->samprate = ((int64_t)ms->framesamples)*(1000000000.0/ms->framens);
         }
         else
@@ -3875,53 +3951,7 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 		return -1;
         }
 
-	/* Aha: we have some data to look at to further refine the format... */
-	if(ms->datawindow)
-	{
-		ms->frame = ms->datawindow + ms->frameoffset;
-		ms->payload = ms->frame + ms->payloadoffset;
-
-#ifdef WORDS_BIGENDIAN
-		/* Motorola byte order requires some fiddling */
-		headerbytes = ms->frame + 8;
-		word2 = (headerbytes[0] << 24) | (headerbytes[1] << 16) | (headerbytes[2] << 8) | headerbytes[3];
-#else
-		{
-			unsigned int *headerwords = (unsigned int *)(ms->frame);
-
-			/* Intel byte order does not */
-			word2 = headerwords[2];
-		}
-#endif
-		headerbytes = ms->frame;
-		
-		if(f->frameheadersize != 0 && f->frameheadersize != 64)
-		{
-			fprintf(m5stderr, "CODIF Warning: Changing frameheadersize from %d to 64\n",
-				f->frameheadersize);
-		}
-		f->frameheadersize = 64;
-
-		dataarraylength = (word2 & 0x00FFFFFF)*8;
-
-		if(f->databytesperpacket != 0 && f->databytesperpacket != dataarraylength)
-		{
-			fprintf(m5stderr, "CODIF Warning: Changing databytesperpacket from %d to %d\n",
-				f->databytesperpacket, dataarraylength);
-		}
-		f->databytesperpacket = dataarraylength;
-
-		ms->payloadoffset = f->frameheadersize;
-		ms->databytes = f->databytesperpacket;
-		ms->framebytes = f->databytesperpacket + f->frameheadersize;
-		ms->framesamples = ms->databytes*8/(ms->nchan*bitspersample*ms->decimation);
-		
-		/* get time again so ms->framens is used */
-		ms->gettime(ms, &ms->mjd, &ms->sec, &dns);
-		ms->ns = (int)(dns + 0.5);
-
-		/* WRITEME */
-	}
+#warning "Need to set decoder"
 
 	ms->gframens = (int)(ms->framegranularity*ms->framens + 0.5);
 
@@ -4013,63 +4043,295 @@ void mark5_format_codif_set_leapsecs(struct mark5_stream *ms, int leapsecs)
 	f->leapsecs = leapsecs;
 }
 
+int set_decoder(int nbit, int nchan, int usecomplex, decodeFunc *decode, complex_decodeFunc *complex_decode, countFunc *count) {
+    int decoderindex = 0;
+
+    if(nbit == 1) /* inc by 1000 for each successive value to allow full range of nchan */
+      {
+	decoderindex += 0;
+      }
+    else if (nbit == 2)
+      {
+	decoderindex += 1000;
+      }
+    else if (nbit == 4)
+      {
+	decoderindex += 2000;
+      }
+    else if (nbit == 8)
+      {
+	decoderindex += 3000;
+      }
+    else if(nbit == 16)
+      {
+	decoderindex += 4000;
+      }
+    else if(nbit == 32)
+      {
+	decoderindex += 5000;
+      }
+    else
+      {
+	fprintf(m5stderr, "CODIF nbit must be 1, 2, 4, 8, 16 or 32 for now\n");
+	return 0;
+      }
+
+    if(nchan < 1 || nchan > 512)
+      {
+	fprintf(m5stderr, "CODIF nchan must be <= 512 for now\n");
+	return 0;
+      }
+
+    decoderindex += nchan;
+
+    *decode = 0;
+    *complex_decode = 0;
+    *count = 0;
+
+    if(!usecomplex) 
+      {
+	switch(decoderindex)
+	  {
+	  case 1:
+	    *decode = codif_decode_1channel_1bit;
+	    break;
+	  case 2:
+	    *decode = codif_decode_2channel_1bit;
+	    break;
+	  case 3:
+	    *decode = codif_decode_3channel_1bit;
+	    break;
+	  case 4:
+	    *decode = codif_decode_4channel_1bit;
+	    break;
+	  case 5:
+	    *decode = codif_decode_5channel_1bit;
+	    break;
+	  case 6:
+	    *decode = codif_decode_6channel_1bit;
+	    break;
+	  case 7:
+	    *decode = codif_decode_7channel_1bit;
+	    break;
+	  case 8:
+	    *decode = codif_decode_8channel_1bit;
+	    break;
+	  case 16:
+	    *decode = codif_decode_16channel_1bit;
+	    break;
+	  case 32:
+	    *decode = codif_decode_32channel_1bit;
+	    break;
+	    
+	  case 1001:
+	    *decode = codif_decode_1channel_2bit;
+	    *count = codif_count_1channel_2bit;
+	    break;
+	  case 1002:
+	    *decode = codif_decode_2channel_2bit;
+	    *count = codif_count_2channel_2bit;
+	    break;
+	  case 1003:
+	    *decode = codif_decode_3channel_2bit;
+	    break;
+	  case 1004:
+	    *decode = codif_decode_4channel_2bit;
+	    *count = codif_count_4channel_2bit;
+	    break;
+	  case 1005:
+	    *decode = codif_decode_5channel_2bit;
+	    break;
+	  case 1006:
+	    *decode = codif_decode_6channel_2bit;
+	    break;
+	  case 1007:
+	    *decode = codif_decode_7channel_2bit;
+	    break;
+	  case 1008:
+	    *decode = codif_decode_8channel_2bit;
+	    *count = codif_count_8channel_2bit;
+	    break;
+	  case 1016:
+	    *decode = codif_decode_16channel_2bit;
+	    *count = codif_count_16channel_2bit;
+	    break;
+	  case 1032:
+	    *decode = codif_decode_32channel_2bit;
+	    *count = codif_count_32channel_2bit;
+	    break;
+	  case 1064:
+	    *decode = codif_decode_64channel_2bit;
+	    *count = codif_count_64channel_2bit;
+	    break;
+	    
+	  case 2001:
+	    *decode = codif_decode_1channel_4bit;
+	    break;
+	  case 2002:
+	    *decode = codif_decode_2channel_4bit;
+	    break;
+	  case 2003:
+	    *decode = codif_decode_3channel_4bit;
+	    break;
+	  case 2004:
+	    *decode = codif_decode_4channel_4bit;
+	    break;
+	  case 2005:
+	    *decode = codif_decode_5channel_4bit;
+	    break;
+	  case 2006:
+	    *decode = codif_decode_6channel_4bit;
+	    break;
+	  case 2007:
+	    *decode = codif_decode_7channel_4bit;
+	    break;
+	  case 2008:
+	    *decode = codif_decode_8channel_4bit;
+	    break;
+	    
+	  case 3001:
+	    *decode = codif_decode_1channel_8bit;
+	    break;
+	  case 3002:
+	    *decode = codif_decode_2channel_8bit;
+	    break;
+	  case 3003:
+	    *decode = codif_decode_3channel_8bit;
+	    break;
+	  case 3004:
+	    *decode = codif_decode_4channel_8bit;
+	    break;
+	    
+	  case 5001:
+	    *decode = codif_decode_1channel_32bit;
+	    break;
+	  }
+	
+	if(*decode == 0)
+	  {
+	    fprintf(m5stderr, "CODIF: Unsupported combination channels=%d and bits=%d\n", nchan, nbit);
+	    return 0;
+	  }
+      }
+    else
+      {
+	switch(decoderindex)
+	  {
+	  case 1:
+	    *complex_decode = codif_complex_decode_1channel_1bit;
+	    break;
+	  case 2:
+	    *complex_decode = codif_complex_decode_2channel_1bit;
+	    break;
+	  case 4:
+	    *complex_decode = codif_complex_decode_4channel_1bit;
+	    break;
+	  case 8:
+	    *complex_decode = codif_complex_decode_8channel_1bit;
+	    break;
+	  case 16:
+	    *complex_decode = codif_complex_decode_16channel_1bit;
+	    break;
+	    
+	  case 1001:
+	    *complex_decode = codif_complex_decode_1channel_2bit;
+	    break;
+	  case 1002:
+	    *complex_decode = codif_complex_decode_2channel_2bit;
+	    break;
+	  case 1004:
+	    *complex_decode = codif_complex_decode_4channel_2bit;
+	    break;
+	  case 1008:
+	    *complex_decode = codif_complex_decode_8channel_2bit;
+	    break;
+	  case 1016:
+	    *complex_decode = codif_complex_decode_16channel_2bit;
+	    break;
+	  case 1032:
+	    *complex_decode = codif_complex_decode_32channel_2bit;
+	    break;
+	  case 1064:
+	    *complex_decode = codif_complex_decode_64channel_2bit;
+	    break;
+	    
+	  case 2001:
+	    *complex_decode = codif_complex_decode_1channel_4bit;
+	    break;
+	  case 2002:
+	    *complex_decode = codif_complex_decode_2channel_4bit;
+	    break;
+	  case 2004:
+	    *complex_decode = codif_complex_decode_4channel_4bit;
+	    break;
+	    
+	  case 3001:
+	    *complex_decode = codif_complex_decode_1channel_8bit;
+	    break;
+	  case 3002:
+	    *complex_decode = codif_complex_decode_2channel_8bit;
+	    break;
+	  case 3004:
+	    *complex_decode = codif_complex_decode_4channel_8bit;
+	    break;
+	  case 3008:
+	    *complex_decode = codif_complex_decode_8channel_8bit;
+	    break;
+	  case 3016:
+	    *complex_decode = codif_complex_decode_16channel_8bit;
+	    break;
+	    
+	  case 4001:
+	    *complex_decode = codif_complex_decode_1channel_16bit;
+	    break;
+	  case 4002:
+	    *complex_decode = codif_complex_decode_2channel_16bit;
+	    break;
+	  case 4004:
+	    *complex_decode = codif_complex_decode_4channel_16bit;
+	    break;
+	  case 4008:
+	    *complex_decode = codif_complex_decode_8channel_16bit;
+	    break;
+	  case 4016:
+	    *complex_decode = codif_complex_decode_16channel_16bit;
+	    break;
+	    
+	  case 5001:
+	    *complex_decode = codif_complex_decode_1channel_32bit;
+	    break;
+	  }
+	
+	if(*complex_decode == 0)
+	  {
+	    fprintf(m5stderr, "CODIF: Unsupported combination, channels=%d and bits=%d\n", nchan, nbit);
+	    return 0;
+	  }
+	
+      }
+    return(1);
+}
+
 struct mark5_format_generic *new_mark5_format_codif(int Mbps, 
 	int nchan, int nbit, int decimation, 
 	int databytesperpacket, int frameheadersize, int usecomplex)
 {
-
+    int status;
+    
     printf("DEBUG: format_codif.c: new_mark5_format_codif\n");
-    printf(" Mbps=%d\n", Mbps);
-    printf(" nchan=%d\n", nchan);
     static int first = 1;
-	struct mark5_format_generic *f;
-	struct mark5_format_codif *v;
-	int decoderindex = 0;
+    struct mark5_format_generic *f;
+    struct mark5_format_codif *v;
+    int decoderindex = 0;
 
-	if(first)
+    if(first)
 	{
 		initluts();
 		first = 0;
 	}
 
-	if(nbit == 1) /* inc by 1000 for each successive value to allow full range of nchan */
-	{
-		decoderindex += 0;
-	}
-	else if (nbit == 2)
-	{
-		decoderindex += 1000;
-	}
-	else if (nbit == 4)
-	{
-		decoderindex += 2000;
-	}
-	else if (nbit == 8)
-	{
-		decoderindex += 3000;
-	}
-	else if(nbit == 16)
-	{
-		decoderindex += 4000;
-	}
-	else if(nbit == 32)
-	{
-		decoderindex += 5000;
-	}
-	else
-	{
-		fprintf(m5stderr, "CODIF nbit must be 1, 2, 4, 8, 16 or 32 for now\n");
-		return 0;
-	}
 
-	if(nchan < 1 || nchan > 512)
-	{
-		fprintf(m5stderr, "CODIF nchan must be <= 512 for now\n");
-
-		return 0;
-	}
-
-	decoderindex += nchan;
+    
 
 	v = (struct mark5_format_codif *)calloc(1, sizeof(struct mark5_format_codif));
 	f = (struct mark5_format_generic *)calloc(1, sizeof(struct mark5_format_generic));
@@ -4094,232 +4356,14 @@ struct mark5_format_generic *new_mark5_format_codif(int Mbps,
 	f->complex_decode = 0;
 	f->count = 0;
 
-	if(!usecomplex) 
-	{
-	    switch(decoderindex)
-	    {
-	        case 1:
-			f->decode = codif_decode_1channel_1bit;
-			break;
-		case 2:
-			f->decode = codif_decode_2channel_1bit;
-			break;
-		case 3:
-			f->decode = codif_decode_3channel_1bit;
-			break;
-		case 4:
-			f->decode = codif_decode_4channel_1bit;
-			break;
-		case 5:
-			f->decode = codif_decode_5channel_1bit;
-			break;
-		case 6:
-			f->decode = codif_decode_6channel_1bit;
-			break;
-		case 7:
-			f->decode = codif_decode_7channel_1bit;
-			break;
-		case 8:
-			f->decode = codif_decode_8channel_1bit;
-			break;
-		case 16:
-			f->decode = codif_decode_16channel_1bit;
-			break;
-	        case 32:
-			f->decode = codif_decode_32channel_1bit;
-			break;
+	status = set_decoder(nbit, nchan, usecomplex, &f->decode, &f->complex_decode, &f->count);
+	
+	if (!status) {
+	  fprintf(m5stderr, "CODIF: Unsupported combination decimation=%d, channels=%d and bits=%d\n", decimation, nchan, nbit);
+	  free(v);
+	  free(f);
 
-		case 1001:
-			f->decode = codif_decode_1channel_2bit;
-			f->count = codif_count_1channel_2bit;
-			break;
-		case 1002:
-			f->decode = codif_decode_2channel_2bit;
-			f->count = codif_count_2channel_2bit;
-			break;
-		case 1003:
-			f->decode = codif_decode_3channel_2bit;
-			break;
-		case 1004:
-			f->decode = codif_decode_4channel_2bit;
-			f->count = codif_count_4channel_2bit;
-			break;
-		case 1005:
-			f->decode = codif_decode_5channel_2bit;
-			break;
-		case 1006:
-			f->decode = codif_decode_6channel_2bit;
-			break;
-		case 1007:
-			f->decode = codif_decode_7channel_2bit;
-			break;
-		case 1008:
-			f->decode = codif_decode_8channel_2bit;
-			f->count = codif_count_8channel_2bit;
-			break;
-		case 1016:
-			f->decode = codif_decode_16channel_2bit;
-			f->count = codif_count_16channel_2bit;
-			break;
-		case 1032:
-			f->decode = codif_decode_32channel_2bit;
-			f->count = codif_count_32channel_2bit;
-			break;
-		case 1064:
-			f->decode = codif_decode_64channel_2bit;
-			f->count = codif_count_64channel_2bit;
-			break;
-
-		case 2001:
-			f->decode = codif_decode_1channel_4bit;
-			break;
-		case 2002:
-			f->decode = codif_decode_2channel_4bit;
-			break;
-		case 2003:
-			f->decode = codif_decode_3channel_4bit;
-			break;
-		case 2004:
-			f->decode = codif_decode_4channel_4bit;
-			break;
-		case 2005:
-			f->decode = codif_decode_5channel_4bit;
-			break;
-		case 2006:
-			f->decode = codif_decode_6channel_4bit;
-			break;
-		case 2007:
-			f->decode = codif_decode_7channel_4bit;
-			break;
-		case 2008:
-			f->decode = codif_decode_8channel_4bit;
-			break;
-
-		case 3001:
-			f->decode = codif_decode_1channel_8bit;
-			break;
-		case 3002:
-			f->decode = codif_decode_2channel_8bit;
-			break;
-		case 3003:
-			f->decode = codif_decode_3channel_8bit;
-			break;
-		case 3004:
-			f->decode = codif_decode_4channel_8bit;
-			break;
-
-		case 5001:
-			f->decode = codif_decode_1channel_32bit;
-			break;
-	    }
-
-	    if(f->decode == 0)
-	    {
-		fprintf(m5stderr, "CODIF: Unsupported combination decimation=%d, channels=%d and bits=%d\n", decimation, nchan, nbit);
-		free(v);
-		free(f);
-		
-		return 0;
-	    }
-	}
-	else
-	{
-	    switch(decoderindex)
-	    {
-	        case 1:
-			f->complex_decode = codif_complex_decode_1channel_1bit;
-			break;
-		case 2:
-			f->complex_decode = codif_complex_decode_2channel_1bit;
-			break;
-		case 4:
-			f->complex_decode = codif_complex_decode_4channel_1bit;
-			break;
-		case 8:
-			f->complex_decode = codif_complex_decode_8channel_1bit;
-			break;
-		case 16:
-			f->complex_decode = codif_complex_decode_16channel_1bit;
-			break;
-
-		case 1001:
-			f->complex_decode = codif_complex_decode_1channel_2bit;
-			break;
-		case 1002:
-			f->complex_decode = codif_complex_decode_2channel_2bit;
-			break;
-		case 1004:
-			f->complex_decode = codif_complex_decode_4channel_2bit;
-			break;
-		case 1008:
-			f->complex_decode = codif_complex_decode_8channel_2bit;
-			break;
-		case 1016:
-			f->complex_decode = codif_complex_decode_16channel_2bit;
-			break;
-		case 1032:
-			f->complex_decode = codif_complex_decode_32channel_2bit;
-			break;
-		case 1064:
-			f->complex_decode = codif_complex_decode_64channel_2bit;
-			break;
-
-		case 2001:
-			f->complex_decode = codif_complex_decode_1channel_4bit;
-			break;
-		case 2002:
-			f->complex_decode = codif_complex_decode_2channel_4bit;
-			break;
-		case 2004:
-			f->complex_decode = codif_complex_decode_4channel_4bit;
-			break;
-
-		case 3001:
-			f->complex_decode = codif_complex_decode_1channel_8bit;
-			break;
-		case 3002:
-			f->complex_decode = codif_complex_decode_2channel_8bit;
-			break;
-		case 3004:
-			f->complex_decode = codif_complex_decode_4channel_8bit;
-			break;
-		case 3008:
-			f->complex_decode = codif_complex_decode_8channel_8bit;
-			break;
-		case 3016:
-			f->complex_decode = codif_complex_decode_16channel_8bit;
-			break;
-
-		case 4001:
-			f->complex_decode = codif_complex_decode_1channel_16bit;
-			break;
-		case 4002:
-			f->complex_decode = codif_complex_decode_2channel_16bit;
-			break;
-		case 4004:
-			f->complex_decode = codif_complex_decode_4channel_16bit;
-			break;
-		case 4008:
-			f->complex_decode = codif_complex_decode_8channel_16bit;
-			break;
-		case 4016:
-			f->complex_decode = codif_complex_decode_16channel_16bit;
-			break;
-
-		case 5001:
-			f->complex_decode = codif_complex_decode_1channel_32bit;
-			break;
-	    }
-
-	    if(f->complex_decode == 0)
-	    {
-		fprintf(m5stderr, "CODIF: Unsupported combination decimation=%d, channels=%d and bits=%d\n", decimation, nchan, nbit);
-		free(v);
-		free(f);
-
-		return 0;
-	    }
-
+	  return 0;
 	}
 
 	return f;
@@ -4375,14 +4419,14 @@ int find_codif_frame(const unsigned char *data, int length, size_t *offset, int 
     uint32_t fsA, fsB, secA, secB;
     codif_header *header;
     
-    printf("format_codif.c: find_codif_frame\n");
+    printf("DEBUG format_codif.c: find_codif_frame\n");
 
     for (*offset=0; *offset<length; (*offset)++) {
       header = (codif_header*)(data + *offset);
       
       if (header->sync != 0xABADDEED) continue; // Sync
 
-      fsA = header->framelength8*8;
+      fsA = getCODIFFrameBytes(header);
       if (!is_legal_codif_framesize(fsA)) {
 	//continue;
       }
@@ -4399,7 +4443,7 @@ int find_codif_frame(const unsigned char *data, int length, size_t *offset, int 
       
       if (header->sync != 0xABADDEED) continue; // Sync
 
-      fsB = header->framelength8*8;
+      fsB = getCODIFFrameBytes(header);
       secB = header->seconds;
       refEpochB = header->epoch;
       versionB = header->version;
@@ -4446,6 +4490,25 @@ int get_codif_quantization_bits(const codif_header *header)
 int get_codif_complex(const codif_header *header)
 {
     return header->iscomplex;
+}
+
+double get_codif_framens(const codif_header *header)
+{
+    double framens;
+    framens = getCODIFFrameBytes(header)*8*getCODIFPeriod(header)/(double)(header->totalsamples * header->nchan * header->nbits)*1e9;
+    if (header->iscomplex) framens /= 2;
+    return framens;
+}
+
+int get_codif_framegranularity(const codif_header *header)
+{  
+    int granularity;
+    for (granularity=1; granularity<1024; granularity++) {
+      if (granularity*(uint64_t)getCODIFFrameBytes(header)*8*getCODIFPeriod(header)*(uint64_t)1e9 % (header->totalsamples * header->nchan * header->nbits) == 0)
+	break;
+    }
+    if (granularity>=1024) granularity = -1;
+    return(granularity);
 }
 
 int get_codif_threads(const unsigned char *data, size_t length, int dataframesize)

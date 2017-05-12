@@ -163,16 +163,21 @@ struct mark5_stream_generic
 	int inputdatasize;
 };
 
+typedef	int (*decodeFunc)(struct mark5_stream*, int, float**); 
+typedef	int (*complex_decodeFunc)(struct mark5_stream*, int, mark5_float_complex**); 
+typedef int (*countFunc)(struct mark5_stream *, int, unsigned int *); 
+  
 struct mark5_format_generic
 {
 	int (*init_format)(struct mark5_stream *ms);	/* required */
 	int (*final_format)(struct mark5_stream *ms);	/* required */
-	int (*decode)(struct mark5_stream *ms, 		/* required */
-		int nsamp, float **data); 
-	int (*count)(struct mark5_stream *ms,
-		int nsamp, unsigned int *highstates); 
-	int (*complex_decode)(struct mark5_stream *ms,
-		int nsamp, mark5_float_complex **data); 
+  //	int (*decode)(struct mark5_stream *ms, 		/* required */
+  //		int nsamp, float **data); 
+        decodeFunc decode;                              /* required */
+        countFunc count;
+  //	int (*complex_decode)(struct mark5_stream *ms,
+  //		int nsamp, mark5_float_complex **data); 
+	complex_decodeFunc complex_decode; 
 	int (*validate)(const struct mark5_stream *ms);
 	int (*resync)(struct mark5_stream *ms);
 	int (*gettime)(const struct mark5_stream *ms, 	/* required */
@@ -322,6 +327,10 @@ double get_codif_rate(const codif_header *header);
 int get_codif_complex(const codif_header *data);
 
 int get_codif_threads(const unsigned char *data, size_t length, int dataframesize);
+
+double get_codif_framens(const codif_header *header);
+
+int get_codif_framegranularity(const codif_header *header);
 
 /*   K5 format: not yet complete */
 

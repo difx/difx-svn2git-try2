@@ -225,6 +225,8 @@ static int set_format(struct mark5_stream *ms, const struct mark5_format_generic
   printf("DEBUG: mark5_stream: set_format\n");
 	if(f && ms)
 	{
+
+	  printf("DEBUG: f_decode = %p\n", f->decode);
 		ms->init_format = f->init_format;
 		ms->final_format = f->final_format;
 		ms->decode = f->decode;
@@ -283,7 +285,8 @@ static int copy_format(const struct mark5_stream *ms, struct mark5_format *mf)
 
 static int mark5_format_init(struct mark5_stream *ms)
 {
-	ms->framenum = 0;
+  printf("DEBUG mark5_stream.c:mark5_format_init\n");
+        ms->framenum = 0;
 	ms->readposition = 0;
 	ms->frame = 0;
 	ms->payload = 0;
@@ -385,6 +388,8 @@ struct mark5_format_generic *new_mark5_format_generic_from_string( const char *f
 {
 	int a, b, c, d, e, r;
 
+	printf("DEBUG: mark5_stream.c: new_mark5_format_generic_from_string\n");
+	
 	mark5_library_consistent();
 
 	if(strncasecmp(formatname, "VLBA1_", 6) == 0)
@@ -557,7 +562,7 @@ struct mark5_format_generic *new_mark5_format_generic_from_string( const char *f
 	}
 	else if(strncasecmp(formatname, "CODIF", 5) == 0)
 	{
-	    return new_mark5_format_codif(1024,2,2,1,100,64,0);
+	    return new_mark5_format_codif(1024,1,2,1,4,64,0);
 	}
 	else if(strncasecmp(formatname, "VLBN1_", 6) == 0)
 	{
@@ -1186,7 +1191,7 @@ struct mark5_stream *new_mark5_stream(const struct mark5_stream_generic *s, cons
 	struct mark5_stream *ms;
 	int status;
 
-	printf("DEBUG: mark5_stream:new_mark5_stream\n");
+	printf("DEBUG: mark5_stream.c:new_mark5_stream\n");
 	mark5_library_consistent();
 
 	ms = (struct mark5_stream *)calloc(1, sizeof(struct mark5_stream));
@@ -1244,7 +1249,7 @@ struct mark5_stream *new_mark5_stream_absorb(struct mark5_stream_generic *s, str
 {
 	struct mark5_stream *ms;
 	int failed = 0;
-	printf("DEBUG: mark5_stream:new_mark5_stream_absorb\n");
+	printf("DEBUG: mark5_stream.c:new_mark5_stream_absorb\n");
 
 	mark5_library_consistent();
 
@@ -1495,6 +1500,7 @@ int mark5_stream_set_blanker(struct mark5_stream *ms,
 
 int mark5_stream_decode(struct mark5_stream *ms, int nsamp, float **data)
 {
+  //printf("DEBUG: mark5_stream.c: mark5_stream_decode\n");
 	if(!ms)
 	{
 		return -1;
