@@ -562,7 +562,11 @@ struct mark5_format_generic *new_mark5_format_generic_from_string( const char *f
 	}
 	else if(strncasecmp(formatname, "CODIF", 5) == 0)
 	{
-	    return new_mark5_format_codif(1024,1,2,1,4,64,0);
+	  r = sscanf(formatname+5, "_%d-%d-%d", &a, &b, &c);
+	  if (a==0) a = 1; // Dummy value
+	  if (b==0) b = 1; // Dummy value
+	  if (c==0) c = 1; // Dummy value
+	  return new_mark5_format_codif(1024,b,c,1,a,64,0);
 	}
 	else if(strncasecmp(formatname, "VLBN1_", 6) == 0)
 	{
@@ -1240,6 +1244,8 @@ struct mark5_stream *new_mark5_stream(const struct mark5_stream_generic *s, cons
 		return 0;
 	}
 
+	printf("DEBUG: framesamples now = %d\n", ms->framesamples);
+	
 	ms->blanker(ms);
 
 	return ms;
