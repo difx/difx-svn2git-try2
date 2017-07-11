@@ -19,6 +19,9 @@ def parseOptions():
     This script generates the appropriate (Python) commands
     that could be typed into an interactive session, or for the
     more likely use case, piped into CASA for the desired work.
+    If CASA is not found in your path, you must supply it via
+    the environment variable DIFXCASAPATH (which is used to
+    build these tools and hence is probably set in your DiFX setup).
     '''
     des = parseOptions.__doc__
     epi =  'In the typical use case, you would first unpack the QA2 tarball '
@@ -29,10 +32,13 @@ def parseOptions():
     epi += 'script provides, edit the output file and '
     epi += 'then run it manually using the instructions provided. '
     epi += 'In normal usage, you only need '
-    epi += 'to supply the list of jobs and the label.'
-    epi += 'The plotting of per-IF fringes is controlled with the -f option.'
-    use = '%(prog)s [options] [input_file [...]]\n'
-    use += '  Version $Id$'
+    epi += 'to supply the list of jobs and the label (-l). '
+    epi += 'Diagnostic plots of per-IF fringes is controlled with the '
+    epi += '-f option; if used -m, -S, -X and -T become relevant.  In '
+    epi += 'particular, with -T, no conversion is written to disk, '
+    epi += 'but all of the diagnostic plots are made and saved.'
+    use = '%(prog)s [options] [input_file [...]]\n  Version'
+    use += '$Id$'
     parser = argparse.ArgumentParser(epilog=epi, description=des, usage=use)
     # essential options
     parser.add_argument('-v', '--verbose', dest='verb',
@@ -79,14 +85,19 @@ def parseOptions():
         help='table naming scheme for the QA2 tables; there should be ' +
             'six tables for antennas, appphase, bandpass, ampgains, ' +
             'phasegains and xy phase.  Options are "v0", "v1", "v2", '
-            '"v3, v4 or v5" or a ' +
+            '"v3", "v4", "v5", "v6", "v7" or a ' +
             'comma-sep list in an environment variable QA2TABLES.  In '
             'versions prior to v4, ".concatenated.ms" was part of the '
-            'label.  For v4 and subsequent the label is just the '
-            'uid name (and perhaps an embedded version string).')
+            'label.  For v4-v7 and subsequent the label is just the '
+            'uid name (and/or other identifiers).   The default is "v4", '
+            'but v5-v7 may be necessary: the difference is which scans '
+            '(APP or ALMA) are to be used for DTerms and Gxyamp.')
     parser.add_argument('-d', '--noDterm', dest='nodt',
         default=False, action='store_true',
         help='disable use of Dterm calibration tables')
+    parser.add_argument('-A', '--ampNorm', dest='ampnrm',
+        default=True, action='store_false',
+        help='turn off amplitude normalization')
     parser.add_argument('-s', '--spw', dest='spw',
         default=-1, metavar='INT', type=int,
         help='Index of SPW for PolConvert to use: 0,1,2,3 for the ' +
@@ -104,6 +115,17 @@ def parseOptions():
         default=2, metavar='INT', type=int,
         help='Index of remote antenna on baseline to converted antenna. ' +
             'The default is 2 (the next antenna in the list).')
+    parser.add_argument('-S', '--sites', dest='sites',
+        default='', metavar='LIST',
+        help='comma-sep list of 2-letter station codes to try' +
+            ' (in order) to use for plot diagnostics')
+    parser.add_argument('-X', '--npix', dest='npix',
+        default=50, metavar='INT', type=int,
+        help='The number of pixels to show in the fringe plots (50)')
+    parser.add_argument('-T', '--test', dest='test',
+        default=False, action='store_true',
+        help='Turns off processing of files, just does plotting')
+        
     # the remaining arguments provide the list of input files
     parser.add_argument('nargs', nargs='*',
         help='List of DiFX input job files')
@@ -140,6 +162,7 @@ def calibrationChecks(o):
     o.constXYadd = 'False'
     o.conlabel = o.label
     o.callabel = o.label
+    ### developmental
     if o.qa2 == 'v0':   # original 1mm names
         o.qal = ['antenna.tab','calappphase.tab', 'NONE', 'bandpass-zphs.cal',
                'ampgains.cal.fluxscale', 'phasegains.cal', 'XY0amb-tcon']
@@ -153,16 +176,28 @@ def calibrationChecks(o):
         o.constXYadd = 'True'
         o.qal = ['ANTENNA', 'calappphase', 'Df0', 'bandpass-zphs',
                'flux_inf', 'phase_int.APP', 'XY0.APP' ]
-    elif o.qa2 == 'v4': # v3 also with Gxyamp and concatenated/calibrated
+    ### production
+    elif o.qa2 == 'v4': # v3+Gxyamp/concatenated/calibrated (default)
         o.qal = ['ANTENNA', 'calappphase', 'Df0.APP', 'bandpass-zphs',
                'flux_inf.APP', 'phase_int.APP', 'XY0.APP', 'Gxyamp.APP' ]
         o.conlabel = o.label + '.concatenated.ms'
         o.callabel = o.label + '.calibrated.ms'
-    elif o.qa2 == 'v5': # v3 also with Gxyamp and concatenated/calibrated
+    elif o.qa2 == 'v5': # v3+Gxyamp/concatenated/calibrated (likely)
         o.qal = ['ANTENNA', 'calappphase', 'Df0.ALMA', 'bandpass-zphs',
                'flux_inf.APP', 'phase_int.APP', 'XY0.APP', 'Gxyamp.ALMA' ]
         o.conlabel = o.label + '.concatenated.ms'
         o.callabel = o.label + '.calibrated.ms'
+    elif o.qa2 == 'v6': # v3+Gxyamp/concatenated/calibrated (possible)
+        o.qal = ['ANTENNA', 'calappphase', 'Df0.ALMA', 'bandpass-zphs',
+               'flux_inf.APP', 'phase_int.APP', 'XY0.APP', 'Gxyamp.APP' ]
+        o.conlabel = o.label + '.concatenated.ms'
+        o.callabel = o.label + '.calibrated.ms'
+    elif o.qa2 == 'v7': # v3+Gxyamp/concatenated/calibrated (possible)
+        o.qal = ['ANTENNA', 'calappphase', 'Df0.APP', 'bandpass-zphs',
+               'flux_inf.APP', 'phase_int.APP', 'XY0.APP', 'Gxyamp.ALMA' ]
+        o.conlabel = o.label + '.concatenated.ms'
+        o.callabel = o.label + '.calibrated.ms'
+    ### if push comes to shove
     else:               # supply via environment variable
         o.qal = os.environ['QA2TABLES'].split(',')
     if len(o.qal) < 7:
@@ -209,6 +244,7 @@ def inputRelatedChecks(o):
         raise Exception, 'No job inputs to process (%d)' % len(jobset)
     djobs = list(jobset)
     djobs.sort()
+    o.jobnums = djobs
     o.djobs = str(map(str,djobs))
     if o.verb: print 'Processing jobs "%s"' % o.djobs
 
@@ -271,11 +307,12 @@ def deduceZoomIndicies(o):
     '''
     zoompatt = r'^ZOOM.FREQ.INDEX.\d+:\s*(\d+)'
     almapatt = r'^TELESCOPE NAME %d:\s*AA' % (o.ant-1)
+    amap_re = re.compile(r'^TELESCOPE NAME\s*([0-9])+:\s*([A-Z0-9][A-Z0-9])')
     freqpatt = r'^FREQ..MHZ..\d+:\s*(\d+)'
-    if o.verb: print 'Alma search pattern: "' + str(almapatt) + '"'
     zfirst = set()
     zfinal = set()
     mfqlst = set()
+    antmap = {}
     almaline = ''
     for jobin in o.nargs:
         zfir = ''
@@ -291,6 +328,9 @@ def deduceZoomIndicies(o):
             if zoom:
                 if zfir == '': zfir = zoom.group(1)
                 else:          zfin = zoom.group(1)
+            amap = amap_re.search(line)
+            if amap:
+                antmap[amap.group(2)] = int(amap.group(1))
         ji.close()
         if o.verb: print 'Zoom bands %s..%s from %s' % (zfir, zfin, jobin)
         if len(cfrq) < 1:
@@ -306,9 +346,18 @@ def deduceZoomIndicies(o):
     o.zfinal = int(zfinal.pop())
     if o.verb: print 'Zoom frequency indices %d..%d found in %s..%s' % (
         o.zfirst, o.zfinal, o.nargs[0], o.nargs[-1])
+    # This could be relaxed to allow AA to be not 0 using antmap
+    if o.verb: print 'Alma search pattern: "' + str(almapatt) + '"'
     if almaline == '':
         raise Exception, 'Telescope Name 0 is not Alma (AA)'
     if o.verb: print 'Found ALMA Telescope line: ' + almaline.rstrip()
+    if o.verb: print 'Remote antenna index was', o.remote
+    if o.verb: print 'Antenna map: ' + str(antmap)
+    for site in o.sites.split(','):
+        if site in antmap:
+            o.remote = antmap[site] + 1
+            break
+    if o.verb: print 'Remote antenna index now', o.remote
     # if the user supplied a band, check that it agrees
     if len(mfqlst) > 1:
         raise Exception, ('Input files have disparate frequency structures:\n'
@@ -397,6 +446,7 @@ def createCasaInput(o):
     # --qa2 = %s
     # qal = %s
     qa2 = %s
+    ampNorm = %s
     #
     # other variables that can be set in interactive mode
     # here we set them not to make any interactive plots
@@ -404,7 +454,8 @@ def createCasaInput(o):
     # plotAnt=-1                        # no plotting
     # plotAnt=2                         # specifies antenna 2 to plot
     plotAnt=%d
-    doTest=False
+    numFrPltPix=%d
+    doTest=%s
     # timeRange=[]                      # don't care
     %stimeRange = [0,0,0,0, 14,0,0,0]   # first 10 days
 
@@ -460,17 +511,52 @@ def createCasaInput(o):
         userXY = '#'
         XYvalu = 0.0
 
+    if o.ampnrm: ampnrm = 'True'
+    else:        ampnrm = 'False'
+    if o.test:   dotest = 'True'
+    else:        dotest = 'False'
+
     script = template % (o.doPlot[0], o.doPlot[0],
         o.label, o.band, bandnot, bandaid, o.exp,
         o.ant, o.zfirst, o.zfinal,
         o.doPlot[1], o.doPlot[2], o.doPlot[3], o.flist,
-        o.qa2, o.qal, o.qa2_dict,
-        o.remote, o.doPlot[0],
+        o.qa2, o.qal, o.qa2_dict, ampnrm,
+        o.remote, o.npix, dotest, o.doPlot[0],
         o.spw, o.constXYadd, userXY, XYvalu, o.djobs)
 
     for line in script.split('\n'):
         ci.write(line[4:] + '\n')
     ci.close()
+
+def removeTrash(o, misc):
+    '''
+    A cleanup function only necessary when CASA crashes to
+    sweep garbage aside so that it cannot cause problems later.
+    '''
+    for m in misc:
+        if os.path.exists(m):
+            print 'Removing prior garbage ',m
+            os.system('rm -rf %s' % m)
+    print 'Removing prior ipython & casa logs'
+    os.system('rm -f ipython-*.log casa*.log')
+
+def doFinalRunCheck(o):
+    '''
+    runpolconvert is careful, but the overhead of getting to it
+    is high, so we check for this last bit of operator fatigue
+    '''
+    swine = []
+    saved = []
+    for job in o.jobnums:
+        swin = './%s_%s.difx' % (o.exp,str(job))
+        save = './%s_%s.save' % (o.exp,str(job))
+        if os.path.exists(save): saved.append(save)
+        if not os.path.exists(swin): swine.append(swin)
+    if len(swine) > 0: print 'These are missing (get them):',swine
+    if len(saved) > 0: print 'These are present (nuke them):',saved
+    if o.run and (len(saved) > 0 or len(swine) > 0):
+        print '\n\n### Disabling Run so you can fix the issue\n'
+        o.run=False
 
 def executeCasa(o):
     '''
@@ -481,18 +567,18 @@ def executeCasa(o):
     misc = [ 'polconvert.last', 'POLCONVERT_STATION1.ANTAB',
              'POLCONVERT.FRINGE', 'POLCONVERT.GAINS', 'PolConvert.log',
              'CONVERSION.MATRIX', 'FRINGE.PEAKS', 'FRINGE.PLOTS' ]
+    removeTrash(o, misc)
     cmd1 = 'rm -f %s' % (o.output)
     cmd2 = '%s --nologger < %s > %s 2>&1' % (o.casa, o.input, o.output)
     cmd3 = '[ -d casa-logs ] || mkdir casa-logs'
     if o.prep: cmd4 = 'mv prepol*.log '
     else:      cmd4 = 'mv '
-    cmd4 += ' casapy-*.log ipython-*.log casa-logs'
+    cmd4 += ' casa*.log ipython-*.log casa-logs'
     cmd5 = 'mv %s %s casa-logs' % (o.input, o.output)
     cmd6 = ''
     casanow = o.exp + '-casa-logs.' + datetime.datetime.now().isoformat()[:-7]
-    for m in misc:
-        if os.path.exists(m):
-            cmd6 += '[ -f %s ] && mv %s casa-logs ;' % (m,m)
+    if o.run:
+        doFinalRunCheck(o)
     if o.run:
         if o.verb: print 'Note, ^C will not stop CASA (or polconvert).'
         if o.verb: print 'Follow CASA run with:\n  tail -n +1 -f %s\n' % (
@@ -503,6 +589,9 @@ def executeCasa(o):
             print 'Success!  See %s for output' % o.output
         logerr = False
         mscerr = False
+        for m in misc:
+            if os.path.exists(m):
+                cmd6 += '[ -f %s ] && mv %s casa-logs ;' % (m,m)
         if os.system(cmd3 + ' ; ' + cmd4 + ' ; ' + cmd5):
             logerr = True
         elif os.system(cmd6):
@@ -520,6 +609,8 @@ def executeCasa(o):
         if o.verb: print 'Review CASA run with:\n  tail -n +1 %s/%s\n' % (
             casanow, o.output)
     else:
+        for m in misc:
+            cmd6 += '[ -f %s ] && mv %s casa-logs ;' % (m,m)
         print ''
         print 'You can run casa manually with input from ' + o.input
         print 'Or just do what this script would do now, viz: '
@@ -531,6 +622,12 @@ def executeCasa(o):
         print '    ' + cmd5
         print '    ' + cmd6
         print '    mv casa-logs ' + casanow
+        print ''
+    if o.test:
+        print ''
+        print 'The *.difx and *.save directories should have identical'
+        print 'contents, and you will need to remove *.save to continue'
+        print 'additional test runs on the same jobs.'
         print ''
 
 #

@@ -1,6 +1,5 @@
 # ALMA Phasing Project (APP) QA2 Data Reduction Script
-# Version 1.3 - I. Marti-Vidal (June 1, 2017)
-
+# Version 1.5 - I. Marti-Vidal (July 8, 2017)
 
 
 
@@ -15,36 +14,24 @@ CASAVER = ['4.7.0','4.7.1','4.7.2']
 
 #########################
 # Give list of ASDMs:
-asdmdir='/c3se/users/mivan/Hebbe/QA2/EHT-GMVA/Proj2016.1.01154.V_M87/calibration' # Root directory of ASDMs
+asdmdir='/c3se/users/mivan/Hebbe/QA2/EHT-GMVA/TRACK_D' # Root directory of ASDMs
 
 
 
 ASDMs =[  'uid___A002_Xbebcb7_Xa7b',
   'uid___A002_Xbebcb7_Xb48',
   'uid___A002_Xbebcb7_Xcab',
-  'uid___A002_Xbebcb7_Xf01',
-  'uid___A002_Xbec3cb_X1084',
-  'uid___A002_Xbec3cb_X666',
-  'uid___A002_Xbec3cb_X921',
-  'uid___A002_Xbec3cb_Xaa8',
-  'uid___A002_Xbec3cb_Xcaa',
-  'uid___A002_Xbec3cb_Xe97',
-  'uid___A002_Xbeef47_X627',
-  'uid___A002_Xbeef47_X827',
-  'uid___A002_Xbeef47_Xa05',
-  'uid___A002_Xbeef47_Xbe7']
+  'uid___A002_Xbebcb7_Xf01']
 
-#ASDMs = [ 'uid___A002_Xb187bd_X2d5', 
-#         'uid___A002_Xb187bd_X4fe',  
-#         'uid___A002_Xb187bd_X733',  
-#         'uid___A002_Xb187bd_X863' ]  
 
  
 #########################
 
 # Unique identification label for the products:
-#UID = 'uid___A002_Xbebcb7'
-UID = 'uid___TEST'
+
+# SESSION 1:
+UID = 'uid___A002_Xbebcb7'
+
 
 
 
@@ -56,13 +43,22 @@ Use_Tsys = False
 # for pol. calibrator:
 Use_APP_for_Gpol = True
 
+# Force the calibrator Stokes parameters:
+PolStokes = [] # Empty list means to estimate the Stokes parameters.
+               # [I, Q, U, V] means to FORCE the Stokes parameters.
+               # Example: [1.0, 0.01, 0.01, 0.0]
+
+# USe the Pol. calibrator model derived from the APP
+# observations (instead of the ALMA-mode observations):
+Use_PolModel_from_APP = True
+
 
 # Plot tables?
 doPlot = True
 
 
 # Highest allowed inter-antenna Gpol dispersion:
-BadGpol = 0.03
+BadGpol = 1.0
 
 # The four science spws for each ASDM. An empty list will make
 # the script find them automatically:
@@ -98,23 +94,22 @@ JyStandard = 'Butler-JPL-Horizons 2012'
 # set the flux density and spectral index, 
 # as taken from the getALMAflux() function:
 
-# aU.getALMAFlux(sourcename='3C279',frequency='214GHz',date='2017-04-05')
-
-QuasarFlux = 8.615
-QuasarSpix = -0.53
-QuasarRefFreq = '214GHz'
+# From the flux estimate in Session 2: 
+QuasarFlux = 7.519 
+QuasarSpix = -0.745 
+QuasarRefFreq = '220.987GHz'
 #############################
 
 # All these FIELD IDs must be strings. Empty
 # strings ask the script to find them automatically:
-BandPassCal = '0' # Field Id of the BP calibrator
-PolCal = '4' # Field id of the Polarization calibrator
-GainCal = '0' # Field id of the gain calibrator
-VLBICal = ['2','3'] # Field ids of all the other calibrators
+BandPassCal = '2' # Field Id of the BP calibrator
+PolCal = '0' # Field id of the Polarization calibrator
+GainCal = '3' # Field id of the gain calibrator
+VLBICal = [] # Field ids of all the other calibrators
              # It must be a list of strings.
 Target = '1' # Field id of main target.
 
-VLBIfluxCal = ''  # If flux calibrator was not used in VLBI
+VLBIfluxCal = '0'  # If flux calibrator was not used in VLBI
                   # set this to one of the VLBICal sources
                   # Default means to take the polarization
                   # calibrator one with
@@ -160,36 +155,45 @@ XYJUMPS_ALMA = [[], # SPW0
 
 
 
+# FOR VLBI. FUNCTION TO CREATE A NEW LOG:
+def writeLog(msg):
+  fi = open(UID+'.VLBI.LOG',mode='a')
+  print >> fi,msg
+  casalog.post(msg, 'INFO')
+  print msg
+  fi.close()
+
+
 
 
 
 # Calibration
 
 thesteps = []
-step_title = {0: 'Import of the ASDMs',
-              1: 'Fix of SYSCAL table times',
-              2: 'Listobs, get Tsys, and split ALMA-calibration scans (for ordinary QA2)',
-              3: 'A priori flagging',
-              4: 'Apply Tsys, split out science SPWs, concatenate, and build CALAPP table',
-              5: 'Listobs and save original flags',
-              6: 'Initial flagging',
-              7: 'Putting a model for the flux calibrator(s)',
-              8: 'Save flags before bandpass cal',
-              9: 'Bandpass calibration',
-              10: 'Save flags before gain cal',
-              11: 'Gain calibration',
-              12: 'Apply ordinary calibration',
-              13: 'Split calibrated data',
-              14: 'Save flags before polarization calibration',
-              15: 'Polarization calibration',
-              16: 'Save flags before applycal',
-              17: 'Apply calibration and split corrected column',
-              18: 'Save flags after applycal',
-              19: 'Tar up APP deliverables'}
+step_title = {0: ' Import of the ASDMs',
+              1: ' Fix of SYSCAL table times',
+              2: ' Listobs, get Tsys, and split ALMA-calibration scans (for ordinary QA2)',
+              3: ' A priori flagging (autocorrs and phased-signal antenna',
+              4: ' Apply Tsys, split out science SPWs, concatenate, listobs, and build CALAPP table',
+              5: ' Save original flags',
+              6: ' Initial flagging',
+              7: ' Putting a model for the flux calibrator(s)',
+              8: ' Save flags before bandpass cal',
+              9: ' Bandpass calibration',
+              10: ' Save flags before gain cal',
+              11: ' Gain calibration',
+              12: ' Apply ordinary calibration',
+              13: ' Split calibrated data',
+              14: ' Save flags before polarization calibration',
+              15: ' Polarization calibration',
+              16: ' Save flags before applycal',
+              17: ' Apply calibration and split corrected column',
+              18: ' Save flags after applycal',
+              19: ' Tar up APP deliverables'}
 
 if not Use_Tsys:
-  step_title[2] = 'Listobs and split ALMA-calibration scans (for ordinary QA2)'
-  step_title[4] = 'Split out science SPWs, concatenate, and build CALAPP table'
+  step_title[2] = ' Listobs and split ALMA-calibration scans (for ordinary QA2)'
+  step_title[4] = ' Split out science SPWs, concatenate, and build CALAPP table'
 
 
 if 'applyonly' not in globals(): applyonly = False
@@ -234,8 +238,11 @@ if not isVer:
 # Import of the ASDMs
 mystep = 0
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+  msg = 'Step '+str(mystep)+' '+step_title[mystep]
+  writeLog(msg)
+
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+#  print 'Step ', mystep, step_title[mystep]
 
   for i,asd in enumerate(ASDMs):
     print 'Working out ASDM #%i - %s'%(i+1,asd)
@@ -251,8 +258,9 @@ if(mystep in thesteps):
 # Fix of SYSCAL table times
 mystep = 1
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
 
   from recipes.almahelpers import fixsyscaltimes
   for i,asd in enumerate(ASDMs):
@@ -265,8 +273,10 @@ if(mystep in thesteps):
 # listobs, get Tsys, and split ALMA-cal scans
 mystep = 2
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
+
 
   from recipes.almahelpers import tsysspwmap
 
@@ -293,6 +303,9 @@ if(mystep in thesteps):
     tb.open('%s.ms/STATE'%asd)
     modes = tb.getcol('OBS_MODE')
 
+
+##########################
+# SPECIFIC FOR VLBI
     ALMAMode = [i for i in range(len(modes)) 
       if 'APPPHASE_ACTIVE' not in modes[i]]
 
@@ -325,6 +338,7 @@ if(mystep in thesteps):
     os.system('mkdir %s'%dirname)
     split(vis='%s.ms'%asd, outputvis = '%s/%s.ms'%(dirname,asd),
       datacolumn = 'data', scan = APPscans)
+##########################
 
 
 
@@ -334,8 +348,9 @@ if(mystep in thesteps):
 # A priori flagging
 mystep = 3
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
 
   for i,asd in enumerate(ASDMs):
 
@@ -350,10 +365,6 @@ if(mystep in thesteps):
       intent = '*POINTING*,*SIDEBAND_RATIO*,*ATMOSPHERE*',
       flagbackup = F)
   
-    flagcmd(vis = '%s.ms'%asd,
-      inpmode = 'table',
-      useapplied = True,
-      action = 'plot')
   
     flagcmd(vis = '%s.ms'%asd,
       inpmode = 'table',
@@ -367,8 +378,9 @@ if(mystep in thesteps):
 # Apply Tsys, split out science SPWs, concatenate, and build CALAPP table
 mystep = 4
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
 
   if len(SPWs)==0:
     print '\n\nWill try to find science SPWs automatically\n'
@@ -405,7 +417,8 @@ if(mystep in thesteps):
 
 
 
-
+##########################
+# SPECIFIC FOR VLBI
 ################
 # Prepare CALAPP Table:
 
@@ -447,8 +460,6 @@ if(mystep in thesteps):
   os.rename('./%s.calappphase'%UID, '%s.concatenated.ms.calappphase'%UID)
 
 ################
-
-
 
   listobs(vis = '%s.concatenated.ms'%UID,
     listfile = '%s.concatenated.ms.listobs'%UID)
@@ -495,7 +506,8 @@ if(mystep in thesteps):
 
 
 
-
+##########################
+# SPECIFIC FOR VLBI
 #################################################
 # THIS CODE WILL ALWAYS BE RUN
 # IF THERE IS AT LEAST ONE STEP > 4
@@ -515,8 +527,6 @@ if sum([sti>4 for sti in thesteps])>0:
   nphant = tb.getcol('numPhasedAntennas')
   appref = tb.getcol('refAntennaIndex')
   allrefs = list(set(appref))
-  if len(allrefs)>1:
-    print "WARNING: THERE WAS MORE THAN ONE REFANT BY TELCAL: ",allrefs
   phants = set(tb.getcell('phasedAntennas', rownr = 0))
   almaref = []
 
@@ -529,7 +539,12 @@ if sum([sti>4 for sti in thesteps])>0:
     phants = phants.intersection(aux)
     almaref.append(aux[appref[i]])
 
+  allalmaref = list(set(almaref))
+  if len(allalmaref)>1:
+    print "WARNING: THERE WAS MORE THAN ONE REFANT BY TELCAL: ",allalmaref
+
   phants = list(phants)
+
 
   tb.close()
 
@@ -539,8 +554,8 @@ if sum([sti>4 for sti in thesteps])>0:
     REFANT = Counter(almaref).most_common()[0][0]
   message = '\n\n\n######################################\n' 
   message += "Will use %s as Reference Antenna.\n\n"%REFANT
-  casalog.post(message)
-  print message
+  writeLog(message)
+#  print message
 
 
 
@@ -639,29 +654,31 @@ if sum([sti>4 for sti in thesteps])>0:
   message += 'VLBI FLUXES WILL BE BOOTSTRAPPED FROM: %s\n\n'%VLBIfluxCalName
   message += '######################################\n\n\n' 
 
-  print message
-  casalog.post(message)
+#  print message
+  writeLog(message)
 
 #################################################
 
 
 
 
+
 print "# Calibration"
 
-# Listobs and save original flags
+# Save original flags
 mystep = 5
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
-
-  os.system('rm -rf %s.concatenated.ms.listobs'%UID)
-  listobs(vis = '%s.concatenated.ms'%UID,
-    listfile = '%s.concatenated.ms.listobs'%UID)
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
     
   if not os.path.exists('%s.concatenated.ms.flagversions/flags.Original'%UID):
     flagmanager(vis = '%s.concatenated.ms'%UID,
       mode = 'save',
+      versionname = 'Original')
+  else:
+    flagmanager(vis = '%s.concatenated.ms'%UID,
+      mode = 'restore',
       versionname = 'Original')
 
 
@@ -669,8 +686,9 @@ if(mystep in thesteps):
 # Initial flagging
 mystep = 6
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
 
   flagmanager(vis = '%s.concatenated.ms'%UID,
     mode = 'restore',
@@ -707,8 +725,10 @@ if(mystep in thesteps):
 # Putting a model for the flux calibrator(s)
 mystep = 7
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
 
   flagmanager(vis='%s.concatenated.ms'%UID, mode = 'restore', versionname='BeforeCalibration')
 
@@ -732,8 +752,9 @@ if(mystep in thesteps):
 # Save flags before bandpass cal
 mystep = 8
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
 
   if os.path.exists('%s.concatenated.ms.flagversions/flags.BeforeBandpassCalibration'%UID):
     flagmanager(vis='%s.concatenated.ms'%UID, 
@@ -750,8 +771,9 @@ if(mystep in thesteps):
 # Bandpass calibration
 mystep = 9
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
 
   flagmanager(vis='%s.concatenated.ms'%UID, 
     mode = 'restore', versionname='BeforeBandpassCalibration')
@@ -791,6 +813,9 @@ if(mystep in thesteps):
     es.checkCalTable('%s.concatenated.ms.bandpass'%UID, 
       msName='%s.concatenated.ms'%UID, interactive=False) 
 
+
+##########################
+# SPECIFIC FOR VLBI
   # Make a BP table with zero phases (APS TelCal ON)
   shutil.copytree('%s.concatenated.ms.bandpass'%UID, 
      '%s.concatenated.ms.bandpass-zphs'%UID)
@@ -799,6 +824,7 @@ if(mystep in thesteps):
   gains[:] = np.abs(gains)
   tb.putcol('CPARAM', gains)
   tb.close()
+##########################
 
 
 
@@ -806,8 +832,10 @@ if(mystep in thesteps):
 # Save flags before gain cal
 mystep = 10
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
+
   if os.path.exists('%s.concatenated.ms.flagversions/flags.BeforeGainCalibration'%UID):
     flagmanager(vis='%s.concatenated.ms'%UID, 
       mode = 'delete', versionname='BeforeGainCalibration')
@@ -821,8 +849,11 @@ if(mystep in thesteps):
 # Gain calibration
 mystep = 11
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+#  print 'Step ', mystep, step_title[mystep]
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
+
 
   flagmanager(vis='%s.concatenated.ms'%UID, 
     mode = 'restore', versionname='BeforeGainCalibration')
@@ -847,6 +878,8 @@ if(mystep in thesteps):
     gainfield = BandPassCal,
     gaintable = '%s.concatenated.ms.bandpass'%UID)
 
+##########################
+# SPECIFIC FOR VLBI
 # Calibrate APP scans (phase):
   os.system('rm -rf %s.concatenated.ms.phase_int.APP'%UID)
   gaincal(vis = '%s.concatenated.ms'%UID,
@@ -860,10 +893,9 @@ if(mystep in thesteps):
     gainfield = BandPassCal,
     gaintable = '%s.concatenated.ms.bandpass-zphs'%UID)
 
-
 #######################################
 # Re-reference phases to REFANT:
-  casalog.post('Re-referencing all phases to the REFANT','INFO')
+  writeLog('Re-referencing all phases to the REFANT')
   tb.open('%s.concatenated.ms/ANTENNA'%UID)
   REFANT_IDX = int(np.where(tb.getcol('NAME')==REFANT)[0][0])
  
@@ -888,6 +920,7 @@ if(mystep in thesteps):
     tb.putcol('CPARAM',gains)
     tb.close()
 #######################################
+##########################
 
 
 
@@ -906,6 +939,8 @@ if(mystep in thesteps):
     gaintable = ['%s.concatenated.ms.bandpass'%UID,'%s.concatenated.ms.phase_int'%UID])
 
 
+##########################
+# SPECIFIC FOR VLBI
 ################################
 # CASA CRASHED WHEN TRYING TO APPEND THESE TO THE
 # PREVIOUS TABLE (???). HENCE, WE HAVE TO CREATE A NEW
@@ -946,6 +981,8 @@ if(mystep in thesteps):
 
 
 
+##########################
+# SPECIFIC FOR VLBI
 ##################################################################
 #############################
 # THE FLUX CALIBRATOR USED BY ALMA MIGHT NOT BE OBSERVED IN APP MODE.
@@ -997,6 +1034,8 @@ if(mystep in thesteps):
     es.checkCalTable('%s.concatenated.ms.flux_inf'%UID,
       msName='%s.concatenated.ms'%UID, interactive=False)
 
+##########################
+# SPECIFIC FOR VLBI
   # Plot gains for PHASED and CONTROL antennas separately:
     os.system('rm -rf %s.concatenated.ms.GAINS.plots'%UID)
     os.system('mkdir %s.concatenated.ms.GAINS.plots'%UID)
@@ -1035,6 +1074,7 @@ if(mystep in thesteps):
         iteration = 'spw', subplot = 411,
         figfile = '%s/%s.PHASE.APP.png'%(dirname,antnam))
 
+##########################
 
 
 
@@ -1047,9 +1087,12 @@ if(mystep in thesteps):
 # Apply calibration
 mystep = 12
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+#  print 'Step ', mystep, step_title[mystep]
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
 
+  writeLog('\n\n\n     SOME CASA ERRORS MAY APPEAR SOON.\n    THEY ARE RELATED TO POSSIBLE MISSING SCANS IN APP/ALMA MODE.\n    THESE ERRORS SHOULD BE HARMLESS\n\n\n')
 
   flagmanager(vis = '%s.concatenated.ms'%UID,
     mode = 'restore',
@@ -1155,12 +1198,16 @@ if(mystep in thesteps):
 
 
 
-
+##########################
+# SPECIFIC FOR VLBI
 # Split calibrated data (without the control antennas):
 mystep = 13
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+#  print 'Step ', mystep, step_title[mystep]
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
+
 
   os.system('rm -rf %s.calibrated.ms*'%UID)
   split(vis = '%s.concatenated.ms'%UID,
@@ -1168,14 +1215,19 @@ if(mystep in thesteps):
     keepflags = False,
     antenna=','.join(phants)+'&',
     outputvis = '%s.calibrated.ms'%UID)
+##########################
 
 
 
 # Save flags before polarization calibration
 mystep = 14
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+#  print 'Step ', mystep, step_title[mystep]
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
+
+
   if os.path.exists('%s.calibrated.ms.flagversions/flags.BeforePolCal'%UID):
     flagmanager(vis='%s.calibrated.ms'%UID, 
       mode = 'delete', versionname='BeforePolCal')
@@ -1193,8 +1245,12 @@ if(mystep in thesteps):
 # Polarization calibration 
 mystep = 15
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+#  print 'Step ', mystep, step_title[mystep]
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
+
+
 
   flagmanager(vis = '%s.calibrated.ms'%UID,
     mode = 'restore',
@@ -1205,6 +1261,9 @@ if(mystep in thesteps):
   import recipes.almapolhelpers as aph
 
 
+
+##########################
+# SPECIFIC FOR VLBI
 # FLAG SHADOWING (we can do it now):
   flagdata(vis = '%s.calibrated.ms'%UID,
     mode = 'shadow',
@@ -1218,6 +1277,7 @@ if(mystep in thesteps):
     quackinterval=10.0,
     quackmode = 'beg',
     flagbackup=F)
+##########################
 
 
 
@@ -1263,6 +1323,8 @@ if(mystep in thesteps):
       calmode = 'a',
       refant = REFANT)
   else:
+##########################
+# SPECIFIC FOR VLBI
     gaincal(vis = '%s.calibrated.ms'%UID,
       caltable = '%s.calibrated.ms.Gpol1'%UID,
       field = PolCal,
@@ -1272,16 +1334,19 @@ if(mystep in thesteps):
       gaintype = 'G',
       calmode = 'a',
       refant = REFANT)
+##########################
 
 
 
+##########################
+# SPECIFIC FOR VLBI
 # Pre-scaling Gpol solutions:
 # (i.e., we multiply the gain of each antenna by its time average)
 
-  os.system('rm -rf TEMP.Gpol1')
-  os.system('cp -r %s.calibrated.ms.Gpol1 TEMP.Gpol1'%UID)
+  os.system('rm -rf %s.calibrated.ms.Gpol1.scaled'%UID)
+  os.system('cp -r %s.calibrated.ms.Gpol1 %s.calibrated.ms.Gpol1.scaled'%(UID,UID))
 
-  tb.open('TEMP.Gpol1',nomodify = False)
+  tb.open('%s.calibrated.ms.Gpol1.scaled'%UID,nomodify = False)
   ants = tb.getcol('ANTENNA1')
   amps = tb.getcol('CPARAM')
   spwids = tb.getcol('SPECTRAL_WINDOW_ID')
@@ -1303,22 +1368,36 @@ if(mystep in thesteps):
   #     print 'ANT ',ant,' SPW ',spw,' : ',avrat
        RatiosALMA[ant,spw] = avrat.real
 
-  amprms = []
   scilist = list(set(scannum))
+  badGscans = []
+
   for sci in scilist:
     rows = np.where(scannum==sci)
-    amprms.append(np.std(1.-np.abs(amps[1,:,rows])/np.abs(amps[0,:,rows])))
+    amprms = np.std(np.abs(amps[1,:,rows])/np.abs(amps[0,:,rows]))
+    if amprms > BadGpol:
+      badGscans.append(sci)
+      print 'Scan %i will be flagged (G ratio rms of %.2e\n'%(sci,amprms)
 
 
-  for scii,sci in enumerate(scilist):
-    if amprms[scii] > BadGpol:
-      rows = np.where(scannum==sci)
-      flagstat[0,0,rows] = True
-      flagstat[1,0,rows] = True
+  for sci in badGscans:
+    rows = np.where(scannum==sci)
+    flagstat[0,0,rows] = True
+    flagstat[1,0,rows] = True
 
   tb.putcol('FLAG',flagstat)
   tb.putcol('CPARAM',amps)
   tb.close()
+
+  tb.open('%s.calibrated.ms.Gpol1'%UID,nomodify = False)
+  flagstat = tb.getcol('FLAG')
+  for sci in badGscans:
+    rows = np.where(scannum==sci)
+    flagstat[0,0,rows] = True
+    flagstat[1,0,rows] = True
+  tb.putcol('FLAG',flagstat)
+  tb.close()
+##########################
+
 
 
 
@@ -1326,8 +1405,8 @@ if(mystep in thesteps):
     os.system('rm -rf %s.calibrated.ms.Gpol1.png'%UID)
     plotcal('%s.calibrated.ms.Gpol1'%UID,'scan','amp',field='',poln='/',subplot=111, figfile='%s.calibrated.ms.Gpol1.png'%UID)
 
-    os.system('rm -rf TEMP.Gpol1.png')
-    plotcal('TEMP.Gpol1','scan','amp',field='',poln='/',subplot=111, figfile='TEMP.Gpol1.png')
+    os.system('rm -rf %s.calibrated.ms.Gpol1.scaled.png'%UID)
+    plotcal('%s.calibrated.ms.Gpol1.scaled'%UID,'scan','amp',field='',poln='/',subplot=111, figfile='%s.calibrated.ms.Gpol1.scaled.png'%UID)
 
 
 #  raw_input("HOLD")
@@ -1341,9 +1420,15 @@ if(mystep in thesteps):
   sys.stdout = f
 
 # Rough estimate of QU:
-  qu = aph.qufromgain('TEMP.Gpol1')
-
+  qu = aph.qufromgain('%s.calibrated.ms.Gpol1.scaled'%UID)
+  
+# Impose PolStokes:
+  if len(PolStokes)==4:
+    qu = list(PolStokes)
+    print 'WILL FORCE THE STOKES PARAMETERS TO BE: ',qu
+    
   sys.stdout = orig_stdout
+
   f.close()
 
   f = open('%s.QUfromGain.txt'%UID)
@@ -1351,12 +1436,13 @@ if(mystep in thesteps):
   f.close()
 ##########
 
-
+##########################
+# NOT QUITE NEEDED FOR VLBI
 ##################################################
 # We search for the scan where the polarization signal is minimum in XX and YY
 # (i.e., maximum in XY and YX):
 #
-  tb.open('TEMP.Gpol1')
+  tb.open('%s.calibrated.ms.Gpol1.scaled'%UID)
   scans = tb.getcol('SCAN_NUMBER')
   gains = np.squeeze(tb.getcol('CPARAM'))
 
@@ -1423,7 +1509,8 @@ if(mystep in thesteps):
     gaintable='%s.calibrated.ms.Gpol1'%UID)
 
   print 'END OF GAINCAL'
-
+##########################
+# SPECIFIC FOR VLBI
   print >> f,"\nFrom APS-TelCal Calibrated Data:\n" 
 
   os.system('rm -rf %s.calibrated.ms.XY0amb.APP'%UID)
@@ -1503,6 +1590,19 @@ if(mystep in thesteps):
     qu=qu[qu.keys()[0]], xyout='%s.calibrated.ms.XY0.APP'%UID)
 
 
+
+##########################
+# SPECIFIC FOR VLBI
+  if Use_PolModel_from_APP:
+    S = S2    
+# Impose PolStokes:
+  if len(PolStokes)==4:
+    S = list(PolStokes)
+    print 'WILL FORCE THE STOKES PARAMETERS TO BE: ',S
+##########################
+    
+
+
   sys.stdout = orig_stdout
   f.close()
 
@@ -1560,6 +1660,8 @@ if(mystep in thesteps):
     solnorm = T,
     gaintable='%s.calibrated.ms.XY0.ALMA'%UID)
 
+##########################
+# SPECIFIC FOR VLBI
 # APP Data:
   gaincal(vis = '%s.calibrated.ms'%UID,
     caltable = '%s.calibrated.ms.Gpol2.APP'%UID,
@@ -1604,7 +1706,8 @@ if(mystep in thesteps):
    plotcal('%s.calibrated.ms.Gpol2.APP'%UID,'scan','amp',field='',poln='/',subplot=111, figfile='%s.calibrated.ms.Gpol2.APP.png'%UID)
 
 
-
+##########################
+# NOT QUITE NEEDED FOR VLBI
 # Plot RMS of gain ratios around 1.0:
 
   tb.open('%s.calibrated.ms.Gpol2.ALMA'%UID)
@@ -1634,6 +1737,9 @@ if(mystep in thesteps):
    pl.clf()
 
    pl.ion()
+##########################
+
+
 
 
 # Calibrate D-terms:
@@ -1766,8 +1872,12 @@ if(mystep in thesteps):
 # Save flags before applycal
 mystep = 16
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+#  print 'Step ', mystep, step_title[mystep]
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
+
+
   if os.path.exists('%s.calibrated.ms.flagversions/flags.BeforeApplycal'%UID):
     flagmanager(vis='%s.calibrated.ms'%UID, 
       mode = 'delete', versionname='BeforeApplycal')
@@ -1782,8 +1892,10 @@ if(mystep in thesteps):
 # Application of all the calibration tables
 mystep = 17
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+#  print 'Step ', mystep, step_title[mystep]
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
 
 
   flagmanager(vis = '%s.calibrated.ms'%UID,
@@ -1791,6 +1903,9 @@ if(mystep in thesteps):
     versionname = 'BeforeApplycal')
 
 
+
+##########################
+# SPECIFIC FOR VLBI
 # POL. CALIBRATOR WITH NO D-TERMS (FOR CHECKING):
   applycal(vis = '%s.calibrated.ms'%UID,
     field = PolCal,
@@ -1825,6 +1940,7 @@ if(mystep in thesteps):
       calwt = [T,F],
       parang = T,
       flagbackup = F)
+##########################
 
 
   os.system('rm -rf %s.calibrated.PolCal.NoDterms.ms'%UID)
@@ -1848,6 +1964,8 @@ if(mystep in thesteps):
     flagbackup = F)
 
 
+##########################
+# SPECIFIC FOR VLBI
 # POL. CALIBRATOR (APP):
   if Use_APP_for_Gpol:
     applycal(vis = '%s.calibrated.ms'%UID,
@@ -1873,6 +1991,7 @@ if(mystep in thesteps):
       calwt = [T,F,F],
       parang = T,
       flagbackup = F)
+##########################
 
 
 # OTHER SOURCES (ALMA):
@@ -1937,8 +2056,11 @@ if(mystep in thesteps):
 # Save flags after applycal
 mystep = 18
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+#  print 'Step ', mystep, step_title[mystep]
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
+
 
   if os.path.exists('%s.calibrated.ms.flagversions/flags.AfterApplycal'%UID):
     flagmanager(vis='%s.calibrated.ms'%UID, 
@@ -1950,12 +2072,16 @@ if(mystep in thesteps):
 
 
 
-
+##########################
+# SPECIFIC FOR VLBI
 # Tar up deliverables for APP
 mystep = 19
 if(mystep in thesteps):
-  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
-  print 'Step ', mystep, step_title[mystep]
+#  casalog.post('Step '+str(mystep)+' '+step_title[mystep],'INFO')
+#  print 'Step ', mystep, step_title[mystep]
+  msg = 'Step ' + str(mystep) + step_title[mystep]
+  writeLog(msg)
+
 
 # Copy ANTENNA table:
   if os.path.exists('%s.concatenated.ms.ANTENNA'%UID):
@@ -1991,7 +2117,7 @@ if(mystep in thesteps):
   README += '          \'%s.concatenated.ms.phase_int.APP\',\n'%UID
   README += '          \'%s.calibrated.ms.XY0.APP\',\n'%UID
   README += '          \'%s.calibrated.ms.Gxyamp.ALMA\']]  # Check if \'calibrated.ms.Gxyamp.APP\' gives better results. \n\n'%UID
-  README += 'dterms = [\'%s.calibrated.ms.Df0.ALMA\']  # Check if \'calibrated.ms.Df0.APP\' gives better results. \n\n'%UID
+  README += 'dterms = [\'%s.calibrated.ms.Df0.APP\']  # Check if \'calibrated.ms.Df0.ALMA\' gives better results. \n\n'%UID
   README += 'amp_norm = True  # DON\'T APPLY AMPLITUDE CORRECTION.\n' 
   README += '                 # BUILD AN ANTAB FILE INSTEAD.\n'
   README += 'XYadd = [0.0] # CHANGE TO 180. IF R <-> L\n'
@@ -2016,6 +2142,7 @@ if(mystep in thesteps):
     '%s.concatenated.ms.flux_inf.APP'%UID,
     '%s.concatenated.ms.phase_int'%UID,
     '%s.concatenated.ms.phase_int.APP'%UID,
+    '%s.calibrated.ms.Gpol1.scaled'%UID,
     '%s.calibrated.ms.Gpol2.APP'%UID,
     '%s.calibrated.ms.Gpol2.ALMA'%UID,
     '%s.calibrated.ms.Gxyamp.APP'%UID,
@@ -2037,7 +2164,7 @@ if(mystep in thesteps):
     shutil.rmtree('%s.APP.artifacts'%UID)
   os.system('mkdir %s.APP.artifacts'%UID)
   for a in (glob.glob("*.png") +glob.glob("*.listobs") + glob.glob("*.txt") +
-            glob.glob("*.plots") + glob.glob("*.py")):
+            glob.glob("*.plots") + glob.glob("*.py")+ glob.glob("*.log")+glob.glob("*.LOG")):
     if os.path.isfile(a):
       shutil.copy(a, '%s.APP.artifacts/%s'%(UID,a))
     else:

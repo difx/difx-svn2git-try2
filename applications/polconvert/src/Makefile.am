@@ -25,7 +25,7 @@ pkgdata_DATA = _PolConvert.so \
 install-data-am: install-pkgdataDATA install-data-local
 
 # runs the CASA local build in the install directory
-install-data-local:
+install-data-local: install-pkgdataDATA
 	cd $(pkgdatadir) ;\
 	export PATH=@DIFXCASAPATH@${PATH_SEPARATOR}${PATH} ;\
 	buildmytasks
@@ -51,7 +51,7 @@ _PolConvert.so: copy.them
 
 # use copy.them to distinguish build and source dirs
 clean-local:
-	rm -rf build _PolConvert.so *.pyc
+	rm -rf build *.so *.pyc
 	rm -rf polconvert.py polconvert_cli.py mytasks.py
 	rm -f $(ScriptCopies)
 	-[ -f copy.them ] && rm -f $(PolConvertSources) && rm -f copy.them
