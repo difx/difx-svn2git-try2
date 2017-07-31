@@ -916,7 +916,7 @@ static int convertFits(const struct CommandLineOptions *opts, DifxInput **Dset, 
 	DifxInput *D;
 	struct fitsPrivate outfile;
 	char outFitsName[DIFXIO_FILENAME_LENGTH];
-	int i;
+	int i, c;
 	int nConverted = 0;
 	const char *difxVersion;
 	const char *difxLabel;
@@ -1027,6 +1027,23 @@ static int convertFits(const struct CommandLineOptions *opts, DifxInput **Dset, 
 		fprintf(stderr, "updateDifxInput failed.  Aborting\n");
 
 		return 0;
+	}
+
+	for(c = 0; c < D->nConfig; ++c)
+	{
+		if((D->config[c].polMask & DIFXIO_POL_RL) && (D->config[c].polMask & DIFXIO_POL_XY))
+		{
+			fprintf(stderr, "Error: both linear and circular polarizations are present.  This combination is unsupported by FITS.\n");
+
+			return 0;
+		}
+
+		if(D->config[c].polMask & DIFXIO_POL_ERROR)
+		{
+			fprintf(stderr, "Error: an unknown polarization (not R, L, X or Y) is present.  FITS cannot allow other types.\n");
+
+			return 0;
+		}
 	}
 
 	if(difxVersion && D->job->difxVersion[0])
