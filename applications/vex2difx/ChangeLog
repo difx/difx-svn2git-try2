@@ -52,6 +52,8 @@ Version 2.5.0
 * Remove dangerous option for antenna partial matching in .v2d file
 * Check for duplicate channels and warn if found.
 * Check for unsupported polarizations
+* Fix for "nodata" file in case of multi-scan jobs (Cormac; backported from trunk)
+* Don't balk if .shelf file is incomplete (backported from trunk)
 * Version for DiFX-2.5, May 16, 2017
 
 Version 2.4.0
