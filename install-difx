@@ -34,7 +34,7 @@ Options:
 
    --mk5daemon     Install mk5daemon (not installed by default)
 
-   --perl          Install some non-standard perl utilities (deprecated)
+   --perl          Install some non-standard perl utilities 
 
    --withmonitor   Try to build the difx_monitor application (requires pgplot)
 
