@@ -85,8 +85,6 @@ int verify(const char *filename, const char *formatname, long long offset, int r
 
 	total = unpacked = 0;
 
-	printf("offset = %lld\n", offset);
-
 	ms = new_mark5_stream(
 		new_mark5_stream_file(filename, offset),
 		new_mark5_format_generic_from_string(formatname) );
@@ -112,7 +110,11 @@ int verify(const char *filename, const char *formatname, long long offset, int r
 		{
 			break;
 		}
-		status = mark5_stream_decode(ms, ChunkSize, data);
+
+		if (ms->complex_decode==NULL) 
+		  status = mark5_stream_decode(ms, ChunkSize, data);
+		else
+		  status = mark5_stream_decode_complex(ms, ChunkSize/2, data);
 		
 		if(status < 0)
 		{
