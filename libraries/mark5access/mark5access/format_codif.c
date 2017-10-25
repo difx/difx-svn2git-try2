@@ -3811,6 +3811,7 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 
 	f = (struct mark5_format_codif *)(ms->formatdata);
 
+	ms->framesamples = 0;
 	ms->framens = 0; // It gets set later
         ms->framegranularity = 1; // Should get set later
 
@@ -3885,7 +3886,7 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 
 
 		
-	}
+	} else { printf("DEBUG: No data to check\n");}
 	
 #warning "Need to set complex decode"
 
@@ -3910,6 +3911,10 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 	
 	ms->framesamples = ms->databytes*8/(ms->nchan*bitspersample*ms->decimation);
 
+	printf("DEBUG2: framesamples = %d\n", ms->framesamples);
+	printf("  %d %d %d %d\n", ms->databytes, ms->nchan, bitspersample, ms->decimation);
+
+	
 	// Don't think these are needed..... CJP
         f->completesamplesperword = 32/(bitspersample*ms->nchan);
 
