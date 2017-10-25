@@ -566,7 +566,7 @@ struct mark5_format_generic *new_mark5_format_generic_from_string( const char *f
 	  if (a==0) a = 1; // Dummy value
 	  if (b==0) b = 1; // Dummy value
 	  if (c==0) c = 1; // Dummy value
-	  return new_mark5_format_codif(1024,b,c,1,a,64,0);
+	  return new_mark5_format_codif(1024,b,c,1,a,64,1);
 	}
 	else if(strncasecmp(formatname, "VLBN1_", 6) == 0)
 	{
