@@ -157,6 +157,7 @@ static int mark5_stream_frame_time_codif(const struct mark5_stream *ms, int *mjd
 	struct mark5_format_codif *v;
 	int seconds, days;
 	int refepoch;
+	unsigned long long fullframens;
 	codif_header *header;
 
 	/* table below is valid for year 2000.0 to 2032.0 and contains mjd on Jan 1 and Jul 1
@@ -194,17 +195,19 @@ static int mark5_stream_frame_time_codif(const struct mark5_stream *ms, int *mjd
 	seconds -= days*86400;
 	days += mjdepochs[refepoch];
 
+	fullframens = getCODIFFrameNumber(header)*ms->framens;
+	
 	if(mjd)
 	{
 		*mjd = days;
 	}
 	if(sec)
 	{
-		*sec = seconds;
+		*sec = seconds+fullframens/1000000000;
 	}
 	if(ns)
 	{
-	        *ns = getCODIFFrameNumber(header)*ms->framens;
+	        *ns = fullframens % 1000000000;
 	}
 
 	return 0;
@@ -3182,7 +3185,8 @@ static int codif_complex_decode_8channel_16bit(struct mark5_stream *ms, int nsam
 		else
 		{
 		  for (j=0; j<8; j++) {
-		        data[j][o] = ((int16_t)(buf[i]^0x8000) + (int16_t)(buf[i+1]^0x8000)*I)/8.0;  // Assume RMS==8
+		    data[j][o] = ((int16_t)(buf[i]) + (int16_t)(buf[i+1]*I))/8.0;  // Assume RMS==8
+		        //data[j][o] = ((int16_t)(buf[i]^0x8000) + (int16_t)(buf[i+1]^0x8000)*I)/8.0;  // Assume RMS==8
 			i+=2;
 		  }
 		}
@@ -3765,7 +3769,7 @@ static int codif_count_64channel_2bit(struct mark5_stream *ms, int nsamp, unsign
 
 static int mark5_format_codif_make_formatname(struct mark5_stream *ms)
 {
-	if(ms->format == MK5_FORMAT_CODIF)	/* True CODIF header, not legacy */
+	if(ms->format == MK5_FORMAT_CODIF)
 	{
 		if (ms->complex_decode) 
 		{
@@ -3840,7 +3844,6 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 				f->databytesperpacket, dataarraylength);
 		}
 		f->databytesperpacket = dataarraylength;
-		printf("DEBUG:  dataarray=%d\n", dataarraylength);
 
 		if (ms->nchan != 0 && ms->nchan != header->nchan)
 		{
@@ -3863,11 +3866,6 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 		ms->databytes = f->databytesperpacket;
 		ms->framebytes = f->databytesperpacket + f->frameheadersize;
 		ms->framesamples = ms->databytes*8/(ms->nchan*bitspersample*ms->decimation);
-
-		printf("DEBUG: framesamples = %d\n", ms->framesamples);
-		printf("  %d %d %d %d\n", ms->databytes, ms->nchan, bitspersample, ms->decimation);
-
-
 		ms->framegranularity = get_codif_framegranularity(header);
 		
 		ms->framens = get_codif_framens(header);
@@ -3911,10 +3909,6 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 	
 	ms->framesamples = ms->databytes*8/(ms->nchan*bitspersample*ms->decimation);
 
-	printf("DEBUG2: framesamples = %d\n", ms->framesamples);
-	printf("  %d %d %d %d\n", ms->databytes, ms->nchan, bitspersample, ms->decimation);
-
-	
 	// Don't think these are needed..... CJP
         f->completesamplesperword = 32/(bitspersample*ms->nchan);
 
@@ -3984,15 +3978,20 @@ static int mark5_format_codif_final(struct mark5_stream *ms)
 
 static int mark5_format_codif_validate(const struct mark5_stream *ms)
 {
-	const uint32_t *header;
+	codif_header *header;
 
-	/* Check for overly unusual header (note that CODIF has no Sync/Magic) */
-	header = (const uint32_t *)ms->frame;
-	if((header[2] & 0xFFF) == 0)
+	/* Check for overly unusual header  */
+	header = (codif_header *)ms->frame;
+
+	if(getCODIFSync(header) != 0xABADDEED)
 	{
-#ifdef DEBUG
+		fprintf(m5stderr, "mark5_format_codif_validate: Skipping frame with wrong sync\n");
+		return 0;
+	}
+
+	if(getCODIFFrameBytes(header) == 0)
+	{
 		fprintf(m5stderr, "mark5_format_codif_validate: Skipping frame with Data Frame Length of zero\n");
-#endif
 		return 0;
 	}
 
@@ -4016,20 +4015,16 @@ static int mark5_format_codif_validate(const struct mark5_stream *ms)
 		{
 			fprintf(m5stdout, "CODIF validate[%lld]: %d %d %f : %d %d %lld\n",
 				ms->framenum,   mjd_d, sec_d, ns_d,   mjd_t, sec_t, ns_t);
-			
 			return 0;
 		}
 	}
 
 	/* Check the invalid bit */
-	if((header[0] >> 31) & 0x01)
+	if(getCODIFFrameInvalid(header))
 	{
-#ifdef DEBUG
 		fprintf(m5stderr, "mark5_format_codif_validate: Skipping invalid frame\n");
-#endif
 		return 0;
 	}
-
 	return 1;
 }
 
@@ -4437,8 +4432,6 @@ int find_codif_frame(const unsigned char *data, int length, size_t *offset, int 
       }
       if (fsA+*offset*2*CODIF_HEADER_BYTES> length) continue;  // Need two frame headers plus offset
 
-      printf("Framesize=%d\n", fsA);
-      
       secA = header->seconds;
       refEpochA = header->epoch;
       versionA = header->version;
