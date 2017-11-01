@@ -3171,6 +3171,7 @@ static int codif_complex_decode_8channel_16bit(struct mark5_stream *ms, int nsam
 	int nblank = 0;
 
 	buf = (const uint16_t*)ms->payload;
+
 	i = ms->readposition/2;
 
 	for(o = 0; o < nsamp; o++)
@@ -3186,7 +3187,8 @@ static int codif_complex_decode_8channel_16bit(struct mark5_stream *ms, int nsam
 		{
 		  for (j=0; j<8; j++) {
 		    data[j][o] = ((int16_t)(buf[i]) + (int16_t)(buf[i+1]*I))/8.0;  // Assume RMS==8
-		        //data[j][o] = ((int16_t)(buf[i]^0x8000) + (int16_t)(buf[i+1]^0x8000)*I)/8.0;  // Assume RMS==8
+		    //printf("   %d: %d%+di\n", j, (int16_t)buf[i],  (int16_t)buf[i+1]);
+		  //data[j][o] = ((int16_t)(buf[i]^0x8000) + (int16_t)(buf[i+1]^0x8000)*I)/8.0;  // Assume RMS==8
 			i+=2;
 		  }
 		}
@@ -3823,8 +3825,7 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 	if(ms->datawindow)
 	{
 		ms->frame = ms->datawindow + ms->frameoffset;
-		ms->payload = ms->frame + ms->payloadoffset;
-
+	
 		header = (codif_header*)ms->frame;
 
 
@@ -3863,6 +3864,7 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 		if (header->iscomplex) bitspersample *=2;
 
 		ms->payloadoffset = f->frameheadersize;
+		ms->payload = ms->frame + ms->payloadoffset;
 		ms->databytes = f->databytesperpacket;
 		ms->framebytes = f->databytesperpacket + f->frameheadersize;
 		ms->framesamples = ms->databytes*8/(ms->nchan*bitspersample*ms->decimation);
