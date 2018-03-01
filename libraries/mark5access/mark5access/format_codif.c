@@ -66,8 +66,8 @@ static unsigned char countlut2bit[256][4];
 struct mark5_format_codif
 {
 	int databytesperpacket;		/* = packetsize - frameheadersize */
-	int frameheadersize;		/* 16 (legacy) or 32 (normal) */
-	int leapsecs;			/* relative to reference epoch of VDIF data */
+	int frameheadersize;		/* 64 bytes */
+	int leapsecs;			/* relative to reference epoch of CODIF data */
 	int completesamplesperword;	/* number of samples for each channel in one 32-bit word */
 };
 
@@ -3186,8 +3186,8 @@ static int codif_complex_decode_8channel_16bit(struct mark5_stream *ms, int nsam
 		else
 		{
 		  for (j=0; j<8; j++) {
-		    data[j][o] = ((int16_t)(buf[i]) + (int16_t)(buf[i+1]*I))/8.0;  // Assume RMS==8
-		    //printf("   %d: %d%+di\n", j, (int16_t)buf[i],  (int16_t)buf[i+1]);
+		    data[j][o] = ((int16_t)(buf[i]) + (int16_t)(buf[i+1])*I)/8.0;  // Assume RMS==8
+		    printf("   %d: %d%+di\n", j, (int16_t)buf[i],  (int16_t)buf[i+1]);
 		  //data[j][o] = ((int16_t)(buf[i]^0x8000) + (int16_t)(buf[i+1]^0x8000)*I)/8.0;  // Assume RMS==8
 			i+=2;
 		  }
@@ -3775,11 +3775,11 @@ static int mark5_format_codif_make_formatname(struct mark5_stream *ms)
 	{
 		if (ms->complex_decode) 
 		{
-			sprintf(ms->formatname, "CODIF_%d-%d-%d-%d", ms->databytes, ms->Mbps, ms->nchan, ms->nbit);
+			sprintf(ms->formatname, "CODIFC_%d-%dm%d-%d-%d", ms->databytes, ms->framesperperiod, ms->alignmentseconds, ms->nchan, ms->nbit);
 		}
 		else
 		{
-			sprintf(ms->formatname, "CODIF_%d-%d-%d-%d", ms->databytes, ms->Mbps, ms->nchan, ms->nbit);
+			sprintf(ms->formatname, "CODIF_%d-%dm%d-%d-%d", ms->databytes, ms->framesperperiod, ms->alignmentseconds, ms->nchan, ms->nbit);
 		}
 	}
 	else
@@ -3821,6 +3821,13 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 	ms->framens = 0; // It gets set later
         ms->framegranularity = 1; // Should get set later
 
+        printf("DEBUG: %d %d\n", f->frameheadersize, f->databytesperpacket);
+	ms->payloadoffset = f->frameheadersize;
+	ms->databytes = f->databytesperpacket;
+	ms->framebytes = f->databytesperpacket + f->frameheadersize;
+        printf("DEBUG: %d %d %d\n", ms->nchan, ms->nbit, ms->decimation);
+	ms->blanker = blanker_codif;
+
 	/* We have some data to look at to further refine the format... */
 	if(ms->datawindow)
 	{
@@ -3859,16 +3866,14 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 				ms->nbit, header->nbits);
 		}
 		ms->nbit = header->nbits;
-		ms->Mbps = get_codif_rate(header);
 		bitspersample = ms->nbit;
 		if (header->iscomplex) bitspersample *=2;
 
-		ms->payloadoffset = f->frameheadersize;
 		ms->payload = ms->frame + ms->payloadoffset;
-		ms->databytes = f->databytesperpacket;
-		ms->framebytes = f->databytesperpacket + f->frameheadersize;
-		ms->framesamples = ms->databytes*8/(ms->nchan*bitspersample*ms->decimation);
 		ms->framegranularity = get_codif_framegranularity(header);
+		ms->framesperperiod = get_codif_frames_per_period(header);
+		ms->alignmentseconds = get_codif_alignment_seconds(header);
+		ms->Mbps = ((double)ms->databytes * ms->framesperperiod * 8) / ms->alignmentseconds;
 		
 		ms->framens = get_codif_framens(header);
 		
@@ -3878,15 +3883,16 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 
 		status = set_decoder(ms->nbit, ms->nchan, header->iscomplex, &ms->decode, &ms->complex_decode, &ms->count);
 	
-	if (!status) {
-	  fprintf(m5stderr, "CODIF: Unsupported combination channels=%d and bits=%d\n", ms->nchan, ms->nbit);
-
-	  return 0;
-	}
-
-
+		if (!status) {
+		  fprintf(m5stderr, "CODIF: Unsupported combination channels=%d and bits=%d\n", ms->nchan, ms->nbit);
+		  return 0;
+		}
 		
-	} else { printf("DEBUG: No data to check\n");}
+	} 
+	else 
+	{ 
+		printf("DEBUG: No data to check\n");
+	}
 	
 #warning "Need to set complex decode"
 
@@ -3897,10 +3903,7 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
             bitspersample *= 2;
           }
         }
-	ms->payloadoffset = f->frameheadersize;
-	ms->databytes = f->databytesperpacket;
-	ms->framebytes = f->databytesperpacket + f->frameheadersize;
-	ms->blanker = blanker_codif;
+	ms->framesamples = ms->databytes*8/(ms->nchan*bitspersample*ms->decimation);
 
 	/* FIXME: if nbit is not a power of 2, this formula breaks down! */
 	ms->samplegranularity = 8/(ms->nchan*bitspersample*ms->decimation);
@@ -3909,45 +3912,38 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 		ms->samplegranularity = 1;
 	}
 	
-	ms->framesamples = ms->databytes*8/(ms->nchan*bitspersample*ms->decimation);
-
 	// Don't think these are needed..... CJP
         f->completesamplesperword = 32/(bitspersample*ms->nchan);
 
-        if(ms->Mbps > 0)
+        if(ms->framesperperiod > 0 && ms->alignmentseconds > 0)
         {
 
-    // This block sets framens, framegranularity and samprate - want to set framens above.
-               if (ms->framens==0) { // Don't reset if calculated above
-    
-                  framensNum = ms->databytes*8*1000;     
-		  framensDen = ms->Mbps;
-
-		  ms->framens = (double)framensNum/(double)framensDen;
-                }
-
-#if 0
-		// This is too hard if we don't have full access to CODIF header
-		for(ms->framegranularity = 1; ms->framegranularity < 128; ms->framegranularity *= 2)
-		{
-			if((ms->framegranularity*framensNum) % framensDen == 0)
-			{
-				break;
-			}
+		// This block sets framens, framegranularity and samprate - want to set framens above.
+		if (ms->framens==0) { // Don't reset if calculated above
+		  ms->framens = 1.0e9*(double)ms->alignmentseconds/(double)ms->framesperperiod;
 		}
 
+		for(ms->framegranularity = 1; ms->framegranularity < 128; ++ms->framegranularity)
+		{
+		        if((((uint64_t)1000000000)*ms->framegranularity) % ((uint64_t)ms->framesperperiod*ms->alignmentseconds) == 0)
+		        {
+		                break;
+		        }
+		}
+		
 		if(ms->framegranularity >= 128)
 		{
-			fprintf(m5stderr, "CODIF Warning: cannot calculate gframens %d/%d\n",
-			framensNum, framensDen);
-			ms->framegranularity = 1;
+		        fprintf(m5stderr, "CODIF Warning: cannot calculate gframens %d/%d\n",
+		        ms->framesperperiod, ms->alignmentseconds);
+		        ms->framegranularity = 1;
 		}
-#endif
+		
 		ms->samprate = ((int64_t)ms->framesamples)*(1000000000.0/ms->framens);
         }
         else
         {
-                fprintf(m5stderr, "Error: you must specify the data rate (Mbps) for a CODIF mode (was set to %d)!", ms->Mbps);
+                fprintf(m5stderr, "Error: you must specify the framesperperiod and alignmentseconds for a ");
+		fprintf(m5stderr, "CODIF mode (was set to %d, %d)!\n", ms->framesperperiod, ms->alignmentseconds);
 
 		return -1;
         }
@@ -4306,7 +4302,7 @@ int set_decoder(int nbit, int nchan, int usecomplex, decodeFunc *decode, complex
 	
 	if(*complex_decode == 0)
 	  {
-	    fprintf(m5stderr, "CODIF: Unsupported combination, channels=%d and bits=%d\n", nchan, nbit);
+	    fprintf(m5stderr, "CODIF: Unsupported combination, complex channels=%d and bits=%d\n", nchan, nbit);
 	    return 0;
 	  }
 	
@@ -4314,8 +4310,8 @@ int set_decoder(int nbit, int nchan, int usecomplex, decodeFunc *decode, complex
     return(1);
 }
 
-struct mark5_format_generic *new_mark5_format_codif(int Mbps, 
-	int nchan, int nbit, int decimation, 
+struct mark5_format_generic *new_mark5_format_codif(int framesperperiod, 
+	int alignmentseconds, int nchan, int nbit, int decimation, 
 	int databytesperpacket, int frameheadersize, int usecomplex)
 {
     int status;
@@ -4341,7 +4337,9 @@ struct mark5_format_generic *new_mark5_format_codif(int Mbps,
 	v->frameheadersize = frameheadersize;
 	v->databytesperpacket = databytesperpacket;
 
-	f->Mbps = Mbps;
+	f->framesperperiod = framesperperiod;
+	f->alignmentseconds = alignmentseconds;
+	f->Mbps = ((double)framesperperiod*databytesperpacket*8)/alignmentseconds;
 	f->nchan = nchan;
 	f->nbit = nbit;
 	f->formatdata = v;
@@ -4477,7 +4475,23 @@ double get_codif_rate(const codif_header *header)
     return rate;
 }
 
+uint32_t get_codif_frames_per_period(const codif_header *header)
+{
+    uint64_t databytes = (uint64_t)header->framelength8*8;
+    uint64_t samplesperframe = (databytes*8) / (header->nchan * header->nbits);
+    if (header->iscomplex)
+    {
+        samplesperframe /= 2;
+    }
+    return (uint32_t)(header->totalsamples / samplesperframe);
+}
+
 uint32_t get_codif_period(const codif_header *header)
+{
+    return header->period;
+}
+
+uint32_t get_codif_alignment_seconds(const codif_header *header)
 {
     return header->period;
 }
@@ -4501,14 +4515,27 @@ double get_codif_framens(const codif_header *header)
 }
 
 int get_codif_framegranularity(const codif_header *header)
-{  
-    int granularity;
-    for (granularity=1; granularity<1024; granularity++) {
-      if (granularity*(uint64_t)getCODIFFrameBytes(header)*8*getCODIFPeriod(header)*(uint64_t)1e9 % (header->totalsamples * header->nchan * header->nbits) == 0)
-	break;
-    }
-    if (granularity>=1024) granularity = -1;
-    return(granularity);
+{
+	int bitspersample = header->nbits;
+	if (header->iscomplex)
+	{
+		bitspersample *= 2;
+	}
+	uint64_t framesperperiod = (header->totalsamples * header->nchan * bitspersample) / (getCODIFFrameBytes(header)*8);
+	int granularity;
+	for (granularity=1; granularity<1024; ++granularity)
+	{
+		if (((uint64_t)1000000000*granularity) % (framesperperiod*getCODIFPeriod(header)) == 0)
+		{
+			break;
+		}
+    	}
+
+	if (granularity>=1024)
+	{
+		granularity = -1;
+	}
+	return(granularity);
 }
 
 int get_codif_threads(const unsigned char *data, size_t length, int dataframesize)

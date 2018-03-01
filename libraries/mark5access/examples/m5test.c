@@ -69,7 +69,11 @@ int usage(const char *pgm)
 	printf("    VLBA1_2-256-8-2\n");
 	printf("    MKIV1_4-128-2-1\n");
 	printf("    Mark5B-512-16-2\n");
-	printf("    VDIF_1000-64-1-2 (here 1000 is payload size in bytes)\n\n");
+	printf("    VDIF_1000-64-1-2 (here 1000 is payload size in bytes)\n");
+	printf("  alternatively for VDIF and CODIF, Mbps can be replaced by <FramesPerPeriod>m<AlignmentSeconds>, e.g.\n");
+	printf("    VDIF_1000-64000m1-1-2 (8000 frames per 1 second, x1000 bytes x 8 bits= 64 Mbps)\n");
+	printf("    CODIFC_5000-51200m27-8-1 (51200 frames every 27 seconds, x5000 bytes x 8 bits / 27  ~= 76 Mbps\n");
+	printf("    This allows you to specify rates that are not an integer Mbps value, such as 32/27 CODIF oversampling\n\n");
 	printf("  <offset> is number of bytes into file to start decoding\n\n");
 	printf("  <report> use 0 to report all timestamps, 1 to report once a second\n\n");
 	return EXIT_SUCCESS;

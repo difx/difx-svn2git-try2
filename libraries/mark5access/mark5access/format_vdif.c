@@ -3776,16 +3776,23 @@ static int mark5_format_vdif_make_formatname(struct mark5_stream *ms)
 	{
 		if (ms->complex_decode) 
 		{
-			sprintf(ms->formatname, "VDIFC_%d-%d-%d-%d", ms->databytes, ms->Mbps, ms->nchan, ms->nbit);
+			sprintf(ms->formatname, "VDIFC_%d-%dm%d-%d-%d", ms->databytes, ms->framesperperiod, ms->alignmentseconds, ms->nchan, ms->nbit);
 		}
 		else
 		{
-			sprintf(ms->formatname, "VDIF_%d-%d-%d-%d", ms->databytes, ms->Mbps, ms->nchan, ms->nbit);
+			sprintf(ms->formatname, "VDIF_%d-%dm%d-%d-%d", ms->databytes, ms->framesperperiod, ms->alignmentseconds, ms->nchan, ms->nbit);
 		}
 	}
 	else if(ms->format == MK5_FORMAT_VDIFL)	/* Must be legacy mode, so add an L to VDIF name */
 	{
-		sprintf(ms->formatname, "VDIFL_%d-%d-%d-%d", ms->databytes, ms->Mbps, ms->nchan, ms->nbit);
+		if (ms->complex_decode)
+		{
+			sprintf(ms->formatname, "VDIFCL_%d-%dm%d-%d-%d", ms->databytes, ms->framesperperiod, ms->alignmentseconds, ms->nchan, ms->nbit);
+		}
+		else
+		{
+			sprintf(ms->formatname, "VDIFL_%d-%dm%d-%d-%d", ms->databytes, ms->framesperperiod, ms->alignmentseconds, ms->nchan, ms->nbit);
+		}
 	}
 	else
 	{
@@ -3804,7 +3811,8 @@ static int mark5_format_vdif_init(struct mark5_stream *ms)
 	unsigned int word2;
 	const unsigned char *headerbytes;
 	unsigned char bitspersample;
-	int framensNum, framensDen, dataframelength;
+	int framensNum, dataframelength;
+	double framensDen;
 	double dns;
 
 	if(!ms)
@@ -3840,17 +3848,16 @@ static int mark5_format_vdif_init(struct mark5_stream *ms)
         f->completesamplesperword = 32/(bitspersample*ms->nchan);
 
         ms->framegranularity = 1;
-        if(ms->Mbps > 0)
+        if(ms->framesperperiod > 0 && ms->alignmentseconds > 0)
         {
-//		framensNum = 250*f->databytesperpacket*f->completesamplesperword*ms->nchan*bitspersample;
-		framensNum = ms->databytes*8*1000;     
-		framensDen = ms->Mbps;
+		//framensNum = ms->databytes*8*1000;     
+		//framensDen = ms->Mbps;
 
-		ms->framens = (double)framensNum/(double)framensDen;
+		ms->framens = 1.0e9*(double)ms->alignmentseconds/ms->framesperperiod;
 
 		for(ms->framegranularity = 1; ms->framegranularity < 128; ms->framegranularity *= 2)
 		{
-			if((ms->framegranularity*framensNum) % framensDen == 0)
+			if((((uint64_t)1000000000)*ms->framegranularity) % ((uint64_t)ms->framesperperiod*ms->alignmentseconds) == 0)
 			{
 				break;
 			}
@@ -3859,14 +3866,14 @@ static int mark5_format_vdif_init(struct mark5_stream *ms)
 		if(ms->framegranularity >= 128)
 		{
 			fprintf(m5stderr, "VDIF Warning: cannot calculate gframens %d/%d\n",
-			framensNum, framensDen);
+			ms->framesperperiod, ms->alignmentseconds);
 			ms->framegranularity = 1;
 		}
 		ms->samprate = ((int64_t)ms->framesamples)*(1000000000.0/ms->framens);
         }
         else
         {
-                fprintf(m5stderr, "Error: you must specify the data rate (Mbps) for a VDIF mode (was set to %d)!", ms->Mbps);
+                fprintf(m5stderr, "Error: you must specify the framesperperiod for a VDIF mode (was set to %d)!", ms->framesperperiod);
 
 		return -1;
         }
@@ -4046,8 +4053,20 @@ void mark5_format_vdif_set_leapsecs(struct mark5_stream *ms, int leapsecs)
 	f->leapsecs = leapsecs;
 }
 
-struct mark5_format_generic *new_mark5_format_vdif(int Mbps, 
-	int nchan, int nbit, int decimation, 
+struct mark5_format_generic *new_mark5_format_vdif(int Mbps,
+        int nchan, int nbit, int decimation,
+        int databytesperpacket, int frameheadersize, int usecomplex)
+{
+	int alignmentseconds = 1;
+	int framesperperiod = (int)(((uint64_t)1000000)*Mbps/databytesperpacket);
+
+	return new_mark5_format_generalized_vdif(framesperperiod, alignmentseconds, nchan,
+		nbit, decimation, databytesperpacket, frameheadersize, usecomplex);
+}
+
+
+struct mark5_format_generic *new_mark5_format_generalized_vdif(int framesperperiod, int alignmentseconds,
+	int nchan, int nbit, int decimation,
 	int databytesperpacket, int frameheadersize, int usecomplex)
 {
 	static int first = 1;
@@ -4118,7 +4137,9 @@ struct mark5_format_generic *new_mark5_format_vdif(int Mbps,
 	v->frameheadersize = frameheadersize;
 	v->databytesperpacket = databytesperpacket;
 
-	f->Mbps = Mbps;
+	f->Mbps = ((double)framesperperiod*databytesperpacket)/(1e6*alignmentseconds);
+	f->alignmentseconds = alignmentseconds;
+	f->framesperperiod = framesperperiod;
 	f->nchan = nchan;
 	f->nbit = nbit;
 	f->formatdata = v;

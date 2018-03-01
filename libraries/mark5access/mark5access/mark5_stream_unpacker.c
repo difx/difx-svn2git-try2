@@ -129,6 +129,7 @@ int mark5_unpack(struct mark5_stream *ms, const void *packed, float **unpacked, 
 
 int mark5_unpack_with_offset(struct mark5_stream *ms, const void *packed, int offsetsamples, float **unpacked, int nsamp)
 {
+	printf("DEBUG: in unpack\n");
 	if(ms->next == mark5_stream_unpacker_next_noheaders)
 	{
 		ms->payload = (const unsigned char *)packed;
@@ -144,6 +145,7 @@ int mark5_unpack_with_offset(struct mark5_stream *ms, const void *packed, int of
 	/* set readposition to first desired sample */
 	ms->readposition = (offsetsamples % ms->framesamples)*ms->nchan*ms->nbit*ms->decimation/8;
 
+	printf("DEBUG: about to decode\n");
 	return ms->decode(ms, nsamp, unpacked);
 }
 
