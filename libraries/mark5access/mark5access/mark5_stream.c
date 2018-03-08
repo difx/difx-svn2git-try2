@@ -243,7 +243,7 @@ static int set_format(struct mark5_stream *ms, const struct mark5_format_generic
 			memcpy(ms->formatdata, f->formatdata, f->formatdatasize);
 		}
 		ms->Mbps = f->Mbps;
-                printf("DEBUG: Mbps=%d\n", f->Mbps);
+                printf("DEBUG: Mbps=%0.1f\n", f->Mbps);
 		ms->framesperperiod = f->framesperperiod;
 		ms->alignmentseconds = f->alignmentseconds;
 		ms->nchan = f->nchan;
@@ -702,7 +702,7 @@ struct mark5_format_generic *new_mark5_format_generic_from_string( const char *f
 /* a string containing a list of supported formats */
 const char *mark5_stream_list_formats()
 {
-	return "VLBA1_*-*-*-*[/*], MKIV1_*-*-*-*[/*], MARK5B-*-*-*[/*], VDIF_*-*-*-*[/*], VDIFC_*-*-*-*[/*], VLBN1_*-*-*-*[/*], VDIFB_*-*-*-*, VDIFL_*-*-*-*[/*], VDIFCL_*-*-*-*[/*], KVN5B-*-*-*[/*], D2K-*-*-*[/*], CODIF_*-*m*-*-*[/*]", "CODIFC_*-*m*-*-*[/*]";
+  return("VLBA1_*-*-*-*[/*], MKIV1_*-*-*-*[/*], MARK5B-*-*-*[/*], VDIF_*-*-*-*[/*], VDIFC_*-*-*-*[/*], VLBN1_*-*-*-*[/*], VDIFB_*-*-*-*, VDIFL_*-*-*-*[/*], VDIFCL_*-*-*-*[/*], KVN5B-*-*-*[/*], D2K-*-*-*[/*], CODIF_*-*m*-*-*[/*]", "CODIFC_*-*m*-*-*[/*]");
 }
 
 /* given a format string, populate a structure with info about format */
@@ -1350,8 +1350,8 @@ struct mark5_format *new_mark5_format_from_stream(struct mark5_stream_generic *s
 	headersize = 0;
 	if (find_codif_frame(ms->datawindow, ms->datawindowsize, &offset, &framesize, &headersize) >= 0)
 	{
-	    printf("DEBUG: Datawindowsize is %d\n", ms->datawindowsize);
-	    printf("DEBUG: Offset, framesize, headersize are %d, %d, %d\n", offset, framesize, headersize);
+	  printf("DEBUG: Datawindowsize is %llu\n", (unsigned long long)ms->datawindowsize);
+	  printf("DEBUG: Offset, framesize, headersize are %llu, %d, %d\n", (unsigned long long)offset, framesize, headersize);
 	    void * header;
 	    header = (void*)ms->datawindow+offset;
 
@@ -1628,7 +1628,7 @@ int mark5_stream_print(const struct mark5_stream *ms)
 	{
 		return -1;
 	}
-	(m5stdout, "  stream = %s\n", ms->streamname);
+	fprintf(m5stdout, "  stream = %s\n", ms->streamname);
 	fprintf(m5stdout, "  format = %s = %d\n", ms->formatname, ms->format);
 	if(ms->mjd >= 0)
 	{
@@ -1645,6 +1645,7 @@ int mark5_stream_print(const struct mark5_stream *ms)
 	fprintf(m5stdout, "  framebytes = %d bytes\n", ms->framebytes);
 	fprintf(m5stdout, "  datasize = %d bytes\n", ms->databytes);
 	fprintf(m5stdout, "  frames per period = %d\n", ms->framesperperiod);
+	fprintf(m5stdout, "  bits = %d\n", ms->nbit);
 	fprintf(m5stdout, "  alignment seconds = %d\n", ms->alignmentseconds);
 	fprintf(m5stdout, "  sample granularity = %d\n", ms->samplegranularity);
 	fprintf(m5stdout, "  frame granularity = %d\n", ms->framegranularity);
