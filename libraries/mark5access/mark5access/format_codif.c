@@ -160,6 +160,7 @@ static int mark5_stream_frame_time_codif(const struct mark5_stream *ms, int *mjd
 	unsigned long long fullframens;
 	codif_header *header;
 
+	printf("mark5_stream_frame_time_codif\n");
 	/* table below is valid for year 2000.0 to 2032.0 and contains mjd on Jan 1 and Jul 1
 	 * for each year. */
 	static int mjdepochs[64] = 
@@ -209,6 +210,7 @@ static int mark5_stream_frame_time_codif(const struct mark5_stream *ms, int *mjd
 	{
 	        *ns = fullframens % 1000000000;
 	}
+	printf(" Frame# = %d\n", getCODIFFrameNumber(header));
 
 	return 0;
 }
@@ -3187,7 +3189,7 @@ static int codif_complex_decode_8channel_16bit(struct mark5_stream *ms, int nsam
 		{
 		  for (j=0; j<8; j++) {
 		    data[j][o] = ((int16_t)(buf[i]) + (int16_t)(buf[i+1])*I)/8.0;  // Assume RMS==8
-		    printf("   %d: %d%+di\n", j, (int16_t)buf[i],  (int16_t)buf[i+1]);
+		    //printf("   %d: %d%+di\n", j, (int16_t)buf[i],  (int16_t)buf[i+1]);
 		  //data[j][o] = ((int16_t)(buf[i]^0x8000) + (int16_t)(buf[i+1]^0x8000)*I)/8.0;  // Assume RMS==8
 			i+=2;
 		  }
@@ -3795,7 +3797,7 @@ static int mark5_format_codif_make_formatname(struct mark5_stream *ms)
 
 static int mark5_format_codif_init(struct mark5_stream *ms)
 {
-    printf("DEBUG format_cofig.c: mark5_format_codif_init\n");
+
     
 	struct mark5_format_codif *f;
 	unsigned int word2;
@@ -3821,11 +3823,11 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 	ms->framens = 0; // It gets set later
         ms->framegranularity = 1; // Should get set later
 
-        printf("DEBUG: %d %d\n", f->frameheadersize, f->databytesperpacket);
+        printf("DEBUG: Headersize, packetSize: %d %d\n", f->frameheadersize, f->databytesperpacket);
 	ms->payloadoffset = f->frameheadersize;
 	ms->databytes = f->databytesperpacket;
 	ms->framebytes = f->databytesperpacket + f->frameheadersize;
-        printf("DEBUG: %d %d %d\n", ms->nchan, ms->nbit, ms->decimation);
+        printf("DEBUG: nchan, nbit, decimation: %d %d %d\n", ms->nchan, ms->nbit, ms->decimation);
 	ms->blanker = blanker_codif;
 
 	/* We have some data to look at to further refine the format... */
@@ -3873,7 +3875,8 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 		ms->framegranularity = get_codif_framegranularity(header);
 		ms->framesperperiod = get_codif_frames_per_period(header);
 		ms->alignmentseconds = get_codif_alignment_seconds(header);
-		ms->Mbps = ((double)ms->databytes * ms->framesperperiod * 8) / ms->alignmentseconds;
+		ms->Mbps = ((double)ms->databytes * ms->framesperperiod * 8) / ms->alignmentseconds/1e6;
+		printf("DEBUG: Mbps set to %.1f\n", ms->Mbps);
 		
 		ms->framens = get_codif_framens(header);
 		
@@ -3977,7 +3980,8 @@ static int mark5_format_codif_final(struct mark5_stream *ms)
 static int mark5_format_codif_validate(const struct mark5_stream *ms)
 {
 	codif_header *header;
-
+	printf("format_codif.c: mark5_format_codif_validate\n");
+	
 	/* Check for overly unusual header  */
 	header = (codif_header *)ms->frame;
 
@@ -4023,6 +4027,9 @@ static int mark5_format_codif_validate(const struct mark5_stream *ms)
 		fprintf(m5stderr, "mark5_format_codif_validate: Skipping invalid frame\n");
 		return 0;
 	}
+
+	
+	printf("DEBUG: codif frame # %d OK\n", getCODIFFrameNumber(header));
 	return 1;
 }
 
@@ -4339,7 +4346,7 @@ struct mark5_format_generic *new_mark5_format_codif(int framesperperiod,
 
 	f->framesperperiod = framesperperiod;
 	f->alignmentseconds = alignmentseconds;
-	f->Mbps = ((double)framesperperiod*databytesperpacket*8)/alignmentseconds;
+	f->Mbps = ((double)framesperperiod*databytesperpacket*8)/alignmentseconds/1e6;
 	f->nchan = nchan;
 	f->nbit = nbit;
 	f->formatdata = v;
