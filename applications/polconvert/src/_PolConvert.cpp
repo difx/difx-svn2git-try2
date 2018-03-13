@@ -50,7 +50,7 @@
 #
 
 */
-
+ 
 
 #include <Python.h>
 // compiler warning that we use a deprecated NumPy API
@@ -106,7 +106,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
 {
 
 
-  //static const std::complex<float> oneOverSqrt2 = 0.7071067811;
+  static const std::complex<float> oneOverSqrt2 = 0.7071067811;
 //  static const std::complex<float> Im = (std::complex<float>) std::polar(1.0,1.570796326);  
     static const cplx32f Im = cplx32f(0.,1.);
  
@@ -117,13 +117,13 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
 
     PyObject *ngain, *nsum, *gains, *ikind, *dterms, *plotRange, *IDI, *antnum, *tempPy, *ret; 
     PyObject *allphants, *nphtimes, *phanttimes, *Range, *SWAP, *doIF, *metadata, *refAnts;
-    PyObject *asdmTimes, *plIF, *isLinearObj, *XYaddObj, *XYdelObj, *antcoordObj, *soucoordObj; 
+    PyObject *asdmTimes, *plIF, *isLinearObj, *XYaddObj, *XYdelObj, *antcoordObj, *soucoordObj, *antmountObj; 
     int nALMA, plAnt, nPhase, doTest, doConj, doNorm;
     double doSolve;
  //   double XYadd;
     bool isSWIN; 
 
-    if (!PyArg_ParseTuple(args, "iOiiOOOOOOOOOOOOOOOOidiiOOOOOO",&nALMA, &plIF, &plAnt, &nPhase, &doIF, &SWAP, &ngain,&nsum, &ikind, &gains, &dterms, &IDI, &antnum, &plotRange, &Range, &allphants, &nphtimes, &phanttimes, &refAnts, &asdmTimes, &doTest, &doSolve, &doConj, &doNorm, &XYaddObj, &XYdelObj, &metadata, &soucoordObj, &antcoordObj, &isLinearObj)){printf("FAILED PolConvert! Wrong arguments!\n"); fflush(stdout);  return NULL;};
+    if (!PyArg_ParseTuple(args, "iOiiOOOOOOOOOOOOOOOOidiiOOOOOOO",&nALMA, &plIF, &plAnt, &nPhase, &doIF, &SWAP, &ngain,&nsum, &ikind, &gains, &dterms, &IDI, &antnum, &plotRange, &Range, &allphants, &nphtimes, &phanttimes, &refAnts, &asdmTimes, &doTest, &doSolve, &doConj, &doNorm, &XYaddObj, &XYdelObj, &metadata, &soucoordObj, &antcoordObj, &antmountObj, &isLinearObj)){printf("FAILED PolConvert! Wrong arguments!\n"); fflush(stdout);  return NULL;};
 
 
 
@@ -228,6 +228,8 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
 
     double *AntCoordArr = (double *)PyArray_DATA(antcoordObj);
 
+    int *AntMountArr = (int *)PyArray_DATA(antmountObj);
+
     double *SouCoordArr = (double *)PyArray_DATA(PyList_GetItem(soucoordObj,1));
 
     
@@ -243,6 +245,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
     Geometry->SinDec = new double[Geometry->NtotSou];
     Geometry->CosDec = new double[Geometry->NtotSou];
     Geometry->AntLon = new double[Geometry->NtotAnt];
+    Geometry->Mount = new int[Geometry->NtotAnt];
     Geometry->Lat = new double[Geometry->NtotAnt];
     Geometry->BasNum = new int*[Geometry->NtotAnt];
 
@@ -256,6 +259,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
      Geometry->AntLon[i] = atan2(AntCoordArr[I3+1],AntCoordArr[I3]);
      RR = sqrt(AntCoordArr[I3]*AntCoordArr[I3] + AntCoordArr[I3+1]*AntCoordArr[I3+1]) ;
      Geometry->Lat[i] = atan2(AntCoordArr[I3+2],RR);
+     Geometry->Mount[i] = AntMountArr[i];
   //   std::cout << i+1 << " " << Geometry->AntLon[i]*180./3.1415926535<<" "<<atan(Geometry->TanLat[i])*180./3.1415926535 <<"\n";
 
      for (j=i; j<Geometry->NtotAnt;j++){
@@ -573,6 +577,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
   long countNvis;
 
   std::complex<float> AD, BC, auxD;
+  auxD = 0.0;
   float NormFac[2];
   float AntTab;
   std::complex<float> DetInv;
@@ -612,7 +617,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
 
 
     FILE *plotFile[nIFplot];
-    FILE *gainsFile;
+    FILE *gainsFile = (FILE*)0;
 
 // Prepare plotting files:
     int noI = -1;
@@ -628,7 +633,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
  
 
     if(doNorm){
-      printf("CREATING GAIN FILE\n"); 
+      printf("CREATING GAIN FILE.\n"); 
 //      for(ii=0; ii<nnu;ii++){
 //         sprintf(message,"POLCONVERT.GAINS.IF%i",ii);
 //         gainsFile[ii] = fopen(message,"w");
@@ -644,6 +649,8 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
  //   if (plIF>=0 && plIF < nnu){fwrite(&nchans[plIF],sizeof(int),1,plotFile);}else{fwrite(&noI,sizeof(int),1,plotFile);};
 
 
+  sprintf(message,"\n POLCONVERTING THE DATA.\n\n");
+  fprintf(logFile,"%s",message); std::cout<<message; fflush(logFile);
 
 
 
@@ -662,11 +669,12 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
       if (IFs2Plot[ij]==ii){plotIF=true;IFplot=ij; break;};
     };
 
-    if (ii >= nnu) {
-      sprintf(message,"ERROR! DATA DO NOT HAVE IF #%i !!\n",ii);  
-      fprintf(logFile,"%s",message); std::cout<<message; fflush(logFile);
+ //   if (ii >= nnu) {
+ //     sprintf(message,"ERROR! DATA DO NOT HAVE IF #%i !!\n",ii);  
+ //     fprintf(logFile,"%s",message); std::cout<<message; fflush(logFile);
+ //   return ret;};
 
-    return ret;};
+
 
     sprintf(message,"\nDoing subband %i of %i\n",ii+1,nnu);
     fprintf(logFile,"%s",message); 
@@ -675,7 +683,14 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
     fflush(stdout);
 
 
-    if(!DifXData->setCurrentIF(ii)){return ret;};
+// Only proceed if IF is OK:
+    if(!DifXData->setCurrentIF(ii)){             //return ret;};
+
+      sprintf(message,"WARNING! DATA DO NOT HAVE SUCH AN IF!! WILL SKIP CONVERSION\n");  
+      fprintf(logFile,"%s",message); std::cout<<message; fflush(logFile);
+
+    } else {
+
 
 // Get the frequencies of the current IF:
      DifXData->getFrequencies(DifXFreqs);
@@ -804,11 +819,8 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
      if (ALMARefAnt>=0 && !(allgains[currAntIdx][ik]->isBandpass())){
        if (allgains[currAntIdx][ik]->getInterpolation(ALMARefAnt,0,gainXY)){
         for (ij=0; ij<nchans[ii]; ij++){
-      //   absGainRatio = gainXY[0]/gainXY[1];
-      //   gainRatio[ij] *= absGainRatio/((cplx32f) abs(absGainRatio));
-      //   gainRatio[ij] /= std::abs(gainRatio[ij]);  // Normalize gain ratio.
          gainRatio[ij] *= gainXY[0]/gainXY[1];
- 
+         gainRatio[ij] /= std::abs(gainRatio[ij]);  // Normalize gain ratio. 
         };
        } else {
           sprintf(message,"ERROR with ALMA Ref. Ant. in gain table!\n");
@@ -929,12 +941,6 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
      Ktotal[currAntIdx][0][1][j] *= gainRatio[j];
      Ktotal[currAntIdx][1][1][j] *= gainRatio[j];
 
-// Normalize amplitudes:
-
- 
- //   if(j==10){printf("\n\n\nKTOTAL: %.5e  %.5e |  %.5e  %.5e |  %.5e  %.5e |  %.5e  %.5e \n\n\n",Ktotal[currAntIdx][0][0][j].real(),Ktotal[currAntIdx][0][0][j].imag(),Ktotal[currAntIdx][0][1][j].real(),Ktotal[currAntIdx][0][1][j].imag(),Ktotal[currAntIdx][1][0][j].real(),Ktotal[currAntIdx][1][0][j].imag(),Ktotal[currAntIdx][1][1][j].real(),Ktotal[currAntIdx][1][1][j].imag());};
-
-
 ////////////
 
 ///////////////////////////
@@ -970,22 +976,19 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
 
    // Multiply by conversion (hybrid) matrix and save result in the "Ktotal" matrix:
         if(XYSWAP[currAntIdx]){
-        Ktotal[currAntIdx][0][0][j] = (Kinv[0][0]*HSw[0][0]+Kinv[1][0]*HSw[0][1]);
-        Ktotal[currAntIdx][0][1][j] = (Kinv[0][1]*HSw[0][0]+Kinv[1][1]*HSw[0][1]);
-        Ktotal[currAntIdx][1][0][j] = (Kinv[0][0]*HSw[1][0]+Kinv[1][0]*HSw[1][1]);
-        Ktotal[currAntIdx][1][1][j] = (Kinv[0][1]*HSw[1][0]+Kinv[1][1]*HSw[1][1]);
+        Ktotal[currAntIdx][0][0][j] = (Kinv[0][0]*HSw[0][0]+Kinv[1][0]*HSw[0][1])*oneOverSqrt2;
+        Ktotal[currAntIdx][0][1][j] = (Kinv[0][1]*HSw[0][0]+Kinv[1][1]*HSw[0][1])*oneOverSqrt2;
+        Ktotal[currAntIdx][1][0][j] = (Kinv[0][0]*HSw[1][0]+Kinv[1][0]*HSw[1][1])*oneOverSqrt2;
+        Ktotal[currAntIdx][1][1][j] = (Kinv[0][1]*HSw[1][0]+Kinv[1][1]*HSw[1][1])*oneOverSqrt2;
        } else {
-        Ktotal[currAntIdx][0][0][j] = (Kinv[0][0]*H[0][0]+Kinv[1][0]*H[0][1]);
-        Ktotal[currAntIdx][0][1][j] = (Kinv[0][1]*H[0][0]+Kinv[1][1]*H[0][1]);
-        Ktotal[currAntIdx][1][0][j] = (Kinv[0][0]*H[1][0]+Kinv[1][0]*H[1][1]);
-        Ktotal[currAntIdx][1][1][j] = (Kinv[0][1]*H[1][0]+Kinv[1][1]*H[1][1]);
+        Ktotal[currAntIdx][0][0][j] = (Kinv[0][0]*H[0][0]+Kinv[1][0]*H[0][1])*oneOverSqrt2;
+        Ktotal[currAntIdx][0][1][j] = (Kinv[0][1]*H[0][0]+Kinv[1][1]*H[0][1])*oneOverSqrt2;
+        Ktotal[currAntIdx][1][0][j] = (Kinv[0][0]*H[1][0]+Kinv[1][0]*H[1][1])*oneOverSqrt2;
+        Ktotal[currAntIdx][1][1][j] = (Kinv[0][1]*H[1][0]+Kinv[1][1]*H[1][1])*oneOverSqrt2;
        };
 
 ////////////////////////////////////
 ////////////////////
- //   if(j==10){printf("\n\n\nLAST KTOTAL: %.5e  %.5e |  %.5e  %.5e |  %.5e  %.5e |  %.5e  %.5e \n\n\n",Ktotal[currAntIdx][0][0][j].real(),Ktotal[currAntIdx][0][0][j].imag(),Ktotal[currAntIdx][0][1][j].real(),Ktotal[currAntIdx][0][1][j].imag(),Ktotal[currAntIdx][1][0][j].real(),Ktotal[currAntIdx][1][0][j].imag(),Ktotal[currAntIdx][1][1][j].real(),Ktotal[currAntIdx][1][1][j].imag());};
-
-
 
     };   // Comes from: for(j=0; j<nchans[ii]; j++) 
 
@@ -999,7 +1002,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
   if(doNorm && (dtchanged||gchanged)){ // Norm. factor will be the geometrical average of gains.
     AntTab = std::sqrt(NormFac[0]*NormFac[1])/((float) nchans[ii]);
  //   printf("GAIN %.3e  %.3e\n",AntTab,NormFac[0]);
-    fprintf(gainsFile, "%i  %i  %.10e  %.5e\n",ii+1, currAnt, currT/86400.,AntTab*AntTab);
+    fprintf(gainsFile, "%i  %i  %.10e  %.5e \n",ii+1, currAnt, currT/86400.,AntTab*AntTab/std::abs(auxD));
     for(j=0; j<nchans[ii]; j++){
       Ktotal[currAntIdx][0][0][j] /= AntTab;
       Ktotal[currAntIdx][0][1][j] /= AntTab;
@@ -1018,12 +1021,6 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
      auxB = (currT>=plRange[0] && currT<=plRange[1] && plotIF); //plAnt == otherAnt);
 
 
- //    if(auxB){printf("%.5e %.5e %.5e %.5e | ",Kinv[1][1].imag(),Kinv[1][1].real(),Kinv[1][1].real(),Kinv[1][1].imag());};
-  //   if(auxB){printf("%.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e | ",Ktotal[currAntIdx][0][0][10].real(),Ktotal[currAntIdx][0][0][10].imag(),Ktotal[currAntIdx][0][1][10].real(),Ktotal[currAntIdx][0][1][10].imag(),Ktotal[currAntIdx][1][0][10].real(),Ktotal[currAntIdx][1][0][10].imag(),Ktotal[currAntIdx][1][1][10].real(),Ktotal[currAntIdx][1][1][10].imag());};
-
-//     if(auxB){printf("%.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e | ",Kinv[0][0].real(),Kinv[0][0].imag(),Kinv[0][1].real(),Kinv[0][1].imag(),Kinv[1][0].real(),Kinv[1][0].imag(),Kinv[1][1].real(),Kinv[1][1].imag());};
-
-
 // Convert:
      DifXData->applyMatrix(Ktotal[currAntIdx],XYSWAP[currAntIdx],auxB,currAntIdx,plotFile[IFplot]);
 
@@ -1038,6 +1035,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
    };  // Go to next mixed-vis in this IF.
 
   
+  }; // Comes from the check of IF.
 
 
   }; ///////////////////////////////

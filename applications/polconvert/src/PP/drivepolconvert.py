@@ -11,6 +11,9 @@ import argparse
 import datetime
 import os
 import re
+import stat
+import threading
+import time
 
 def parseOptions():
     '''
@@ -36,7 +39,10 @@ def parseOptions():
     epi += 'Diagnostic plots of per-IF fringes is controlled with the '
     epi += '-f option; if used -m, -S, -X and -T become relevant.  In '
     epi += 'particular, with -T, no conversion is written to disk, '
-    epi += 'but all of the diagnostic plots are made and saved.'
+    epi += 'but all of the diagnostic plots are made and saved. '
+    epi += 'Parallelization is possible with the -P option.  In the event '
+    epi += 'of problematic jobs, remove them from your list and deal with '
+    epi += 'them individually.'
     use = '%(prog)s [options] [input_file [...]]\n  Version'
     use += '$Id$'
     parser = argparse.ArgumentParser(epilog=epi, description=des, usage=use)
@@ -46,7 +52,8 @@ def parseOptions():
         help='be chatty about the work')
     parser.add_argument('-p', '--prep', dest='prep',
         default=False, action='store_true',
-        help='run prepolconvert.py on the same joblist')
+        help='run prepolconvert.py on the same joblist--'
+        'generally not a good idea unless you are certain it will work')
     parser.add_argument('-r', '--run', dest='run',
         default=False, action='store_true',
         help='execute CASA with the generated input')
@@ -55,24 +62,22 @@ def parseOptions():
         help='prefix to the QA2 polconvert calibration directories. '
         'The exact names despend on the QA2 version (see -q option).')
     # optional, developmental or convenience arguments
+    parser.add_argument('-P', '--parallel', dest='parallel',
+        default=0, metavar='INT', type=int,
+        help='Number of CASA jobs to run in parallel.  The best value '
+        'depends on the number of physical cores and the memory available. '
+        '0 reverts to the non-parallel execution logic; 1 should provide '
+        'similar results, >1 should simply be that much faster.')
     parser.add_argument('-i', '--input', dest='input',
         default='', metavar='FILE',
         help='name of input file that will be created for CASA.')
     parser.add_argument('-o', '--output', dest='output',
         default='', metavar='FILE',
         help='name of output file to collect CASA output chatter.')
-#   parser.add_argument('-t', '--qa2tar', dest='qa2tar',
-#       default='', metavar='TARFILE',
-#       help='tarfile with QA2 results.  If supplied, the results are'
-#       'extracted and the -l label argument is updated appropriately')
     parser.add_argument('-e', '--exp', dest='exp',
         default='', metavar='STRING',
         help='VEX experiment name, prefix of job input files; it will '
         'be derived from the list of jobs if not supplied')
-    parser.add_argument('-b', '--band', dest='band',
-        default='', metavar='STRING',
-        help='ALMA band: one of "3" (86.268 GHz), '
-        '"6Lo" (227.1 GHz) or "6Hi" (229.1 GHz)')
     parser.add_argument('-a', '--ant', dest='ant',
         default=1, metavar='INT', type=int,
         help='1-based index of linear (ALMA) antenna (normally 1)')
@@ -81,23 +86,30 @@ def parseOptions():
         help='user supplied XY angle adjustment or empty for defaults, '
         'normally 180.0 or 0.0')
     parser.add_argument('-q', '--qa2', dest='qa2',
-        default='v4', metavar='STRING',
+        default='v8', metavar='STRING',
         help='table naming scheme for the QA2 tables; there should be ' +
-            'six tables for antennas, appphase, bandpass, ampgains, ' +
-            'phasegains and xy phase.  Options are "v0", "v1", "v2", '
-            '"v3", "v4", "v5", "v6", "v7" or a ' +
+            'eight tables for antennas, appphase, dterms, bandpass, ' +
+            'ampgains, phasegains and xy phase and xy gains.  ' +
+            'Options are "v0" .. "v11" or a ' +
             'comma-sep list in an environment variable QA2TABLES.  In '
             'versions prior to v4, ".concatenated.ms" was part of the '
-            'label.  For v4-v7 and subsequent the label is just the '
-            'uid name (and/or other identifiers).   The default is "v4", '
-            'but v5-v7 may be necessary: the difference is which scans '
-            '(APP or ALMA) are to be used for DTerms and Gxyamp.')
+            'label.  For v4-v11 and subsequent the label is just the '
+            'uid name (and/or other identifiers).   The default is "v8". '
+            'Examine the script for the details....')
+    parser.add_argument('-E', '--avgtime', dest='avgtime',
+        default=0.0, metavar='FLOAT', type=float,
+        help='If >0 this will time-average the gains to reduce noise')
+    parser.add_argument('-y', '--gainmeth', dest='gainmeth',
+        default='T', metavar='CHAR',
+        help='Specify the gain method to use on all calibration tables'
+            ' except ones with "XY0", "bandpass" or "Gxyamp" in name;'
+            ' "T" combines the gains, "G" retains separation of X and Y.')
     parser.add_argument('-d', '--noDterm', dest='nodt',
         default=False, action='store_true',
         help='disable use of Dterm calibration tables')
     parser.add_argument('-A', '--ampNorm', dest='ampnrm',
-        default=True, action='store_false',
-        help='turn off amplitude normalization')
+        default=1.0, type=float,
+        help='set the DPFU in ANTAB or <=0 to apply it (0)')
     parser.add_argument('-G', '--gainDel', dest='gaindel',
         default='', metavar='LIST',
         help='comma-sep list of gain tables to delete: del(gains[x])' +
@@ -106,8 +118,7 @@ def parseOptions():
     parser.add_argument('-s', '--spw', dest='spw',
         default=-1, metavar='INT', type=int,
         help='Index of SPW for PolConvert to use: 0,1,2,3 for the ' +
-            'four basebands, -1 for PolConvert to select, or 4 to use ' +
-            'the band3, band6Lo or band6Hi assignments.')
+            'four basebands, or -1 (default) for PolConvert to select')
     # plotting arguments
     parser.add_argument('-f', '--fringe', dest='fringe',
         default=4, metavar='INT', type=int,
@@ -117,9 +128,11 @@ def parseOptions():
             'N for that many channels spread through the IF range, '
             'or 0 for off.')
     parser.add_argument('-m', '--remote', dest='remote',
-        default=2, metavar='INT', type=int,
+        default=-1, metavar='INT', type=int,
         help='Index of remote antenna on baseline to converted antenna. ' +
-            'The default is 2 (the next antenna in the list).')
+            'The default is -1 (disabled).  The vex file will be searched' +
+            'for the appropriate indices based on the site list, see -S.' +
+            'This value may be used only if there are issues...')
     parser.add_argument('-S', '--sites', dest='sites',
         default='', metavar='LIST',
         help='comma-sep list of 2-letter station codes to try' +
@@ -130,32 +143,16 @@ def parseOptions():
     parser.add_argument('-T', '--test', dest='test',
         default=False, action='store_true',
         help='Turns off processing of files, just does plotting')
+    parser.add_argument('-z', '--zmchk', dest='zmchk',
+        default=False, action='store_true',
+        help='the default (False) assumes that a PolConvert fix (to not' +
+            ' crash if the IFs mentioned cannot be converted); set this' +
+            ' to recover the original behavior which protects PolConvert.')
         
     # the remaining arguments provide the list of input files
     parser.add_argument('nargs', nargs='*',
         help='List of DiFX input job files')
     return parser.parse_args()
-
-#def tarballExtraction(o):
-#   '''
-#   Extract the tarball if it is supplied, and work out the label
-#   if none was given.
-#   '''
-#   if o.qa2tar != '' and os.path.exists(o.qa2tar):
-#       cmd = 'tar zxf %s' % o.qa2tar
-#       if o.verb: print 'Extracting tarfile with: %s' % cmd
-#       if os.system(cmd):
-#           raise Exception, 'Unable to untar %s' % o.qa2tar
-#       parts = o.qa2tar.split('.')
-#       # work out the label from the tarball name
-#       if o.label != '':
-#           pass
-#       elif parts[-1] == 'tgz':
-#           o.label = '.'.join(parts[0:-1])
-#       elif parts[-1] == 'gz' and parts[-2] == 'tar':
-#           o.label = '.'.join(parts[0:-2])
-#       else:
-#           raise Exception, 'Unable to create processing label'
 
 def calibrationChecks(o):
     '''
@@ -181,27 +178,32 @@ def calibrationChecks(o):
         o.constXYadd = 'True'
         o.qal = ['ANTENNA', 'calappphase', 'Df0', 'bandpass-zphs',
                'flux_inf', 'phase_int.APP', 'XY0.APP' ]
-    ### production
-    elif o.qa2 == 'v4': # v3+Gxyamp/concatenated/calibrated (default)
+    ### production default
+    elif o.qa2 == 'v4' or o.qa2 == 'v8': # v3+D-APP/G-APP
         o.qal = ['ANTENNA', 'calappphase', 'Df0.APP', 'bandpass-zphs',
                'flux_inf.APP', 'phase_int.APP', 'XY0.APP', 'Gxyamp.APP' ]
         o.conlabel = o.label + '.concatenated.ms'
         o.callabel = o.label + '.calibrated.ms'
-    elif o.qa2 == 'v5': # v3+Gxyamp/concatenated/calibrated (likely)
+        if o.qa2 == 'v8': o.qal[5] += '.XYsmooth'
+    ### or other desperation plans
+    elif o.qa2 == 'v5' or o.qa2 == 'v9': # v3+D-ALMA/G-ALMA
         o.qal = ['ANTENNA', 'calappphase', 'Df0.ALMA', 'bandpass-zphs',
                'flux_inf.APP', 'phase_int.APP', 'XY0.APP', 'Gxyamp.ALMA' ]
         o.conlabel = o.label + '.concatenated.ms'
         o.callabel = o.label + '.calibrated.ms'
-    elif o.qa2 == 'v6': # v3+Gxyamp/concatenated/calibrated (possible)
+        if o.qa2 == 'v9': o.qal[5] += '.XYsmooth'
+    elif o.qa2 == 'v6' or o.qa2 == 'v10': # v3+D-ALMA/G-APP
         o.qal = ['ANTENNA', 'calappphase', 'Df0.ALMA', 'bandpass-zphs',
                'flux_inf.APP', 'phase_int.APP', 'XY0.APP', 'Gxyamp.APP' ]
         o.conlabel = o.label + '.concatenated.ms'
         o.callabel = o.label + '.calibrated.ms'
-    elif o.qa2 == 'v7': # v3+Gxyamp/concatenated/calibrated (possible)
+        if o.qa2 == 'v10': o.qal[5] += '.XYsmooth'
+    elif o.qa2 == 'v7' or o.qa2 == 'v11': # v3+D-APP/G-ALMA
         o.qal = ['ANTENNA', 'calappphase', 'Df0.APP', 'bandpass-zphs',
                'flux_inf.APP', 'phase_int.APP', 'XY0.APP', 'Gxyamp.ALMA' ]
         o.conlabel = o.label + '.concatenated.ms'
         o.callabel = o.label + '.calibrated.ms'
+        if o.qa2 == 'v11': o.qal[5] += '.XYsmooth'
     ### if push comes to shove
     else:               # supply via environment variable
         o.qal = os.environ['QA2TABLES'].split(',')
@@ -225,6 +227,10 @@ def calibrationChecks(o):
                 raise Exception, 'Required directory %s is missing' % d
         elif o.verb:
             print 'Calibration table %s is present' % d
+    if o.gainmeth != 'T' and o.gainmeth != 'G':
+        raise Exception, 'Illegal gainmeth %s' % o.gainmeth
+    if o.avgtime < 0:
+        raise Exception, 'The gain average time must be non-negative'
 
 def inputRelatedChecks(o):
     '''
@@ -287,7 +293,6 @@ def checkOptions(o):
     We do this prior to any real work, but after tarball extraction
     if such was provided.  The subfunctions throw exceptions on issues.
     '''
-#   tarballExtraction(o)
     calibrationChecks(o)
     inputRelatedChecks(o)
     runRelatedChecks(o)
@@ -309,7 +314,15 @@ def deduceZoomIndicies(o):
     '''
     Pull the Zoom frequency indicies from the input files and check
     that all input files produce the same first and last values.
+    (PolConvert is now more forgiving of varying zoom channel usage.)
+    The user can specify a remote antenna, but now logic here (and
+    in runpolconvert) switches to o.remotelist assuming it is of the
+    proper length.  This should solve poor plotting choices.
     '''
+    # Todo: fix for the case antenna needing work isn't telescope 0/AA
+    sitelist = o.sites.split(',')
+    if o.verb: print 'Sitelist is',sitelist
+    o.remotelist = []
     zoompatt = r'^ZOOM.FREQ.INDEX.\d+:\s*(\d+)'
     almapatt = r'^TELESCOPE NAME %d:\s*AA' % (o.ant-1)
     amap_re = re.compile(r'^TELESCOPE NAME\s*([0-9])+:\s*([A-Z0-9][A-Z0-9])')
@@ -318,8 +331,9 @@ def deduceZoomIndicies(o):
     zfinal = set()
     mfqlst = set()
     antmap = {}
-    almaline = ''
+    newargs = []
     for jobin in o.nargs:
+        almaline = ''
         zfir = ''
         zfin = ''
         cfrq = []
@@ -337,6 +351,31 @@ def deduceZoomIndicies(o):
             if amap:
                 antmap[amap.group(2)] = int(amap.group(1))
         ji.close()
+
+        # cull jobs that do not appear to have AA as telescope 0
+        if almaline == '':
+            issue = True
+            for jn in o.jobnums:
+                if '_' + str(jn) + '.input' in jobin:
+                    print 'ALMA not in',jobin,', skipping (',jn,')'
+                    o.jobnums.remove(jn)
+                    issue = False
+                    break
+            if issue: raise Exception, 'Unable to purge job ' + jobin
+            else:     continue
+        else:
+            print 'Found ALMA in',jobin,almaline.rstrip()
+            newargs.append(jobin)
+
+        # print workout plot ant for this job
+        plotant = -1
+        for site in sitelist:
+            if site in antmap:
+                plotant = antmap[site] + 1
+                break
+        o.remotelist.append(plotant)
+        antmap = {}
+
         if o.verb: print 'Zoom bands %s..%s from %s' % (zfir, zfin, jobin)
         if len(cfrq) < 1:
             raise Exception, 'Very odd, no frequencies in input file ' + jobin
@@ -344,48 +383,40 @@ def deduceZoomIndicies(o):
         zfirst.add(zfir)
         zfinal.add(zfin)
         mfqlst.add(cfrq[len(cfrq)/2])
+
+    o.nargs = newargs
     if len(zfirst) != 1 or len(zfinal) != 1:
-        raise Exception, ('Encountered ambiguities in zoom freq ranges: ' +
-            'first is ' + str(zfirst) + ' and final is ' + str(zfinal))
-    o.zfirst = int(zfirst.pop())
-    o.zfinal = int(zfinal.pop())
-    if o.verb: print 'Zoom frequency indices %d..%d found in %s..%s' % (
+        if o.zmchk:
+            raise Exception, ('Encountered ambiguities in zoom freq ranges: ' +
+                'first is ' + str(zfirst) + ' and final is ' + str(zfinal))
+        elif o.verb:
+            print 'global zoom first',str(zfirst),'and final',str(zfinal)
+    o.zfirst = int(sorted(list(zfirst))[0])  # int(zfirst.pop())
+    o.zfinal = int(sorted(list(zfinal))[-1]) # int(zfinal.pop())
+    if o.verb: print 'Zoom frequency indices %d..%d found in %s\n  ..%s' % (
         o.zfirst, o.zfinal, o.nargs[0], o.nargs[-1])
     # This could be relaxed to allow AA to be not 0 using antmap
-    if o.verb: print 'Alma search pattern: "' + str(almapatt) + '"'
-    if almaline == '':
-        raise Exception, 'Telescope Name 0 is not Alma (AA)'
-    if o.verb: print 'Found ALMA Telescope line: ' + almaline.rstrip()
-    if o.verb: print 'Remote antenna index was', o.remote
-    if o.verb: print 'Antenna map: ' + str(antmap)
-    for site in o.sites.split(','):
-        if site in antmap:
-            o.remote = antmap[site] + 1
-            break
-    if o.verb: print 'Remote antenna index now', o.remote
+    #if o.verb: print 'Alma search pattern: "' + str(almapatt) + '"'
+    #if almaline == '':
+    #    raise Exception, 'Telescope Name 0 is not Alma (AA)'
+    #if o.verb: print 'Found ALMA Telescope line: ' + almaline.rstrip()
+    #if o.verb: print 'Remote antenna index is', o.remote
+    if (len(o.remotelist) != len(o.nargs)): o.remotelist = []
+    if o.verb: print 'Remote antenna list is',o.remotelist,'index is',o.remote
     # if the user supplied a band, check that it agrees
     if len(mfqlst) > 1:
         raise Exception, ('Input files have disparate frequency structures:\n'
             '  Median frequencies: ' + str(mfqlst) + '\n'
             '  and these must be processed separately')
     medianfreq = float(mfqlst.pop())
-    if   medianfreq <  90000.0: medianband = '3'
-    elif medianfreq < 228100.0: medianband = '6Lo'
-    elif medianfreq < 230100.0: medianband = '6Hi'
-    if o.band == '':
-        o.band = medianband
-        print 'Working with band %s based on median freq (%f)' % (
-            o.band, medianfreq)
-    elif o.band == medianband:
-        if o.verb:
-            print ('Supplied band (%s) agrees with median freq. (%f, %s)' %
-                (o.band, medianfreq, medianband))
-    else:
-        raise Exception, ('User-supplied band (%s) disagrees with '
-            'input frequencies (%f, %s)' % (o.band, medianfreq, medianband))
-    # this should not be needed with the above
-    if not (o.band == '3' or o.band == '6Lo' or o.band == '6Hi'):
-        raise Exception, 'Observing band mis-specified, use -b 3|6Lo|6Hi'
+    if   medianfreq <  90000.0: medianband = '3 (GMVA)'
+    elif medianfreq < 214100.0: medianband = 'b1 (Cycle5 6[LSB]Lo)'
+    elif medianfreq < 216100.0: medianband = 'b2 (Cycle5 6[LSB]Hi)'
+    elif medianfreq < 228100.0: medianband = 'b3 (Cycle4 6[USB]Lo)'
+    elif medianfreq < 230100.0: medianband = 'b4 (Cycle4 6[USB]Hi)'
+    else:                       medianband = '??? band 7 ???'
+    print 'Working with band %s based on median freq (%f)' % (
+            medianband, medianfreq)
 
 def plotPrep(o):
     '''
@@ -412,13 +443,10 @@ def plotPrep(o):
         print 'Shifting baseline from %d-%d to %d-%d' % (
             o.ant, o.remote - 1, o.ant, o.remote)
 
-def createCasaInput(o):
+def getInputTemplate():
     '''
-    This function creates a file of python commands that can be piped
-    directly into CASA.
+    This is the input script with %-able adjustments.
     '''
-    if o.verb: print 'Creating CASA input file ' + o.input
-    ci = open(o.input, 'w')
     template='''    #!/usr/bin/python
     # This file contains python commands that may either be fed
     # directly to CASA as standard input, or else cut&pasted into
@@ -429,12 +457,10 @@ def createCasaInput(o):
     %simport pylab as pl
     %spl.ioff()
     #
-    # variables initialized from drivepolconvert.py:
+    # variables from drivepolconvert.py required for runpolconvert.py:
     #
+    DiFXout = '%s'
     label = '%s'
-    band%s = True
-    band%s = False
-    band%s = False
     expName = '%s'
     linAnt = [%s]
     rpcpath = os.environ['DIFXROOT'] + '/share/polconvert/runpolconvert.py'
@@ -451,7 +477,9 @@ def createCasaInput(o):
     # --qa2 = %s
     # qal = %s
     qa2 = %s
-    ampNorm = %s
+    gainmeth = '%s'
+    XYavgTime = %.3g
+    ampNorm = %.3g
     gainDel = '%s'
     #
     # other variables that can be set in interactive mode
@@ -460,56 +488,41 @@ def createCasaInput(o):
     # plotAnt=-1                        # no plotting
     # plotAnt=2                         # specifies antenna 2 to plot
     plotAnt=%d
+    plotAntList=%s
     numFrPltPix=%d
     doTest=%s
     # timeRange=[]                      # don't care
-    %stimeRange = [0,0,0,0, 14,0,0,0]   # first 10 days
-
-    if not (band3 or band6Hi or band6Lo):
-        print 'Pilot error, only one of band3, band6Hi or band6Lo may be true'
-        quit()
-
-    if band3:
-        band = 'band3'
-        XYadd=[0.0]
-
-    if band6Lo:
-        band = 'band6Lo'
-        XYadd=[0.0]
-
-    if band6Hi:
-        band = 'band6Hi'
-        XYadd=[0.0]
-
+    %stimeRange = [0,0,0,0, 14,0,0,0]   # first 14 days
+    XYadd = [0.0]
+    #
     spwToUse = %d
     constXYadd = %s
     %sXYadd = [%f]
     XYratio = [1.0]
-    print 'using %%s with XYadd %%s' %% (band, str(XYadd))
-
+    print 'using XYadd %%s' %% (str(XYadd))
+    #
     djobs = %s
     print 'djobs contains these jobs: ' + str(djobs)
-
     #
+    workdir = '%s'
     # actually do the work:
-    print 'executing "execfile(rpcpath)" with rcpath:'
+    print 'executing "execfile(rpcpath)" with rcpath and working directory'
     print rpcpath
+    print workdir
+    print os.getcwd()
     execfile(rpcpath)
     quit()
     '''
-    # transfer script parameters to the input script
-    if o.band == '3':
-        bandnot = '6Lo'
-        bandaid = '6Hi'
-    elif o.band == '6Lo':
-        bandnot = '3'
-        bandaid = '6Hi'
-    elif o.band == '6Hi':
-        bandnot = '3'
-        bandaid = '6Lo'
-    else:
-        raise Exception, 'Programmer error, illegal case'
+    return template
 
+def createCasaInput(o, joblist, caldir, workdir):
+    '''
+    This function creates a file of python commands that can be piped
+    directly into CASA.  It is now written to support both the single
+    processing as well as the parallel processing case.
+    '''
+    oinput = workdir + '/' + o.input
+    if o.verb: print 'Creating CASA input file\n  ' + oinput
     if o.xyadd != '':
         userXY = ''
         XYvalu = float(o.xyadd)
@@ -517,22 +530,98 @@ def createCasaInput(o):
         userXY = '#'
         XYvalu = 0.0
 
-    if o.ampnrm: ampnrm = 'True'
-    else:        ampnrm = 'False'
     if o.test:   dotest = 'True'
     else:        dotest = 'False'
 
+    template = getInputTemplate()
     script = template % (o.doPlot[0], o.doPlot[0],
-        o.label, o.band, bandnot, bandaid, o.exp,
-        o.ant, o.zfirst, o.zfinal,
+        caldir, o.label, o.exp, o.ant, o.zfirst, o.zfinal,
         o.doPlot[1], o.doPlot[2], o.doPlot[3], o.flist,
-        o.qa2, o.qal, o.qa2_dict, ampnrm, o.gaindel,
-        o.remote, o.npix, dotest, o.doPlot[0],
-        o.spw, o.constXYadd, userXY, XYvalu, o.djobs)
-
+        o.qa2, o.qal, o.qa2_dict, o.gainmeth, o.avgtime, o.ampnrm, o.gaindel,
+        o.remote, o.remotelist, o.npix, dotest, o.doPlot[0],
+        o.spw, o.constXYadd, userXY, XYvalu, joblist, workdir)
+    # write the file, stripping indents
+    ci = open(oinput, 'w')
     for line in script.split('\n'):
         ci.write(line[4:] + '\n')
     ci.close()
+    return os.path.exists(oinput)
+
+def createCasaInputSingle(o):
+    '''
+    Create the input to process all jobs in the current
+    working directory, sequentially.
+    '''
+    if createCasaInput(o, o.djobs, '.', '.'):
+        if o.verb: print 'Created %s for single-threaded execution' % o.input
+    else:
+        print 'Problem creating',o.input
+        o.run = False
+
+def createCasaCommand(o, job, workdir):
+    '''
+    The required shell incantation to run one job (it is the
+    same incantation for all jobs, but it is convenient to put
+    it into the workdir.  Some of these are the same as in
+    the original executeCasa() function.  The base filename
+    of the command is returned as that is what will be executed
+    in the specified working directory.
+    '''
+    basecmd = o.exp + '.' + job + '.pc-casa-command'
+    cmdfile = workdir + '/' + basecmd
+    os.mkdir(workdir + '/casa-logs')
+    cmd = map(str,range(13))
+    cmd[0]  = '#!/bin/sh'
+    cmd[1]  = '[ -f killcasa ] && exit 0'
+    cmd[2]  = 'cd ' + workdir + ' && echo "starting" > ./status || exit 1'
+    cmd[3]  = 'date -u +%Y-%m-%dT%H:%M:%S > ./timing'
+    cmd[4]  = '%s --nologger -c %s > %s 2>&1 < /dev/null' % (
+        o.casa, o.input, o.output)
+    cmd[5]  = 'echo "converted" > ./status'
+    cmd[6]  = 'mv casa*.log ipython-*.log casa-logs'
+    cmd[7]  = 'mv %s %s *.pc-casa-command casa-logs' % (o.input, o.output)
+    cmd[8]  = 'mv polconvert.last casa-logs'
+    cmd[9]  = 'echo "complete" > ./status'
+    cmd[10] = 'date -u +%Y-%m-%dT%H:%M:%S >> ./timing'
+    cmd[11] = 'echo " "CASA for job %s finished.' % job
+    cmd[12] = 'exit 0'
+    cs = open(cmdfile, 'w')
+    for ii in range(len(cmd)): cs.write(cmd[ii] + '\n')
+    cs.close()
+    execbits = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+    execbits |= stat.S_IRGRP | stat.S_IROTH
+    os.chmod(cmdfile, execbits)
+    if os.path.exists(cmdfile): return basecmd
+    else:                       return 'error'
+
+def createCasaInputParallel(o):
+    '''
+    Create all of the CASA working directories and input files.
+    This is only used if o.parallel is > 0.  The work is similar
+    to the createCasaInput() input case except we must first create
+    a working directory of the appropriate name before creating the
+    script file.  The working directory (in the other case) was
+    created in runpolconvert after the execution.
+    '''
+    if o.verb: print 'Creating CASA work dirs and input files ' + o.input
+    o.workdirs = {}
+    o.workcmds = {}
+    if checkDifxSaveDirsError(o, True):
+        print 'Either *.difx dirs are missing or *.save dirs are present'
+        o.jobnums = []
+    o.now = datetime.datetime.now()
+    for job in sorted(o.jobnums):
+        savename = o.exp + '_' + job
+        workdir = o.now.strftime(savename + '.polconvert-%Y-%m-%dT%H.%M.%S')
+        os.mkdir(workdir)
+        odjobs = str(map(str,[job]))
+        if createCasaInput(o, odjobs, '..', workdir):
+            cmdfile = createCasaCommand(o, job, workdir)
+            o.workdirs[job] = workdir
+            o.workcmds[job] = cmdfile
+            # print '--- created working dir with inputs for job %s ---' % job
+        else:
+            print '*** unable to create workdir or input for job %s ***' % job
 
 def removeTrash(o, misc):
     '''
@@ -546,10 +635,9 @@ def removeTrash(o, misc):
     print 'Removing prior ipython & casa logs'
     os.system('rm -f ipython-*.log casa*.log')
 
-def doFinalRunCheck(o):
+def checkDifxSaveDirsError(o, vrb):
     '''
-    runpolconvert is careful, but the overhead of getting to it
-    is high, so we check for this last bit of operator fatigue
+    Verify that that which must exist does, and that which should not doesn't.
     '''
     swine = []
     saved = []
@@ -558,9 +646,18 @@ def doFinalRunCheck(o):
         save = './%s_%s.save' % (o.exp,str(job))
         if os.path.exists(save): saved.append(save)
         if not os.path.exists(swin): swine.append(swin)
-    if len(swine) > 0: print 'These are missing (get them):',swine
-    if len(saved) > 0: print 'These are present (nuke them):',saved
-    if o.run and (len(saved) > 0 or len(swine) > 0):
+    if (len(saved) > 0 or len(swine) > 0):
+        if vrb and len(swine) > 0: print 'These are missing (get them):',swine
+        if vrb and len(saved) > 0: print 'These are present (nuke them):',saved
+        return True
+    return False
+
+def doFinalRunCheck(o):
+    '''
+    runpolconvert is careful, but the overhead of getting to it
+    is high, so we check for this last bit of operator fatigue
+    '''
+    if o.run and checkDifxSaveDirsError(o, o.run):
         print '\n\n### Disabling Run so you can fix the issue\n'
         o.run=False
 
@@ -575,7 +672,8 @@ def executeCasa(o):
              'CONVERSION.MATRIX', 'FRINGE.PEAKS', 'FRINGE.PLOTS' ]
     removeTrash(o, misc)
     cmd1 = 'rm -f %s' % (o.output)
-    cmd2 = '%s --nologger < %s > %s 2>&1' % (o.casa, o.input, o.output)
+    cmd2 = '%s --nologger -c %s > %s 2>&1 < /dev/null' % (
+        o.casa, o.input, o.output)
     cmd3 = '[ -d casa-logs ] || mkdir casa-logs'
     if o.prep: cmd4 = 'mv prepol*.log '
     else:      cmd4 = 'mv '
@@ -586,11 +684,20 @@ def executeCasa(o):
     if o.run:
         doFinalRunCheck(o)
     if o.run:
-        if o.verb: print 'Note, ^C will not stop CASA (or polconvert).'
-        if o.verb: print 'Follow CASA run with:\n  tail -n +1 -f %s\n' % (
-            o.output)
-        if os.system(cmd1 + ' ; ' + cmd2):
-            raise Exception, 'CASA execution "failed"'
+        if os.system(cmd1):
+            raise Exception, 'That which cannot fail (rm -f), failed'
+        if o.verb:
+            print 'Note, ^C will not stop CASA (or polconvert).'
+            print 'If it appears to hang, use kill -9 and then'
+            print '"touch killcasa" to allow normal cleanup.'
+            print 'Follow CASA run with:\n  tail -n +1 -f %s\n' % (o.output)
+        if os.system(cmd2):
+            if os.path.exists('killcasa'):
+                print 'Removing killcasa'
+                os.unlink('killcasa')
+                print 'Proceeding with remaining cleanup'
+            else:
+                raise Exception, 'CASA execution "failed"'
         if o.verb:
             print 'Success!  See %s for output' % o.output
         logerr = False
@@ -636,6 +743,127 @@ def executeCasa(o):
         print 'additional test runs on the same jobs.'
         print ''
 
+def convertOneScan(job,wdr,cmd):
+    '''
+    Process one scan for this job as laid out in wdr using cmd
+    '''
+    print ' job', job, 'in', wdr
+    # sanity check
+    if o.checkdir:
+        os.chdir(wdr)
+        print ' job', job, 'is', os.path.basename(os.getcwd())
+        os.chdir('..')
+    print ' job', job, 'w/', cmd
+    # either doit or just vet the thread machinery
+    if o.run: os.system(wdr + '/' + cmd)
+    else: os.system('/usr/bin/sleep 10')
+    time.sleep(o.sleeper)
+
+def launchNewScanWorker(o, where):
+    '''
+    This pulls a job for one scan out of the dictionaries
+    and launches a thread to have CASA process it.
+    '''
+    job = sorted(o.workdirs)[0];
+    wdr = o.workdirs.pop(job)
+    cmd = o.workcmds.pop(job)
+    th = threading.Thread(target=convertOneScan,args=(job,wdr,cmd))
+    o.workbees.append(th)
+    print 'Spawning thread',th.name,'on job', job,where
+    th.start()
+    time.sleep(o.sleeper)
+
+def waitForNextWorker(o):
+    '''
+    Monitor the threads; when one is no longer alive spawn a new job.
+    When we run out of jobs, the number of active threads will normally
+    drop to zero and then we are done.  Need to consider how to kill
+    this beast.
+    '''
+    while True:
+        for th in o.workbees:
+            if th.isAlive():
+                time.sleep(o.sleeper)
+            else: # it finished
+                o.workbees.remove(th)
+                if len(o.workdirs) > 0:
+                    launchNewScanWorker(o, '(recycled)')
+                else:
+                    print 'Have',len(o.workbees),'threads still running'
+                    if len(o.workbees) == 0:
+                        print 'Done! -- all CASA workers have finished'
+                        return
+
+def executeThreads(o):
+    '''
+    Create and managed o.parallel threads of execution so that each
+    job is delivered to a thread for processing.  We keep processing
+    as long as there is work to do and we are able to launch threads.
+    Once we have reached the limit, we launch new threads for the
+    remaining scans as thread slots become available
+    '''
+    while len(o.workdirs) > 0:
+        if len(o.workbees) < o.parallel:
+            launchNewScanWorker(o, '(original)')
+        else:
+            waitForNextWorker(o)
+            return
+    print 'Wait for processing threads to finish.'
+
+def reportWorkTodo(o):
+    '''
+    Give the user a hint of what happened.
+    '''
+    if len(o.workdirs) > 0:
+        print 'Several jobs were not processed:'
+        for job in o.workdirs:
+            print ' job', job, 'in', o.workdirs[job]
+            print ' job', job, 'w/', o.workcmds[job]
+    print 'Results are in',o.now.strftime('*.polconvert-%Y-%m-%dT%H.%M.%S')
+
+def executeCasaParallel(o):
+    '''
+    Drive o.parallel executions of CASA in parallel.
+    Aside from o.workdirs and o.workcmds, o.workbees contain the
+    references to threading objects, and o.sleeper puts in pauses
+    to avoid race conditions and give the human time to read.
+    '''
+    if not o.run:
+        print 'CASA commands and working directories have been prepared.'
+        print 'You can execute the jobs manually, with these commands:'
+        for job in o.workdirs:
+            wdir = o.workdirs[job]
+            ccmd = o.workcmds[job]
+            print '  pushd',wdir,'; ./'+ccmd,'& popd'
+        return
+    if o.verb:
+        print 'Driving %d parallel CASA jobs' % (o.parallel)
+        print '  Touch "killcasa" to terminate prematurely.'
+        print '  (Current CASA jobs will continue until done.)'
+    try:
+        o.workbees = []
+        o.sleeper = 1
+        # developer option to double-check working dir
+        o.checkdir = False
+        # developer option to test threading logic.
+        # o.run = False
+        if o.parallel > 0:
+            executeThreads(o)
+    except KeyboardInterrupt:   #^C
+        print ', Shutting down...'
+        print 'You may need to use ps to find and kill some stuck'
+        print 'processes in a few minutes if they are still running'
+    except KeyError:
+        print 'Developer screwup...'
+        raise
+    except Exception:
+        print 'Some other problem...'
+        raise
+    finally:
+        reportWorkTodo(o)
+        try: os.unlink('killcasa')
+        except: pass
+
 #
 # enter here to do the work
 #
@@ -646,8 +874,12 @@ if __name__ == '__main__':
         runPrePolconvert(o)
     deduceZoomIndicies(o)
     plotPrep(o)
-    createCasaInput(o)
-    executeCasa(o)
+    if o.parallel == 0:
+        createCasaInputSingle(o)
+        executeCasa(o)
+    else:
+        createCasaInputParallel(o)
+        executeCasaParallel(o)
 
 #
 # eof

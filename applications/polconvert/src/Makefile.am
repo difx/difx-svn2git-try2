@@ -9,17 +9,21 @@ PolConvertSources = \
 	DataIOSWIN.cpp DataIOSWIN.h \
 	Weighter.cpp Weighter.h \
 	_PolConvert.cpp polconvert.xml \
+	_getAntInfo.cpp _PolGainSolve.cpp \
 	setup.py task_polconvert.py
-PostPolScripts = PP/prepolconvert.py PP/runpolconvert.py PP/README.POLCONVERT
-ScriptCopies = prepolconvert.py runpolconvert.py README.POLCONVERT 
+PostPolScripts = PP/prepolconvert.py PP/runpolconvert.py PP/README.POLCONVERT \
+	PP/Estimate_DPFU.py PP/DPFU_scanner.py
+ScriptCopies = prepolconvert.py runpolconvert.py README.POLCONVERT \
+	Estimate_DPFU.py DPFU_scanner.py
 
 # BUILT_SOURCES doesn't help here.
 BuiltSources = $(PolConvertSources) $(PostPolScripts)
 
 bin_SCRIPTS = PP/prepolconvert.py PP/drivepolconvert.py
 pkgdata_DATA = _PolConvert.so \
+	_getAntInfo.so _PolGainSolve.so \
 	PP/runpolconvert.py task_polconvert.py polconvert.xml \
-	PP/README.POLCONVERT
+	PP/README.POLCONVERT PP/Estimate_DPFU.py PP/DPFU_scanner.py
 
 # need to get the install first, then the local data install task
 install-data-am: install-pkgdataDATA install-data-local
@@ -34,6 +38,9 @@ install-data-local: install-pkgdataDATA
 bmt = polconvert.py polconvert_cli.py mytasks.py *.pyc
 uninstall-local:
 	cd $(pkgdatadir) ; rm -f $(bmt)
+
+check-local:
+	-ls -l $(bindir)/*polconvert* $(pkgdatadir)
 
 # no work for in-place builds, otherwise import the sources
 copy.them:

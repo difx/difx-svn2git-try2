@@ -8,6 +8,9 @@ import datetime
 import os
 import shutil
 import re
+import sys
+
+pcvers='1.7.1'
 
 # Begin by verifying everthing that should be defined at this point.
 # If we can't print something, that's probably enough for a test.
@@ -15,7 +18,7 @@ import re
 # Between v3 and v4 concatenated -> concatenated | calibrated
 # if concatenated.ms is already in label, we'll assume v3 or earlier
 # else use newer names here.
-print '\nRunning PolConvert Wrapper with label ' + label
+print '\nRunning PolConvert Wrapper with label ' + label + ' in ' + DiFXout
 v4tables = None
 lm = re.match('(.*)\.concatenated.ms', label)
 if lm:
@@ -30,14 +33,14 @@ else:
 # Things that we are expecting to be provided from the QA2 processing
 # We use a dictionary to allow name changes (which happened in development).
 try:
-    aantpath = ('%s.'+qa2['a'])%conlabel # ANTENNA
-    calapphs = ('%s.'+qa2['c'])%conlabel # calappphase
-    dtermcal = ('%s.'+qa2['d'])%callabel # Df0
-    bandpass = ('%s.'+qa2['b'])%conlabel # bandpass-zphs
-    ampgains = ('%s.'+qa2['g'])%conlabel # flux_inf.APP
-    phsgains = ('%s.'+qa2['p'])%conlabel # phase_int.APP
-    xyrelphs = ('%s.'+qa2['x'])%callabel # XY0.APP or XY0.ALMA
-    gxyampli = ('%s.'+qa2['y'])%callabel # Gxyamp.APP or Gxyamp.ALMA
+    aantpath = ('%s/%s.'+qa2['a'])%(DiFXout,conlabel) # ANTENNA
+    calapphs = ('%s/%s.'+qa2['c'])%(DiFXout,conlabel) # calappphase
+    dtermcal = ('%s/%s.'+qa2['d'])%(DiFXout,callabel) # Df0
+    bandpass = ('%s/%s.'+qa2['b'])%(DiFXout,conlabel) # bandpass-zphs
+    ampgains = ('%s/%s.'+qa2['g'])%(DiFXout,conlabel) # flux_inf.APP
+    phsgains = ('%s/%s.'+qa2['p'])%(DiFXout,conlabel) # phase_int.APP*
+    xyrelphs = ('%s/%s.'+qa2['x'])%(DiFXout,callabel) # XY0.APP or XY0.ALMA
+    gxyampli = ('%s/%s.'+qa2['y'])%(DiFXout,callabel) # Gxyamp.APP/Gxyamp.ALMA
     if v4tables:
         calgains = [aantpath, calapphs, dtermcal,
                     bandpass, ampgains, phsgains, xyrelphs, gxyampli]
@@ -54,12 +57,14 @@ except Exception, ex:
 # option to delete specific gain tables from the list
 try:
     gdblst = ['bandpass', 'ampgains', 'phsgains', 'xyrelphs', 'gxyampli']
-    if type(gainDel) == str:
+    if type(gainDel) == str and ',' in gainDel:
         for g in gainDel.split(','):
             print 'Deleting ' + gdblst[int(g)]
             del calgains[3+int(g)]
         print 'Revised calgains list is:'
         for c in calgains: print '    ', c
+    elif gainDel == '':
+        print 'No gain deletion requested'
     else:
         gainDel = ''
         print 'Overriding gainDel -- turning it off'
@@ -69,18 +74,47 @@ except Exception, ex:
     gainDel = ''
     print 'gain deletion turned off'
 
+# option to control gain processing, which should be either
+# 'T' (combine) or 'G' (split) for handling of X&Y all gains
+# except XY0, bandpass or Gxyamp (which stay 'G'); the eventual
+# gaintype list must have the same structure as gains, interpolation.
+try:
+    if not (gainmeth == 'T' or gainmeth == 'G'):
+        gainmeth = 'G'
+        print 'illegal gain type supplied, defaulting to', gainmeth
+    if gainmeth == 'T': print 'X and Y cals will be combined'
+    if gainmeth == 'G': print 'X and Y cals will be split'
+except Exception, ex:
+    gainmeth = 'G'
+    print 'gain type not supplied, defaulting to', gainmeth
+
+# option to average gains over some interval to cut down on noise
+# this is a largely untested option: the preference is to do the
+# averaging on the QA2 products prior to this stage
+try:
+    if type(XYavgTime) == float:
+        if XYavgTime > 0.0: print 'Gains averaged over %f secs' % XYavgTime
+        else:               print 'No time averaging of gains'
+    else:
+        print 'disabling XYavgTime'
+        XYavgTime = 0.0
+except Exception, ex:
+    print 'XYavgTime not float?', str(ex)
+    XYavgTime = 0.0
+    print 'XYavgTime set to 0.0 (disabled)'
+
 # option to turn off the amplitude calibration logic
 try:
-    if type(ampNorm) == bool:
-        if ampNorm: print 'Amplitude Normalization is done'
-        else:       print 'Amplitude Normalization is off'
+    if type(ampNorm) == float:
+        if ampNorm: print 'Amplitude Normalization is ',ampNorm
+        else:       print 'Amplitude Normalization is other:',ampNorm
     else:
         print 'Overriding ampNorm -- turning it on'
-        ampNorm = True
+        ampNorm = 1.0
 except Exception, ex:
-    print 'ampNorm not bool?', str(ex)
-    ampNorm = True
-    print 'Amplitude Normalization is on'
+    print 'ampNorm not float?', str(ex)
+    ampNorm = 1.0
+    print 'Amplitude Normalization is now',ampNorm
 
 # option for fringe plot pixels
 try:
@@ -93,6 +127,17 @@ except Exception, ex:
     print 'numFrPltPix not int?', str(ex)
     numFrPltPix = 50
     print 'Setting numFrPltPix to 50'
+
+# option to use different peers per scan
+try:
+    if type(plotAntList) == list:
+        plotAntList.reverse()
+        print 'Popping antennas with indices',plotAntList
+    else:
+        raise Exception, 'plotAntList not a list'
+except Exception, ex:
+    print ex, 'Disabled plotAntList, using plotAnt', plotAnt
+    plotAntList = []
 
 # require constXYadd to be set to allow disabling table
 try:
@@ -114,30 +159,27 @@ try:
 except Exception, ex:
     raise ex
 
-# one of of these should be True, the others False
+# Use 1..4 or -1 for the spw
 try:
-    if not (band3 or band6Lo or band6Hi):
-        raise Exception, 'One of band3 or band6Lo or band6Hi must be True'
-    if (band3 and band6Lo) or (band3 and band6Hi) or (band6Lo and band6Hi):
-        raise Exception, 'Only one of band3 or band6Lo or band6Hi may be True'
-    if band3: print 'Band 3 operation'
-    if band6Lo: print 'Band 6 Lo operation'
-    if band6Hi: print 'Band 6 Hi operation'
+    if type(spwToUse) == int:
+        if spwToUse in [-1, 1, 2, 3, 4]: pass
+        else:                            spwToUse = -1
 except Exception, ex:
     raise ex
+print 'Spectral window request is for',spwToUse
 
 #
-# A method to drive Polconvert for anticipated Cycle4 needs.
+# A method to drive Polconvert for anticipated Cycle4/5 needs.
 # 
 # Notice that PolConvert knows that we have a set of SWIN files, because we
 # give a directory to the IDI keyword (instead of a file).
-# plotAnt=2 selects the baseline betwen antennas 1(AA) and 2
+# plotAnt=2 selects the baseline betwen antennas 1(AA) and 2(whatever)
 #
-def runPolConvert(label, band3=False, band6Lo=False, band6Hi=False,
-    DiFXinput='', DiFXoutput='', DiFXsave='',
+def runPolConvert(label, spw=-1, DiFXinput='',
+    DiFXoutput='', DiFXcalc='', DiFXsave='',
     timeRange=[], doTest=True, savename='', plotIF=-1, doIF=[], 
-    amp_norm=True, XYadd=[0.0], XYratio=[1.0], linAnt=[1], plotAnt=-1,
-    npix=50):
+    amp_norm=1.0, XYadd=[0.0], XYratio=[1.0], linAnt=[1], plotAnt=-1,
+    npix=50, gainmeth='T', XYavgTime=0.0):
     # based on common drivepolconvert inputs above
     gains = calgains[3:]
     interpolation = ['linear', 'nearest', 'linear', 'linear']
@@ -150,29 +192,16 @@ def runPolConvert(label, band3=False, band6Lo=False, band6Hi=False,
         gains = gains[0:3]
         interpolation = interpolation[0:3]
 
+    gaintype = map(lambda g: 'G' if ('XY0' in g or 'bandpass' in g or
+        'Gxyamp' in g) else gainmeth, gains)
+
     # cover for optional tables
     while len(interpolation) < len(gains):
         interpolation.append('linear')
     print 'gains', len(gains), gains
     print 'interpolation', len(interpolation), interpolation
-
-    if band3:
-        spw=0
-        bnd='Band 3'
-    elif band6Lo:
-        spw=2
-        bnd='Band 6 Lo'
-    elif band6Hi:
-        spw=3
-        bnd='Band 6 Hi'
-    else:
-        raise Exception, 'No band selected for PolConvert to work with'
-    try:
-        if spwToUse != 4: spw = spwToUse
-    except:
-        print 'spwToUse was not defined'
-    print 'PolConvert will use Spectral Window %d for %s on %s' % (
-        spw, bnd, label)
+    print 'gaintype', len(gaintype), gaintype
+    print 'PolConvert will use Spectral Window %d on %s' % (spw, label)
 
     if not os.path.exists(DiFXinput):
         raise Exception, 'No DiFX input %s'%DiFXinput
@@ -184,27 +213,33 @@ def runPolConvert(label, band3=False, band6Lo=False, band6Hi=False,
     # ok, save it and proceed
     os.rename(DiFXoutput, DiFXsave)
 
-    # actually run PolConvert setting everything.
-    # commented arguments are not needed for DiFX, but are
-    # mentioned here as comments for clarity.  CASA supplies
-    # defaults from the task xml file.
+    # Now we actual run PolConvert setting (almost) everything.
+    # Commented arguments are not needed for DiFX, but are
+    # mentioned here as comments for clarity and coordination
+    # with task_polconvert.py:^def polconvert(...)
+    # CASA supplies defaults from the task xml file.
     try:
         print 'Calling PolConvert from runpolconvert'
-        polconvert(IDI=DiFXsave, OUTPUTIDI=DiFXoutput, DiFXinput=DiFXinput,
-            #DiFXcalc,
-            linAntIdx=[1], Range=Range, ALMAant=aantpath,
+        polconvert(IDI=DiFXsave, OUTPUTIDI=DiFXoutput,
+            DiFXinput=DiFXinput, DiFXcalc=DiFXcalc,
+            doIF=doIF,
+            linAntIdx=linAnt, Range=Range, ALMAant=aantpath,
             spw=spw, calAPP=calapphs, calAPPTime=calAPPTime,
             #APPrefant,
             gains=[gains], interpolation=[interpolation],
+            gainmode=[gaintype], XYavgTime=XYavgTime,
             dterms=[dterm], amp_norm=amp_norm,
             XYadd=XYadd,
             #XYdel,
-            XYratio=XYratio, swapXY=[False], IDI_conjugated=True,
-            plotIF=plotIF, doIF=doIF, plotRange=timeRange,
+            XYratio=XYratio, swapXY=[False],
+            #swapRL,
+            IDI_conjugated=True,
+            plotIF=plotIF, plotRange=timeRange,
             plotAnt=plotAnt,
-            #excludedAnts, doSolve, solint
+            #excludedAnts, doSolve, solint,
             doTest=doTest, npix=npix,
             solveAmp=False
+            #, solveMethod=gradient
             )
     except Exception, ex:
         print 'Polconvert Exception'
@@ -213,12 +248,21 @@ def runPolConvert(label, band3=False, band6Lo=False, band6Hi=False,
         os.rename(DiFXsave, DiFXoutput)
         raise ex
 
+    try:
+        makeHistory(label, DiFXoutput, doIF=doIF, linAntIdx=linAntIdx,
+            spw=spw, calAPPTime=calAPPTime, interpolation=[interpolation],
+            gainmode=[gaintype], XYavgTime=XYavgTime, amp_norm=amp_norm,
+            XYadd=XYadd, XYratio=XYratio, swapXY=[False])
+    except Exception, ex:
+        print 'Ignoring exception while writing history:', str(ex)
+
     # save the plots and other developer artifacts in a subdir
     pcprods = [ 'PolConvert.log', 'Fringe.plot%d.png'%plotAnt,
                 'Kmatrix_AMP.png', 'Kmatrix_PHAS.png',
                 'FRINGE.PEAKS.dat', 'POLCONVERT.FRINGE', 'POLCONVERT.GAINS',
                 'POLCONVERT_STATION1.ANTAB', 'CONVERSION.MATRIX',
                 'FRINGE.PEAKS', 'FRINGE.PLOTS' ]
+    # this is used only in non-parallel execution
     if savename != '':
         now = datetime.datetime.now()
         outdir = now.strftime(savename + '.polconvert-%Y-%m-%dT%H.%M.%S')
@@ -228,20 +272,64 @@ def runPolConvert(label, band3=False, band6Lo=False, band6Hi=False,
                 os.rename(art, outdir + '/' + art)
         print savename + ' results moved to ' + outdir
 
+def makeHistory(label, DiFXoutput, doIF=[], linAntIdx=[], spw=-1,
+    calAPPTime=[], interpolation=[], gainmode=[], XYavgTime=0.0,
+    amp_norm=1.0, XYadd=XYadd, XYratio=XYratio, swapXY=[]):
+    '''
+    Generate a history record for eventual use by difx2fits
+    '''
+    if not os.path.isdir(DiFXoutput):
+        print 'No directory for polconvert history'
+        return
+    history = DiFXoutput + '/polconvert.history'
+    fh = open(history, 'w')
+    fh.write('PolConvert %s: %s\n' % (pcvers,
+        datetime.datetime.now().strftime('%Y-%m-%dT%H.%M.%S')))
+    fh.write('QA2 set: %s\n' % label)
+    iflist = str(doIF)
+    while len(iflist) > 0:
+        fh.write('IF list: %s\n' % iflist[0:60])
+        iflist = iflist[60:]
+    fh.write('linAntIdx: %s == %s\n' % (str(linAntIdx), 'AA'))
+    fh.write('spw: %s\n' % str(spw))
+    fh.write('calAPPTime: %s\n' % str(calAPPTime))
+    fh.write('interpolation: %s\n' % str(interpolation))
+    fh.write('gainmode: %s\n' % str(gainmode))
+    fh.write('XYavgTime: %s\n' % str(XYavgTime))
+    fh.write('amp_norm: %s\n' % str(amp_norm))
+    fh.write('XYadd: %s\n' % str(XYadd))
+    fh.write('XYratio: %s\n' % str(XYratio))
+    fh.write('swapXY: %s\n' % str(swapXY))
+    fh.close()
+    print 'Wrote history to', history
+
 for job in djobs:
     # DiFX output dir and input files:
-    DiFXout = '.'
+    # DiFXout is defined in the input.
     DiFXinput = ('%s/%s_%s.input' % (DiFXout,expName,job))
+    #DiFXcalc = ('%s/%s_%s.calc' % (DiFXout,expName,job))
+    #DiFXcalc is not used in the default ALMA implementation
     SWIN = ('%s/%s_%s.difx' % (DiFXout,expName,job))
     SAVE = ('%s/%s_%s.save' % (DiFXout,expName,job))
 
+    if len(plotAntList) > 0: usePlotAnt = plotAntList.pop()
+    else:                    usePlotAnt = plotAnt
+
+    if DiFXout == '.': thesavename = expName + '_' + job
+    else:              thesavename = ''
+
     print '\nProceeding with job ' + job + '\n'
-    runPolConvert(label, band3=band3, band6Lo=band6Lo, band6Hi=band6Hi,
-        DiFXinput=DiFXinput, DiFXoutput=SWIN, DiFXsave=SAVE,
+    runPolConvert(label, spw=spwToUse,
+        DiFXinput=DiFXinput, DiFXcalc='', DiFXoutput=SWIN, DiFXsave=SAVE,
         amp_norm=ampNorm, XYadd=XYadd, XYratio=XYratio,
-        timeRange=timeRange, doTest=doTest, savename=expName + '_' + job,
-        plotIF=plotIF, doIF=doIF, linAnt=linAnt, plotAnt=plotAnt,
-        npix=numFrPltPix)
+        timeRange=timeRange, doTest=doTest, savename=thesavename,
+        plotIF=plotIF, doIF=doIF, linAnt=linAnt, plotAnt=usePlotAnt,
+        npix=numFrPltPix, gainmeth=gainmeth, XYavgTime=XYavgTime)
+    print '\nFinished with job ' + job + '\n'
+
+# make sure the last of the log gets written out so we are sure we are done
+print 'Finished with runpolconvert tasks'
+sys.stdout.flush()
 
 #
 # eof
