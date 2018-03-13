@@ -21,6 +21,7 @@
 
 #include <difxio/difx_input.h>
 #include <limits.h>
+#include <time.h>
 
 #define MAX_INPUT_FILES 4096
 #define MAX_VIS 8192
@@ -110,7 +111,7 @@ struct fblock_tag
         int bs;                     // quantization bits/sample
         int first_time;             // true iff first entry in table of chan_id for ant 
         int zoom;                   // true iff this channel is zoom mode
-        int pcal_int;               // pcal interval (MHz)
+        double pcal_int;            // pcal interval (MHz)
         double freq;                // LO frequency (MHz); negative for LSB
         double bw;                  // bandwidth (MHz)
         } stn[2];                   // reference | remote
@@ -147,6 +148,8 @@ void normalize (struct CommandLineOptions *, vis_record *, int, int, int,
                 struct fblock_tag *);
                                     // root_id.c
 char *root_id(int, int, int, int, int);
+char *root_id_break(time_t, int, int, int, int, int);
+int root_id_delta(time_t);
                                     // single_code.c
 char single_code (char *, char *);
                                     // swabr.c
