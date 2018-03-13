@@ -19,7 +19,7 @@ def parseOptions():
     des = parseOptions.__doc__
     epi = ''
     use = '%(prog)s [options] [input_file [...]]\n  Version'
-    use += '$Id: ehtc-zoomchk.py 1969 2017-08-29 16:15:47Z gbc $'
+    use += '$Id: ehtc-zoomchk.py 2186 2018-01-10 16:52:38Z gbc $'
     parser = argparse.ArgumentParser(epilog=epi, description=des, usage=use)
     # essential options
     parser.add_argument('-v', '--verbose', dest='verb',
@@ -31,6 +31,11 @@ def parseOptions():
     parser.add_argument('-A', '--ALMA', dest='alma',
         default='AA', metavar='CODE',
         help='two-letter code with linear pol (normall AA)')
+    parser.add_argument('-z', '--zmchk', dest='zmchk',
+        default=False, action='store_true',
+        help='the default (False) assumes the PolConvert fix to not' +
+            ' crash if the IFs mentioned cannot be converted; set this' + 
+            ' to recover the original behavior which protects PolConvert.')
     # the remaining arguments provide the list of input files
     parser.add_argument('nargs', nargs='*',
         help='List of DiFX input job files')
@@ -92,7 +97,9 @@ def deduceZoomIndicies(o):
             jskip.append(jobin)
         antmap = {}
     if o.verb: print '##\n## Zoom mid freq is ', ' '.join(sorted(mfqlst))
-    if (len(zfirst) != 1 or len(zfinal) != 1 or
+    if o.zmchk:
+      # original logic
+      if (len(zfirst) != 1 or len(zfinal) != 1 or
         len(jskip) > 0 or len(zoomys) > 1):
         print '##'
         print '## EITHER: Ambiguities in zoom freq ranges:'
@@ -113,13 +120,42 @@ def deduceZoomIndicies(o):
         print '#'
         print 'eval `$ehtc/ehtc-joblist.py -i $dout/$evs -o *.obs $jselect -J`'
         print '#'
-    else:
+      else:
         o.zfirst = int(zfirst.pop())
         o.zfinal = int(zfinal.pop())
         if o.verb: print 'Zoom frequency indices %d..%d found in %s..%s' % (
             o.zfirst, o.zfinal, o.nargs[0], o.nargs[-1])
         print '## All jobs are compatible with the same zoom range:',
         for z in zoomys: print '##', z
+    elif len(jskip) > 0:
+        # alma missing from some scans
+        print '##'
+        print '## Warning, ALMA is missing from some scans:'
+        print '## be certain you do not polconvert them'
+        print '##'
+        for j in jskip:
+            print '# skip %s since %s does not appear' % (j, o.alma)
+        print '#'
+        jok = []
+        for j in jlist:
+            jok = jok + jlist[j]
+        print "jobs='%s'" % ' '.join(sorted(jok))
+        print "drivepolconvert.py -v $opts -l $pcal $jobs"
+        print '#'
+        print '# But be certain to reset $jobs to the full set after'
+        print '# you finish the PolConvert step so that these scans'
+        print '# are included in the tarballs.'
+        print '#'
+    else:
+        # all are the same and alma present
+        o.zfirst = int(sorted(list(zfirst))[0])
+        o.zfinal = int(sorted(list(zfinal))[-1])
+        if o.verb: print '## Zoom frequency indices %d..%d in %s\n##  ..%s' % (
+            o.zfirst, o.zfinal, o.nargs[0], o.nargs[-1])
+        print '## We believe PolConvert can handle these:',
+        print '##',
+        for z in zoomys: print z,
+        print
 
 #
 # enter here to do the work
