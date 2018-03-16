@@ -15,6 +15,7 @@ Perform these autoconfiguration steps in this source directory:
     autoconf
     autoheader
     automake -acf
+    autoreconf
 
 There should be no messages about missing files and directories.
 It is not necessary to define HOPS_ROOT although you may.
