@@ -4323,7 +4323,9 @@ struct mark5_format_generic *new_mark5_format_codif(int framesperperiod,
 {
     int status;
     
-    printf("DEBUG: format_codif.c: new_mark5_format_codif\n");
+    printf("DEBUG: format_codif.c: new_mark5_format_codif (%d, %d, %d, %d, %d, %d, %d, %d\n",
+	   framesperperiod, alignmentseconds, nchan, nbit, decimation, databytesperpacket,
+	   frameheadersize, usecomplex);
     static int first = 1;
     struct mark5_format_generic *f;
     struct mark5_format_codif *v;
@@ -4347,6 +4349,7 @@ struct mark5_format_generic *new_mark5_format_codif(int framesperperiod,
 	f->framesperperiod = framesperperiod;
 	f->alignmentseconds = alignmentseconds;
 	f->Mbps = ((double)framesperperiod*databytesperpacket*8)/alignmentseconds/1e6;
+	printf("Set Mbps=%.1f\n", f->Mbps);
 	f->nchan = nchan;
 	f->nbit = nbit;
 	f->formatdata = v;
