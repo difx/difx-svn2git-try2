@@ -3928,7 +3928,7 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 
 		for(ms->framegranularity = 1; ms->framegranularity < 128; ++ms->framegranularity)
 		{
-		        if((((uint64_t)1000000000)*ms->framegranularity) % ((uint64_t)ms->framesperperiod*ms->alignmentseconds) == 0)
+		        if((((uint64_t)1000000000)*ms->framegranularity*ms->alignmentseconds) % ((uint64_t)ms->framesperperiod) == 0)
 		        {
 		                break;
 		        }
@@ -4532,7 +4532,7 @@ int get_codif_framegranularity(const codif_header *header)
 	int granularity;
 	for (granularity=1; granularity<1024; ++granularity)
 	{
-		if (((uint64_t)1000000000*granularity) % (framesperperiod*getCODIFPeriod(header)) == 0)
+		if (((uint64_t)1000000000*granularity*getCODIFPeriod(header)) % (framesperperiod) == 0)
 		{
 			break;
 		}

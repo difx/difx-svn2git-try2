@@ -3857,7 +3857,7 @@ static int mark5_format_vdif_init(struct mark5_stream *ms)
 
 		for(ms->framegranularity = 1; ms->framegranularity < 128; ms->framegranularity *= 2)
 		{
-			if((((uint64_t)1000000000)*ms->framegranularity) % ((uint64_t)ms->framesperperiod*ms->alignmentseconds) == 0)
+			if((((uint64_t)1000000000)*ms->framegranularity*ms->alignmentseconds) % ((uint64_t)ms->framesperperiod) == 0)
 			{
 				break;
 			}
