@@ -395,7 +395,7 @@ struct mark5_format_generic *new_mark5_format_generic_from_string( const char *f
 	char newformatseparator = 'm'; 	//If present in VDIF or CODIF format string, indicates new-style file name
 					//with "<FRAMESPERPERIOD>m<ALIGNEMENTSECONDS> rather than <Mbps>"
 
-	printf("DEBUG: mark5_stream.c: new_mark5_format_generic_from_string\n");
+	printf("DEBUG: mark5_stream.c: new_mark5_format_generic_from_string (%s)\n", formatname);
 	
 	mark5_library_consistent();
 
