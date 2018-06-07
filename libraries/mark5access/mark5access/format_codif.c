@@ -160,7 +160,6 @@ static int mark5_stream_frame_time_codif(const struct mark5_stream *ms, int *mjd
 	unsigned long long fullframens;
 	codif_header *header;
 
-	printf("mark5_stream_frame_time_codif\n");
 	/* table below is valid for year 2000.0 to 2032.0 and contains mjd on Jan 1 and Jul 1
 	 * for each year. */
 	static int mjdepochs[64] = 
@@ -210,7 +209,6 @@ static int mark5_stream_frame_time_codif(const struct mark5_stream *ms, int *mjd
 	{
 	        *ns = fullframens % 1000000000;
 	}
-	printf(" Frame# = %d\n", getCODIFFrameNumber(header));
 
 	return 0;
 }
@@ -3980,7 +3978,6 @@ static int mark5_format_codif_final(struct mark5_stream *ms)
 static int mark5_format_codif_validate(const struct mark5_stream *ms)
 {
 	codif_header *header;
-	printf("format_codif.c: mark5_format_codif_validate\n");
 	
 	/* Check for overly unusual header  */
 	header = (codif_header *)ms->frame;
@@ -4028,8 +4025,6 @@ static int mark5_format_codif_validate(const struct mark5_stream *ms)
 		return 0;
 	}
 
-	
-	printf("DEBUG: codif frame # %d OK\n", getCODIFFrameNumber(header));
 	return 1;
 }
 
@@ -4429,8 +4424,6 @@ int find_codif_frame(const unsigned char *data, int length, size_t *offset, int 
     uint32_t fsA, fsB, secA, secB;
     codif_header *header;
     
-    printf("DEBUG format_codif.c: find_codif_frame\n");
-
     for (*offset=0; *offset<length; (*offset)++) {
       header = (codif_header*)(data + *offset);
       
