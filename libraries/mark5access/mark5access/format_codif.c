@@ -3187,8 +3187,6 @@ static int codif_complex_decode_8channel_16bit(struct mark5_stream *ms, int nsam
 		{
 		  for (j=0; j<8; j++) {
 		    data[j][o] = ((int16_t)(buf[i]) + (int16_t)(buf[i+1])*I)/8.0;  // Assume RMS==8
-		    //printf("   %d: %d%+di\n", j, (int16_t)buf[i],  (int16_t)buf[i+1]);
-		  //data[j][o] = ((int16_t)(buf[i]^0x8000) + (int16_t)(buf[i+1]^0x8000)*I)/8.0;  // Assume RMS==8
 			i+=2;
 		  }
 		}
@@ -3821,11 +3819,9 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 	ms->framens = 0; // It gets set later
         ms->framegranularity = 1; // Should get set later
 
-        printf("DEBUG: Headersize, packetSize: %d %d\n", f->frameheadersize, f->databytesperpacket);
 	ms->payloadoffset = f->frameheadersize;
 	ms->databytes = f->databytesperpacket;
 	ms->framebytes = f->databytesperpacket + f->frameheadersize;
-        printf("DEBUG: nchan, nbit, decimation: %d %d %d\n", ms->nchan, ms->nbit, ms->decimation);
 	ms->blanker = blanker_codif;
 
 	/* We have some data to look at to further refine the format... */
@@ -3874,7 +3870,6 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 		ms->framesperperiod = get_codif_frames_per_period(header);
 		ms->alignmentseconds = get_codif_alignment_seconds(header);
 		ms->Mbps = ((double)ms->databytes * ms->framesperperiod * 8) / ms->alignmentseconds/1e6;
-		printf("DEBUG: Mbps set to %.1f\n", ms->Mbps);
 		
 		ms->framens = get_codif_framens(header);
 		
@@ -3892,7 +3887,7 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 	} 
 	else 
 	{ 
-		printf("DEBUG: No data to check\n");
+	  //printf("DEBUG: No data to check\n");
 	}
 	
 #warning "Need to set complex decode"
@@ -4317,10 +4312,6 @@ struct mark5_format_generic *new_mark5_format_codif(int framesperperiod,
 	int databytesperpacket, int frameheadersize, int usecomplex)
 {
     int status;
-    
-    printf("DEBUG: format_codif.c: new_mark5_format_codif (%d, %d, %d, %d, %d, %d, %d, %d\n",
-	   framesperperiod, alignmentseconds, nchan, nbit, decimation, databytesperpacket,
-	   frameheadersize, usecomplex);
     static int first = 1;
     struct mark5_format_generic *f;
     struct mark5_format_codif *v;
@@ -4344,7 +4335,6 @@ struct mark5_format_generic *new_mark5_format_codif(int framesperperiod,
 	f->framesperperiod = framesperperiod;
 	f->alignmentseconds = alignmentseconds;
 	f->Mbps = ((double)framesperperiod*databytesperpacket*8)/alignmentseconds/1e6;
-	printf("Set Mbps=%.1f\n", f->Mbps);
 	f->nchan = nchan;
 	f->nbit = nbit;
 	f->formatdata = v;

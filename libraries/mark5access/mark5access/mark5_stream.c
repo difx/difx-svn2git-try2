@@ -222,11 +222,8 @@ static int set_stream(struct mark5_stream *ms, const struct mark5_stream_generic
 
 static int set_format(struct mark5_stream *ms, const struct mark5_format_generic *f)
 {
-	printf("DEBUG: mark5_stream: set_format\n");
 	if(f && ms)
 	{
-		printf("DEBUG: f_decode = %p\n", f->decode);
-                printf("DEBUG: f_complex_decode = %p\n", f->complex_decode);
 		ms->init_format = f->init_format;
 		ms->final_format = f->final_format;
 		ms->decode = f->decode;
@@ -243,7 +240,6 @@ static int set_format(struct mark5_stream *ms, const struct mark5_format_generic
 			memcpy(ms->formatdata, f->formatdata, f->formatdatasize);
 		}
 		ms->Mbps = f->Mbps;
-                printf("DEBUG: Mbps=%0.1f\n", f->Mbps);
 		ms->framesperperiod = f->framesperperiod;
 		ms->alignmentseconds = f->alignmentseconds;
 		ms->nchan = f->nchan;
@@ -290,7 +286,6 @@ static int copy_format(const struct mark5_stream *ms, struct mark5_format *mf)
 
 static int mark5_format_init(struct mark5_stream *ms)
 {
-	printf("DEBUG mark5_stream.c:mark5_format_init\n");
         ms->framenum = 0;
 	ms->readposition = 0;
 	ms->frame = 0;
@@ -312,8 +307,6 @@ struct mark5_stream *mark5_stream_open(const char *filename, int nbit, int fanou
 	struct mark5_stream *ms;
 	int status, ntrack;
 
-	printf("DEBUG: mark5_stream:mark5_stream_open\n");
-	
 	s = new_mark5_stream_file(filename, offset);
 	if(!s)
 	{
@@ -395,8 +388,6 @@ struct mark5_format_generic *new_mark5_format_generic_from_string( const char *f
 	char newformatseparator = 'm'; 	//If present in VDIF or CODIF format string, indicates new-style file name
 					//with "<FRAMESPERPERIOD>m<ALIGNEMENTSECONDS> rather than <Mbps>"
 
-	printf("DEBUG: mark5_stream.c: new_mark5_format_generic_from_string (%s)\n", formatname);
-	
 	mark5_library_consistent();
 
 	if(strncasecmp(formatname, "VLBA1_", 6) == 0)
@@ -1166,7 +1157,6 @@ struct mark5_format *new_mark5_format_from_stream(struct mark5_stream_generic *s
 	size_t offset;
 	int framesize, headersize;
 
-	printf("DEBUG: mark5_stream:new_mark5_format_from_stream **\n");
 	mark5_library_consistent();
 	
 	if(!s)
@@ -1350,8 +1340,6 @@ struct mark5_format *new_mark5_format_from_stream(struct mark5_stream_generic *s
 	headersize = 0;
 	if (find_codif_frame(ms->datawindow, ms->datawindowsize, &offset, &framesize, &headersize) >= 0)
 	{
-	  printf("DEBUG: Datawindowsize is %llu\n", (unsigned long long)ms->datawindowsize);
-	  printf("DEBUG: Offset, framesize, headersize are %llu, %d, %d\n", (unsigned long long)offset, framesize, headersize);
 	    void * header;
 	    header = (void*)ms->datawindow+offset;
 
@@ -1463,7 +1451,6 @@ struct mark5_stream *new_mark5_stream(const struct mark5_stream_generic *s, cons
 	struct mark5_stream *ms;
 	int status;
 
-	printf("DEBUG: mark5_stream.c:new_mark5_stream\n");
 	mark5_library_consistent();
 
 	ms = (struct mark5_stream *)calloc(1, sizeof(struct mark5_stream));
@@ -1512,8 +1499,6 @@ struct mark5_stream *new_mark5_stream(const struct mark5_stream_generic *s, cons
 		return 0;
 	}
 
-	printf("DEBUG: framesamples now = %d\n", ms->framesamples);
-	
 	ms->blanker(ms);
 
 	return ms;
@@ -1523,7 +1508,6 @@ struct mark5_stream *new_mark5_stream_absorb(struct mark5_stream_generic *s, str
 {
 	struct mark5_stream *ms;
 	int failed = 0;
-	printf("DEBUG: mark5_stream.c:new_mark5_stream_absorb\n");
 
 	mark5_library_consistent();
 
@@ -1777,7 +1761,6 @@ int mark5_stream_set_blanker(struct mark5_stream *ms,
 
 int mark5_stream_decode(struct mark5_stream *ms, int nsamp, float **data)
 {
-  //printf("DEBUG: mark5_stream.c: mark5_stream_decode\n");
 	if(!ms)
 	{
 		return -1;
