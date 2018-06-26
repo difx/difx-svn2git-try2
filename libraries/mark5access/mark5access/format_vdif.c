@@ -3774,7 +3774,7 @@ static int mark5_format_vdif_make_formatname(struct mark5_stream *ms)
 {
 	if(ms->format == MK5_FORMAT_VDIF)	/* True VDIF header, not legacy */
 	{
-		if (ms->complex_decode) 
+		if (ms->iscomplex) 
 		{
 			sprintf(ms->formatname, "VDIFC_%d-%dm%d-%d-%d", ms->databytes, ms->framesperperiod, ms->alignmentseconds, ms->nchan, ms->nbit);
 		}
@@ -3785,7 +3785,7 @@ static int mark5_format_vdif_make_formatname(struct mark5_stream *ms)
 	}
 	else if(ms->format == MK5_FORMAT_VDIFL)	/* Must be legacy mode, so add an L to VDIF name */
 	{
-		if (ms->complex_decode)
+		if (ms->iscomplex)
 		{
 			sprintf(ms->formatname, "VDIFCL_%d-%dm%d-%d-%d", ms->databytes, ms->framesperperiod, ms->alignmentseconds, ms->nchan, ms->nbit);
 		}
@@ -3825,7 +3825,7 @@ static int mark5_format_vdif_init(struct mark5_stream *ms)
 	f = (struct mark5_format_vdif *)(ms->formatdata);
 
 	bitspersample = ms->nbit;
-	if(ms->complex_decode)
+	if(ms->iscomplex)
 	{
 		bitspersample *= 2;
 	}
@@ -4153,6 +4153,7 @@ struct mark5_format_generic *new_mark5_format_generalized_vdif(int framesperperi
 	f->resync = mark5_format_vdif_resync;
 	f->decimation = decimation;
 	f->decode = 0;
+	f->iscomplex = 0;
 	f->complex_decode = 0;
 	f->count = 0;
 
@@ -4286,7 +4287,8 @@ struct mark5_format_generic *new_mark5_format_generalized_vdif(int framesperperi
 	}
 	else
 	{
-	    switch(decoderindex)
+	  f->iscomplex = 1;
+	  switch(decoderindex)
 	    {
 	        case 1:
 			f->complex_decode = vdif_complex_decode_1channel_1bit_decimation1;

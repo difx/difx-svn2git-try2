@@ -111,7 +111,6 @@ static int decode_short(const char *filename, const char *formatname, const char
 	FILE *in;
 	int edv4 = 0;
 
-	printf("DEBUG: m5d: decode_short\n");
 	total = unpacked = 0;
 
 	in = fopen(filename, "r");
@@ -167,9 +166,6 @@ static int decode_short(const char *filename, const char *formatname, const char
 		{
 			chunk = n;
 		}
-		printf("DEBUG: ms = %p\n", ms);
-                printf("DEBUG: raw = %p\n", raw);
-		printf("DEBUG: data = %p\n", data);
 		status = mark5_unpack_with_offset(ms, raw, start, data, chunk);
 		
 		if(status < 0)

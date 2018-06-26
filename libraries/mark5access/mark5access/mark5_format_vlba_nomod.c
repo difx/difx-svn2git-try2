@@ -6751,7 +6751,7 @@ static int mark5_format_vlba_nomod_make_formatname(struct mark5_stream *ms)
 
 	f = (struct mark5_format_vlba_nomod *)(ms->formatdata);
 	
-	snprintf(ms->formatname, MARK5_STREAM_ID_LENGTH, "VLBN1_%d-%d-%d-%d/%d", f->fanout, ms->Mbps, ms->nchan, ms->nbit, ms->decimation);
+	snprintf(ms->formatname, MARK5_STREAM_ID_LENGTH, "VLBN1_%d-%.0f-%d-%d/%d", f->fanout, ms->Mbps, ms->nchan, ms->nbit, ms->decimation);
 
 	return 0;
 }
@@ -6986,6 +6986,7 @@ struct mark5_format_generic *new_mark5_format_vlba_nomod(int Mbps, int nchan, in
 	f->resync = mark5_format_vlba_nomod_resync;
 	f->genheaders = mark5_format_vlba_nomod_genheaders;
 	f->decimation = decimation;
+	f->iscomplex = 0;
 	f->complex_decode = 0;
 	f->count = 0;
 	switch(decoderindex)

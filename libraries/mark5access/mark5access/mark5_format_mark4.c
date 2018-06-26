@@ -6782,8 +6782,8 @@ static int mark5_format_mark4_make_formatname(struct mark5_stream *ms)
 
 	f = (const struct mark5_format_mark4 *)(ms->formatdata);
 	
-	snprintf(ms->formatname, MARK5_STREAM_ID_LENGTH, "MKIV1_%d-%d-%d-%d/%d",
-		f->fanout, ms->Mbps, ms->nchan, ms->nbit, ms->decimation);
+	snprintf(ms->formatname, MARK5_STREAM_ID_LENGTH, "MKIV1_%d-%.0f-%d-%d/%d",
+		 f->fanout, ms->Mbps, ms->nchan, ms->nbit, ms->decimation);
 
 	return 0;
 }
@@ -7021,6 +7021,7 @@ struct mark5_format_generic *new_mark5_format_mark4(int Mbps, int nchan,
 	f->decimation = decimation;
 	f->decode = 0;
 	f->complex_decode = 0;
+	f->iscomplex = 0;
 	f->count = 0;
 	switch(decoderindex)
 	{

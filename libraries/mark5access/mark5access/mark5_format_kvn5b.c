@@ -3135,6 +3135,7 @@ struct mark5_format_generic *new_mark5_format_kvn5b(int Mbps, int nchan, int nbi
 	f->decimation = decimation;
 	f->decode = 0;
 	f->complex_decode = 0;
+	f->iscomplex = 0;
 	f->count = 0;
 	switch(decoderindex)
 	{

@@ -2812,7 +2812,7 @@ static int mark5b_count_32bitstream_2bit_decimation4(struct mark5_stream *ms, in
 static int mark5_format_mark5b_make_formatname(struct mark5_stream *ms)
 {
 	snprintf(ms->formatname, MARK5_STREAM_ID_LENGTH, "Mark5B-%d-%d-%d", 
-		ms->Mbps, ms->nchan, ms->nbit);
+		 (int)lround(ms->Mbps), ms->nchan, ms->nbit);
 
 	return 0;
 }
@@ -3103,6 +3103,7 @@ struct mark5_format_generic *new_mark5_format_mark5b(int Mbps, int nchan, int nb
 	f->genheaders = mark5_format_mark5b_genheaders;
 	f->decimation = decimation;
 	f->decode = 0;
+	f->iscomplex = 0;
 	f->complex_decode = 0;
 	f->count = 0;
 	switch(decoderindex)

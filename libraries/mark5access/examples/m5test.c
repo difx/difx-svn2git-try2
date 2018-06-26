@@ -115,7 +115,7 @@ int verify(const char *filename, const char *formatname, long long offset, int r
 			break;
 		}
 
-		if (ms->complex_decode==NULL) 
+		if (!ms->iscomplex) 
 		  status = mark5_stream_decode(ms, ChunkSize, data);
 		else
 		  status = mark5_stream_decode_complex(ms, ChunkSize/2, data);

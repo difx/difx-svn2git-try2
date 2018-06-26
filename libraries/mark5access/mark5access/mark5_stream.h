@@ -97,6 +97,7 @@ struct mark5_stream
 	int alignmentseconds;	/* Smallest integer # of seconds with integer # of frames */
 	int nchan;		/* # of data channels; all will be decoded */
 	int nbit;		/* quantization bits of data */
+        int iscomplex;          /* Are voltages complex or real */
 	int samplegranularity;	/* decoding and copying must be in mults of */
 	int framegranularity;	/* min num of frames to have int. ns length */
 	int mjd;		/* date of first found frame */
@@ -179,7 +180,8 @@ struct mark5_format_generic
         decodeFunc decode;                              /* required */
         countFunc count;
   //	int (*complex_decode)(struct mark5_stream *ms,
-  //		int nsamp, mark5_float_complex **data); 
+  //		int nsamp, mark5_float_complex **data);
+        int iscomplex;
 	complex_decodeFunc complex_decode; 
 	int (*validate)(const struct mark5_stream *ms);
 	int (*resync)(struct mark5_stream *ms);

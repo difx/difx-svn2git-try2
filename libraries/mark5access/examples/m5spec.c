@@ -332,7 +332,7 @@ int spec(const char *filename, const char *formatname, int nchan, int nint, cons
 
 	mark5_stream_print(ms);
 
-	if(ms->complex_decode != 0) 
+	if(ms->iscomplex) 
 	{
 		printf("Complex decode\n");
 		docomplex = 1;

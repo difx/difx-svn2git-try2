@@ -2017,7 +2017,7 @@ static int mark5_format_vdifb_make_formatname(struct mark5_stream *ms)
 {
 	if(ms->format == MK5_FORMAT_VDIFB)	/* True VDIF header, not legacy */
 	{
-		if (ms->complex_decode) 
+		if (ms->iscomplex) 
 		{
 			sprintf(ms->formatname, "VDIFBC_%d-%d-%d-%d", ms->databytes, (int)(ms->Mbps + 0.5), ms->nchan, ms->nbit);
 		}
@@ -2056,7 +2056,7 @@ static int mark5_format_vdifb_init(struct mark5_stream *ms)
 	f = (struct mark5_format_vdifb *)(ms->formatdata);
 
 	bitspersample = ms->nbit;
-	if(ms->complex_decode)
+	if(ms->iscomplex)
 	{
 		bitspersample *= 2;
 	}
@@ -2384,7 +2384,8 @@ struct mark5_format_generic *new_mark5_format_generalized_vdifb(int framesperper
 	f->resync = mark5_format_vdifb_resync;
 	f->decimation = decimation;
 	f->decode = 0;
-	f->complex_decode = 0;
+	f->complex_decode = 0;	
+	f->iscomplex = 0;
 	f->count = 0;
 
 	if(!usecomplex) 
@@ -2465,6 +2466,7 @@ struct mark5_format_generic *new_mark5_format_generalized_vdifb(int framesperper
 
 	    return 0;
 #if 0
+	    f->iscomplex = 1;
 	    switch(decoderindex)
 	    {
 	        case 0:

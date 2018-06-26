@@ -174,7 +174,7 @@ static int timeaverage(const char *filename, const char *formatname, double tint
 
   mark5_stream_print(ms);
 
-  if (ms->complex_decode != 0)  {
+  if (ms->iscomplex)  {
     printf("Complex decode\n");
     docomplex = 1;
   }

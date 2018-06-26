@@ -2746,7 +2746,7 @@ static int codif_complex_decode_2channel_4bit(struct mark5_stream *ms, int nsamp
 		}
 
 		data[0][o] = fcp0[0];
-		data[1][o] = fcp0[1];
+		data[1][o] = fcp1[0];
 
 		if(i >= ms->databytes)
 		{
@@ -2795,9 +2795,70 @@ static int codif_complex_decode_4channel_4bit(struct mark5_stream *ms, int nsamp
 		}
 
 		data[0][o] = fcp0[0];
-		data[1][o] = fcp0[1];
-		data[2][o] = fcp1[0];
-		data[3][o] = fcp1[1];
+		data[1][o] = fcp1[0];
+		data[2][o] = fcp2[0];
+		data[3][o] = fcp3[0];
+
+		if(i >= ms->databytes)
+		{
+			if(mark5_stream_next_frame(ms) < 0)
+			{
+				return -1;
+			}
+			buf = ms->payload;
+			i = 0;
+		}
+	}
+
+	ms->readposition = i;
+
+	return nsamp - nblank;
+}
+
+static int codif_complex_decode_8channel_4bit(struct mark5_stream *ms, int nsamp, float complex **data)
+{
+	const unsigned char *buf;
+	const float complex *fcp0, *fcp1, *fcp2, *fcp3;
+	int o, i;
+	int nblank = 0;
+
+	buf = ms->payload;
+	i = ms->readposition;
+
+	for(o = 0; o < nsamp; o++)
+	{
+		if(i >= ms->blankzoneendvalid[0])
+		{
+		        data[0][o] = complex_zeros[0];
+			data[1][o] = complex_zeros[0];
+			data[2][o] = complex_zeros[0];
+			data[3][o] = complex_zeros[0];
+			data[4][o] = complex_zeros[0];
+			data[5][o] = complex_zeros[0];
+			data[6][o] = complex_zeros[0];
+			data[7][o] = complex_zeros[0];
+			nblank++;
+			i += 8;
+		}
+		else
+		{
+			data[0][o] = complex_lut4bit[buf[i]];
+			i++;
+			data[1][o] = complex_lut4bit[buf[i]];
+			i++;
+			data[2][o] = complex_lut4bit[buf[i]];
+			i++;
+			data[3][o] = complex_lut4bit[buf[i]];
+			i++;
+			data[4][o] = complex_lut4bit[buf[i]];
+			i++;
+			data[5][o] = complex_lut4bit[buf[i]];
+			i++;
+			data[6][o] = complex_lut4bit[buf[i]];
+			i++;
+			data[7][o] = complex_lut4bit[buf[i]];
+			i++;
+		}
 
 		if(i >= ms->databytes)
 		{
@@ -2964,6 +3025,7 @@ static int codif_complex_decode_8channel_8bit(struct mark5_stream *ms, int nsamp
 			data[6][o] = complex_zeros[0];
 			data[7][o] = complex_zeros[0];
 			nblank++;
+			i += 16;
 		}
 		else
 		{
@@ -3017,6 +3079,7 @@ static int codif_complex_decode_16channel_8bit(struct mark5_stream *ms, int nsam
 		        for (j=0;j<16;j++) 
 			  data[j][o] = complex_zeros[0];
 			nblank++;
+			i += 32;
 		}
 		else
 		{
@@ -3771,7 +3834,7 @@ static int mark5_format_codif_make_formatname(struct mark5_stream *ms)
 {
 	if(ms->format == MK5_FORMAT_CODIF)
 	{
-		if (ms->complex_decode) 
+		if (ms->iscomplex) 
 		{
 			sprintf(ms->formatname, "CODIFC_%d-%dm%d-%d-%d", ms->databytes, ms->framesperperiod, ms->alignmentseconds, ms->nchan, ms->nbit);
 		}
@@ -3876,6 +3939,10 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 		/* get time again so ms->framens is used */
 		ms->gettime(ms, &ms->mjd, &ms->sec, &dns);
 		ms->ns = (int)(dns + 0.5);
+		if (header->iscomplex)
+		  ms->iscomplex = 1;
+		else
+		  ms->iscomplex = 0;
 
 		status = set_decoder(ms->nbit, ms->nchan, header->iscomplex, &ms->decode, &ms->complex_decode, &ms->count);
 	
@@ -3894,7 +3961,7 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 
 	if (bitspersample==0) {
           bitspersample = ms->nbit;
-	  if (ms->complex_decode)
+	  if (ms->iscomplex)
 	  {
             bitspersample *= 2;
           }
@@ -4259,6 +4326,9 @@ int set_decoder(int nbit, int nchan, int usecomplex, decodeFunc *decode, complex
 	  case 2004:
 	    *complex_decode = codif_complex_decode_4channel_4bit;
 	    break;
+	  case 2008:
+	    *complex_decode = codif_complex_decode_8channel_4bit;
+	    break;
 	    
 	  case 3001:
 	    *complex_decode = codif_complex_decode_1channel_8bit;
@@ -4349,6 +4419,7 @@ struct mark5_format_generic *new_mark5_format_codif(int framesperperiod,
 	f->decimation = decimation;
 	f->decode = 0;
 	f->complex_decode = 0;
+	f->iscomplex = usecomplex;
 	f->count = 0;
 
 	status = set_decoder(nbit, nchan, usecomplex, &f->decode, &f->complex_decode, &f->count);

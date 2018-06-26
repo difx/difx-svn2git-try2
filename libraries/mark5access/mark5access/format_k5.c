@@ -1320,7 +1320,8 @@ struct mark5_format_generic *new_mark5_format_k5(int Mbps, int nchan, int nbit, 
 	f->gettime = stream_frame_time_k5;
 	f->init_format = format_k5_init;
 	f->final_format = format_k5_final;
-	f->fixmjd = format_k5_fixmjd;  
+	f->fixmjd = format_k5_fixmjd;
+	f->iscomplex = 0;	
 	f->validate = one;
 	//f->resync = one;
 	f->decode = NULL;

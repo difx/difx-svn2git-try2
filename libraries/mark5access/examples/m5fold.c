@@ -139,7 +139,7 @@ static int fold(const char *filename, const char *formatname, int nbin, int nint
 
 	mark5_stream_print(ms);
 
-	if (ms->complex_decode != 0) 
+	if (ms->iscomplex) 
 	  {
 	    printf("Complex decode\n");
 	    docomplex = 1;

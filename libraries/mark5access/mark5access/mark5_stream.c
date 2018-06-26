@@ -228,6 +228,7 @@ static int set_format(struct mark5_stream *ms, const struct mark5_format_generic
 		ms->final_format = f->final_format;
 		ms->decode = f->decode;
 		ms->count = f->count;
+		ms->iscomplex = f->iscomplex;
 		ms->complex_decode = f->complex_decode;
 		ms->validate = f->validate;
 		ms->resync = f->resync;
@@ -1702,7 +1703,7 @@ int mark5_stream_copy(struct mark5_stream *ms, int nbytes, char *data)
 	}
 
 	int bitspersample = ms->nbit;
-	if (ms->complex_decode) bitspersample *= 2;
+	if (ms->iscomplex) bitspersample *= 2;
 
 	q = ms->samplegranularity*ms->nchan*bitspersample*ms->decimation/8; 
 	if (q==0) q=1;  // WALTER IS THIS RIGHT???
@@ -1821,7 +1822,7 @@ int mark5_stream_decode_complex(struct mark5_stream *ms, int nsamp, mark5_float_
 		return -1;
 	} 
 
-	if(ms->complex_decode) 
+	if(ms->iscomplex) 
 	{
 		if(ms->readposition<0)
 		{
@@ -1861,7 +1862,7 @@ int mark5_stream_decode_double_complex(struct mark5_stream *ms, int nsamp, mark5
 	const mark5_float_complex *fc;
 	int c, i, r;
 
-	if (ms->complex_decode) 
+	if (ms->iscomplex) 
 	{
 		r = mark5_stream_decode_complex(ms, nsamp, (mark5_float_complex**)data);
 		if(r < 0) 
