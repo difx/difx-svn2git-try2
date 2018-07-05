@@ -81,7 +81,7 @@ static void initluts()
 	/* Warning: these are different than for VLBA/Mark4/Mark5B! */
 	const float lut2level[2] = {1.0, -1.0};
 	const float lut4level[4] = {1.0, HiMag, -HiMag, -1.0};
-	const float lut16level[16] = {0,1/FourBit1sigma,2/FourBit1sigma,3/FourBit1sigma,4/FourBit1sigma,5/FourBit1sigma,6/FourBit1sigma,7/FourBit1sigma
+	const float lut16level[16] = {0,1/FourBit1sigma,2/FourBit1sigma,3/FourBit1sigma,4/FourBit1sigma,5/FourBit1sigma,6/FourBit1sigma,7/FourBit1sigma,
 				      -8/FourBit1sigma,-7/FourBit1sigma,-6/FourBit1sigma,-5/FourBit1sigma,-4/FourBit1sigma,-3/FourBit1sigma,-2/FourBit1sigma,-1/FourBit1sigma};
 	int b, i, l, li;
 	
@@ -2819,7 +2819,7 @@ static int codif_complex_decode_8channel_4bit(struct mark5_stream *ms, int nsamp
 {
 	const unsigned char *buf;
 	const float complex *fcp0, *fcp1, *fcp2, *fcp3;
-	int o, i;
+	int o, i, j;
 	int nblank = 0;
 
 	buf = ms->payload;
@@ -2829,35 +2829,17 @@ static int codif_complex_decode_8channel_4bit(struct mark5_stream *ms, int nsamp
 	{
 		if(i >= ms->blankzoneendvalid[0])
 		{
-		        data[0][o] = complex_zeros[0];
-			data[1][o] = complex_zeros[0];
-			data[2][o] = complex_zeros[0];
-			data[3][o] = complex_zeros[0];
-			data[4][o] = complex_zeros[0];
-			data[5][o] = complex_zeros[0];
-			data[6][o] = complex_zeros[0];
-			data[7][o] = complex_zeros[0];
-			nblank++;
-			i += 8;
+		    for (j=0;j<8;j++) 
+		        data[j][o] = complex_zeros[0];
+		    nblank++;
+		    i += 8;
 		}
 		else
 		{
-			data[0][o] = complex_lut4bit[buf[i]];
+		  for(j=0;j<8;j++) {
+		        data[j][o] = complex_lut4bit[buf[i]];
 			i++;
-			data[1][o] = complex_lut4bit[buf[i]];
-			i++;
-			data[2][o] = complex_lut4bit[buf[i]];
-			i++;
-			data[3][o] = complex_lut4bit[buf[i]];
-			i++;
-			data[4][o] = complex_lut4bit[buf[i]];
-			i++;
-			data[5][o] = complex_lut4bit[buf[i]];
-			i++;
-			data[6][o] = complex_lut4bit[buf[i]];
-			i++;
-			data[7][o] = complex_lut4bit[buf[i]];
-			i++;
+		  }
 		}
 
 		if(i >= ms->databytes)
@@ -2870,7 +2852,6 @@ static int codif_complex_decode_8channel_4bit(struct mark5_stream *ms, int nsamp
 			i = 0;
 		}
 	}
-
 	ms->readposition = i;
 
 	return nsamp - nblank;
