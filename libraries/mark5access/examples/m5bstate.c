@@ -23,18 +23,16 @@ const char author[]  = "Alessandra Bertarini";
 const char version[] = "1.3";
 const char verdate[] = "2015 May 21";
 
-int die = 0;
+volatile int die = 0;
 
-typedef void (*sighandler_t)(int);
-
-sighandler_t oldsiginthand;
+struct sigaction old_sigint_action;
 
 void siginthand(int j)
 {
 	printf("\nBeing killed.  Partial results will be saved.\n\n");
 	die = 1;
 
-	signal(SIGINT, oldsiginthand);
+	sigaction(SIGINT, &old_sigint_action, 0);
 }
 
 int usage(const char *pgm)
@@ -343,7 +341,6 @@ void process_complexdata(struct mark5_stream *ms, int nframes, int nstates) {
 void process_8bit_realdata(struct mark5_stream *ms, int nframes) {
   int i, j, k, status;
   long long total, unpacked;
-  double x;
   
   int chunk = ms->framesamples;
   int nif = ms->nchan;
@@ -429,11 +426,11 @@ void process_8bit_realdata(struct mark5_stream *ms, int nframes) {
 
 
 double std_dev2(double a[], int n) {
+    int i;
     if(n == 0)
         return 0.0;
     double sum = 0;
     double sq_sum = 0;
-    int i;
     for(i = 0; i < n; ++i) {
        sum += a[i];
        sq_sum += a[i] * a[i];
@@ -527,8 +524,12 @@ int main(int argc, char **argv)
 {
 	long long offset = 0;
 	int nframes;
+	struct sigaction new_sigint_action;
 
-	oldsiginthand = signal(SIGINT, siginthand);
+	new_sigint_action.sa_handler = siginthand;
+	sigemptyset(&new_sigint_action.sa_mask);
+	new_sigint_action.sa_flags = 0;
+	sigaction(SIGINT, &new_sigint_action, &old_sigint_action);
 
 	if(argc == 2)
 	{

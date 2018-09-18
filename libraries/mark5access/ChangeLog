@@ -1,3 +1,8 @@
+Verion 1.5.4
+* Expose function determinelastmark5bframeoffset()
+* m5d, m5spec: --version option
+* m5d: fix use of offset for short reads (assumes file starts on a frame header)
+
 Verion 1.5.3
 * Integer rounding error in m5slice
 * Add ctypes-based Python bindings 
@@ -15,6 +20,8 @@ Verion 1.5.3
 * Change RPM name to vlbi-mark5access.*.rpm
 * New option in test5b: can supply frames per second and then the true number of skipped frames can be evaluated.
 * fixmark5b: don't seg fault if can't open files
+* Many utilities: change from use of signal() to sigaction(), which is supposed to be more reliable.
+* Version for DiFX-2.5, May 16, 2017
 
 Version 1.5.2
 * Post DiFX-2.4

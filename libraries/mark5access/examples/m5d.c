@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2006-2012 by Walter Brisken                             *
+ *   Copyright (C) 2006-2018 by Walter Brisken                             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -27,18 +27,23 @@
 //
 //============================================================================
 
-#include "config.h"
+#define _FILE_OFFSET_BITS 64
+
 #include <complex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include "config.h"
+
 #include "../mark5access/mark5_stream.h"
 
 const char program[] = "m5d";
 const char author[]  = "Walter Brisken";
-const char version[] = "1.4";
-const char verdate[] = "20151029";
+const char version[] = "1.5";
+const char verdate[] = "20180914";
 
 static void usage(const char *pgm)
 {
@@ -58,8 +63,11 @@ static void usage(const char *pgm)
         printf("    CODIFC_5000-51200m27-8-1 (51200 frames every 27 seconds, x5000 bytes x 8 bits / 27  ~= 76 Mbps\n");
         printf("    This allows you to specify rates that are not an integer Mbps value, such as 32/27 CODIF oversampling\n\n");
 	printf("  <n> is the number of samples per channel to decode\n\n");
-	printf("  <offset> is number of bytes into file to start decoding.  This must land on the start of a valid frame.\n\n");
-	printf("The following options are supported (but must be given before dataformat)\n\n");
+	printf("  <offset> is number of bytes into file to start decoding\n\n");
+	printf("The following options are supported\n\n");
+	printf("    --version   Print version information and quit\n");
+	printf("    --double    Double sideband (complex) data\n");
+	printf("                If using VDIF, specify VDIFC (complex VDIF) under dataformat\n\n");
 	printf("    --format=%%f Format specifier for sample printout (default: %%4.1 for CODIF, %%2.0f otherwise)\n\n");
 	printf("    --help      This list\n\n");
 }
@@ -94,6 +102,11 @@ typedef struct vdif_edv4_header {	/* proposed extension extensions: (WFB email t
  } vdif_edv4_header;
 
 
+static int bytes2samples(const struct mark5_stream *ms, long long bytes)
+{
+	return bytes*8/(ms->nbit*ms->nchan*ms->decimation);
+}
+
 static int decode_short(const char *filename, const char *formatname, const char *f, long long offset, int n)
 {
 	struct mark5_stream *ms;
@@ -108,6 +121,7 @@ static int decode_short(const char *filename, const char *formatname, const char
 	unsigned char *raw;
 	FILE *in;
 	int edv4 = 0;
+	size_t r;
 
 	total = unpacked = 0;
 
@@ -118,14 +132,6 @@ static int decode_short(const char *filename, const char *formatname, const char
 
 		return EXIT_FAILURE;
 	}
-	if(offset != lseek(fileno(in), offset, SEEK_SET))
-	{
-		fprintf(stderr, "Error: can't seek %lld bytes into %s\n", offset, filename);
-		fclose(in);
-
-		return EXIT_FAILURE;
-	}
-
 	ms = new_mark5_stream( new_mark5_stream_unpacker(0), new_mark5_format_generic_from_string(formatname) );
 	if(!ms)
 	{
@@ -133,6 +139,26 @@ static int decode_short(const char *filename, const char *formatname, const char
 		fclose(in);
 
 		return EXIT_FAILURE;
+	}
+
+	if(offset > 0)
+	{
+		off_t seeksize;
+		
+		seeksize = (offset/ms->framebytes)*ms->framebytes;
+		if(fseeko(in, seeksize, SEEK_SET) != 0)
+		{
+			fprintf(stderr, "Error: can't seek %lld bytes into %s\n", (long long)seeksize, filename);
+			fclose(in);
+
+			return EXIT_FAILURE;
+		}
+		else
+		{
+			printf("  did a seek of %lld bytes; remaining offset = %d bytes\n", (long long)seeksize, (int)(offset-seeksize));
+		}
+
+		offset -= seeksize;
 	}
 
 	data = (float **)malloc(ms->nchan*sizeof(float *));
@@ -145,7 +171,7 @@ static int decode_short(const char *filename, const char *formatname, const char
 	invalid = (int *)calloc(ms->nchan, sizeof(int));
 	validsum = (int *)calloc(ms->nchan, sizeof(int));
 
-	fread(raw, 1, rawsize, in);
+	r = fread(raw, 1, rawsize, in);
 	fclose(in);
 
 	mark5_stream_print(ms);
@@ -157,7 +183,7 @@ static int decode_short(const char *filename, const char *formatname, const char
 		printf(" to %d\n", n);
 	}
 
-	start = 0;
+	start = bytes2samples(ms, offset);
 	for(; n > 0; n -= chunk)
 	{
 		if(n < chunk)
@@ -201,9 +227,9 @@ static int decode_short(const char *filename, const char *formatname, const char
 			}
 		}
 
-		for(j = 0; j < chunk; j++)
+		for(j = 0; j < chunk; ++j)
 		{
-			for(k = 0; k < ms->nchan; k++)
+			for(k = 0; k < ms->nchan; ++k)
 			{
 				printf(f, data[k][j]);
 			}
@@ -225,7 +251,7 @@ static int decode_short(const char *filename, const char *formatname, const char
 		fprintf(stderr, "%d / %d samples unpacked\n", unpacked, total);
 	}
 
-	for(i = 0; i < ms->nchan; i++)
+	for(i = 0; i < ms->nchan; ++i)
 	{
 		free(data[i]);
 	}
@@ -295,9 +321,9 @@ static int decode(const char *filename, const char *formatname, const char *f, l
 			unpacked += status;
 		}
 
-		for(j = 0; j < chunk; j++)
+		for(j = 0; j < chunk; ++j)
 		{
-			for(k = 0; k < ms->nchan; k++)
+			for(k = 0; k < ms->nchan; ++k)
 			{
 				printf(f, data[k][j]);
 			}
@@ -307,7 +333,7 @@ static int decode(const char *filename, const char *formatname, const char *f, l
 
 	fprintf(stderr, "%lld / %lld samples unpacked\n", unpacked, total);
 
-	for(i = 0; i < ms->nchan; i++)
+	for(i = 0; i < ms->nchan; ++i)
 	{
 		free(data[i]);
 	}
@@ -339,7 +365,7 @@ static int decode_complex(const char *filename, const char *formatname, const ch
 	}
 
 	data = (float complex **)malloc(ms->nchan*sizeof(float complex *));
-	for(i = 0; i < ms->nchan; i++)
+	for(i = 0; i < ms->nchan; ++i)
 	{
 		data[i] = (float complex *)malloc(chunk*sizeof(float complex));
 	}
@@ -373,9 +399,9 @@ static int decode_complex(const char *filename, const char *formatname, const ch
 			unpacked += status;
 		}
 
-		for(j = 0; j < chunk; j++)
+		for(j = 0; j < chunk; ++j)
 		{
-			for(k = 0; k < ms->nchan; k++)
+			for(k = 0; k < ms->nchan; ++k)
 			{
 				printf(f, crealf(data[k][j]), cimagf(data[k][j]));
 			}
@@ -385,7 +411,7 @@ static int decode_complex(const char *filename, const char *formatname, const ch
 
 	fprintf(stderr, "%lld / %lld complex samples unpacked\n", unpacked, total);
 
-	for(i = 0; i < ms->nchan; i++)
+	for(i = 0; i < ms->nchan; ++i)
 	{
 		free(data[i]);
 	}
@@ -402,6 +428,7 @@ int main(int argc, char **argv)
 	long long n;
 	int r;
 	int retval;
+	int doublesideband = 0;
 	int formatoverride = 0;
 	int complexdata = 0;
 	int optind = 1, optc = 0;
@@ -416,6 +443,16 @@ int main(int argc, char **argv)
 
 			return EXIT_SUCCESS;
 		}
+		else if(strcmp(argv[optind], "--version") == 0)
+		{
+			printf("%s ver. %s   %s  %s\n\n", program, version, author, verdate);
+		}
+		else if(strcmp(argv[optind], "-d") == 0 ||
+		        strcmp(argv[optind], "--double") == 0)
+		{
+			doublesideband = 1;
+			printf("Assuming double sideband data\n");
+		}
 		else if(strncmp(argv[optind], "--format=", 9) == 0)
 		{
 			format = argv[optind]+9;
@@ -425,7 +462,7 @@ int main(int argc, char **argv)
 		{
 			break;
 		}
-		optind++;
+		++optind;
 	}
 	optc = argc - optind;
 
@@ -458,8 +495,7 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			mf = new_mark5_format_from_stream(
-				new_mark5_stream_memory(buffer, bufferlen/2));
+			mf = new_mark5_format_from_stream(new_mark5_stream_memory(buffer, bufferlen/2));
 
 			print_mark5_format(mf);
 			delete_mark5_format(mf);
@@ -473,7 +509,8 @@ int main(int argc, char **argv)
 
 	else if((optc < 3) || (optc > 4))
 	{
-		usage(argv[0]);
+		fprintf(stderr, "\nIncomplete or confused command line.\n\n");
+		fprintf(stderr, "Run with -h or --help for usage information.\n\n");
 
 		return EXIT_FAILURE;
 	}
@@ -503,10 +540,12 @@ int main(int argc, char **argv)
 	}
 	else
 	{
+printf("n = %d\n", (int)n);
 		char* f = (char*)malloc(strlen(format)+10);
 		sprintf(f, "%s ", format);
 		if(n < 100000)
 		{
+printf("Doing Short decode\n");
 			retval = decode_short(argv[optind], argv[optind+1], f, offset, n);
 		}
 		else

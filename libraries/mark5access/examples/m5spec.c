@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2008-2011 by Walter Brisken & Chris Phillips            *
+ *   Copyright (C) 2008-2018 by Walter Brisken & Chris Phillips            *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -46,23 +46,21 @@
 
 const char program[] = "m5spec";
 const char author[]  = "Walter Brisken, Chris Phillips";
-const char version[] = "1.3.2";
-const char verdate[] = "20150730";
+const char version[] = "1.5";
+const char verdate[] = "20180914";
 
-int die = 0;
+volatile int die = 0;
 
 typedef enum {VLBA=1, DBBC, NOPOL} polmodetype;
 
-typedef void (*sighandler_t)(int);
-
-sighandler_t oldsiginthand;
+struct sigaction old_sigint_action;
 
 void siginthand(int j)
 {
 	printf("\nBeing killed.  Partial results will be saved.\n\n");
 	die = 1;
 
-	signal(SIGINT, oldsiginthand);
+	sigaction(SIGINT, &old_sigint_action, 0);
 }
 
 static void usage(const char *pgm)
@@ -89,6 +87,7 @@ static void usage(const char *pgm)
 	printf("  <offset> is number of bytes into file to start decoding\n\n");
 	printf("\n");
 	printf("The following options are supported\n\n");
+	printf("    -version   Print version info and quit\n\n");
 	printf("    -dbbc      Assume dBBC polarisation order (all Rcp then all Lcp)\n\n");
 	printf("    -nopol     Do not compute cross pol terms\n\n");
 	printf("    -double    Double sideband (complex) data\n\n");
@@ -446,7 +445,9 @@ int main(int argc, char **argv)
 	int doublesideband = 0;
 #if USEGETOPT
 	int opt;
+	struct sigaction new_sigint_action;
 	struct option options[] = {
+		{"version", 0, 0, 'V'}, // Version
 		{"double", 0, 0, 'd'}, // Double sideband complex
 		{"dbbc", 0, 0, 'B'},  // dBBC channel ordering
 		{"nopol", 0, 0, 'P'}, // Don't compute the crosspol terms
@@ -473,19 +474,19 @@ int main(int argc, char **argv)
 			printf("Assuming double sideband data\n");
 			break;
 
+		case 'V': // Version
+			printf("%s ver. %s   %s  %s\n\n", program, version, author, verdate);
+			return EXIT_SUCCESS;
+
 		case 'h': // help
 			usage(argv[0]);
 			return EXIT_SUCCESS;
-			break;
 		}
 	}
 
 #else
 	int optind=1;
 #endif
-
-	oldsiginthand = signal(SIGINT, siginthand);
-
 
 	if(argc-optind == 1)
 	{
@@ -558,8 +559,13 @@ int main(int argc, char **argv)
 
 	if(argc-optind > 5)
 	{
-		offset=atoll(argv[optind+5]);
+		offset = atoll(argv[optind+5]);
 	}
+
+	new_sigint_action.sa_handler = siginthand;
+	sigemptyset(&new_sigint_action.sa_mask);
+	new_sigint_action.sa_flags = 0;
+	sigaction(SIGINT, &new_sigint_action, &old_sigint_action);
 
 	retval = spec(argv[optind], argv[optind+1], nchan, nint, argv[optind+4], offset, polmode, doublesideband);
 
