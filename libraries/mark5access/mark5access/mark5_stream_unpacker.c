@@ -170,7 +170,6 @@ int mark5_unpack_complex(struct mark5_stream *ms, const void *packed, mark5_floa
 
 int mark5_unpack_complex_with_offset(struct mark5_stream *ms, const void *packed, int offsetsamples, mark5_float_complex **unpacked, int nsamp)
 {
-	printf("Unpacking with offset\n");
 	if(ms->next == mark5_stream_unpacker_next_noheaders)
 	{
 		ms->payload = (const unsigned char *)packed;
