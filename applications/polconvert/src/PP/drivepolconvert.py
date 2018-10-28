@@ -9,6 +9,7 @@ drivepolconvert.py -- a program to drive the polconvert process
 
 import argparse
 import datetime
+import glob
 import os
 import re
 import stat
@@ -235,6 +236,8 @@ def calibrationChecks(o):
 def inputRelatedChecks(o):
     '''
     Check things that will end up in the CASA input file.
+    We introduce the jobset to make sure we only process
+    each input file once.
     '''
     expchk = set()
     jobset = set()
@@ -243,9 +246,14 @@ def inputRelatedChecks(o):
     for j in o.nargs:
         if not os.path.exists(j):
             raise Exception, 'Input file %s is missing' % j
-        expchk.add(j.split('_')[0])
-        jobtmp = j.split('_')[1]
-        jobset.add(jobtmp.split('.')[0])
+        js = j.split('_')
+        ee = js[0]
+        expchk.add(ee)
+        jss = js[1].split('.')
+        jobset.add(jss[0])
+        jsbe = ee + '_' + jss[0] + '.input'
+        if j != jsbe:
+            raise Exception, 'Input file %s not %s' % (j, jsbe)
     if len(expchk) > 1 or len(expchk) == 0:
         raise Exception, ('Only one experiment may be processed ' +
             'but %d are present: %s') % (len(expchk), ','.join(expchk))
@@ -256,8 +264,11 @@ def inputRelatedChecks(o):
     djobs = list(jobset)
     djobs.sort()
     o.jobnums = djobs
-    o.djobs = str(map(str,djobs))
-    if o.verb: print 'Processing jobs "%s"' % o.djobs
+    o.djobs = str(map(str,o.jobnums))
+    o.nargs = []
+    # make sure o.nargs is co-ordered with o.jobnums for reference
+    for jn in o.jobnums: o.nargs.append(o.exp + '_' + jn + '.input')
+    if o.verb: print 'Processing jobs "%s"\n(%s)' % (o.djobs,str(o.nargs))
 
 def runRelatedChecks(o):
     '''
@@ -323,6 +334,8 @@ def deduceZoomIndicies(o):
     sitelist = o.sites.split(',')
     if o.verb: print 'Sitelist is',sitelist
     o.remotelist = []
+    o.remotename = []
+    o.remote_map = []
     zoompatt = r'^ZOOM.FREQ.INDEX.\d+:\s*(\d+)'
     almapatt = r'^TELESCOPE NAME %d:\s*AA' % (o.ant-1)
     amap_re = re.compile(r'^TELESCOPE NAME\s*([0-9])+:\s*([A-Z0-9][A-Z0-9])')
@@ -334,8 +347,8 @@ def deduceZoomIndicies(o):
     newargs = []
     for jobin in o.nargs:
         almaline = ''
-        zfir = ''
-        zfin = ''
+        zfirch = 1000
+        zfinch = -1
         cfrq = []
         ji = open(jobin, 'r')
         for line in ji.readlines():
@@ -345,12 +358,15 @@ def deduceZoomIndicies(o):
             if almaline == '' and alma: almaline = line
             if freq: cfrq.append(freq.group(1))
             if zoom:
-                if zfir == '': zfir = zoom.group(1)
-                else:          zfin = zoom.group(1)
+                zoomch = int(zoom.group(1))
+                if zoomch < zfirch: zfirch = zoomch
+                if zoomch > zfinch: zfinch = zoomch
             amap = amap_re.search(line)
             if amap:
                 antmap[amap.group(2)] = int(amap.group(1))
         ji.close()
+        zfir = str(zfirch)
+        zfin = str(zfinch)
 
         # cull jobs that do not appear to have AA as telescope 0
         if almaline == '':
@@ -366,15 +382,16 @@ def deduceZoomIndicies(o):
         else:
             print 'Found ALMA in',jobin,almaline.rstrip()
             newargs.append(jobin)
-
-        # print workout plot ant for this job
-        plotant = -1
-        for site in sitelist:
-            if site in antmap:
-                plotant = antmap[site] + 1
-                break
-        o.remotelist.append(plotant)
-        antmap = {}
+            # workout plot ant for this job
+            plotant = -1
+            for site in sitelist:
+                if site in antmap:
+                    plotant = antmap[site] + 1
+                    o.remotename.append(site)
+                    o.remote_map.append(str(antmap.keys()))
+                    break
+            o.remotelist.append(plotant)
+            antmap = {}
 
         if o.verb: print 'Zoom bands %s..%s from %s' % (zfir, zfin, jobin)
         if len(cfrq) < 1:
@@ -385,38 +402,54 @@ def deduceZoomIndicies(o):
         mfqlst.add(cfrq[len(cfrq)/2])
 
     o.nargs = newargs
+    # o.jobnums is also synchronized
+    # and o.nargs should be synchronized with o.remotelist
+    # o.remotename and o.remote_map are just for readable diagnostics below
+    # and we resync o.djobs here
+    o.djobs = str(map(str,o.jobnums))
     if len(zfirst) != 1 or len(zfinal) != 1:
         if o.zmchk:
             raise Exception, ('Encountered ambiguities in zoom freq ranges: ' +
                 'first is ' + str(zfirst) + ' and final is ' + str(zfinal))
         elif o.verb:
             print 'global zoom first',str(zfirst),'and final',str(zfinal)
-    o.zfirst = int(sorted(list(zfirst))[0])  # int(zfirst.pop())
-    o.zfinal = int(sorted(list(zfinal))[-1]) # int(zfinal.pop())
-    if o.verb: print 'Zoom frequency indices %d..%d found in %s\n  ..%s' % (
-        o.zfirst, o.zfinal, o.nargs[0], o.nargs[-1])
-    # This could be relaxed to allow AA to be not 0 using antmap
-    #if o.verb: print 'Alma search pattern: "' + str(almapatt) + '"'
-    #if almaline == '':
-    #    raise Exception, 'Telescope Name 0 is not Alma (AA)'
-    #if o.verb: print 'Found ALMA Telescope line: ' + almaline.rstrip()
-    #if o.verb: print 'Remote antenna index is', o.remote
+    if len(zfirst) > 0 and len(zfinal) > 0:
+        o.zfirst = int(sorted(list(zfirst))[0])  # int(zfirst.pop())
+        o.zfinal = int(sorted(list(zfinal))[-1]) # int(zfinal.pop())
+    else:
+        o.zfirst = -1
+        o.zfinal = -2
+    if (len(o.nargs) > 0) and o.verb:
+        print 'Zoom freq. indices %d..%d found in \n  %s..%s' % (
+            o.zfirst, o.zfinal, o.nargs[0], o.nargs[-1])
+    elif o.verb:
+        print 'Not going to be doing any real work after this: No jobs'
+    # Report on remote peer for polconvert plot diagnostics
     if (len(o.remotelist) != len(o.nargs)): o.remotelist = []
-    if o.verb: print 'Remote antenna list is',o.remotelist,'index is',o.remote
-    # if the user supplied a band, check that it agrees
+    if o.verb:
+        for j,r,s,m in map(lambda x,y,z,w:(x,y,z,w),
+            o.nargs, o.remotelist, o.remotename, o.remote_map):
+            print "%s<->%s(%s%s)," % (j,r,s,m),
+        print '\nRemote list len is',len(o.remotelist),'index is',o.remote
+        print 'Remote list is',o.remotelist,'(indices start at 1)'
+        print 'Jobs now',o.djobs
+    # If the user supplied a band, check that it agrees
     if len(mfqlst) > 1:
         raise Exception, ('Input files have disparate frequency structures:\n'
             '  Median frequencies: ' + str(mfqlst) + '\n'
             '  and these must be processed separately')
-    medianfreq = float(mfqlst.pop())
-    if   medianfreq <  90000.0: medianband = '3 (GMVA)'
-    elif medianfreq < 214100.0: medianband = 'b1 (Cycle5 6[LSB]Lo)'
-    elif medianfreq < 216100.0: medianband = 'b2 (Cycle5 6[LSB]Hi)'
-    elif medianfreq < 228100.0: medianband = 'b3 (Cycle4 6[USB]Lo)'
-    elif medianfreq < 230100.0: medianband = 'b4 (Cycle4 6[USB]Hi)'
-    else:                       medianband = '??? band 7 ???'
-    print 'Working with band %s based on median freq (%f)' % (
-            medianband, medianfreq)
+    elif len(mfqlst) == 1:
+        medianfreq = float(mfqlst.pop())
+        if   medianfreq <  90000.0: medianband = '3 (GMVA)'
+        elif medianfreq < 214100.0: medianband = 'b1 (Cycle5 6[LSB]Lo)'
+        elif medianfreq < 216100.0: medianband = 'b2 (Cycle5 6[LSB]Hi)'
+        elif medianfreq < 228100.0: medianband = 'b3 (Cycle4 6[USB]Lo)'
+        elif medianfreq < 230100.0: medianband = 'b4 (Cycle4 6[USB]Hi)'
+        else:                       medianband = '??? band 7 ???'
+        print 'Working with band %s based on median freq (%f)' % (
+                medianband, medianfreq)
+    else:
+        print 'No median frequency, so no idea about medianband'
 
 def plotPrep(o):
     '''
@@ -439,7 +472,7 @@ def plotPrep(o):
         for ii in range(1,o.fringe):
             o.flist += ',(%d*len(doIF)/%d)' % (ii, o.fringe)
     if o.remote == o.ant:
-        o.remote == o.ant + 1
+        o.remote = o.ant + 1
         print 'Shifting baseline from %d-%d to %d-%d' % (
             o.ant, o.remote - 1, o.ant, o.remote)
 
@@ -570,21 +603,22 @@ def createCasaCommand(o, job, workdir):
     basecmd = o.exp + '.' + job + '.pc-casa-command'
     cmdfile = workdir + '/' + basecmd
     os.mkdir(workdir + '/casa-logs')
-    cmd = map(str,range(13))
+    cmd = map(str,range(14))
     cmd[0]  = '#!/bin/sh'
     cmd[1]  = '[ -f killcasa ] && exit 0'
     cmd[2]  = 'cd ' + workdir + ' && echo "starting" > ./status || exit 1'
     cmd[3]  = 'date -u +%Y-%m-%dT%H:%M:%S > ./timing'
-    cmd[4]  = '%s --nologger -c %s > %s 2>&1 < /dev/null' % (
+    cmd[4]  = '%s --nologger --nogui -c %s > %s 2>&1 < /dev/null' % (
         o.casa, o.input, o.output)
-    cmd[5]  = 'echo "converted" > ./status'
-    cmd[6]  = 'mv casa*.log ipython-*.log casa-logs'
-    cmd[7]  = 'mv %s %s *.pc-casa-command casa-logs' % (o.input, o.output)
-    cmd[8]  = 'mv polconvert.last casa-logs'
-    cmd[9]  = 'echo "complete" > ./status'
-    cmd[10] = 'date -u +%Y-%m-%dT%H:%M:%S >> ./timing'
-    cmd[11] = 'echo " "CASA for job %s finished.' % job
-    cmd[12] = 'exit 0'
+    cmd[5]  = 'casarc=$?'
+    cmd[6]  = 'if [ "$casarc" == 0 ]; then echo "conversion"; else echo "conversion failed with code $casarc"; fi > ./status'
+    cmd[7]  = 'mv casa*.log ipython-*.log casa-logs'
+    cmd[8]  = 'mv %s %s *.pc-casa-command casa-logs' % (o.input, o.output)
+    cmd[9]  = 'mv polconvert.last casa-logs'
+    cmd[10] = 'if [ "$casarc" == 0 ]; then echo "completed"; else echo "failed with code $casarc"; fi > ./status'
+    cmd[11] = 'date -u +%Y-%m-%dT%H:%M:%S >> ./timing'
+    cmd[12] = 'echo " "CASA for job %s finished with return code $casarc.' % job
+    cmd[13] = 'exit 0'
     cs = open(cmdfile, 'w')
     for ii in range(len(cmd)): cs.write(cmd[ii] + '\n')
     cs.close()
@@ -607,14 +641,16 @@ def createCasaInputParallel(o):
     o.workdirs = {}
     o.workcmds = {}
     if checkDifxSaveDirsError(o, True):
-        print 'Either *.difx dirs are missing or *.save dirs are present'
-        o.jobnums = []
+        raise Exception, 'Fix these *.difx or *.save dirs issues'
     o.now = datetime.datetime.now()
-    for job in sorted(o.jobnums):
+    remotelist = o.remotelist
+    o.remotelist = []
+    for job,rem in map(lambda x,y:(x,y), o.jobnums, remotelist):
         savename = o.exp + '_' + job
         workdir = o.now.strftime(savename + '.polconvert-%Y-%m-%dT%H.%M.%S')
         os.mkdir(workdir)
         odjobs = str(map(str,[job]))
+        o.remote = rem
         if createCasaInput(o, odjobs, '..', workdir):
             cmdfile = createCasaCommand(o, job, workdir)
             o.workdirs[job] = workdir
@@ -669,10 +705,11 @@ def executeCasa(o):
     '''
     misc = [ 'polconvert.last', 'POLCONVERT_STATION1.ANTAB',
              'POLCONVERT.FRINGE', 'POLCONVERT.GAINS', 'PolConvert.log',
-             'CONVERSION.MATRIX', 'FRINGE.PEAKS', 'FRINGE.PLOTS' ]
+             'CONVERSION.MATRIX', 'FRINGE.PEAKS', 'FRINGE.PLOTS',
+             'PolConvert.XYGains.dat' ]
     removeTrash(o, misc)
     cmd1 = 'rm -f %s' % (o.output)
-    cmd2 = '%s --nologger -c %s > %s 2>&1 < /dev/null' % (
+    cmd2 = '%s --nologger --nogui -c %s > %s 2>&1 < /dev/null' % (
         o.casa, o.input, o.output)
     cmd3 = '[ -d casa-logs ] || mkdir casa-logs'
     if o.prep: cmd4 = 'mv prepol*.log '
@@ -691,13 +728,14 @@ def executeCasa(o):
             print 'If it appears to hang, use kill -9 and then'
             print '"touch killcasa" to allow normal cleanup.'
             print 'Follow CASA run with:\n  tail -n +1 -f %s\n' % (o.output)
-        if os.system(cmd2):
+        rc = os.system(cmd2)
+        if rc:
             if os.path.exists('killcasa'):
                 print 'Removing killcasa'
                 os.unlink('killcasa')
                 print 'Proceeding with remaining cleanup'
             else:
-                raise Exception, 'CASA execution "failed"'
+                raise Exception, 'CASA execution "failed" with code %d' % (rc)
         if o.verb:
             print 'Success!  See %s for output' % o.output
         logerr = False
@@ -743,7 +781,7 @@ def executeCasa(o):
         print 'additional test runs on the same jobs.'
         print ''
 
-def convertOneScan(job,wdr,cmd):
+def convertOneScan(o,job,wdr,cmd):
     '''
     Process one scan for this job as laid out in wdr using cmd
     '''
@@ -764,10 +802,10 @@ def launchNewScanWorker(o, where):
     This pulls a job for one scan out of the dictionaries
     and launches a thread to have CASA process it.
     '''
-    job = sorted(o.workdirs)[0];
+    job = sorted(o.workdirs)[0]
     wdr = o.workdirs.pop(job)
     cmd = o.workcmds.pop(job)
-    th = threading.Thread(target=convertOneScan,args=(job,wdr,cmd))
+    th = threading.Thread(target=convertOneScan,args=(o,job,wdr,cmd))
     o.workbees.append(th)
     print 'Spawning thread',th.name,'on job', job,where
     th.start()
@@ -819,7 +857,21 @@ def reportWorkTodo(o):
         for job in o.workdirs:
             print ' job', job, 'in', o.workdirs[job]
             print ' job', job, 'w/', o.workcmds[job]
-    print 'Results are in',o.now.strftime('*.polconvert-%Y-%m-%dT%H.%M.%S')
+    pcdirstamps = o.now.strftime('*.polconvert-%Y-%m-%dT%H.%M.%S')
+    print 'Results are in',pcdirstamps
+    pcdirs = glob.glob(pcdirstamps)
+    if len(pcdirs) == len(o.jobnums):
+        print 'The number of polconvert dirs (%d) is correct.' % len(pcdirs)
+    else:
+        print 'Error: %d workdirs and %d jobs'%(len(pcdirs),len(o.jobnums))
+    if o.verb:
+        for pc in pcdirs: print '   ',pc
+    pclogs = glob.glob(pcdirstamps+'/PolConvert.log')
+    if len(pclogs) == len(o.jobnums):
+        print 'The number of polconvert log files (%d) is correct.' % len(pclogs)
+    else:
+        print 'Error: %d polconvert log files and %d jobs'%(len(pclogs),len(o.jobnums))
+    print('drivepolconvert is finished.\n')
 
 def executeCasaParallel(o):
     '''
@@ -829,13 +881,16 @@ def executeCasaParallel(o):
     to avoid race conditions and give the human time to read.
     '''
     if not o.run:
-        print 'CASA commands and working directories have been prepared.'
-        print 'You can execute the jobs manually, with these commands:'
-        for job in o.workdirs:
-            wdir = o.workdirs[job]
-            ccmd = o.workcmds[job]
-            print '  pushd',wdir,'; ./'+ccmd,'& popd'
-        return
+        if len(o.workdirs) > 0:
+            print 'CASA commands and working directories have been prepared.'
+            print 'You can execute the jobs manually, with these commands:'
+            for job in o.workdirs:
+                wdir = o.workdirs[job]
+                ccmd = o.workcmds[job]
+                print '  pushd',wdir,'; ./'+ccmd,'& popd'
+            return
+        else:
+            print 'There are no jobs to be run at this point, move on.'
     if o.verb:
         print 'Driving %d parallel CASA jobs' % (o.parallel)
         print '  Touch "killcasa" to terminate prematurely.'
@@ -860,26 +915,28 @@ def executeCasaParallel(o):
         print 'Some other problem...'
         raise
     finally:
-        reportWorkTodo(o)
-        try: os.unlink('killcasa')
+        try:
+            reportWorkTodo(o)
+            os.unlink('killcasa')
         except: pass
+        finally: pass
 
 #
 # enter here to do the work
 #
 if __name__ == '__main__':
-    o = parseOptions()
-    checkOptions(o)
-    if o.prep:
-        runPrePolconvert(o)
-    deduceZoomIndicies(o)
-    plotPrep(o)
-    if o.parallel == 0:
-        createCasaInputSingle(o)
-        executeCasa(o)
+    opts = parseOptions()
+    checkOptions(opts)
+    if opts.prep:
+        runPrePolconvert(opts)
+    deduceZoomIndicies(opts)
+    plotPrep(opts)
+    if opts.parallel == 0:
+        createCasaInputSingle(opts)
+        executeCasa(opts)
     else:
-        createCasaInputParallel(o)
-        executeCasaParallel(o)
+        createCasaInputParallel(opts)
+        executeCasaParallel(opts)
 
 #
 # eof

@@ -54,7 +54,7 @@ class DataIOSWIN: public DataIO {
 
    ~DataIOSWIN();
 
-   DataIOSWIN(int nSWIN, std::string* outputfiles, int Nant, int *Ants, double *doRange, int nIF, int *nChan, double **Freqs, bool Overwrite, bool doTest, bool doSolve, double jd0, ArrayGeometry *Geom, FILE *logF);
+   DataIOSWIN(int nSWIN, std::string* outputfiles, int Nant, int *Ants, double *doRange, int nIF, int *nChan, double **Freqs, bool Overwrite, bool doTest, bool doSolve, int saveSource, double jd0, ArrayGeometry *Geom, FILE *logF);
 
    bool setCurrentIF(int i);
 
@@ -66,7 +66,7 @@ class DataIOSWIN: public DataIO {
    return the pure-linear visibilities twice, one iteration for each antenna (the same is 
    true for the auto-correlations of each lin-pol antenna). 
    Returns false if no more mixed-pol visibilities are found for the corresponding IF. */
-   bool getNextMixedVis(double &JDTime, int &antenna, int &otherAnt, bool &conj);
+   bool getNextMixedVis(double &JDTime, int &antenna, int &otherAnt, bool &conj, int &calField);
 
 
 /* Complementary to the function above. Once the visibilities have been 
@@ -79,6 +79,9 @@ class DataIOSWIN: public DataIO {
   void applyMatrix(std::complex<float> *M[2][2], bool swap, bool print, int thiAnt, FILE *plotFile);
 
 
+ // Flag bad (unconvertible) data:
+  void zeroWeight();
+
 
 // Close all files.
    void finish();
@@ -86,7 +89,7 @@ class DataIOSWIN: public DataIO {
   private:
 
    void openOutFiles(std::string* difxfiles);
-   void readHeader(bool doTest);
+   void readHeader(bool doTest, int saveSource);
 
 ////////
 // Only used for SWIN files. Not used here
@@ -103,7 +106,7 @@ class DataIOSWIN: public DataIO {
     int nfiles;
     std::ifstream *olddifx;
     std::fstream *newdifx;
-    bool isOverWrite, doWriteCirc, canPlot;
+    bool isOverWrite, doWriteCirc, canPlot, isAutoCorr;
     long currEntries[MAXIF][4], nrec;
     long *filesizes;
     std::complex<float> *currentVis[4] ;

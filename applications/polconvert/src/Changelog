@@ -1,10 +1,23 @@
+v1.7.5
 
+- set zero weight on unphased APP subscans (phases not updated)
+- continued non-ALMA development
+
+v1.7.4
+
+- Added some protections for problematic antennas in ALMA data tables
+- Support for polarized calibrators (for non-ALMA observations).
+
+v1.7.3
+
+- minor bug fixes
 
 v1.5 - v1.7
 
 - antab for ALMA is now correct; missing cross-pol autocors for ALMA now fixed
 - general expansion of capabilities in response to EHT issues and
-- support for non-ALMA linear pol sites (EVN, &c.)
+- partial support for non-ALMA linear pol sites (EVN, &c.)
+- autocrosscorrs now fixed (for GMVA)
 
 v1.4
 

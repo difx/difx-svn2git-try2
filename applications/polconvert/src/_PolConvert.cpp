@@ -65,11 +65,11 @@
 #include <iostream>
 #include <fstream>
 #include <complex.h>
-#include "DataIO.h"
-#include "DataIOFITS.h"
-#include "DataIOSWIN.h"
-#include "CalTable.h"
-#include "Weighter.h"
+#include "./DataIO.h"
+#include "./DataIOFITS.h"
+#include "./DataIOSWIN.h"
+#include "./CalTable.h"
+#include "./Weighter.h"
 #include <sstream> 
 
 
@@ -117,13 +117,13 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
 
     PyObject *ngain, *nsum, *gains, *ikind, *dterms, *plotRange, *IDI, *antnum, *tempPy, *ret; 
     PyObject *allphants, *nphtimes, *phanttimes, *Range, *SWAP, *doIF, *metadata, *refAnts;
-    PyObject *asdmTimes, *plIF, *isLinearObj, *XYaddObj, *XYdelObj, *antcoordObj, *soucoordObj, *antmountObj; 
-    int nALMA, plAnt, nPhase, doTest, doConj, doNorm;
+    PyObject *asdmTimes, *plIF, *isLinearObj, *XYaddObj, *XYdelObj, *antcoordObj, *soucoordObj, *antmountObj, *timeranges; 
+    int nALMA, plAnt, nPhase, doTest, doConj, doNorm,calField;
     double doSolve;
  //   double XYadd;
     bool isSWIN; 
 
-    if (!PyArg_ParseTuple(args, "iOiiOOOOOOOOOOOOOOOOidiiOOOOOOO",&nALMA, &plIF, &plAnt, &nPhase, &doIF, &SWAP, &ngain,&nsum, &ikind, &gains, &dterms, &IDI, &antnum, &plotRange, &Range, &allphants, &nphtimes, &phanttimes, &refAnts, &asdmTimes, &doTest, &doSolve, &doConj, &doNorm, &XYaddObj, &XYdelObj, &metadata, &soucoordObj, &antcoordObj, &antmountObj, &isLinearObj)){printf("FAILED PolConvert! Wrong arguments!\n"); fflush(stdout);  return NULL;};
+    if (!PyArg_ParseTuple(args, "iOiiOOOOOOOOOOOOOOOOidiiOOOOOOOiO",&nALMA, &plIF, &plAnt, &nPhase, &doIF, &SWAP, &ngain,&nsum, &ikind, &gains, &dterms, &IDI, &antnum, &plotRange, &Range, &allphants, &nphtimes, &phanttimes, &refAnts, &asdmTimes, &doTest, &doSolve, &doConj, &doNorm, &XYaddObj, &XYdelObj, &metadata, &soucoordObj, &antcoordObj, &antmountObj, &isLinearObj,&calField, &timeranges)){printf("FAILED PolConvert! Wrong arguments!\n"); fflush(stdout);  return NULL;};
 
 
 
@@ -138,7 +138,13 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
 
     FILE *logFile = fopen("PolConvert.log","a");
 
-
+    if(calField>=0){
+      sprintf(message,"\nWill use field %i as calibrator/plot\n",calField);
+      fprintf(logFile,"%s",message); std::cout<<message; fflush(logFile);
+    } else {
+      sprintf(message,"\nWill use all fields in the timerange\n");
+      fprintf(logFile,"%s",message); std::cout<<message; fflush(logFile);
+    };
 
 // Sort out if SWIN files or FITS-IDI files are gonig to be converted:
 // (if the length of the metadata list is zero, this is a FITS-IDI file)
@@ -167,6 +173,11 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
       fflush(logFile);
     };
 
+
+
+// Time ranges with unphased signal:
+   double *BadTimes = (double *)PyArray_DATA(timeranges);
+   int NBadTimes = (int) PyArray_DIM(timeranges,0);
 
 // If SWIN, read the frequency channels from the metadata: 
    int *SWINnchan = 0;  // compiler warning
@@ -307,7 +318,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
       ASDMtimes[ii] = (double *)PyArray_DATA(PyList_GetItem(phanttimes,ii));
     };
 
-    Weighter *ALMAWeight = new Weighter(nPhase,nASDMtimes,nASDMEntries,ASDMant,ASDMtimes,ALMARef,time0,time1);
+    Weighter *ALMAWeight = new Weighter(nPhase,nASDMtimes,nASDMEntries,ASDMant,ASDMtimes,ALMARef,time0,time1,BadTimes, NBadTimes, logFile);
 
 ///////////
 
@@ -449,18 +460,18 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
        sprintf(message,"\n\n Opening and preparing SWIN files.\n");
        fprintf(logFile,"%s",message); std::cout<<message; fflush(logFile);
 
-       DifXData = new DataIOSWIN(nSWINFiles, SWINFiles, nALMA, almanums, doRange, SWINnIF, SWINnchan, SWINFreqs, OverWrite, doTest, iDoSolve, jd0, Geometry, logFile);
+       DifXData = new DataIOSWIN(nSWINFiles, SWINFiles, nALMA, almanums, doRange, SWINnIF, SWINnchan, SWINFreqs, OverWrite, doTest, iDoSolve, calField, jd0, Geometry, logFile);
      } else {
        sprintf(message,"\n\n Opening FITS-IDI file and reading header.\n");
        fprintf(logFile,"%s",message); std::cout<<message; fflush(logFile);
 
-       DifXData = new DataIOFITS(outputfits, nALMA, almanums, doRange, OverWrite, doConj, iDoSolve, Geometry, logFile);
+       DifXData = new DataIOFITS(outputfits, nALMA, almanums, doRange, OverWrite, doConj, iDoSolve, calField, Geometry, logFile);
      };
 
      if(!DifXData->succeed()){
           sprintf(message,"\nERROR WITH DATA FILE(S)!\n");
           fprintf(logFile,"%s",message); std::cout<<message; fflush(logFile);
-
+          ret = Py_BuildValue("i",-1);
           return ret;
      };
 
@@ -569,7 +580,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
 // Some extra auxiliary variables:
 
   double currT, lastTFailed;
-  int currAnt, currAntIdx, currNant, otherAnt; 
+  int currAnt, currAntIdx, currNant, otherAnt,currF; 
   bool notinlist, gchanged, dtchanged, toconj;
 
   lastTFailed = 0.0;
@@ -596,7 +607,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
   std::complex<float> gainRatio[maxnchan];
   std::complex<float> absGainRatio;
 
-  bool allflagged, auxB ;
+  bool allflagged, auxB, Phased ;
 
   sprintf(message,"\n Will modify %li visibilities (lin-lin counted twice).\n\n",DifXData->getMixedNvis());
   fprintf(logFile,"%s",message); std::cout<<message; fflush(logFile);
@@ -710,7 +721,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
 
    //  printf("LOOPING VIS\n");
 
-     while(DifXData->getNextMixedVis(currT,currAnt, otherAnt, toconj)){
+     while(DifXData->getNextMixedVis(currT,currAnt, otherAnt, toconj, currF)){
 
        countNvis += 1;
 
@@ -719,7 +730,7 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
     //   if(countNvis%1024==0){printf("\r Doing vis %i",countNvis);fflush(stdout);};
 
 // Check if there was an error in reading:
-     if (!DifXData->succeed()){DifXData->finish();return ret;};
+     if (!DifXData->succeed()){fclose(gainsFile);DifXData->finish();return ret;};
 
   //      printf("\nVIS: %i; %.2f / %.2f  -  %.2f",countNvis,currT, doRange[0], doRange[1]);
 
@@ -759,9 +770,12 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
 
 
      allflagged = true;
-     for (ij=0; ij<currNant; ij++) {
+     Phased = ALMAWeight->isPhased(currT);
+     if (Phased){
+       for (ij=0; ij<currNant; ij++) {
          Weight[currAntIdx][ij] = ALMAWeight->getWeight(ij,currT);
          if (Weight[currAntIdx][ij]){allflagged = false;};
+       };
      };
 
 // get ALMA refant used in the Phasing (to correct for X-Y phase offset):
@@ -780,7 +794,11 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
        int hour = (int) (dayFrac*24.);
        int min = (int) ((dayFrac*24. - ((double) hour))*60.);
        int sec = (int) ((dayFrac*24. - ((double) hour) - ((double) min)/60.)*3600.);
-       sprintf(message,"WARNING: NO VALID ALMA ANTENNAS ON %i-%i:%i:%i ?!?!\n WILL CONVERT ON THIS TIME *WITHOUT* CALIBRATION\n",day,hour,min,sec);
+       if (Phased){
+         sprintf(message,"WARNING: NO VALID ALMA ANTENNAS ON %i-%i:%i:%i ?!?!\n WILL CONVERT ON THIS TIME *WITHOUT* CALIBRATION\n",day,hour,min,sec);
+       } else {
+         sprintf(message,"WARNING: ARRAY WAS UNPHASED AT TIME %i-%i:%i:%i ?!?!\n WILL SET THE WEIGHTS TO ZERO\n",day,hour,min,sec);
+       };
        fprintf(logFile,"%s",message); fflush(logFile);
        lastTFailed = currT ;
      };
@@ -798,7 +816,6 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
      gchanged = allgains[currAntIdx][0]->setInterpolationTime(currT);
       for (ij=0; ij<currNant; ij++) {
         if (Weight[currAntIdx][ij]) {
-
           allgains[currAntIdx][0]->applyInterpolation(ij,0,AnG[currAntIdx][ij]); };
       };
 
@@ -1018,12 +1035,14 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
 // Calibrate and convert to circular:
 
 // Shall we write in plot file?
-     auxB = (currT>=plRange[0] && currT<=plRange[1] && plotIF); //plAnt == otherAnt);
-
+     auxB = (currT>=plRange[0] && currT<=plRange[1] && plotIF && (calField<0 || currF==calField)); //plAnt == otherAnt);
 
 // Convert:
-     DifXData->applyMatrix(Ktotal[currAntIdx],XYSWAP[currAntIdx],auxB,currAntIdx,plotFile[IFplot]);
-
+     if(Phased){
+       DifXData->applyMatrix(Ktotal[currAntIdx],XYSWAP[currAntIdx],auxB,currAntIdx,plotFile[IFplot]);}
+     else {
+       DifXData->zeroWeight();
+     };
 // Write:
      if (!doTest){DifXData->setCurrentMixedVis();};
 
@@ -1054,12 +1073,120 @@ static PyObject *PolConvert(PyObject *self, PyObject *args)
   sprintf(message,"\nDONE WITH POLCONVERT!\n");
   fprintf(logFile,"%s",message); std::cout << message; fflush(logFile);
 
-  fclose(logFile);
+
 // finished with no errors:
-    ret = Py_BuildValue("i",0);
+  ret = Py_BuildValue("i",0);
+
+
+
+/////////////////////////////////////////////////
+// Free memory:
+
+  fclose(logFile);
+
+  for (ij=0; ij<nALMA; ij++) {
+    auxI = nsumArr[ij];
+    for (ii=0; ii<auxI; ii++) {
+      delete[] AnG[ij][ii][0];
+      delete[] AnG[ij][ii][1];
+      delete[] AnDt[ij][ii][0];
+      delete[] AnDt[ij][ii][1];
+      delete[] AnG[ij][ii];
+      delete[] AnDt[ij][ii];
+    };
+    delete[] AnG[ij];
+    delete[] AnDt[ij];
+    delete[] Weight[ij];
+
+    for (ii=0; ii<2; ii++) {
+      for (ik=0; ik<2; ik++) {
+        for (il=0; il<auxI; il++) {
+          delete[] K[ij][ii][ik][il];
+          delete[] Kfrozen[ij][ii][ik][il];
+        };
+        delete[] K[ij][ii][ik];
+        delete[] Kfrozen[ij][ii][ik];
+        delete[] Ktotal[ij][ii][ik];
+      };
+    };
+
+   };
+
+    for (i=0;i<nALMA;i++){
+     for (j=0;j<nsumArr[i];j++){delete[] dttimesArr[i][j];};
+     for (j=0; j<ngainTabs[i]; j++){
+      delete[] ntimeArr[i][j];
+      delete[] timesArr[i][j];
+      delete[] gainsArrR1[i][j];
+      delete[] gainsArrI1[i][j];
+      delete[] gainsArrR2[i][j];
+      delete[] gainsArrI2[i][j];
+      delete[] gainflag[i][j];
+      delete allgains[i][j];
+    };
+    delete alldterms[i];
+    delete[] allgains[i];
+    delete[]  ntimeArr[i]; 
+    delete[]  timesArr[i];
+    delete[]  gainsArrR1[i];
+    delete[]  gainsArrI1[i];
+    delete[]  gainsArrR2[i];
+    delete[]  gainsArrI2[i];
+    delete[]  gainflag[i];
+    delete[] kind[i];
+    delete[]  nchanArr[i];
+    delete[]  freqsArr[i];
+    delete[] dttimesArr[i];
+    delete[] ndttimeArr[i];
+    delete[] dtflag[i];
+    delete[] dtermsArrR1[i];
+    delete[] dtermsArrI1[i];
+    delete[] dtermsArrR2[i];
+    delete[] dtermsArrI2[i];
+
+   };
+
+
+  for (i=0;i<NPGain;i++){
+    delete[] PrioriGains[i]; 
+  };
+  delete[] PrioriGains;
+
+    delete[] alldterms;
+    delete[] allgains;
+    delete[] kind;
+    delete[] nsumArr;
+    delete[] almanums;
+    delete[]  ntimeArr;
+    delete[]  nchanArr;
+    delete[]  timesArr;
+    delete[]  gainsArrR1;
+    delete[]  gainsArrI1;
+    delete[]  gainsArrR2;
+    delete[]  gainsArrI2;
+    delete[]  gainflag;
+    delete[]  freqsArr;
+
+    delete[] ndttimeArr;
+    delete[] dttimesArr;
+    delete[] dtermsArrR1;
+    delete[] dtermsArrI1;
+    delete[] dtermsArrR2;
+    delete[] dtermsArrI2;
+
+    delete[] isLinear;
+    delete[] XYSWAP;
+    delete[] ngainTabs;
+
+    delete[] dtflag;
+    delete[] nchanDt; 
+    delete[] dtfreqsArr;
+
+/////////////////////////////////////////////////////
+
+
     return ret;
 
 }
-
 
 
