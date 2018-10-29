@@ -1,5 +1,6 @@
 dist_bin_SCRIPTS = \
 	addMark5b.pl \
+	addVDIF.pl \
 	day2mjd \
 	difxcopy \
 	dir2filelist.pl \
@@ -11,6 +12,8 @@ dist_bin_SCRIPTS = \
 	pcList.pl \
 	sec2time.pl \
 	startcorr.pl \
+	summarizeDifxlogs.py \
+	summarizePolconvertLogs.py \
 	time.pl \
 	time2sec.pl \
 	update_eop \
