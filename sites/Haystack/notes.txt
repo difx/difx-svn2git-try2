@@ -1,0 +1,178 @@
+# Overview of post-DIFX ttd list
+#
+
+    Started update of 2.5 in prep for 2.5.3 tagging
+    gefera:/swc/difx/difx-svn/master_tags/DiFX-2.5/notes.txt
+x       copied sites to 2.5
+x       copied polconvert to 2.5
+x       copied hops to 2.5
+x       drivepolconvert.py tweak.
+x       updated Cycle5 template instructions
+x   rebuilt DiFX-2.5 on demi po gefera the eht
+
+    picked-up after rebuilding gefera:
+x       updated setup
+x       updated utilities/calcif2
+x       updated applications/calcserver
+x       utilities/misc
+
+    /applications/guiServer/trunk/src/DifxMonitorExchange.h
+
+    todo by Jan:
+        svn log -v applications/vex2difx/trunk | less ... hmmm
+        svn log -v applications/difx2fits/trunk | less
+    ^/applications/vex2difx/trunk
+    ^/applications/difx2fits/trunk
+
+x   ^/mpifxcorr/trunk/utils/calcifMixed
+x   ^/mpifxcorr/trunk/utils/Makefile.am
+x   ^/mpifxcorr/trunk/utils/startdifx
+
+    copy haystack nightly scripts to sites area for Jan to use
+.   => fix Readme Template for Cycle5
+    => add the d2fits option -1-u to script (optional)
+       difx2fits union mode (-u) and single job (-1)
+          will create a single fits file per scan/job
+          these should be loadable into AIPS without issue.
+          old = as is, new = -1 -u ?  ; needs test
+.   => poke through the commits and pull in the fixes
+.   => difx2fits fix from Jan.
+    Push VEX2XML to DiFX trunk applications/hops
+    Put help engine into difx nightly
+    Run doxygen in difx nightly
+    Put m6support changes into my trunk and difx
+
+# Sun Oct 28 17:08:41 EDT 2018
+
+[gbc@gefera Haystack]$ svn commit -m'updating 2.5 for current EHTC trunk scripts'
+Sending        ehtc/Readme-Cycle4.txt
+Sending        ehtc/Readme-Cycle5.txt
+Adding  (bin)  ehtc/ehtc-aeditjob.sh
+Adding  (bin)  ehtc/ehtc-antab.sh
+Sending        ehtc/ehtc-joblist.py
+Adding  (bin)  ehtc/ehtc-jsgrind.sh
+Sending        ehtc/ehtc-postdrive.sh
+Adding  (bin)  ehtc/ehtc-release-check.sh
+Sending        ehtc/ehtc-tarballs.sh
+Sending        ehtc/ehtc-zoomchk.py
+Transmitting file data ..........
+Committed revision 8552.
+
+$ svn commit -m'updating 2.5 for current trunk polconvert'
+Sending        ChangeLog
+Sending        src/CalTable.cpp
+Sending        src/Changelog
+Sending        src/DataIO.cpp
+Sending        src/DataIO.h
+Sending        src/DataIOFITS.cpp
+Sending        src/DataIOFITS.h
+Sending        src/DataIOSWIN.cpp
+Sending        src/DataIOSWIN.h
+Sending        src/PP/difxcmp.sh
+Sending        src/PP/drivepolconvert.py
+Sending        src/PP/prepolconvert.py
+Sending        src/PP/runpolconvert.py
+Sending        src/QA2/PolConvert_EVN_1.4.py
+Sending        src/Weighter.cpp
+Sending        src/Weighter.h
+Sending        src/_PolConvert.cpp
+Sending        src/_PolGainSolve.cpp
+Sending        src/polconvert.xml
+Sending        src/setup.py
+Sending        src/task_polconvert.py
+Deleting       trunk
+Transmitting file data .....................
+Committed revision 8553.
+
+$ svn commit -m'updating 2.5 for current trunk hops'
+Sending        ChangeLog.txt
+Sending        README.difx.txt
+Sending        README.txt
+Sending        configure.ac
+Sending        correlator/CorAsc2/CorAsc2.c
+Sending        data/ff_testdata/Makefile.am
+Sending        data/ff_testdata/chk_ff_2836.sh
+Adding  (bin)  data/ff_testdata/chk_ff_dump.sh
+Adding  (bin)  data/ff_testdata/chk_flagging.sh
+Adding  (bin)  data/ff_testdata/chk_min_weight.sh
+Adding  (bin)  data/ff_testdata/chk_notches.sh
+Sending        data/ff_testdata/run_testsuite.sh
+Sending        help/fourfit.doc
+Sending        hops_config.h
+Sending        postproc/aedit/set_baselines.c
+Sending        postproc/fourfit/Makefile.am
+Adding         postproc/fourfit/adhoc_flag.c
+Adding         postproc/fourfit/adhoc_flag.h
+Sending        postproc/fourfit/apply_notches.c
+Sending        postproc/fourfit/apply_passband.c
+Sending        postproc/fourfit/calc_rms.c
+Sending        postproc/fourfit/control.h
+Sending        postproc/fourfit/copy_cblock_parts.c
+Sending        postproc/fourfit/default_cblock.c
+Sending        postproc/fourfit/est_pc_manual.c
+Sending        postproc/fourfit/fill_fringe_info.c
+Sending        postproc/fourfit/fourfit.c
+Sending        postproc/fourfit/generate_graphs.c
+Sending        postproc/fourfit/generate_text.c
+Sending        postproc/fourfit/init_tokens.c
+Sending        postproc/fourfit/lex.c
+Sending        postproc/fourfit/make_plotdata.c
+Adding         postproc/fourfit/meta_struct.h
+Sending        postproc/fourfit/norm_fx.c
+Sending        postproc/fourfit/norm_xf.c
+Sending        postproc/fourfit/nullify_cblock.c
+Sending        postproc/fourfit/output.c
+Sending        postproc/fourfit/param_struct.h
+Sending        postproc/fourfit/parser.c
+Sending        postproc/fourfit/parser.h
+Sending        postproc/fourfit/pcal_interp.c
+Sending        postproc/fourfit/pcalibrate.c
+Adding         postproc/fourfit/plot_data_dir.c
+Adding         postproc/fourfit/plot_data_dir.h
+Sending        postproc/fourfit/precorrect.c
+Sending        postproc/fourfit/rotate_pcal.c
+Sending        scripts/Makefile.am
+Sending        scripts/pcplot
+Sending        scripts/pcplot.in
+Adding         scripts/phorc
+Adding         scripts/tpcplot
+Adding         scripts/tpcplot.in
+Sending        sub/dfio/Makefile.am
+Sending        sub/dfio/addr_221.c
+Sending        sub/dfio/addr_222.c
+Adding         sub/dfio/copypage
+Adding         sub/dfio/copypage/Makefile.am
+Adding         sub/dfio/copypage/flush_postscript.txt
+Adding         sub/dfio/copypage/fplot_test.c
+Sending        sub/dfio/display_221.c
+Sending        sub/dfio/read_mk4fringe.c
+Sending        svnrev.txt
+Transmitting file data ............................................................
+Committed revision 8554.
+
+Sat Jan  5 14:11:59 EST 2019
+    svn merge --accept tf ^/setup/genipppc genipppc
+    svn merge --accept tf ^/utilities/trunk/calcif2/configure.ac \
+        applications/calcif2/configure.ac
+    svn merge --accept tf ^/utilities/trunk/calcif2/ChangeLog \
+        applications/calcif2/ChangeLog
+    svn merge --accept tf ^/applications/calcserver/trunk/configure.ac \
+        applications/calcserver/configure.ac
+    svn merge --accept tf ^/applications/calcserver/trunk/ChangeLog \
+        applications/calcserver/ChangeLog
+    for u in summarizeDifxlogs.py summarizePolconvertLogs.py ; do
+    svn merge --accept tf ^/utilities/trunk/misc/$u utilities/misc/$u ; done
+
+    # this didn't work  -- so no 2019 support in 2.5.3
+    # svn merge ^/applications/guiServer/trunk/src/DifxMonitorExchange.h \
+    #   applications/guiServer/src/DifxMonitorExchange.h
+
+Wed Jan  9 16:21:57 EST 2019
+
+    svn cp ^/mpifxcorr/trunk/utils/calcifMixed mpifxcorr/utils
+    svn merge --accept tf ^/mpifxcorr/trunk/utils/Makefile.am \
+        mpifxcorr/utils/Makefile.am
+    svn merge --accept tf ^/mpifxcorr/trunk/utils/startdifx \
+        mpifxcorr/utils/startdifx
+
+eof
