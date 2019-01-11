@@ -32,6 +32,7 @@
 #include <string.h>
 #include "difxio/difx_input.h"
 
+unsigned int difxInputCompatibilityStatistics[NumDifxInputCompatibilityStatistics] = { 0 };
 
 /* This function determines if two DifxInput are not mergable
  * because difxio does not currently support it, but could
