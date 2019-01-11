@@ -16,17 +16,20 @@ x       updated utilities/calcif2
 x       updated applications/calcserver
 x       utilities/misc
 
-    /applications/guiServer/trunk/src/DifxMonitorExchange.h
-
-    todo by Jan:
-        svn log -v applications/vex2difx/trunk | less ... hmmm
-        svn log -v applications/difx2fits/trunk | less
-    ^/applications/vex2difx/trunk
-    ^/applications/difx2fits/trunk
+xxxx /applications/guiServer/trunk/src/DifxMonitorExchange.h
+x   this change doesn't build and the cleanup is intertwined
+x   with other things.  2.5.3 just won't support guiServer.
 
 x   ^/mpifxcorr/trunk/utils/calcifMixed
 x   ^/mpifxcorr/trunk/utils/Makefile.am
 x   ^/mpifxcorr/trunk/utils/startdifx
+
+x   todo by Jan:
+x       svn log -v applications/vex2difx/trunk | less ... hmmm
+x       svn log -v applications/difx2fits/trunk | less
+x   ^/applications/vex2difx/trunk
+x   ^/applications/difx2fits/trunk
+x   see cherry-pick emails from Jan 10.
 
     copy haystack nightly scripts to sites area for Jan to use
 .   => fix Readme Template for Cycle5
@@ -174,5 +177,15 @@ Wed Jan  9 16:21:57 EST 2019
         mpifxcorr/utils/Makefile.am
     svn merge --accept tf ^/mpifxcorr/trunk/utils/startdifx \
         mpifxcorr/utils/startdifx
+
+Fri Jan 11 13:31:31 EST 2019
+
+    dry=--dry-run or dry=
+    svn merge $dry -c8496 \
+        ^/applications/difx2fits/trunk/src/difx2fits.c \
+        applications/difx2fits/src/difx2fits.c
+    svn merge $dry -c8496 \
+        ^/libraries/difxio/trunk/difxio/difx_input_merge.c \
+        libraries/difxio/difxio/difx_input_merge.c
 
 eof
