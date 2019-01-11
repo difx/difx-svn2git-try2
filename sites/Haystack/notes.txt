@@ -233,7 +233,6 @@ Fri Jan 11 13:31:31 EST 2019
         applications/vex2difx
 # removing these two ChangeLog entries for 8599,8614:
 # * avoid segfault in VexSetup::selectTones when antenna has no  def
-# * vex2difx show warning of missing VEX infos but also drop all antennas
-without sample_rate
+# * vex2difx show warning of missing VEX infos but also drop all antennas without sample_rate
 
 eof
