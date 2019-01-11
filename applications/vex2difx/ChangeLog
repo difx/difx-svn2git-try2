@@ -1,3 +1,13 @@
+
+Version 2.5.3
+~~~~~~~~~~~~~
+* Fix indexing bug in baseline table preparation. Affected zoom band projects where only a subset of antennas is multi-datastream.
+* Fix segfaults for scan MODE undefined in VEX
+* vexpeek --diskusage shows GByte as std::fixed, show data rate
+* vex2difx warn when antenna dropped due to missing sample_rate
+* vex2difx improved check for antenna presence in a Mode, tell when key .vex
+refs are incomplete for an antenna
+
 Version 2.5.0
 ~~~~~~~~~~~~~
 * Users can now supply comments in one or more COMMENT { } blocks

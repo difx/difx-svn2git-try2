@@ -179,7 +179,7 @@ Wed Jan  9 16:21:57 EST 2019
         mpifxcorr/utils/startdifx
 
 Fri Jan 11 13:31:31 EST 2019
-
+# difx2fits:
     dry=--dry-run or dry=
     svn merge $dry -c8496 \
         ^/applications/difx2fits/trunk/src/difx2fits.c \
@@ -187,5 +187,49 @@ Fri Jan 11 13:31:31 EST 2019
     svn merge $dry -c8496 \
         ^/libraries/difxio/trunk/difxio/difx_input_merge.c \
         libraries/difxio/difxio/difx_input_merge.c
+
+# perhaps these for vex2difx
+# 
+# r8614 | JanWagner | 2018-12-18 16:16:30 +0100 (Tue, 18 Dec 2018) | 1 line
+# vex2difx show warning of missing VEX infos but also drop all antennas
+# without sample_rate (behaviour of r8217 and earlier)
+# 
+# r8600 | JanWagner | 2018-11-30 14:48:50 +0100 (Fri, 30 Nov 2018) | 1 line
+# vex2difx improved check for antenna presence in a Mode, tell when key .vex
+# refs are incomplete for an antenna
+# 
+# r8599 | JanWagner | 2018-11-30 14:22:58 +0100 (Fri, 30 Nov 2018) | 1 line
+# avoid segfault in VexSetup::selectTones when antenna has no  def
+# 
+# r8579 | JanWagner | 2018-11-08 13:23:00 +0100 (Thu, 08 Nov 2018) | 1 line
+# vex2difx warn when antenna dropped due to missing sample_rate
+# 
+# r8407 | JanWagner | 2018-08-30 11:23:32 +0200 (Thu, 30 Aug 2018) | 1 line
+# vexpeek --diskusage show GByte as std::fixed, show data rate
+# 
+# r8369 | JanWagner | 2018-07-06 10:42:43 +0200 (Fri, 06 Jul 2018) | 1 line
+# vex2difx fix two segfaults when scan MODE undefined in VEX
+# 
+# r8361 | JanWagner | 2018-06-26 15:44:30 +0200 (Tue, 26 Jun 2018) | 1 line
+# vex2difx ChangeLog add info on fix of indexing bug
+# 
+# and then this one which was not in 2.5.2 but was patched into it afterwards
+# 
+# r8358 | JanWagner | 2018-06-25 15:01:40 +0200 (Mon, 25 Jun 2018) | 1 line
+# vex2difx fix indexing bug in zoom freq lookup
+# 
+# vex2difx first batch
+    dry=--dry-run or dry=
+    svn merge $dry -c8358,8369,8407,8579 \
+        ^/applications/vex2difx/trunk \
+        applications/vex2difx
+# this required edits as 2.6 has been introduced on trunk
+    svn merge $dry -c8361 \
+        ^/applications/vex2difx/trunk/ChangeLog \
+        applications/vex2difx/ChangeLog
+# leavinng off 8599,8614 for the moment...
+    svn merge $dry -c8600 \
+        ^/applications/vex2difx/trunk \
+        applications/vex2difx
 
 eof

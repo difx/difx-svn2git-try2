@@ -61,7 +61,7 @@ void usage(const char *pgm)
 	std::cout << std::endl;
 }
 
-double totalDiskUsageGB(const VexData *V, const std::string &antName)
+double totalDiskUsageGB(const VexData *V, const std::string &antName, double* rate = NULL)
 {
 	double GB = 0.0;
 
@@ -89,6 +89,11 @@ double totalDiskUsageGB(const VexData *V, const std::string &antName)
 		if(!S)
 		{
 			continue;
+		}
+
+		if (rate != NULL)
+		{
+			*rate = S->dataRateMbps();
 		}
 
 		GB += S->dataRateMbps()*I->duration_seconds()/8000.0;
@@ -153,8 +158,10 @@ void antennaSummary(const VexData *V, int doFormat, int doUsage)
 		if(doUsage)
 		{
 			int p = std::cout.precision();
+			double drate, usage;
+			usage = totalDiskUsageGB(V, it->first, &drate);
 			std::cout.precision(3);
-			std::cout << " " << totalDiskUsageGB(V, it->first);
+			std::cout << std::fixed << " " << usage << " " << (int)drate;
 			std::cout.precision(p);
 		}
 		std::cout << std::endl;
