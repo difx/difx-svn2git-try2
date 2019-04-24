@@ -25,12 +25,13 @@
 # setup versioned tools -- different per site
 # script that adds CASA 4.7.2 bin to PATH
 source ~/lib/casa.setup
-#source /swc/difx/setup-DiFX-2.5.3.bash
+source /swc/difx/setup-DiFX-2.5.3.bash
 #source /swc/difx/setup-DiFX-2.5.2.bash
 #source /swc/difx/setup-DiFX-2.5.bash
-source /swc/difx/setup-difx.bash
+#source /swc/difx/setup-difx.bash
 #source /swc/difx/difx-root-YYmonDD/setup-difx.bash
 #source /swc/hops/hops.bash
+export HOPS_SETUP=false
 source $DIFXROOT/bin/hops.bash
 
 # site vars: these point to the mirror or difx SVN tree
@@ -107,6 +108,9 @@ cd $work/$exp/v${vers}${ctry}p${iter}/$subv
 
 # once per trak, not per band, set up for polconvert data
 # from the mirror after consultation with the other correlator
+# $hays is used here on the assumption that the tarballs appear there
+# first but it could as well be $bonn if it starts there.  Either way
+# both correlators should unpack the same QA2 tarballs.
 [ -d $hays/$exp ] || mkdir $hays/$exp
 [ -d $hays/$exp/$exp-$vers ] || mkdir $hays/$exp/$exp-$vers
 [ -d $hays/$exp/$exp-$vers/qa2 ] || mkdir $hays/$exp/$exp-$vers/qa2
@@ -134,20 +138,15 @@ cp -p $dout/*vex.obs .
 # ehtc-tarballs.sh haxp expects *.codes in $dout otherwise it fails silently
 cp -p $ehtc/ehtc-template.codes $dout/$exp.codes
 
-# haxp is generated in $dout so preserve $expn if found:
-[ -d $dout/$expn ] && mv $dout/$expn $dout/$expn.save
-
-# ehtc-tarballs.sh haxp expects *.codes in $dout otherwise it fails silently
-cp -p $ehtc/ehtc-template.codes $dout/$exp.codes
-
 # clean slate fourfit control file
-cat > $evs.conf <<EOF
-* fourfit config file for ALMA 1mm session April 2017 $evs
+cat > $evs.bare <<EOF
+* bare fourfit config file for ALMA 1mm session April 2018 $evs
 weak_channel 0.0
 optimize_closure true
 pc_mode manual
 mbd_anchor sbd
 gen_cf_record true
+*sb_win -1.024   1.024
 sb_win -0.10     0.10
 mb_win -0.008    0.008
 dr_win -0.000001 0.000001

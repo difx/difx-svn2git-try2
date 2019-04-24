@@ -229,9 +229,17 @@ def doInputs(o):
     Use the input pattern to glob for matching input/calc
     files and read them to provide the job information.
     o.jobbage[#] = [start,stop,[antennas],[name,start,smjd,dur,vsrc,mode]]
+    o.inputs is non-empty if we were called, but we should check that
+    it points to some directory
     '''
     if o.verb: print '# globbing with:', o.inputs + '_*.input'
-    if len(o.inputs) > 0 and o.job == '':
+    dirn = os.path.dirname(o.inputs)
+    if dirn == '':
+        print '# globbing for files in the current working directory'
+    else:
+        if not os.path.exists(dirn):
+            raise Exception, '-i argument must be set sensibly'
+    if o.job == '':
         o.job = os.path.basename(o.inputs)
         if o.verb: print '# set job to', o.job
     o.inptfiles = glob.glob(o.inputs + '_*.input')
