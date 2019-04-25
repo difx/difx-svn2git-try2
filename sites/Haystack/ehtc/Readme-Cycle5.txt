@@ -31,16 +31,17 @@ source /swc/difx/setup-DiFX-2.5.3.bash
 #source /swc/difx/setup-difx.bash
 #source /swc/difx/difx-root-YYmonDD/setup-difx.bash
 #source /swc/hops/hops.bash
-export HOPS_SETUP=false
+# Only if you had somehow previously set it up:
+# export HOPS_SETUP=false
 source $DIFXROOT/bin/hops.bash
 
 # site vars: these point to the mirror or difx SVN tree
-export hays=/data-sc04/EHT_ARCHIVE/Hays_Output
-export bonn=/data-sc04/EHT_ARCHIVE/Bonn_Output
+export hays=/data-sc24/EHT_ARCHIVE/Hays_Output
+export bonn=/data-sc24/EHT_ARCHIVE/Bonn_Output
 export dsvn=/swc/difx/difx-svn
 # site vars: script area, correlator work dir and release directory
-#export ehtc=$dsvn/sites/Haystack/ehtc
-export ehtc=/swc/scripts/ehtc
+export ehtc=$dsvn/sites/Haystack/ehtc
+#export ehtc=/swc/scripts/ehtc
 export arch=$hays
 export corr=/data-sc15/difxoper
 # run polconvert on the same machine with the files
@@ -103,7 +104,7 @@ false && { # ONE TIME SETUP
     mkdir $work/$exp/v${vers}${ctry}p${iter}
 [ -d $work/$exp/v${vers}${ctry}p${iter}/$subv ] ||
     mkdir $work/$exp/v${vers}${ctry}p${iter}/$subv
-[ -d $release ] || mkdir $release
+[ -d $release ] || mkdir -p $release
 cd $work/$exp/v${vers}${ctry}p${iter}/$subv
 
 # once per trak, not per band, set up for polconvert data
@@ -121,6 +122,7 @@ cd $work/$exp/v${vers}${ctry}p${iter}/$subv
 
 # link in the QA2 package tables for this band
 for d in ../qa2/$pcal.* ; do ln -s $d . ; done
+for f in ../qa2/README.* ; do ln -s $f . ; done
 ls -ld $pcal.*
 
 # Review README.DRIVEPOLCONVERT: it may specify something other than 'v8'
@@ -131,6 +133,7 @@ echo $opts ; cat README.DRIVEPOLCONVERT
 # pull in the experiment codes
 cp -p $ehtc/ehtc-template.codes $exp.codes
 cp -p $dout/*vex.obs .
+[ `ls -l *vex.obs | wc -l` -eq 1 ] || echo Too many/too few vex.obs files
 
 # haxp is generated in $dout so preserve $expn if found:
 [ -d $dout/$expn ] && mv $dout/$expn $dout/$expn.save
@@ -174,13 +177,18 @@ $ehtc/ehtc-joblist.py -i $dout/$evs -o *.obs -R > $ers-jobs-map.txt
 ( cd $dout ; summarizeDifxlogs.py    ) > $ers-difxlog-sum.txt
 ( cd $dout ; summarizeDifxlogs.py -c ) > $ers-difxlog-clr.txt
 cp -p $ers*.txt $release/logs
+cp -p $exp-$subv-v${vers}${ctry}p${iter}r${relv}.logfile $release/logs
 
 #
 # run the GENERAL PROCESSING commands on one or three jobs to make
 # suitable data for generating "good enough" manual phase cals
 #
-### Notes on building $ers.conv
-# scans to use grep from *jobs*
+### Notes on building $ers.conf
+# pick scans to use grep from *jobs*
+# stations:
+awk '{print $5}' e18c21-0-b3-jobs-map.txt | tr '-' \\012 | sort | uniq -c
+# types of baselines:
+awk '{print $5}' e18c21-0-b3-jobs-map.txt | sort | uniq -c
 
 jobs=`echo $exp-$vers-${subv}_{,}.input` ; echo $jobs
 prepolconvert.py -v -k -s $dout $jobs
