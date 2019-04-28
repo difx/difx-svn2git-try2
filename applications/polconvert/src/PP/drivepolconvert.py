@@ -288,11 +288,13 @@ def runRelatedChecks(o):
 
     if 'DIFXCASAPATH' in os.environ:
         o.casa = '%s/casa' % os.environ['DIFXCASAPATH']
+        msg = 'from DIFXCASAPATH'
     else:
         o.casa = 'casa'
+        msg = 'from "casa"'
     if o.verb: cmd = 'type %s'
     else:      cmd = 'type %s 1>/dev/null 2>/dev/null'
-    if o.verb: print 'CASA executable is %s' % o.casa
+    if o.verb: print 'CASA executable is %s (%s)' % (o.casa,msg)
 
     if o.run:
         if os.system(cmd % o.casa):
@@ -840,6 +842,9 @@ def executeThreads(o):
     Once we have reached the limit, we launch new threads for the
     remaining scans as thread slots become available
     '''
+    if len(o.workdirs) == 0:
+        print 'Golly, gee, it seems we have no work to do...moving on.'
+        return
     while len(o.workdirs) > 0 and len(o.workbees) < o.parallel:
         launchNewScanWorker(o, '(original)')
     waitForNextWorker(o)
