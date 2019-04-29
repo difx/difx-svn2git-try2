@@ -186,9 +186,9 @@ cp -p $exp-$subv-v${vers}${ctry}p${iter}r${relv}.logfile $release/logs
 ### Notes on building $ers.conf
 # pick scans to use grep from *jobs*
 # stations:
-awk '{print $5}' e18c21-0-b3-jobs-map.txt | tr '-' \\012 | sort | uniq -c
+awk '{print $5}' $ers-jobs-map.txt | tr '-' \\012 | sort | uniq -c
 # types of baselines:
-awk '{print $5}' e18c21-0-b3-jobs-map.txt | sort | uniq -c
+awk '{print $5}' $ers-jobs-map.txt | sort | uniq -c
 
 jobs=`echo $exp-$vers-${subv}_{,}.input` ; echo $jobs
 prepolconvert.py -v -k -s $dout $jobs
