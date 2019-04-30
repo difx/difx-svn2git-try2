@@ -274,6 +274,19 @@ summarizePolconvertLogs.py -s -c -g 0.5 -b 0.8
 # are really only likely to get you 'good' for a realy bright source
 # (e.g. 3C279) as these are fringes of a single channel.  Also:
 
+# additional checks for polconvert issues
+grep -l SEVERE *pol*/casa*/*output |\
+    cut -d_ -f2 | cut -d. -f1 | tr \\012 ' '
+grep -l 'was NOT polconverted properly' *polcon*/casa-logs/*output |\
+    cut -d_ -f2 | cut -d. -f1 | tr \\012 ' '
+polconversions=`cat $ers-jobs-map.txt | grep -v do.not | wc -l`
+allifsplots=`ls -l $ers*polcon*/*TS/ALL*png | wc -l`
+antabfiles=`ls -l $ers*polcon*/*ANTAB | wc -l`
+[ $polconversions -eq $allifsplots ] || { echo -n '###' missing plots;
+    echo $polconversions -ne $allifsplots '(polconversions ne allifplots)' ; }
+[ $polconversions -eq $antabfiles ] || { echo -n '###' missing antabfiles;
+    echo $polconversions -ne $antabfiles '(polconversions ne $antabfiles)' ; }
+
 # Examine some of the 4fit fringes on questionable cases with
 fplot $ers-*-4fit.$expn.save/$doyhhmm/A[^A].B.*
 
