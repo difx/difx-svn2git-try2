@@ -36,8 +36,8 @@ source /swc/difx/setup-DiFX-2.5.3.bash
 source $DIFXROOT/bin/hops.bash
 
 # site vars: these point to the mirror or difx SVN tree
-export hays=/data-sc24/EHT_ARCHIVE/Hays_Output
-export bonn=/data-sc24/EHT_ARCHIVE/Bonn_Output
+export hays=/data-sc24/EHT_ARCHIVE/Hays_Output2
+export bonn=/data-sc24/EHT_ARCHIVE/Bonn_Output2
 export dsvn=/swc/difx/difx-svn
 # site vars: script area, correlator work dir and release directory
 export ehtc=$dsvn/sites/Haystack/ehtc
