@@ -207,14 +207,15 @@ do difx2mark4 -e $expn -s $exp.codes --override-version ${j/input/difx} ; done
 # identify roots:
 roots=`cd $expn ; ls */target*` ; echo $roots
 cd $expn ; cp ../$ers.conf .
-# for each root run this command, but set -s argument
+# For each root run this command, but set -s argument
 # with a comma-sep list of single letter station codes
 # that should be fit (relative to A as first station).
+# Refer to the station codes file for the 2-letter to 1-letter codes.
 $ehtc/est_manual_phases.py -c $ers.conf \
-    -r first-root -s AA,...
+    -r first-root -s A,...
 grep ^if.station $ers.conf | sort | uniq -c
 $ehtc/est_manual_phases.py -c $ers.conf \
-    -r second-root -s AA,...
+    -r second-root -s A,...
 grep ^if.station $ers.conf | sort | uniq -c
 #...
 
