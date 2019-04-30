@@ -31,19 +31,28 @@ source ~/lib/casa.setup
 source /swc/difx/setup-difx.bash
 #source /swc/difx/difx-root-YYmonDD/setup-difx.bash
 #source /swc/hops/hops.bash
+# Only if you had somehow previously set it up:
+# export HOPS_SETUP=false
 source $DIFXROOT/bin/hops.bash
 
 # site vars: these point to the mirror or difx SVN tree
-export hays=/data-sc04/EHT_ARCHIVE/Hays_Output
-export bonn=/data-sc04/EHT_ARCHIVE/Bonn_Output
+export hays=/data-sc24/EHT_ARCHIVE/Hays_Output2
+export bonn=/data-sc24/EHT_ARCHIVE/Bonn_Output2
 export dsvn=/swc/difx/difx-svn
+export dsvn=/swc/difx/difx-svn/master_tags/DiFX-2.5.3/
 # site vars: script area, correlator work dir and release directory
-#export ehtc=$dsvn/sites/Haystack/ehtc
-export ehtc=/swc/scripts/ehtc
+#export ehtc=/sites/Haystack/ehtc
+export ehtc=$dsvn/sites/Haystack/ehtc
+#export ehtc=/swc/scripts/ehtc
 export arch=$hays
 export corr=/data-sc15/difxoper
 # run polconvert on the same machine with the files
 export work=/data-sc15/difxoper
+
+# If $work contains multiple jubs or unprocessed jobs, set this to true,
+# which implicitly sets the -u flag on any use of $ehtc/ehtc-joblist.py.
+# If $work is more messed up than that, you're on your own.
+export uniq=true    # or export uniq=false
 
 # principal vars for tracking all the revisions and forth
 export exp=e18...
@@ -64,7 +73,7 @@ export expn=3...    # HOPS exp # (from Mike Titus)
 export pcal=TRACK_?                            # per QA2 delivery
 export pdir=$hays/$exp/$exp-$vers/qa2
 export dpfu=0.0308574                          # ave over session, val TBD
-export scmp='PV,MG,SW,AX,LM,SR,SZ'             # cycle5
+export scmp='PV,MG,SW,AX,LM,SZ'                # cycle5
 export opts="-r -P15 -S $scmp -f 4 -A $dpfu -q v8"
 export fitsname=false
 export aeditjob=$ehtc/ehtc-aeditjob.sh
@@ -74,10 +83,10 @@ export release=$arch/$exp/$exp-$relv
 export dout=$corr/$exp/v${vers}$ctry/$subv
 export evs=$exp-$vers-$subv
 export ers=$exp-$relv-$subv
-export ptar=$pcal.APP_DELIVERABLES.tgz
+export ptar=$pcal???label???.APP_DELIVERABLES.tgz
 
 # check:
-wordcount=`( 
+wordcount=`(
 echo =============================================================== && \
 echo $exp $vers .$ctry. $subv $iter $relv .$flab. $expn && \
 echo $evs $ers $opts $fitsname $aeditjob && \
@@ -86,7 +95,7 @@ echo $ptar $pcal && \
 echo $pdir && \
 echo $release && \
 echo =============================================================== && \
-type casa && \ 
+type casa && \
 type mpifxcorr && \
 type fourfit && \
 echo =============================================================== 
@@ -102,11 +111,14 @@ false && { # ONE TIME SETUP
     mkdir $work/$exp/v${vers}${ctry}p${iter}
 [ -d $work/$exp/v${vers}${ctry}p${iter}/$subv ] ||
     mkdir $work/$exp/v${vers}${ctry}p${iter}/$subv
-[ -d $release ] || mkdir $release
+[ -d $release ] || mkdir -p $release
 cd $work/$exp/v${vers}${ctry}p${iter}/$subv
 
 # once per trak, not per band, set up for polconvert data
 # from the mirror after consultation with the other correlator
+# $hays is used here on the assumption that the tarballs appear there
+# first but it could as well be $bonn if it starts there.  Either way
+# both correlators should unpack the same QA2 tarballs.
 [ -d $hays/$exp ] || mkdir $hays/$exp
 [ -d $hays/$exp/$exp-$vers ] || mkdir $hays/$exp/$exp-$vers
 [ -d $hays/$exp/$exp-$vers/qa2 ] || mkdir $hays/$exp/$exp-$vers/qa2
@@ -117,6 +129,7 @@ cd $work/$exp/v${vers}${ctry}p${iter}/$subv
 
 # link in the QA2 package tables for this band
 for d in ../qa2/$pcal.* ; do ln -s $d . ; done
+for f in ../qa2/README.* ; do ln -s $f . ; done
 ls -ld $pcal.*
 
 # Review README.DRIVEPOLCONVERT: it may specify something other than 'v8'
@@ -127,12 +140,7 @@ echo $opts ; cat README.DRIVEPOLCONVERT
 # pull in the experiment codes
 cp -p $ehtc/ehtc-template.codes $exp.codes
 cp -p $dout/*vex.obs .
-
-# haxp is generated in $dout so preserve $expn if found:
-[ -d $dout/$expn ] && mv $dout/$expn $dout/$expn.save
-
-# ehtc-tarballs.sh haxp expects *.codes in $dout otherwise it fails silently
-cp -p $ehtc/ehtc-template.codes $dout/$exp.codes
+[ `ls -l *vex.obs | wc -l` -eq 1 ] || echo Too many/too few vex.obs files
 
 # haxp is generated in $dout so preserve $expn if found:
 [ -d $dout/$expn ] && mv $dout/$expn $dout/$expn.save
@@ -141,13 +149,14 @@ cp -p $ehtc/ehtc-template.codes $dout/$exp.codes
 cp -p $ehtc/ehtc-template.codes $dout/$exp.codes
 
 # clean slate fourfit control file
-cat > $evs.conf <<EOF
-* fourfit config file for ALMA 1mm session April 2017 $evs
+cat > $ers.bare <<EOF
+* bare fourfit config file for ALMA 1mm session April 2018 $ers
 weak_channel 0.0
 optimize_closure true
 pc_mode manual
 mbd_anchor sbd
 gen_cf_record true
+*sb_win -1.024   1.024
 sb_win -0.10     0.10
 mb_win -0.008    0.008
 dr_win -0.000001 0.000001
@@ -175,13 +184,18 @@ $ehtc/ehtc-joblist.py -i $dout/$evs -o *.obs -R > $ers-jobs-map.txt
 ( cd $dout ; summarizeDifxlogs.py    ) > $ers-difxlog-sum.txt
 ( cd $dout ; summarizeDifxlogs.py -c ) > $ers-difxlog-clr.txt
 cp -p $ers*.txt $release/logs
+cp -p $exp-$subv-v${vers}${ctry}p${iter}r${relv}.logfile $release/logs
 
 #
 # run the GENERAL PROCESSING commands on one or three jobs to make
 # suitable data for generating "good enough" manual phase cals
 #
-### Notes on building $ers.conv
-# scans to use grep from *jobs*
+### Notes on building $ers.conf
+# pick scans to use grep from *jobs*
+# stations: ...
+awk '{print $5}' $ers-jobs-map.txt | tr '-' \\012 | sort | uniq -c
+# types of baselines: ...
+awk '{print $5}' $ers-jobs-map.txt | sort | uniq -c
 
 jobs=`echo $exp-$vers-${subv}_{,}.input` ; echo $jobs
 prepolconvert.py -v -k -s $dout $jobs
@@ -189,45 +203,34 @@ drivepolconvert.py -v $opts -l $pcal $jobs
 for j in $jobs ;\
 do difx2mark4 -e $expn -s $exp.codes --override-version ${j/input/difx} ; done
 
+# identify roots:
+roots=`cd $expn ; ls */target*` ; echo $roots
 cd $expn ; cp ../$ers.conf .
-$ehtc/est_manual_phases.py -c $ers.conf -r ...
+# for each root run this command, but set -s argument
+# with a comma-sep list of single letter station codes
+# that should be fit (relative to A as first station).
+$ehtc/est_manual_phases.py -c $ers.conf \
+    -r first-root -s AA,...
 grep ^if.station $ers.conf | sort | uniq -c
-$ehtc/est_manual_phases.py -c $ers.conf -r ...
+$ehtc/est_manual_phases.py -c $ers.conf \
+    -r second-root -s AA,...
 grep ^if.station $ers.conf | sort | uniq -c
 #...
 
-# be sure to clean up afterwards
+# be sure to clean up afterwards, especially to move $expn aside
 cd ..
 cp -p $expn/$ers.conf .
 cp -p $expn/$ers.conf $release/logs
-rm -rf $expn ${jobs//input/*}
+mv $expn ff-conf-$expn
+rm -rf ${jobs//input/*}
 ### now have $ers.conf
-
-# generate TODO list with:
-$ehtc/ehtc-joblist.py -i $dout/$evs -o *.obs -G
 } # ONE TIME SETUP
 
 # GENERAL PROCESSING TEMPLATE ======================
 # (deleted; see Readme-Cycle4.txt)
 
 # GRINDING PROCESSING TEMPLATE ======================
-# This section shows the commands needed for the bulk grinding script.
-# A: until you have the fourfit control file built, two passes:
-false && {
-export proj=yyy targ=XXX class=cal|sci|eht  ; export label=$proj-$targ
-nohup $ehtc/ehtc-jsgrind.sh false true  < /dev/null > $label.log 2>&1
-} # wait for it to finish, generate the control file, and then:
-false && {
-nohup $ehtc/ehtc-jsgrind.sh false false < /dev/null > $label.log 2>&1
-}
-# B: you have the control file; multiple grinds can be included
-false && {
-export proj=yyy targ=XXX class=cal|sci|eht  ; export label=$proj-$targ
-nohup $ehtc/ehtc-jsgrind.sh < /dev/null > $label.log 2>&1
-} & disown
-# disown ensures that the script will not die when your shell does.
-# Reorder the TODO list generated by ehtc-joblist...-L as appropriate.
-# GRINDING PROCESSING TEMPLATE
+# (deleted; see Readme-Cycle4.txt)
 
 # EXECUTION NOTES ======================
 # Capture all commands in this file.
@@ -250,9 +253,12 @@ nohup $ehtc/ehtc-jsgrind.sh < /dev/null > $label.log 2>&1
 # or on the processing host with:
 # sh this.logfile & disown
 #--------------------------------------------------------------------------
-# While processing ======================
-# save logfile incrementally or when done:
+#
+# Final Steps ======================
+# This section is always MANUL.
+#
 false && {
+# save logfile incrementally or when done:
 cp -p $exp-$subv-v${vers}${ctry}p${iter}r${relv}.logfile $release/logs
 ls -l $release/logs
 
@@ -266,6 +272,19 @@ summarizePolconvertLogs.py -s -c -g 0.5 -b 0.8
 # the line between good/poor and poor/bad; the defaults (0.3 and 0.6)
 # are really only likely to get you 'good' for a realy bright source
 # (e.g. 3C279) as these are fringes of a single channel.  Also:
+
+# additional checks for polconvert issues
+grep -l SEVERE *pol*/casa*/*output |\
+    cut -d_ -f2 | cut -d. -f1 | tr \\012 ' '
+grep -l 'was NOT polconverted properly' *polcon*/casa-logs/*output |\
+    cut -d_ -f2 | cut -d. -f1 | tr \\012 ' '
+polconversions=`cat $ers-jobs-map.txt | grep -v do.not | wc -l`
+allifsplots=`ls -l $ers*polcon*/*TS/ALL*png | wc -l`
+antabfiles=`ls -l $ers*polcon*/*ANTAB | wc -l`
+[ $polconversions -eq $allifsplots ] || { echo -n '###' missing plots;
+    echo $polconversions -ne $allifsplots '(polconversions ne allifplots)' ; }
+[ $polconversions -eq $antabfiles ] || { echo -n '###' missing antabfiles;
+    echo $polconversions -ne $antabfiles '(polconversions ne $antabfiles)' ; }
 
 # Examine some of the 4fit fringes on questionable cases with
 fplot $ers-*-4fit.$expn.save/$doyhhmm/A[^A].B.*
@@ -298,11 +317,17 @@ for r in tb-* ; do pushd $r ; nohup ./release.sh & popd ; done
 # and finally after everything is released count the products
 $ehtc/ehtc-release-check.sh
 
+# one last time
+cp -p $exp-$subv-v${vers}${ctry}p${iter}r${relv}.logfile $release/logs
+ls -l $release/logs
+
 # Cleanup list ======================
 # after tarballs are delivered and if you want to recover disk space
 rm -rf $exp-$vers-${subv}_*.save
 rm -rf $exp-$relv-${subv}_*.save
 }
+# avoid worrisome error return values
+true
 
 #
 # eof
