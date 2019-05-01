@@ -25,8 +25,7 @@
 # setup versioned tools -- different per site
 # script that adds CASA 4.7.2 bin to PATH
 source ~/lib/casa.setup
-source /swc/difx/setup-DiFX-2.6.bash
-#source /swc/difx/setup-DiFX-2.5.3.bash
+source /swc/difx/setup-DiFX-2.5.3.bash
 #source /swc/difx/setup-DiFX-2.5.2.bash
 #source /swc/difx/setup-DiFX-2.5.bash
 #source /swc/difx/setup-difx.bash
@@ -284,9 +283,9 @@ grep -l 'was NOT polconverted properly' *polcon*/casa-logs/*output |\
 polconversions=`cat $ers-jobs-map.txt | grep -v do.not | wc -l`
 allifsplots=`ls -l $ers*polcon*/*TS/ALL*png | wc -l`
 antabfiles=`ls -l $ers*polcon*/*ANTAB | wc -l`
-[ $polconversions -eq $allifsplots ] || { echo -n '###' missing plots;
+[ $polconversions -eq $allifsplots ] || { echo -n '### missing plots ';
     echo $polconversions -ne $allifsplots '(polconversions ne allifplots)' ; }
-[ $polconversions -eq $antabfiles ] || { echo -n '###' missing antabfiles;
+[ $polconversions -eq $antabfiles ] || { echo -n '### missing antabfiles ';
     echo $polconversions -ne $antabfiles '(polconversions ne $antabfiles)' ; }
 
 # Examine some of the 4fit fringes on questionable cases with
