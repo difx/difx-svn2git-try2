@@ -3251,6 +3251,49 @@ static int codif_complex_decode_8channel_16bit(struct mark5_stream *ms, int nsam
 	return nsamp - nblank;
 }
 
+static int codif_complex_decode_14channel_16bit(struct mark5_stream *ms, int nsamp, float complex **data)
+{
+	const uint16_t *buf;
+	int o, i, j;
+	int nblank = 0;
+
+	buf = (const uint16_t *)ms->payload;
+	i = ms->readposition/2;
+
+	for(o = 0; o < nsamp; o++)
+	{
+		if(i*2 >= ms->blankzoneendvalid[0])
+		{
+		  for (j=0; j<14; j++) {
+			data[j][o] = complex_zeros[0];
+			nblank++;
+		  }
+		}
+		else
+		{
+		  for (j=0; j<14; j++) {
+		    //		        data[j][o] = ((int16_t)(buf[i]^0x8000) + (int16_t)(buf[i+1]^0x8000)*I)/8.0;  // Assume RMS==8
+		        data[j][o] = ((int16_t)buf[i] + (int16_t)buf[i+1]*I)/8.0;  // Assume RMS==8
+			i+=2;
+		  }
+		}
+
+		if(i*2 >= ms->databytes)
+		{
+			if(mark5_stream_next_frame(ms) < 0)
+			{
+				return -1;
+			}
+			buf = (const uint16_t *)ms->payload;
+			i = 0;
+		}
+	}
+
+	ms->readposition = i*2;
+
+	return nsamp - nblank;
+}
+
 static int codif_complex_decode_16channel_16bit(struct mark5_stream *ms, int nsamp, float complex **data)
 {
 	const uint16_t *buf;
@@ -3893,19 +3936,19 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 		}
 		f->databytesperpacket = dataarraylength;
 
-		if (ms->nchan != 0 && ms->nchan != header->nchan)
+		if (ms->nchan != 0 && ms->nchan != getCODIFNumChannels(header))
 		{
 			fprintf(m5stderr, "CODIF Warning: Changing nchan from %d to %d\n",
 				ms->nchan, header->nchan);
 		}
-		ms->nchan = header->nchan;
+		ms->nchan =  getCODIFNumChannels(header);
 
-		if (ms->nbit != 0 && ms->nbit != header->nbits)
+		if (ms->nbit != 0 && ms->nbit != getCODIFBitsPerSample(header))
 		{
 			fprintf(m5stderr, "CODIF Warning: Changing nbit from %d to %d\n",
 				ms->nbit, header->nbits);
 		}
-		ms->nbit = header->nbits;
+		ms->nbit = getCODIFBitsPerSample(header);
 		bitspersample = ms->nbit;
 		if (header->iscomplex) bitspersample *=2;
 
@@ -4255,7 +4298,7 @@ int set_decoder(int nbit, int nchan, int usecomplex, decodeFunc *decode, complex
 	    fprintf(m5stderr, "CODIF: Unsupported combination channels=%d and bits=%d\n", nchan, nbit);
 	    return 0;
 	  }
-      }
+      }      
     else
       {
 	switch(decoderindex)
@@ -4338,6 +4381,9 @@ int set_decoder(int nbit, int nchan, int usecomplex, decodeFunc *decode, complex
 	    break;
 	  case 4008:
 	    *complex_decode = codif_complex_decode_8channel_16bit;
+	    break;
+	  case 4014:
+	    *complex_decode = codif_complex_decode_14channel_16bit;
 	    break;
 	  case 4016:
 	    *complex_decode = codif_complex_decode_16channel_16bit;
