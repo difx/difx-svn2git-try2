@@ -13,14 +13,6 @@ EXTRA_DIST = \
 	TODO \
 	vlbi-mark5access.spec.in
 
-if DEBUG
-AM_CFLAGS = -g3 -O0
-AM_CXXFLAGS = -g3 -O0
-else
-AM_CFLAGS = -O2
-AM_CXXFLAGS = -O2
-endif
-
 dist-hook: vlbi-mark5access.spec
 	cp vlbi-mark5access.spec $(distdir)
 
