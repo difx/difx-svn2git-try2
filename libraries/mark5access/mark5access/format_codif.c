@@ -3939,7 +3939,7 @@ static int mark5_format_codif_init(struct mark5_stream *ms)
 		if (ms->nchan != 0 && ms->nchan != getCODIFNumChannels(header))
 		{
 			fprintf(m5stderr, "CODIF Warning: Changing nchan from %d to %d\n",
-				ms->nchan, header->nchan);
+				ms->nchan, getCODIFNumChannels(header));
 		}
 		ms->nchan =  getCODIFNumChannels(header);
 
@@ -4068,10 +4068,10 @@ static int mark5_format_codif_validate(const struct mark5_stream *ms)
 	/* Check for overly unusual header  */
 	header = (codif_header *)ms->frame;
 
-	if(getCODIFSync(header) != 0xABADDEED)
+	if(getCODIFSync(header) != 0xADEADBEE)
 	{
-		fprintf(m5stderr, "mark5_format_codif_validate: Skipping frame with wrong sync\n");
-		return 0;
+	        fprintf(m5stderr, "mark5_format_codif_validate: Skipping frame with wrong sync (0x%08X)\n", getCODIFSync(header));
+	        return 0;
 	}
 
 	if(getCODIFFrameBytes(header) == 0)
@@ -4526,7 +4526,7 @@ int find_codif_frame(const unsigned char *data, int length, size_t *offset, int 
       secA = header->seconds;
       refEpochA = header->epoch;
       versionA = header->version;
-      chanA = header->nchan;
+      chanA = getCODIFNumChannels(header);
 
       header = (codif_header*)(data + *offset + fsA + CODIF_HEADER_BYTES);
       
@@ -4536,7 +4536,7 @@ int find_codif_frame(const unsigned char *data, int length, size_t *offset, int 
       secB = header->seconds;
       refEpochB = header->epoch;
       versionB = header->version;
-      chanB = header->nchan;
+      chanB = getCODIFNumChannels(header);
       
       /* does it look reasonable? */
       if (fsA==fsB && refEpochA==refEpochB && (secA==secB || secA+1==secB) && versionA==versionB && chanA==chanB) {
@@ -4550,7 +4550,7 @@ int find_codif_frame(const unsigned char *data, int length, size_t *offset, int 
 
 int get_codif_chans_per_thread(const codif_header *header)
 {
-    return header->nchan;
+    return getCODIFNumChannels(header);
 }
 
 uint64_t get_codif_samples_per_period(const codif_header *header)
@@ -4561,46 +4561,46 @@ uint64_t get_codif_samples_per_period(const codif_header *header)
 double get_codif_rate(const codif_header *header)
 {
     double rate;
-    rate = header->totalsamples * header->nchan * header ->nbits / (double)header->period / 1e6;
+    rate = getCODIFTotalSamples(header) * getCODIFNumChannels(header) * header ->nbits / (double)header->period / 1e6;
     if (header->iscomplex) rate *= 2;
     return rate;
 }
 
 uint32_t get_codif_frames_per_period(const codif_header *header)
 {
-    uint64_t databytes = (uint64_t)header->framelength8*8;
-    uint64_t samplesperframe = (databytes*8) / (header->nchan * header->nbits);
-    if (header->iscomplex)
+    uint64_t databytes = (uint64_t)getCODIFFrameBytes(header);
+    uint64_t samplesperframe = (databytes*8) / (getCODIFNumChannels(header) * getCODIFBitsPerSample(header));
+    if (getCODIFComplex(header))
     {
         samplesperframe /= 2;
     }
-    return (uint32_t)(header->totalsamples / samplesperframe);
+    return (uint32_t)(getCODIFTotalSamples(header) / samplesperframe);
 }
 
 uint32_t get_codif_period(const codif_header *header)
 {
-    return header->period;
+    return getCODIFPeriod(header);
 }
 
 uint32_t get_codif_alignment_seconds(const codif_header *header)
 {
-    return header->period;
+    return getCODIFPeriod(header);;
 }
 
 int get_codif_quantization_bits(const codif_header *header)
 {
-    return header->nbits;
+    return getCODIFPeriod(header);
 }
 
 int get_codif_complex(const codif_header *header)
 {
-    return header->iscomplex;
+    return getCODIFComplex(header);
 }
 
 double get_codif_framens(const codif_header *header)
 {
     double framens;
-    framens = getCODIFFrameBytes(header)*8*getCODIFPeriod(header)/(double)(header->totalsamples * header->nchan * header->nbits)*1e9;
+    framens = getCODIFFrameBytes(header)*8*getCODIFPeriod(header)/(double)(header->totalsamples * getCODIFNumChannels(header) * header->nbits)*1e9;
     if (header->iscomplex) framens /= 2;
     return framens;
 }
@@ -4612,7 +4612,7 @@ int get_codif_framegranularity(const codif_header *header)
 	{
 		bitspersample *= 2;
 	}
-	uint64_t framesperperiod = (header->totalsamples * header->nchan * bitspersample) / (getCODIFFrameBytes(header)*8);
+	uint64_t framesperperiod = (header->totalsamples * getCODIFNumChannels(header) * bitspersample) / (getCODIFFrameBytes(header)*8);
 	int granularity;
 	for (granularity=1; granularity<1024; ++granularity)
 	{
