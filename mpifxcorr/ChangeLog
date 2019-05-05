@@ -17,6 +17,7 @@ Version 2.6
 * Corrected the processing of double sideband complex data (both upper sense and lower sense)
 * Fix problem with "Allow DifxParameter message to specify new stop time" that caused premature termination of the job.  Bug introduced in SVN commit 7910 on July 20, 2017
 * Version for DiFX-2.6, Mar 4, 2019
+* Support IPP 2019 (backport from trunk)
 
 Version 2.5
 ~~~~~~~~~~~
