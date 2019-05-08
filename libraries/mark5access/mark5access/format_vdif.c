@@ -4064,7 +4064,7 @@ struct mark5_format_generic *new_mark5_format_vdif(int Mbps,
         int databytesperpacket, int frameheadersize, int usecomplex)
 {
 	int alignmentseconds = 1;
-	int framesperperiod = (int)(((uint64_t)1000000)*Mbps/databytesperpacket);
+	int framesperperiod = (int)(((uint64_t)1000000)*Mbps/(databytesperpacket*8));
 
 	return new_mark5_format_generalized_vdif(framesperperiod, alignmentseconds, nchan,
 		nbit, decimation, databytesperpacket, frameheadersize, usecomplex);
