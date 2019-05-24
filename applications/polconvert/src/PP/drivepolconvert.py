@@ -13,6 +13,7 @@ import glob
 import os
 import re
 import stat
+import sys
 import threading
 import time
 
@@ -288,11 +289,13 @@ def runRelatedChecks(o):
 
     if 'DIFXCASAPATH' in os.environ:
         o.casa = '%s/casa' % os.environ['DIFXCASAPATH']
+        msg = 'from DIFXCASAPATH'
     else:
         o.casa = 'casa'
+        msg = 'from "casa"'
     if o.verb: cmd = 'type %s'
     else:      cmd = 'type %s 1>/dev/null 2>/dev/null'
-    if o.verb: print 'CASA executable is %s' % o.casa
+    if o.verb: print 'CASA executable is %s (%s)' % (o.casa,msg)
 
     if o.run:
         if os.system(cmd % o.casa):
@@ -434,22 +437,27 @@ def deduceZoomIndicies(o):
         print 'Remote list is',o.remotelist,'(indices start at 1)'
         print 'Jobs now',o.djobs
     # If the user supplied a band, check that it agrees
-    if len(mfqlst) > 1:
-        raise Exception, ('Input files have disparate frequency structures:\n'
-            '  Median frequencies: ' + str(mfqlst) + '\n'
-            '  and these must be processed separately')
-    elif len(mfqlst) == 1:
+    print 'mfqlst is', mfqlst
+    if len(mfqlst) == 1:
         medianfreq = float(mfqlst.pop())
-        if   medianfreq <  90000.0: medianband = '3 (GMVA)'
-        elif medianfreq < 214100.0: medianband = 'b1 (Cycle5 6[LSB]Lo)'
-        elif medianfreq < 216100.0: medianband = 'b2 (Cycle5 6[LSB]Hi)'
-        elif medianfreq < 228100.0: medianband = 'b3 (Cycle4 6[USB]Lo)'
-        elif medianfreq < 230100.0: medianband = 'b4 (Cycle4 6[USB]Hi)'
-        else:                       medianband = '??? band 7 ???'
-        print 'Working with band %s based on median freq (%f)' % (
-                medianband, medianfreq)
+    elif len(mfqlst) > 1:
+        print ('Input files have disparate frequency structures:\n' +
+            '  Median frequencies: ' + str(mfqlst) + '\n')
+        mfqlist = list(mfqlst)
+        medianfreq = float(mfqlist[len(mfqlist)/2])
+        print 'Using the median of medians: ', medianfreq
     else:
         print 'No median frequency, so no idea about medianband'
+        print 'Leaving it up to PolConvert to sort out'
+    # finally the diagnostic message
+    if   medianfreq <  90000.0: medianband = '3 (GMVA)'
+    elif medianfreq < 214100.0: medianband = 'b1 (Cycle5 6[LSB]Lo)'
+    elif medianfreq < 216100.0: medianband = 'b2 (Cycle5 6[LSB]Hi)'
+    elif medianfreq < 228100.0: medianband = 'b3 (Cycle4 6[USB]Lo)'
+    elif medianfreq < 230100.0: medianband = 'b4 (Cycle4 6[USB]Hi)'
+    else:                       medianband = '??? band 7 ???'
+    print 'Working with band %s based on median freq (%f)' % (
+            medianband, medianfreq)
 
 def plotPrep(o):
     '''
@@ -463,7 +471,6 @@ def plotPrep(o):
         o.remote = -1
         o.flist = ''
     elif o.fringe == 1:
-        o.doPlot = ''
         o.doPlot = ['','#','','#']
         o.flist = ''
     else:
@@ -818,6 +825,7 @@ def waitForNextWorker(o):
     drop to zero and then we are done.  Need to consider how to kill
     this beast.
     '''
+    print 'Please wait for all processing threads to complete'
     while True:
         for th in o.workbees:
             if th.isAlive():
@@ -840,15 +848,12 @@ def executeThreads(o):
     Once we have reached the limit, we launch new threads for the
     remaining scans as thread slots become available
     '''
-    while len(o.workdirs) > 0:
-        if len(o.workbees) < o.parallel:
-            launchNewScanWorker(o, '(original)')
-        else:
-            waitForNextWorker(o)
-            return
-    print 'Pausing 10s for jobs to start...'
-    time.sleep(10)
-    print 'Wait for processing threads to finish.'
+    if len(o.workdirs) == 0:
+        print 'Golly, gee, it seems we have no work to do...moving on.'
+        return
+    while len(o.workdirs) > 0 and len(o.workbees) < o.parallel:
+        launchNewScanWorker(o, '(original)')
+    waitForNextWorker(o)
 
 def reportWorkTodo(o):
     '''
@@ -862,19 +867,19 @@ def reportWorkTodo(o):
     pcdirstamps = o.now.strftime('*.polconvert-%Y-%m-%dT%H.%M.%S')
     print 'Results are in',pcdirstamps
     pcdirs = glob.glob(pcdirstamps)
+    pclogs = glob.glob(pcdirstamps+'/PolConvert.log')
     if len(pcdirs) == len(o.jobnums):
         print 'The number of polconvert dirs (%d) is correct.' % len(pcdirs)
     else:
         print 'Error: %d workdirs and %d jobs'%(len(pcdirs),len(o.jobnums))
-    if o.verb:
-        for pc in pcdirs: print '   ',pc
-    pclogs = glob.glob(pcdirstamps+'/PolConvert.log')
     if len(pclogs) == len(o.jobnums):
         print 'The number of polconvert log files (%d) is correct.' % (
             len(pclogs))
     else:
         print 'Error: %d polconvert log files and %d jobs'%(
             len(pclogs),len(o.jobnums))
+    if o.verb:
+        for pc in pcdirs: print '   ',pc
     print('drivepolconvert is finished.\n')
 
 def executeCasaParallel(o):
@@ -941,6 +946,8 @@ if __name__ == '__main__':
     else:
         createCasaInputParallel(opts)
         executeCasaParallel(opts)
+    # explicit 0 exit 
+    sys.exit(0)
 
 #
 # eof
