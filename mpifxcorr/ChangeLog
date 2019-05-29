@@ -18,6 +18,8 @@ Version 2.6
 * Fix problem with "Allow DifxParameter message to specify new stop time" that caused premature termination of the job.  Bug introduced in SVN commit 7910 on July 20, 2017
 * Version for DiFX-2.6, Mar 4, 2019
 * Support IPP 2019 (backport from trunk)
+* Fix native mk5 issue where buffer locks would be ignored on a long-ish timeout that can happen on start-up.
+  (backport from trunk)
 
 Version 2.5
 ~~~~~~~~~~~
