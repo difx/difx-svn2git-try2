@@ -39,7 +39,7 @@ do
     pkg=$release/logs/$proj-$class-packaging
     $verb && ls -ld $pkg
     [ -d $pkg ] || { echo $pkg is missing ; $exit 3 ; }
-    job=$pkg/$proj-$targ.log
+    job=$pkg/$proj-$targ-$subv.log
     $verb && ls -l $job
     [ -f $job ] || { echo $job is missing ; $exit 4 ; }
     rel=$pkg/$proj-$targ-$class-release.log
