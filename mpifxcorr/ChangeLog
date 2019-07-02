@@ -31,6 +31,7 @@ Version 2.5
 * Change genmachines.py back to genmachines
 * Fix weights after a datastream dries up (developed after 2.5 branching)
 * Version for DiFX-2.5, May 16, 2017
+* Remove try/catch pair that fails with new openmpi (developed for 2.5.3)
 
 Version 2.4
 ~~~~~~~~~~~
