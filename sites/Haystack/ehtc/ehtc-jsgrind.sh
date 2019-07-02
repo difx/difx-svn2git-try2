@@ -127,9 +127,10 @@ $makerelease && {
 # stage tarballs and logs in local release directory
 mv tarballs tb-$label
 mkdir -p tb-$label/logs/packaging
-mv logs/$ers-*.log tb-$label/logs/packaging
-mv tbdir/logs/* tb-$label/logs/packaging
-mv $proj-$targ.log tb-$label/logs/packaging
+cp -a logs/$ers-*.log tb-$label/logs/packaging
+cp -a tbdir/logs/* tb-$label/logs/packaging
+cp -a $proj-$targ-$subv.log tb-$label/logs/packaging
+rm -f  logs/$ers-*.log tbdir/logs/* $proj-$targ-$subv.log
 # build the release script
 sed 's/^....//' > tb-$label/release.sh <<EOF
     [ -d $release/$proj-$class ] ||
