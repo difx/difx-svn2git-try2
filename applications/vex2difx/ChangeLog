@@ -19,6 +19,9 @@ Version 2.6.0
 * difxspeed: allow benchmarking on real data
 * remove calc2xyz: was on a dead-end development path
 * Version for DiFX-2.6, Mar 4, 2019
+* more explicitly catch cases where the number of provided channels is less than the number of  recorded channels for a given format. (from trunk)
+
+
 
 Version 2.5.0
 ~~~~~~~~~~~~~
