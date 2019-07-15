@@ -2,6 +2,7 @@ Version 2.0.1
 * add "mark6gather" functions (were in vdifio).  These have partially overlapping functionality w/ the mark6sg functions.
 * Version for DiFX-2.6, Mar 4, 2019
 * backport fix for seeking into Mark6 files near start of file
+* backport addition of mk6cp script from trunk
 
 Version 2.0.0
 * libmark6sg: added creat(), write(), recvfile()
