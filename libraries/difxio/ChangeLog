@@ -9,6 +9,7 @@
 * tabulatedelays: add option to simply print the clock model
 * print BW and FREQ with more significant digits
 * Version for DiFX-2.6, Mar 4, 2019
+* Add --clock-merge-mode (backport from trunk)
 
 3.5.0
 * Post DiFX 2.4
