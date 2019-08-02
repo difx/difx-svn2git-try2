@@ -13,17 +13,25 @@
 #
 [ -z "$exp"   ] && { echo exp   must be defined ; exit 1 ; }
 [ -z "$expn"  ] && { echo expn  must be defined ; exit 1 ; }
-[ -z "$opts"  ] && { echo opts  must be defined with options for polconvert ; exit 1 ; }
-[ -z "$pcal"  ] && { echo pcal  must be defined with name of QA2 package ; exit 1 ; }
+[ -z "$opts"  ] && { echo opts  must be defined with options for polconvert ;
+    exit 1 ; }
+[ -z "$pcal"  ] && { echo pcal  must be defined with name of QA2 package ;
+    exit 1 ; }
 [ -z "$vers"  ] && { echo vers  must be defined ; exit 1 ; }
 [ -z "$relv"  ] && { echo relv  must be defined ; exit 1 ; }
 [ -z "$subv"  ] && { echo subv  must be defined ; exit 1 ; }
 [ -z "$iter"  ] && { echo iter  must be defined ; exit 1 ; }
 [ -z "$expn"  ] && { echo expn  must be defined ; exit 1 ; }
-# [ -z "$label" ] && { echo label must be defined ; exit 1 ; } ### FIXME: Readme-Cycle?.txt declares 'label', ignored, as it gets overwritten below
+# "$label" is ignored
 [ -z "$targ"  ] && { echo targ  must be defined ; exit 1 ; }
 [ -z "$dout"  ] && { echo dout  must be defined ; exit 1 ; }
 [ -z "$proj"  ] && { echo proj  must be defined ; exit 1 ; }
+
+# apply joblist -u flag
+[ -z "$uniq"  ] && uniq=false
+[ "$uniq" = 'true' -o "$uniq" = 'false' ] || {
+    echo if defined, uniq must be true or false; }
+$uniq && uf=-u || uf=''
 
 haveffconf=${1-'true'}
 [ "$haveffconf" = true -o "$haveffconf" = false ] || {
@@ -64,12 +72,12 @@ echo "preparing jselect='$jselect' to label='$label'"
 
 $polconvert && {
     # create the list of job inputs as $jobs
-    eval `$ehtc/ehtc-joblist.py -i $dout/$evs -o *.obs $jselect -J`
+    eval `$ehtc/ehtc-joblist.py -i $dout/$evs -o *.obs $jselect -J $uf`
     # display the list of selected jobs
     echo "processing these jobs:"
     echo \
-    $ehtc/ehtc-joblist.py -i $dout/$evs -o *.obs $jselect -R
-    $ehtc/ehtc-joblist.py -i $dout/$evs -o *.obs $jselect -R
+    $ehtc/ehtc-joblist.py -i $dout/$evs -o *.obs $jselect -R $uf
+    $ehtc/ehtc-joblist.py -i $dout/$evs -o *.obs $jselect -R $uf
 
     # review list of jobs, review $scmp, $opts
     echo \
@@ -83,6 +91,11 @@ $polconvert && {
     echo \
     drivepolconvert.py -v $opts -l $pcal $jobs
     drivepolconvert.py -v $opts -l $pcal $jobs
+    status=$?
+    # stop things dead in their tracks if we have an issue
+    # in order to prevent alot of stupid tarballing activity
+    [ $status -eq 0 ] && { echo drivepolconvert.py exited normally ; } ||
+        { echo drivepolconvert.py exited with status $status; exit $status; }
     # evaluate results on full set of $jobs--look at ALL_IFs plots; then
 
     #--------------------------------------------------------------------------
@@ -114,9 +127,10 @@ $makerelease && {
 # stage tarballs and logs in local release directory
 mv tarballs tb-$label
 mkdir -p tb-$label/logs/packaging
-mv logs/$ers-*.log tb-$label/logs/packaging
-mv tbdir/logs/* tb-$label/logs/packaging
-mv $proj-$targ.log tb-$label/logs/packaging
+cp -a logs/$ers-*.log tb-$label/logs/packaging
+cp -a tbdir/logs/* tb-$label/logs/packaging
+cp -a $proj-$targ-$subv.log tb-$label/logs/packaging
+rm -f  logs/$ers-*.log tbdir/logs/* $proj-$targ-$subv.log
 # build the release script
 sed 's/^....//' > tb-$label/release.sh <<EOF
     [ -d $release/$proj-$class ] ||

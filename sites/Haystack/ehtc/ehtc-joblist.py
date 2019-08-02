@@ -53,12 +53,12 @@ def parseOptions():
         help='The path of the *.vex.obs vex file')
     inputs.add_argument('-i', '--inputs', dest='inputs',
         metavar='FILE-PATTERN', default='',
-        help='The path to job input/calc files up to the '
-            + ' underscore preceding the job number.')
+        help='The path to job input/calc files up to but excluding '
+            + 'the underscore preceding the job number.')
     inputs.add_argument('-c', '--codes', dest='codes',
         metavar='FILE', default='',
         help='difx2mark4 station code file augmented with a column'
-            + ' of polarizations per station')
+            + ' of number of polarizations per station')
     action.add_argument('-A', '--antennas', dest='antennas',
         action='store_true', default=False,
         help='provide a list of antennas')
@@ -112,6 +112,9 @@ def parseOptions():
         metavar='STRING', default='',
         help='The name of the ALMA project as declared by intents ' +
             'ALMA:PROJECT_FIRST_SCAN:... and ALMA:PROJECT_FINAL_SCAN:...')
+    select.add_argument('-u', '--uniq', dest='uniq',
+        action='store_true', default=False,
+        help='Restrict jobs to a uniq set of largest job numbers')
     tester.add_argument('-V', '--Vex', dest='vex',
         metavar='VEXTIME', default='',
         help='convert a Vex Time into MJD (and exit)')
@@ -229,16 +232,28 @@ def doInputs(o):
     Use the input pattern to glob for matching input/calc
     files and read them to provide the job information.
     o.jobbage[#] = [start,stop,[antennas],[name,start,smjd,dur,vsrc,mode]]
+    o.inputs is non-empty if we were called, but we should check that
+    it points to some directory
     '''
     if o.verb: print '# globbing with:', o.inputs + '_*.input'
-    if len(o.inputs) > 0 and o.job == '':
+    dirn = os.path.dirname(o.inputs)
+    if dirn == '':
+        print '# globbing for files in the current working directory'
+    else:
+        if not os.path.exists(dirn):
+            raise Exception, '-i argument must be set sensibly'
+    if o.job == '':
         o.job = os.path.basename(o.inputs)
         if o.verb: print '# set job to', o.job
     o.inptfiles = glob.glob(o.inputs + '_*.input')
     o.calcfiles = glob.glob(o.inputs + '_*.calc')
     if len(o.inptfiles) != len(o.calcfiles):
         print 'Mismatch in number of input/calc files, bailing'
-        return
+        sys.exit(1)
+    if not o.inptfiles:
+        print 'No input files matching pattern %s_*.input found! Stopping' % (
+            o.inputs)
+        sys.exit(1)
     o.pairs = map(lambda x,y:(x,y), sorted(o.inptfiles), sorted(o.calcfiles))
     o.cabbage = {}
     for inp,clc in o.pairs:
@@ -479,6 +494,12 @@ def adjustOptions(o):
             doInputSrcs(o)
             o.rubbage = o.cabbage       # can only use calc files
             o.antlers = o.antset
+    try:
+        if   os.environ['uniq'] == 'true':  o.uniq = True
+        elif os.environ['uniq'] == 'false': o.uniq = False
+        else: raise Exception, 'Illegal uniq value: ' + os.environ['uniq']
+    except:
+        pass
     return o
 
 def doSelectData(o):
@@ -528,6 +549,38 @@ def doSelectProject(o):
                 if o.verb: print '#P',j,str(newjobs[j])
     o.rubbage = newjobs
 
+def bustedCorr(o_inputs, jobnum):
+    '''
+    If required correlation files are missing, return True
+    '''
+    for ef in ['.input','.calc','.im','.difx']:
+        cfile = o_inputs + '_' + jobnum + ef
+        if not os.path.exists(cfile):
+            return True
+    return False
+
+def doSelectUniq(o):
+    '''
+    Restrict to jobs with largest job number for repeat correlations.
+    As a side effect, discard jobs that are missing correlation files.
+    o.jobbage[#] = [start,stop,[antennas],[name,start,smjd,dur,vsrc,mode]]
+    '''
+    if not o.uniq: return
+    if o.rubbage == None or len(o.rubbage) == 0: return
+    if o.verb: print '# Reducing joblist to uniq job set'
+    scandict = {}
+    joblist = sorted(o.rubbage.keys())
+    joblist.reverse()
+    for j in joblist:
+        job = o.rubbage[j]
+        ky = "%s-%s" % (job[3][0], job[3][4])
+        if ky in scandict or bustedCorr(o.inputs, j):
+            if o.verb: print '# Discarding duplicate or broken job',j
+            del(o.rubbage[j])
+            continue
+        else:
+            scandict[ky] = [j]
+
 def selectOptions(o):
     '''
     Apply selections to limit things reported
@@ -535,6 +588,7 @@ def selectOptions(o):
     doSelectData(o)
     doSelectSource(o)
     doSelectProject(o)
+    doSelectUniq(o)
     return o
 
 def doAntennas(o):
@@ -629,9 +683,10 @@ def doGroups(o, doLabels):
     if doLabels:
         print 'false && { # start with a short job'
         for a in sorted(list(ans)):
+            proj,targ,clss = a.split(':')
             exprt=('  export proj=%s targ=%s class=%s' % tuple(a.split(':')))
-            print  '%-56s ; label=$proj-$targ' % exprt
-            print  '  nohup $ehtc/ehtc-jsgrind.sh < /dev/null > $label.log 2>&1'
+            print  '%-54s    label=%s-%s' % (exprt,proj,targ)
+            print  '  nohup $ehtc/ehtc-jsgrind.sh < /dev/null > $label-$subv.log 2>&1'
         print '}'
     else:
         for a in sorted(list(ans)):
@@ -958,9 +1013,10 @@ def grokChannels(o):
         o.chsig  [jobn,scan,products]
     '''
     if len(o.rubbage) == 0: return
-    jl = map(lambda x:"%s_%s.input" % (o.job, x), sorted(o.rubbage.keys()))
     o.chanalia = []
     o.signature = set()
+    o.chsig = {}
+    jl = map(lambda x:"%s_%s.input" % (o.job, x), sorted(o.rubbage.keys()))
     for job in jl:
         report = updateBLPOL(os.path.dirname(o.inputs) + '/' + job, o.verb)
         label = re.sub('.input','',job)
@@ -973,7 +1029,6 @@ def grokChannels(o):
             a,b = ab.split('|')
             o.signature.add(a + ":" + report[p])
             o.signature.add(b + ":" + report[p])
-    o.chsig = {}
     for sig in o.signature:
         o.chsig[sig] = set()
     for cha in o.chanalia:
