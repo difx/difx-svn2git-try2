@@ -20,6 +20,7 @@ Version 2.6
 * Support IPP 2019 (backport from trunk)
 * Fix native mk5 issue where buffer locks would be ignored on a long-ish timeout that can happen on start-up.
   (backport from trunk)
+* Fix bug affecting data weights when nBufferedFFTs > 1 and datastreams weight < 1 (backport from trunk)
 
 Version 2.5
 ~~~~~~~~~~~
