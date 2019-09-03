@@ -17,7 +17,7 @@ libvex.a: $(OBJECTS)
 	ar -qc $@ $(OBJECTS)
 
 libvex.dylib: $(OBJECTS)
-	gcc -dynamiclib -single_module  -o $@ $(OBJECTS) -ll -install_name /usr/local/lib/libvex.dylib
+	gcc -dynamiclib -single_module  -o $@ $(OBJECTS) -ll -install_name $(DIFXROOT)/lib/libvex.dylib
 
 vex.yy.o:	vex.yy.l y.tab.h
 
