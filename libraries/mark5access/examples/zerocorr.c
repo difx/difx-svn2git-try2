@@ -191,7 +191,7 @@ DataStream *newDataStream(FILE *in)
 	  ds->cdata = (fftw_complex **)calloc(ds->ms->nchan, sizeof(fftw_complex *));
 	  for(i = 0; i < ds->ms->nchan; ++i)
 	    {
-	      ds->cdata[i] = (double *)calloc(ds->fftSize, sizeof(fftw_complex));
+	      ds->cdata[i] = (fftw_complex *)calloc(ds->fftSize, sizeof(fftw_complex));
 	    }
 	  ds->zdata = (fftw_complex *)calloc(ds->fftSize, sizeof(fftw_complex));
 	  ds->spec = (fftw_complex *)calloc(abs(ds->nChan), sizeof(fftw_complex));
