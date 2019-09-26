@@ -4,7 +4,7 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'	   => 'Astro::VexParser',
     'VERSION_FROM' => 'VexParser.pm', # finds $VERSION
-    'LIBS'	   => ["-L$ENV{DIFXROOT}/lib -lvex -lfl"],
+    'LIBS'	   => ["-L$ENV{DIFXROOT}/lib -lvex"],
     'DEFINE'	   => '',
     'INC'	   => '-I../vexlib',
     'dist'         => { COMPRESS => "gzip -9f"},
