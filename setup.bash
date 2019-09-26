@@ -2,13 +2,13 @@
 export DIFX_VERSION=DiFX-2.6
 
 ####### ROOT PATHS ##########################
-export DIFXROOT=/Users/phi196/code/difx/difx26
+export DIFXROOT=/usr/local/difx
 export DIFX_PREFIX=$DIFXROOT
 export PGPLOTDIR=
 export IPPROOT=/opt/intel
 
 ####### COMPILER ############################
-export DIFXMPIDIR=/usr/local
+export DIFXMPIDIR=/usr
 export MPICXX="${DIFXMPIDIR}"/bin/mpicxx
 
 ####### LIBRARY PATHS #######################
@@ -23,7 +23,7 @@ export USEGFORTRAN="yes"
 
 ####### PERL VERSION/SUBVERSION #############
 perlver="5"
-perlsver="5.18.4"
+perlsver="5.10.1"
 
 ####### PORTS FOR DIFXMESSAGE ###############
 # Uncomment these to enable DIFX_MESSAGES
