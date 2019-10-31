@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2013-2018 by Walter Brisken                             *
+ *   Copyright (C) 2013-2019 by Walter Brisken                             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -36,7 +36,7 @@
 const char program[] = "vmux";
 const char author[]  = "Walter Brisken <wbrisken@nrao.edu>";
 const char version[] = "0.10";
-const char verdate[] = "20181107";
+const char verdate[] = "20191031";
 
 const int defaultChunkSize = 10000000;
 const int defaultNGap = 100;
@@ -91,7 +91,7 @@ void usage(const char *pgm)
 	fprintf(stderr, "  --noEDV4\n");
 	fprintf(stderr, "  -n        Don't make use of EDV4 (per-thread validity) in output\n\n");
 	fprintf(stderr, "  --EDV4\n");
-	fprintf(stderr, "  -e        Use of EDV4 (per-thread validity) in output [default]\n\n");
+	fprintf(stderr, "  -e        Use EDV4 (per-thread validity) in output [default]\n\n");
 	fprintf(stderr, "  --fanout <f>\n");
 	fprintf(stderr, "  -f <f>    Set fanout factor to <f> (used for some DBBC3 data) [default = 1]\n\n");
 	fprintf(stderr, "  --gap <g>\n");
