@@ -32,7 +32,7 @@
 #define MAGLIM 10000.0              // threshold magnitude for vis. rejection
 #define MAX_FPPAIRS 5000            // dimensioned for b-lines x chans x pol_prods
 #define MAX_DFRQ 100                // allowed max number of *DiFX* frequencies
-#define NVRMAX 8000000              // max # of vis records
+#define NVRMAX 4000000              // max # of vis records
 
 enum booleans {FALSE, TRUE};
 
@@ -148,7 +148,7 @@ int createType3s (DifxInput *, struct fblock_tag *, int, int, int, char *, char 
                   struct stations *, struct CommandLineOptions *);
                                     // get_vis.c
 int get_vis (DifxInput *, char *, struct CommandLineOptions *, int *, int *, int *, 
-                 vis_record **, char *, struct fblock_tag *);
+                 vis_record **, char *, struct fblock_tag *, int *);
                                     // new_type1.c
 int new_type1 (DifxInput *, struct fblock_tag *, int, int, int, int, int *, double *,
                struct stations *, char *, struct CommandLineOptions *, FILE **, 
