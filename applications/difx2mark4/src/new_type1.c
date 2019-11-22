@@ -196,7 +196,7 @@ int new_type1 (DifxInput *D,                    // ptr to a filled-out difx inpu
                              xpol_string[4] = 'L';
                              break;
                         default:
-                             fprintf (stderr, "uh oh! unknown polarization <%c> in fblock table\n",
+                             fprintf (stderr, "uh oh! unknown polarization <%s> in fblock table\n",
                                      xpol_string[4]);
                         }
                                     // if opposite chan_id present for ant, create a

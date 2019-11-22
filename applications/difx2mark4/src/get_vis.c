@@ -26,9 +26,7 @@ int get_vis (DifxInput *D,                    // ptr to difx input file data
              int *vrsize,                     // array of size of vis records in bytes
              vis_record **vrec,               // ptr to malloced array of vis. recs as read
              char *corrdate,                  // modification date of input file
-             struct fblock_tag *pfb,          // ptr to filled-in fblock table
-	     int *antennaMap                  // ptr to 256 ints for remapping a1,a2 into antennaMap[a1/a2]
-	    )          
+             struct fblock_tag *pfb)          // ptr to filled-in fblock table
     {
     int err,
         vfile_status,
@@ -45,7 +43,7 @@ int get_vis (DifxInput *D,                    // ptr to difx input file data
     char *pch;
     DifxFreq *pfr;
                                     // local function prototypes
-    int get_pfb_index (int, int, struct fblock_tag *, int* );
+    int get_pfb_index (int, int, struct fblock_tag *);
 
     vfile = fopen (vf_name, "r");
     if (vfile == NULL)
@@ -134,7 +132,7 @@ int get_vis (DifxInput *D,                    // ptr to difx input file data
                     {
                     fprintf (stderr, 
                     "fatal error: # visibilities (%d) exceeds array dimension (%d)\n",
-                    nvis[nvr], MAX_VIS);
+                    nvis, MAX_VIS);
                     return (-7);
                     }
                 vrsize[nvr] = sizeof (vis_record) - sizeof (pv->comp)
@@ -142,7 +140,7 @@ int get_vis (DifxInput *D,                    // ptr to difx input file data
                 fread (pv->comp,          sizeof (float),  2*nvis[nvr], vfile);
 
                                     // if baseline not in fblock - skip over data record
-                ipfb = get_pfb_index (pv->baseline, pv->freq_index, pfb, antennaMap);
+                ipfb = get_pfb_index (pv->baseline, pv->freq_index, pfb);
                 if (ipfb < 0)
                     {
                     if (opts->verbose > 2)
@@ -213,19 +211,14 @@ int get_vis (DifxInput *D,                    // ptr to difx input file data
 // determine index into pfb table for baselne bl
 int get_pfb_index (int baseline,    // difx-encoded baseline (100 * a1 + a2)
                    int freq_index,  // difx-generated freq index
-                   struct fblock_tag *pfb,
-		   int* antennaMap)
+                   struct fblock_tag *pfb)
     {
     int nf = -1,
         a1, 
         a2;
 
-    // recompute the baseline number based on unmapped antennanumber
-    // for searching in the fblock table
-    a1 = antennaMap[baseline / 256 - 1];
-    a2 = antennaMap[baseline % 256 - 1];
-    baseline = 256 * (a1 + 1) + a2 + 1; 
-
+    a1 = baseline / 256 - 1;
+    a2 = baseline % 256 - 1;
                                     
                                     // search through pfb for antennas matching baseline
     while (pfb[++nf].stn[0].ant >= 0) // check for end-of-table marker
@@ -239,6 +232,6 @@ int get_pfb_index (int baseline,    // difx-encoded baseline (100 * a1 + a2)
           || pfb[nf].stn[1].ant == a1 && freq_index == pfb[nf].stn[1].find))
             return nf;
         }
-
+         
     return -1;                      // signify not-found
     }
