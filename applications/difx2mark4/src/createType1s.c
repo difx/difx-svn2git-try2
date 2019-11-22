@@ -23,8 +23,6 @@
 #define MAX_CH 256                  // max # of channels
 
 
-int noRemap[256] = {-1,};
-
 int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
           struct fblock_tag *pfb,   // ptr to filled-in fblock table
           int *jobId,               // ptr to curr job. May change here, if scan bridges jobs
@@ -128,14 +126,6 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
                                     // only open new file if one isn't already open
                                     // loop over all jobs with data for this scan
     currentScan = -1;
-
-    				// initialize default antennaremap (which doesn't remap at all)
-				// if not done yet
-    if( noRemap[0]<0 ) {
-	    int dummy = 0; 
-	    for(dummy=0; dummy<sizeof(noRemap)/sizeof(noRemap[0]); dummy++ )
-		    noRemap[ dummy ] = dummy;
-    }
     while (TRUE)
         {
         if (nvr == NOVIS)           // do we need to read a(nother) Swinburne file?
@@ -174,8 +164,7 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
             strcat (inname, dent->d_name);
             closedir (pdir);
                                     // open and read a complete Swinburne file
-            gv_stat = get_vis (D, inname, opts, &nvrtot, nvis, vrsize, &vrec, corrdate, pfb,
-			       (D->job+*jobId)->antennaIdRemap ? (D->job+*jobId)->antennaIdRemap : noRemap );
+            gv_stat = get_vis (D, inname, opts, &nvrtot, nvis, vrsize, &vrec, corrdate, pfb);
             if (gv_stat < -1)       // -1 is normal (EOF); anything less is an error
                 {
                 perror (inname);
