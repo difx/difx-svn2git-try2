@@ -132,7 +132,8 @@ int createType1s (DifxInput *D,     // ptr to a filled-out difx input structure
     				// initialize default antennaremap (which doesn't remap at all)
 				// if not done yet
     if( noRemap[0]<0 ) {
-	    for(int dummy=0; dummy<sizeof(noRemap)/sizeof(noRemap[0]); dummy++ )
+	    int dummy;
+	    for(dummy=0; dummy<sizeof(noRemap)/sizeof(noRemap[0]); dummy++ )
 		    noRemap[ dummy ] = dummy;
     }
     while (TRUE)
