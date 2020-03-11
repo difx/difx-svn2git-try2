@@ -1,5 +1,5 @@
 #
-# $Id: Makefile.am 1958 2017-08-16 19:48:05Z barrettj $
+# $Id: Makefile.am 2805 2019-08-07 20:04:27Z gbc $
 #
 
 #
@@ -42,6 +42,13 @@ else
 OMPIDIRS =
 endif
 
+# turn on DOCS stuff
+if HAVE_DOCS
+DOCSDIRS = @DOCSDIR@
+else
+DOCSDIRS =
+endif
+
 # turn on code that doesn't work, yet and a few other things
 if HAVE_DEVEL
 DEVLDIRS = @DEVLDIR@
@@ -70,7 +77,7 @@ endif
 # this is for VEX2XML
 if HAVE_VEX2XML
 VXMLDIRS = @VXMLDIR@
-TAR_VXML = v
+TAR_VXML = -v
 DCF_VXML = --enable-vex2xml
 else
 VXMLDIRS =
@@ -82,7 +89,7 @@ endif
 # this is for transitioning to a new world order
 if HAVE_HOPES
 HPESDIRS = @HPESDIR@
-TAR_HPES = chops
+TAR_HPES = -chops
 DCF_HPES = --enable-hopes
 else
 HPESDIRS =
@@ -110,10 +117,12 @@ SUBDIRS = . $(HOPSDIRS) \
 	  $(MARK5DIRS) \
 	  $(HOPSDATA) \
 	  $(VXMLDIRS) \
-	  $(OMPIDIRS)
+	  $(OMPIDIRS) \
+	  $(DOCSDIRS)
 
 EXTRA_DIST = README.txt Fink.txt MacPorts.txt svnrev.txt Copyright \
-	apt-packages.txt configure_ac ChangeLog.txt capture-log.py
+	apt-packages.txt configure_ac ChangeLog.txt capture-log.py \
+	pgplot-drivers.list README.pgplot.txt autogen.sh
 DIST_SUBDIRS = $(SUBDIRS)
 
 # m4/*.m4 macros scanned by aclocal

@@ -6,11 +6,8 @@
 # to detect endianism in bytflp.h for some of the tools.
 #
 AC_PREREQ(2.59)
-AC_INIT(hops, 3.19, gbc@haystack.mit.edu)
-AM_INIT_AUTOMAKE([foreign])
-
-#why does subdir-objects break fearfit??
-#AM_INIT_AUTOMAKE([foreign -Wno-extra-portability subdir-objects])
+AC_INIT(hops, 3.21, gbc@haystack.mit.edu)
+AM_INIT_AUTOMAKE([foreign -Wno-extra-portability subdir-objects])
 
 AC_CONFIG_SRCDIR([hops.bash.in])
 AC_CONFIG_HEADERS([hops_config.h])
@@ -77,6 +74,18 @@ AC_ARG_ENABLE(hops,
     AS_HELP_STRING([--disable-hops], [disables the post-processing tools]),
     [], [enable_hops=yes])
 AC_GBC_NOTICE([enable_hops is --$enable_hops--])
+AC_ARG_ENABLE(vex2xml,
+    AS_HELP_STRING([--enable-vex2xml], [enable VEX2XML tool]),
+    [], [enable_vex2xml=yes])
+AC_GBC_NOTICE([enable_vex2xml is --$enable_vex2xml--])
+AC_ARG_ENABLE(hopes,
+    AS_HELP_STRING([--disable-hopes], [disable enhanced development]),
+    [disable_hopes=yes], [disable_hopes=no])
+AC_GBC_NOTICE([disable_hopes is --$disable_hopes--])
+AC_ARG_ENABLE(checks,
+    AS_HELP_STRING([--disable-checks], [disables some sanity checking]),
+    [], [enable_checks=yes])
+AC_GBC_NOTICE([enable_checks is --$enable_checks--])
 ### option disabled
 AC_ARG_ENABLE(pathx,
     AS_HELP_STRING([--enable-pathx], [try normal autoconf x11 path checks]))
@@ -84,10 +93,6 @@ AC_GBC_NOTICE([enable_pathx is --$enable_pathx--])
 AC_ARG_ENABLE(xtrap,
     AS_HELP_STRING([--enable-xtrap], [try extra autoconf x11 path checks]))
 AC_GBC_NOTICE([enable_xtrap is --$enable_xtrap--])
-AC_ARG_ENABLE(checks,
-    AS_HELP_STRING([--disable-checks], [disables some sanity checking]),
-    [], [enable_checks=yes])
-AC_GBC_NOTICE([enable_checks is --$enable_checks--])
 
 #
 # An ISO time for installation tracking.
@@ -104,7 +109,21 @@ else
     have_hops=false
 fi
 
-### option disabled
+#
+# Control the new HOP(Enhanced)S toolchain
+#
+AC_ARG_VAR(USE_HOPES, [variable to indicate if we have hopes])
+if [test x$disable_hopes = xno] ; then
+    HPESDIR='chops'
+    have_hopes=true
+    USE_HOPES=true
+    AC_GBC_NOTICE([%%% have_hopes is $have_hopes (optional)])
+else
+    HPESDIR=''
+    have_hopes=false
+    USE_HOPES=false
+    # no comment
+fi
 
 AC_SUBST(HPESDIR)
 AM_CONDITIONAL(HAVE_HOPES, $have_hopes)
@@ -120,12 +139,8 @@ AC_SUBST(IFFYDIR)
 AC_SUBST(M4PYDIR)
 AM_CONDITIONAL(HAVE_DEVEL, $have_devel)
 
-
-################################################################################
-################################################################################
-################################################################################
-################################################################################
-
+##############################################################################
+##############################################################################
 
 # autoscan suggested list of checks follows
 
@@ -190,15 +205,15 @@ AC_PATH_PROGS(PERL, perl, /bin/false)
 #AC_PATH_PROGS(PYTHON, python, /bin/false)
 AM_PATH_PYTHON([2.4],,[:])
 
-
 if [test "$PYTHON" != : -a "$pythondir" != ""] ; then
     #check for package 'future'
-    pyfuture_test=`python -c "import future" 2>/dev/null; echo $?`
+    pyfuture_test=`$PYTHON -c "import future" 2>/dev/null; echo $?`
     if [test "$pyfuture_test" = 0 ]; then
         have_python=true
         AC_GBC_NOTICE([found python requirements.])
-    else 
-        AC_GBC_NOTICE([python package future missing, python tools will not be built.])
+    else
+        AC_GBC_NOTICE(
+            [python package future missing, python tools will not be built.])
         have_python=false
     fi
 else
@@ -221,13 +236,41 @@ AC_SUBST(HOPSPYSHLEXT)
 
 have_vex2xml=false
 have_javas=false
-### option disabled
+if [test x$enable_vex2xml = xyes] ; then
+    have_vex2xml=true
+    VXMLDIR=vex2xml
+    # Java Compiler for VEX2XML
+    AC_PATH_PROGS(JAVA,  java,  /bin/false)
+    AC_PATH_PROGS(JAVAC, javac, /bin/false)
+    if [test "$JAVA" = '/bin/false'] ; then
+        have_java=false
+    else
+        have_java=true
+    fi
+    if [test "$JAVAC" = '/bin/false'] ; then
+        have_javac=false
+    else
+        have_javac=true
+    fi
+    AC_SUBST(JAVA)
+    AC_SUBST(JAVAC)
+else
+    have_java=false
+    have_javac=false
+fi
+if [test x$have_java = xtrue -a x$have_javac = xtrue] ; then
+    have_javas=true
+fi
 AC_SUBST(VXMLDIR)
 AM_CONDITIONAL([HAVE_JAVAS], [$have_javas])
 AM_CONDITIONAL(HAVE_VEX2XML, [$have_vex2xml])
+AC_GBC_NOTICE([%%% have_vex2xml is $have_vex2xml (optional)])
 
 # Checks for libraries.
 AC_CHECK_LIB(m, floorl)
+
+### Check for >64-bit long double
+AC_TYPE_LONG_DOUBLE_WIDER
 
 # Checks for header files.
 if [$ac_hops] ; then
@@ -257,14 +300,21 @@ fi
 if [test -n "$hops_svn_data"] ; then
     # provided by the svn repository: hops OR difx
     hops_svn_rev=`echo "$hops_svn_data" | grep Revision | cut -d' ' -f2`
+    AC_GBC_NOTICE([hops SVN rev $hops_svn_rev via svn])
 elif [test -f $srcdir/svnrev.txt] ; then
     # provided by disthook for tarballs
     hops_svn_rev=`cat $srcdir/svnrev.txt`
+    AC_GBC_NOTICE([hops SVN rev $hops_svn_rev via svnrev.txt])
 elif [test -f $srcdir/config.svnrev.txt] ; then
     # provided by nightly for client builds
     hops_svn_rev=`cat $srcdir/config.svnrev.txt`
+    AC_GBC_NOTICE([hops SVN rev $hops_svn_rev via config.svnrev.txt])
 else
     hops_svn_rev=0
+    AC_GBC_NOTICE([hops SVN rev unknown, set to zero])
+fi
+if [test -z "$hops_svn_rev"] ; then
+    hops_svn_rev=1
 fi
 AC_GBC_NOTICE([hops_svn_rev is $hops_svn_rev])
 AH_TOP(
@@ -323,9 +373,12 @@ AM_CONDITIONAL(HAVE_GSL, $have_gsl)
 PKG_CHECK_MODULES(FFTW3, fftw3, [hasfftw=true], [hasfftw=false])
 if [$hasfftw] ; then
     AC_DEFINE([HAVE_FFTW], 1, [Define to 1 if FFTW is available])
+    AC_GBC_NOTICE([FFTW3 was found via check modules])
 else
     AC_DEFINE([HAVE_FFTW], 0, [Define to 1 if FFTW is available])
+    AC_GBC_NOTICE([FFTW3 not found via check modules])
 fi
+AC_GBC_NOTICE([%%% hasfftw is $hasfftw (required)])
 AC_SUBST(FFTW3_CFLAGS)
 AC_SUBST(FFTW3_LIBS)
 AM_CONDITIONAL(HAVE_FFTW, $hasfftw)
@@ -345,6 +398,7 @@ if [test x${enable_pathx-no}${enable_xtrap-no} = xnoyes ] ; then
     AC_SUBST(X_IDIOT,'-lX11')
     AC_SUBST(X_EXTRA_LIBS)
     have_x11=true
+    AC_GBC_NOTICE([X11 set via enable-xtrap])
 fi
 # --enable-pathx
 if [test x${enable_pathx-no}${enable_xtrap-no} = xyesno ] ; then
@@ -356,6 +410,7 @@ if [test x${enable_pathx-no}${enable_xtrap-no} = xyesno ] ; then
     AC_SUBST(X_IDIOT,'-lX11')
     AC_SUBST(X_EXTRA_LIBS)
     have_x11=true
+    AC_GBC_NOTICE([X11 set via enable-pathx])
 fi
 # --enable-pathx and --enable-xtrap or neither
 if [test x$have_x11 = xfalse ] ; then
@@ -366,6 +421,7 @@ if [test x$have_x11 = xfalse ] ; then
     AC_SUBST(X_LIBS,'-lX11')
     AC_SUBST(X_IDIOT)
     AC_SUBST(X_EXTRA_LIBS)
+    AC_GBC_NOTICE([X11 set via check lib])
 fi
 AC_GBC_NOTICE([%%% have_x11 is $have_x11 (required)])
 AM_CONDITIONAL(HAVE_X11, [test x$have_x11 = xtrue])
@@ -382,92 +438,174 @@ AC_SUBST(X11_LIB,
 # If that is defined and PGPLOT_DIR isn't, we'll take that as a hint.
 # otherwise we'll fall back on /usr/local/pgplot as Tim intended.
 #
+# Further complicated by .so rather than .a
+#
+# The RPMfusion package provides
+#   in /usr/lib{,64}:     libpgplot.so libcpgplot.so
+#   in /usr/libexec:      pgxwin_server
+#   in /usr/share/pgplot: grfont.dat  rgb.txt
+# which violates the single-dir paradigm, but still perhaps works.
+# And tcl-pgplot supplies (and other infrastructure)
+#   in /usr/lib{,64}:     libtkpgplot.so
+#
 if [test -z "$PGPLOT_DIR" -a -n "$PGPLOTDIR" ] ; then
     pgplotdefault="$PGPLOTDIR"
 else
     pgplotdefault='/usr/local/pgplot'
 fi
+# whether to use PGPLOT_RGB and PGPLOT_FONT
+use_grfrgb=false
 #
 AC_ARG_VAR(PGPLOT_DIR, [PGPLOT installation directory])
+AC_ARG_VAR(PGPLOT_FONT, [PGPLOT path to grfont.dat])
+AC_ARG_VAR(PGPLOT_RGB, [PGPLOT path to rgb.txt])
 if [test x${enable_pgplot-yes} = xyes ] ; then
     AC_GBC_NOTICE([searching for pgxwin_server])
     AC_PATH_PROG(PGXWIN_SERVER, pgxwin_server, false,
 	[${PGPLOT_DIR-"$pgplotdefault"} /usr/lib/pgplot5 dnl
-	 /usr/lib/pgplot64 /usr/local/pgplot-png dnl
+	 /usr/lib/pgplot64 /usr/local/pgplot-png /usr/libexec/pgplot dnl
 	 /usr/bin /opt/local/bin /sw/lib/pgplot])
     pgpdir=`AS_DIRNAME(["${PGXWIN_SERVER-/no-such-dir}"])`
     if [test "$pgpdir" = '/usr/bin'] ; then
 	# for Debian packages
 	pgpdir='/usr/lib'
-	pgplib=$pgpdir/libpgplot.a
+        pgplib=$pgpdir/libpgplot.a
+        if [test -f $pgpdir/libpgplot.so ] ; then
+            pgplib=$pgpdir/libpgplot.so
+        fi
 	cpglib=$pgpdir/libcpgplot.a
+        if [test -f $pgpdir/libcpgplot.so ] ; then
+            cpglib=$pgpdir/libcpgplot.so
+        fi
 	grfont=${PGPLOT_DIR-'/usr/lib/pgplot5'}/grfont.dat
+	rgbtxt=${PGPLOT_DIR-'/usr/lib/pgplot5'}/rgb.txt
 	AC_GBC_NOTICE([pgpdir was /usr/bin, revised to $pgpdir])
     elif [test "$pgpdir" = '/opt/local/bin'] ; then
 	# for MacPorts
 	pgpdir='/opt/local/lib'
-	pgplib=$pgpdir/libpgplot.a
+        pgplib=$pgpdir/libpgplot.a
+        if [test -f $pgpdir/libpgplot.so ] ; then
+            pgplib=$pgpdir/libpgplot.so
+        fi
 	cpglib=$pgpdir/libcpgplot.a
+        if [test -f $pgpdir/libcpgplot.so ] ; then
+            cpglib=$pgpdir/libcpgplot.so
+        fi
 	grfont=/opt/local/share/pgplot/grfont.dat
+	rgbtxt=/opt/local/share/pgplot/rgb.txt
 	AC_GBC_NOTICE([pgpdir was /opt/local, revised to $pgpdir])
+    elif [test "$pgpdir" = /usr/libexec/pgplot ] ; then
+        # assume an RPM Fusion or similar installation
+        pgpdir='/usr/libexec/pgplot'
+        pgplib=`ls /usr/lib*/libpgplot.so`
+        cpglib=`ls /usr/lib*/libcpgplot.so`
+        grfont=`ls /usr/share/pgplot/grfont.dat`
+        rgbtxt=`ls /usr/share/pgplot/rgb.txt`
+	AC_GBC_NOTICE([pgpdir is $pgpdir, assuming RPM Fusion or similar])
     else
 	# well, no pgxwin_server, but PGPLOT may yet be functional
 	if [test "$pgpdir" = '/no-such-dir'] ; then
 	    pgpdir=${PGPLOT_DIR="$pgplotdefault"}
 	fi
-	pgplib=$pgpdir/libpgplot.a
+        pgplib=$pgpdir/libpgplot.a
+        if [test -f $pgpdir/libpgplot.so ] ; then
+            pgplib=$pgpdir/libpgplot.so
+        fi
 	cpglib=$pgpdir/libcpgplot.a
+        if [test -f $pgpdir/libcpgplot.so ] ; then
+            cpglib=$pgpdir/libcpgplot.so
+        fi
 	grfont=$pgpdir/grfont.dat
-	AC_GBC_NOTICE([pgpdir is $pgpdir])
+	rgbtxt=$pgpdir/rgb.txt
+        AC_GBC_NOTICE([last resort: pgpdir is $pgpdir])
     fi
-    if [test -d $pgpdir -a -f $pgplib -a -f $cpglib -a $grfont ] ; then
+    if [test -d $pgpdir -a -f $pgplib -a -f $cpglib -a $grfont -a $rgbtxt];then
 	AC_GBC_NOTICE([PGPLOT_DIR is $pgpdir])
 	have_pgplot=true
-	PGPLOT_DIR=$pgpdir
-	# PGP_LIB=['$(FLIBS) -L$(PGPLOT_DIR) -lcpgplot -lpgplot']
-	PGP_LIB=['-L$(PGPLOT_DIR) -lcpgplot -lpgplot $(FLIBS)']
+        # FLIBS should be the fortran libes used to compile pgplot
+        if [test "$pgpdir" = /usr/libexec/pgplot ] ; then
+            PGPLOT_DIR=''
+            PGP_LIB=['-lcpgplot -lpgplot $(FLIBS)']
+            use_grfrgb=true
+        else
+            PGPLOT_DIR=$pgpdir
+            # PGP_LIB=['$(FLIBS) -L$(PGPLOT_DIR) -lcpgplot -lpgplot']
+            PGP_LIB=['-L$(PGPLOT_DIR) -lcpgplot -lpgplot $(FLIBS)']
+        fi
     else
 	AC_GBC_NOTICE([PGPLOT was too hard to find.])
 	AC_GBC_NOTICE([Try setting PGPLOT_DIR to point to a directory])
 	AC_GBC_NOTICE([that contains symbolic links to the installed])
-	AC_GBC_NOTICE([files libpgplot.a, libcpgplot.a and grfont.dat,])
-	AC_GBC_NOTICE([and also make sure pgxwin_server is on your PATH.])
+	AC_GBC_NOTICE([files libpgplot.a or .so, libcpgplot.a or .so,])
+        AC_GBC_NOTICE([grfont.dat, rgb.txt and pgxwin_server.  If any])
+        AC_GBC_NOTICE([of these are not present in PGPLOT_DIR, there])
+        AC_GBC_NOTICE([will be problems.  See README.pgplot.txt.])
 	have_pgplot=false
 	PGPLOT_DIR=''
 	PGP_LIB=''
     fi
     # does this PGPLOT compilation require PNG(12)?
+    # actually this test only works for a static archive and doesn't
+    # help for a dynamic archive
     need_png=optional
-    if [test -f $pgplib] ; then
+    is_arch=`expr $pgplib : '.*\.a'`
+    if [test -f $pgplib -a $is_arch -gt 10 ] ; then
 	pndriv=`ar t $pgplib pndriv.o`
 	if [test x$pndriv = xpndriv.o] ; then
 	    need_png=required
 	fi
+        AC_GBC_NOTICE([is_arch is $is_arch pgplib is $pgplib])
+        AC_GBC_NOTICE([pndriv is $pndriv need_png is $need_png])
     fi
 fi
 AC_GBC_NOTICE([%%% have_pgplot is $have_pgplot ($need_png)])
 AM_CONDITIONAL(HAVE_PGPLOT, [test x$have_pgplot = xtrue])
 AC_SUBST(PGP_LIB)
 AC_SUBST(PGPLOT_DIR)
+if [$use_grfrgb] ; then
+    AC_GBC_NOTICE([%%% assigning PGPLOT_FONT and PGPLOT_RGB:])
+    AC_GBC_NOTICE([%%% PGPLOT_FONT file expected at $grfont])
+    AC_GBC_NOTICE([%%% PGPLOT_RGB file expected at $rgbtxt])
+else
+    AC_GBC_NOTICE([%%% not assigning PGPLOT_FONT and PGPLOT_RGB:])
+    AC_GBC_NOTICE([%%% PGPLOT_FONT file expected at $grfont])
+    AC_GBC_NOTICE([%%% PGPLOT_RGB file expected at $rgbtxt])
+    grfont=''
+    rgbtxt=''
+fi
+PGPLOT_FONT=$grfont
+if [ -n "$PGPLOT_FONT" ] ; then
+    AC_GBC_NOTICE([PGP FONT is `ls -l $PGPLOT_FONT 2>&1`])
+fi
+PGPLOT_RGB=$rgbtxt
+if [ -n "$PGPLOT_RGB" ] ; then
+    AC_GBC_NOTICE([PGP RGB  is `ls -l $PGPLOT_RGB 2>&1`])
+fi
+AC_SUBST(PGPLOT_FONT)
+AC_SUBST(PGPLOT_RGB)
 
 # Check for PNG (primitive) which MAY be required by pgplot
 # One could provide the linkage stubs if PNG is required, but missing.
 # If built within the DiFX environment, it might be available.
 AC_ARG_VAR(PNG12_LIB, [Path to libpng12 shared object])
+# this test could be skipped if need_png is optional
 AC_CHECK_LIB(png12, png_access_version_number, have_png=true, have_png=false)
 if [$have_png] ; then
     AC_GBC_NOTICE([Found png12 normally])
     PNG_LIB='-lpng12'
 elif [test $need_png = required]; then
     AC_GBC_NOTICE([Looking harder for png12 need_png is $need_png])
-    if [test -z "$PNG12_LIB" ]; then
+    if [test -z "$PNG12_LIB" -a -n "$DIFX_ARCH_ROOT"]; then
 	PNG12_LIB=${DIFX_ARCH_ROOT}/lib/libpng12.so.0
+        AC_GBC_NOTICE([set png12 lib via DiFX/lib])
     elif [test -z "$PNG12_LIB" ]; then
 	PNG12_LIB=/usr/lib/libpng12.so.0
+        AC_GBC_NOTICE([set png12 lib via usr/lib])
     fi
     if [test -f "$PNG12_LIB" ] ; then
 	have_png=true
 	PNG_LIB=$PNG12_LIB
+        AC_GBC_NOTICE([set png lib via png12])
     else
 	have_png=false
 	PNG_LIB=''
@@ -510,6 +648,12 @@ have_ompi=false
 AC_SUBST(OMPIDIR)
 AM_CONDITIONAL(HAVE_OMPI, [test $have_ompi = true])
 
+have_docs=false
+DOCSDIR=''
+### option disabled
+AC_SUBST(DOCSDIR)
+AM_CONDITIONAL(HAVE_DOCS, [test $have_docs = true])
+
 have_difx=false
 ### option disabled
 AC_SUBST(DIFXDIR)
@@ -543,10 +687,8 @@ if [test x$enable_checks = xyes] ; then
 fi
 
 
-################################################################################
-################################################################################
-################################################################################
-################################################################################
+##############################################################################
+##############################################################################
 
 
 #
@@ -597,10 +739,6 @@ if [ "$have_hops" = true ] ; then
 	[chmod +x scripts/vhelp.sh]
     )
     AC_CONFIG_FILES(
-	[scripts/fourphase],
-	[chmod +x scripts/fourphase]
-    )
-    AC_CONFIG_FILES(
         [scripts/fourphase_original],
         [chmod +x scripts/fourphase_original]
     )
@@ -621,7 +759,74 @@ if [ "$have_hops" = true ] ; then
     fi
 fi
 
+# this was development, but now available
+if [ "$have_vex2xml" = true ] ; then
+    AC_CONFIG_FILES([vex2xml/Makefile])
+fi
+
 ### option disabled
+
+#
+# And any HOP(Enhanced)S toys.
+# aka CHOPS (chopped up HOPS).
+#
+if [ "$have_hopes" = true ] ; then
+    AC_CONFIG_FILES([
+     chops/Makefile
+     chops/source/Makefile
+     chops/source/c_src/Makefile
+     chops/source/c_src/mk4util/Makefile
+     chops/source/c_src/dfio/Makefile
+     chops/source/c_src/afio/Makefile
+     chops/source/c_src/vex/Makefile
+     chops/source/c_src/fourfit_libs/Makefile
+     chops/source/c_src/fourfit_libs/ffcontrol/Makefile
+     chops/source/c_src/fourfit_libs/ffcore/Makefile
+     chops/source/c_src/fourfit_libs/ffio/Makefile
+     chops/source/c_src/fourfit_libs/ffmath/Makefile
+     chops/source/c_src/fourfit_libs/ffsearch/Makefile
+     chops/source/c_src/fourfit_libs/ffplot/Makefile
+     chops/source/c_src/applications/Makefile
+     chops/source/c_src/applications/fourfit/Makefile
+     chops/source/c_src/applications/alist/Makefile
+     chops/source/c_src/applications/aedit/Makefile
+    ])
+    AC_CONFIG_FILES([chops/hops_checksum.sh], [chmod +x chops/hops_checksum.sh])
+    AC_CONFIG_FILES([chops/run_checksum.sh], [chmod +x chops/run_checksum.sh])
+
+    if [ $have_python = "true" ] ; then
+        AC_CONFIG_FILES( chops/source/python_src/Makefile )
+        AC_CONFIG_FILES( chops/source/python_src/mk4_module/Makefile )
+        AC_CONFIG_FILES( chops/source/python_src/hopstest_module/Makefile )
+        AC_CONFIG_FILES( chops/source/python_src/ffcontrol_module/Makefile )
+        AC_CONFIG_FILES( chops/source/python_src/vpal_module/Makefile )
+        AC_CONFIG_FILES( chops/source/python_src/vex_module/Makefile )
+        AC_CONFIG_FILES( chops/source/python_src/scripts/Makefile )
+        AC_CONFIG_FILES( chops/source/python_src/tests/Makefile )
+        AC_CONFIG_FILES( [chops/source/python_src/mk4_module/setup.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/hopstest_module/setup.py] )
+        AC_CONFIG_FILES(
+            [chops/source/python_src/hopstest_module/hopstestsuiteb.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/ffcontrol_module/setup.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/vpal_module/setup.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/vex_module/setup.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/scripts/pcc_generate.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/scripts/pcc_select.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/scripts/pcc_plot.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/scripts/vgoscf_generate.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/scripts/phase_resid.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/scripts/batch_fourfit.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/scripts/ffres2pcp.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/scripts/fourphase.py] )
+        AC_CONFIG_FILES( [chops/source/python_src/scripts/summarize_report.py])
+        AC_CONFIG_FILES( [chops/source/python_src/tests/test_harness.sh],
+            [chmod +x chops/source/python_src/tests/test_harness.sh] )
+        AC_DEFINE_UNQUOTED([PYTHON_SITE_PREFIX], ["$pythondir"],
+            [Python install dir])
+    fi
+
+fi
+
 
 #
 # Shell setup convenience
