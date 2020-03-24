@@ -12,7 +12,7 @@ TESTS = test_harness.sh
 
 dist_check_SCRIPTS = $(TESTS) test_ffres2pcp.py test_fourphase.py test_pcc_generate.py
 
-CLEANFILES = *.pc *.pyc *.tar.gz
+CLEANFILES = *.pc *.pyc
 
 endif
 
