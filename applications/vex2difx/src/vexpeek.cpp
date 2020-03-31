@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2009-2018 by Walter Brisken                             *
+ *   Copyright (C) 2009-2020 by Walter Brisken and Jan Wagner              *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -40,8 +40,8 @@
 #include <vexdatamodel.h>
 
 const std::string program("vexpeek");
-const std::string version("0.8");
-const std::string verdate("20180304");
+const std::string version("0.11");
+const std::string verdate("20200323");
 const std::string author("Walter Brisken");
 
 void usage(const char *pgm)
@@ -61,6 +61,10 @@ void usage(const char *pgm)
 	std::cout << "  -s or --scans : print list of scans and their stations" << std::endl;
 	std::cout << "  -u or --diskusage : print disk usage (GB)" << std::endl;
 	std::cout << "  -m or --modules : print disk modules used (from TAPELOG_OBS)" << std::endl;
+	std::cout << "  -c or --coords : print station coordinates" << std::endl;
+	std::cout << "  -a or --all : print summary, bands, scans, and modules" << std::endl;
+	std::cout << std::endl;
+	std::cout << "  -B, -S, -M and/or -C can be used to add one of these sections to the output." << std::endl;
 	std::cout << std::endl;
 }
 
@@ -161,7 +165,7 @@ void antennaSummary(const VexData *V, int doFormat, int doUsage)
 		if(doUsage)
 		{
 			int p = std::cout.precision();
-			double drate, usage;
+			double drate=0.0, usage;
 			usage = totalDiskUsageGB(V, it->first, &drate);
 			std::cout.precision(3);
 			std::cout << std::fixed << " " << usage << " " << (int)drate;
@@ -228,8 +232,8 @@ void scanList(const VexData *V)
 	{
 		const VexScan *scan = V->getScan(s);
 		std::cout << std::left << std::setw(8) << scan->defName << " ";
-		std::cout << std::left << std::setw(10) << scan->sourceDefName << " ";
-		std::cout << std::left << std::setw(10) << scan->modeDefName << "   ";
+		std::cout << std::left << std::setw(12) << scan->sourceDefName << " ";
+		std::cout << std::left << std::setw(12) << scan->modeDefName << "   ";
 
 		std::vector<std::string> currStations;
 		for(std::map<std::string,Interval>::const_iterator it = scan->stations.begin(); it != scan->stations.end(); ++it)
@@ -277,6 +281,24 @@ void bandList(const VexData *V)
 	std::cout << std::endl;
 }
 
+void antCoords(const VexData *V)
+{
+	const double secPerYear = 86400.0*365.25;
+	int nAntenna = V->nAntenna();
+	int p = std::cout.precision();
+	std::cout.precision(6);
+	std::cout << std::fixed;
+
+	for(int a = 0; a < nAntenna; ++a)
+	{
+		const VexAntenna *A = V->getAntenna(a);
+		std::cout << A->name << " " << A->x << " " << A->y << " " << A->z << "  " << (A->dx*secPerYear) << " " << (A->dy*secPerYear) << " " << (A->dz*secPerYear) << "  " << A->posEpoch << std::endl;
+	}
+
+	std::cout.precision(p);
+	std::cout << std::scientific;
+}
+
 int testVex(const std::string &vexFile)
 {
 	const int MaxLineLength=128;
@@ -320,6 +342,7 @@ int main(int argc, char **argv)
 {
 	VexData *V;
 	int v;
+	int doSummary = 1;
 	int nWarn = 0;
 	int verbose = 0;
 	int doBandList = 0;
@@ -327,25 +350,24 @@ int main(int argc, char **argv)
 	int doFormat = 0;
 	int doUsage = 0;
 	int doModules = 0;
+	int doTime = 0;
+	int doCoords = 0;
 	int a;
 	const char *fileName = 0;
 
 	for(a = 1; a < argc; ++a)
 	{
-		if(strcmp(argv[a], "-v") == 0 ||
-		   strcmp(argv[a], "--verbose") == 0)
+		if(strcmp(argv[a], "-h") == 0 ||
+		   strcmp(argv[a], "--help") == 0)
+		{
+			usage(argv[0]);
+
+			return EXIT_SUCCESS;
+		}
+		else if(strcmp(argv[a], "-v") == 0 ||
+		        strcmp(argv[a], "--verbose") == 0)
 		{
 			++verbose;
-		}
-		else if(strcmp(argv[a], "-b") == 0 ||
-		        strcmp(argv[a], "--bands") == 0)
-		{
-			++doBandList;
-		}
-		else if(strcmp(argv[a], "-s") == 0 ||
-		        strcmp(argv[a], "--scans") == 0)
-		{
-			++doScanList;
 		}
 		else if(strcmp(argv[a], "-f") == 0 ||
 		        strcmp(argv[a], "--format") == 0)
@@ -357,17 +379,62 @@ int main(int argc, char **argv)
 		{
 			++doUsage;
 		}
+		else if(strcmp(argv[a], "-t") == 0 ||
+			strcmp(argv[a], "--doTime") == 0)
+		{
+			++doTime;
+		}
+		else if(strcmp(argv[a], "-b") == 0 ||
+		        strcmp(argv[a], "--bands") == 0)
+		{
+			++doBandList;
+			doSummary = 0;
+		}
+		else if(strcmp(argv[a], "-s") == 0 ||
+		        strcmp(argv[a], "--scans") == 0)
+		{
+			++doScanList;
+			doSummary = 0;
+		}
 		else if(strcmp(argv[a], "-m") == 0 ||
 			strcmp(argv[a], "--modules") == 0)
 		{
 			++doModules;
+			doSummary = 0;
 		}
-		else if(strcmp(argv[a], "-h") == 0 ||
-		        strcmp(argv[a], "--help") == 0)
+		else if(strcmp(argv[a], "-c") == 0 ||
+			strcmp(argv[a], "--coords") == 0)
 		{
-			usage(argv[0]);
-
-			return EXIT_SUCCESS;
+			++doCoords;
+			doSummary = 0;
+		}
+		else if(strcmp(argv[a], "-B") == 0 ||
+		        strcmp(argv[a], "--Bands") == 0)
+		{
+			++doBandList;
+		}
+		else if(strcmp(argv[a], "-S") == 0 ||
+		        strcmp(argv[a], "--Scans") == 0)
+		{
+			++doScanList;
+		}
+		else if(strcmp(argv[a], "-M") == 0 ||
+			strcmp(argv[a], "--Modules") == 0)
+		{
+			++doModules;
+		}
+		else if(strcmp(argv[a], "-C") == 0 ||
+			strcmp(argv[a], "--Coords") == 0)
+		{
+			++doCoords;
+		}
+		else if(strcmp(argv[a], "-a") == 0 ||
+		        strcmp(argv[a], "--all") == 0)
+		{
+			++doBandList;
+			++doScanList;
+			++doModules;
+			++doCoords;
 		}
 		else if(argv[a][0] == '-')
 		{
@@ -404,32 +471,43 @@ int main(int argc, char **argv)
 
 	V = loadVexFile(std::string(fileName), &nWarn);
 
-	if(doBandList)
-	{
-		bandList(V);
-	}
-	else if(doScanList)
-	{
-		scanList(V);
-	}
-	else if(verbose)
+	if(verbose)
 	{
 		std::cout << *V << std::endl;
 		std::cout << std::endl;
 	}
-	else if(doModules)
+
+	if(doModules || doTime)
 	{
 		int p = std::cout.precision();
 
 		std::cout.precision(13);
 		std::cout << V->getExper()->name << " " << V->obsStart() << " " << V->obsStop() << std::endl;
 		std::cout.precision(p);
+	}
+	if(doSummary)
+	{
+		if(!doModules && !doTime)
+		{
+			std::cout << V->getExper()->name << std::endl;
+		}
+		antennaSummary(V, doFormat, doUsage);
+	}
+	if(doBandList)
+	{
+		bandList(V);
+	}
+	if(doScanList)
+	{
+		scanList(V);
+	}
+	if(doModules)
+	{
 		moduleSummary(V);
 	}
-	else
+	if(doCoords)
 	{
-		std::cout << V->getExper()->name << std::endl;
-		antennaSummary(V, doFormat, doUsage);
+		antCoords(V);
 	}
 
 	delete V;

@@ -1,3 +1,15 @@
+Version 2.6.1
+~~~~~~~~~~~~~
+* Post DiFX-2.6; backported from trunk
+* vexpeek: add some new options for combining kinds of output
+* python3 conversion: oms2v2d
+* oms2v2d: some new functionality to assist VLBA eVLBI
+* vexpeek: new verbose mode
+* oms2v2d: fix crash in some modes if no data for project is found
+* vexpeek: option to view station coordinates
+* oms2v2d: use "difxcalc" for VLBA observing with sched 11.6 and newer
+* more explicitly catch cases where the number of provided channels is less than the number of  recorded channels for a given format.
+
 Version 2.6.0
 ~~~~~~~~~~~~~
 * New DATASTREAM parameter tSys that passes through into .input files
@@ -19,9 +31,6 @@ Version 2.6.0
 * difxspeed: allow benchmarking on real data
 * remove calc2xyz: was on a dead-end development path
 * Version for DiFX-2.6, Mar 4, 2019
-* more explicitly catch cases where the number of provided channels is less than the number of  recorded channels for a given format. (from trunk)
-
-
 
 Version 2.5.0
 ~~~~~~~~~~~~~
