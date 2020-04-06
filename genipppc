@@ -58,9 +58,9 @@ def getippversion(path):
 				print "Got version ", m.group(1)
 				return (path, m.group(1))
 			if (major == None):
-			    major = search('#define\s+IPP_VERSION_MAJOR\s+(\S)', line)
+			    major = search('#define\s+IPP_VERSION_MAJOR\s+(\S+)', line)
 			if (minor == None):
-			    minor = search('#define\s+IPP_VERSION_MINOR\s+(\S)', line)
+			    minor = search('#define\s+IPP_VERSION_MINOR\s+(\S+)', line)
 		if (major != None and minor != None):
 			print "Have version ", major.group(1) + "." + minor.group(1)
 			return (path, major.group(1) + "." + minor.group(1))
@@ -123,8 +123,7 @@ def genipppc(path, ippversion):
 
                 out.write('Cflags: -I${base}/include\n')
 
-
-	elif major == 7 or major == 8 or major == 9 or major == 2017 or major == 2018 or major == 2019:
+	elif major == 7 or major == 8 or major == 9 or major == 2017 or major == 2018 or major == 2019 or major == 2020 or major == 2021:
         
 		if platform == "darwin":
 			out.write('Libs: -Wl,-rpath,${base}/ipp/lib -L${base}/ipp/lib -lipps -lippvm -lippcore\n')
