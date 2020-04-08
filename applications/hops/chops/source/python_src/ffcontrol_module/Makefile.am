@@ -32,11 +32,12 @@ install-exec-local:
 		--prefix $(DESTDIR)$(prefix) \
 		--record $(DESTDIR)$(pythondir)/$(PKG_NAME)/install_ffcontrol_files.txt \
 		--verbose)
-	(rm -r $(shell readlink -f $(builddir))/build)
 
 uninstall-local:
 	cat $(DESTDIR)$(pythondir)/$(PKG_NAME)/install_ffcontrol_files.txt | xargs rm -rf
 	rm -rf $(DESTDIR)$(pythondir)/$(PKG_NAME)/install_ffcontrol_files.txt
+
+CLEANFILES = $(SRC_FILES) ./include/ffcontrol_module_extern.h ./src/construct_cblock.c ./src/ffcontrol_module_extern.c setup.py.in
 
 DISTCLEANFILES = setup.py
 

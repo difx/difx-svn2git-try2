@@ -29,11 +29,12 @@ install-exec-local:
 		--prefix $(DESTDIR)$(prefix) \
 		--record $(DESTDIR)$(pythondir)/$(PKG_NAME)/install_vpal_files.txt \
 		--verbose)
-	(rm -r $(shell readlink -f $(builddir))/build)
 
 uninstall-local:
 	cat $(DESTDIR)$(pythondir)/$(PKG_NAME)/install_vpal_files.txt | xargs rm -rf
 	rm -rf $(DESTDIR)$(pythondir)/$(PKG_NAME)/install_vpal_files.txt
+
+CLEANFILES = $(SRC_FILES) setup.py.in
 
 DISTCLEANFILES = setup.py
 
