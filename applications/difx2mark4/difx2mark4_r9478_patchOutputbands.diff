@@ -1,0 +1,87 @@
+Index: src/difx2mark4.h
+===================================================================
+--- src/difx2mark4.h	(revision 9478)
++++ src/difx2mark4.h	(working copy)
+@@ -31,7 +31,7 @@
+ #define NUMFILS 500                 // max number of type 1 output files
+ #define MAGLIM 10000.0              // threshold magnitude for vis. rejection
+ #define MAX_FPPAIRS 5000            // dimensioned for b-lines x chans x pol_prods
+-#define MAX_DFRQ 100                // allowed max number of *DiFX* frequencies
++#define MAX_DFRQ 256                // allowed max number of *DiFX* frequencies
+ #define NVRMAX 4000000              // max # of vis records
+ 
+ enum booleans {FALSE, TRUE};
+Index: src/fill_fblock.c
+===================================================================
+--- src/fill_fblock.c	(revision 9478)
++++ src/fill_fblock.c	(working copy)
+@@ -23,6 +23,7 @@
+         ibandB,
+         irfAfid,
+         irfBfid,
++        idfABfid,
+         ants[64],
+         swapped,
+         present,
+@@ -39,12 +40,13 @@
+          buff[6];
+ 
+     double temp,
+-           freqs[128];
++           freqs[MAX_DFRQ];
+ 
+     DifxBaseline *pbl;
+     DifxDatastream *pdsA,
+                    *pdsB;
+-    DifxFreq *pfr;
++    DifxFreq *pfr,
++             *pdfr;
+ 
+ 
+                                     // first fill in the frequency block structure
+@@ -55,6 +57,8 @@
+         pdsB = D->datastream + pbl->dsB;
+         for (i=0; i<pbl->nFreq; i++)
+             {
++            idfABfid = pbl->destFq[i];
++            pdfr = D->freq + idfABfid;
+             for (j=0; j<*pbl->nPolProd; j++)
+                 {
+                 ibandA = pbl->bandA[i][j];
+@@ -76,6 +80,13 @@
+                     irfAfid = pdsA->zoomFreqId[irbAfid];
+                     pfr = D->freq + irfAfid;
+                     }
++                if (irfAfid != idfABfid)
++                    {               // bandA is member of outputband; register the output instead!
++                    //printf("info: .inp baseline %d pol %d: A fq %d != destFq %d, using destFq instead and mark as Zoom\n", i, j, irfAfid, idfABfid);
++                    pfr = pdfr;
++                    zoom = TRUE;
++                    irfAfid = idfABfid;
++                    }
+                                     // stuff ref station fblock structure
+                 pfb[nprod].stn[0].pol      = pol;
+                 pfb[nprod].stn[0].ant      = pdsA->antennaId;
+@@ -105,6 +116,13 @@
+                     irfBfid = pdsB->zoomFreqId[irbBfid];
+                     pfr = D->freq + irfBfid;
+                     }
++                if (irfBfid != idfABfid)
++                    {               // bandB is member of outputband; register the output instead!
++                    //printf("info: .inp baseline %d pol %d: B fq %d != destFq %d, using destFq instead and mark as Zoom\n", i, j, irfBfid, idfABfid);
++                    pfr = pdfr;
++                    zoom = TRUE;
++                    irfBfid = idfABfid;
++                    }
+                                     // stuff rem station fblock structure
+                 pfb[nprod].stn[1].pol      = pol;
+                 pfb[nprod].stn[1].ant      = pdsB->antennaId;
+@@ -171,7 +189,7 @@
+                     if (!present)
+                         freqs[nfreq++] = pfb[n].stn[k].freq;
+                                     // sanity check
+-                    if (nfreq > 128)
++                    if (nfreq > MAX_DFRQ)
+                         {
+                         printf ("too many frequencies; redimension\n");
+                         return -1;
