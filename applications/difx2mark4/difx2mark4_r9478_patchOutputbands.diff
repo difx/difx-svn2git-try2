@@ -1,19 +1,19 @@
 Index: src/difx2mark4.h
 ===================================================================
---- src/difx2mark4.h	(revision 9478)
+--- src/difx2mark4.h	(revision 9481)
 +++ src/difx2mark4.h	(working copy)
 @@ -31,7 +31,7 @@
  #define NUMFILS 500                 // max number of type 1 output files
  #define MAGLIM 10000.0              // threshold magnitude for vis. rejection
  #define MAX_FPPAIRS 5000            // dimensioned for b-lines x chans x pol_prods
 -#define MAX_DFRQ 100                // allowed max number of *DiFX* frequencies
-+#define MAX_DFRQ 256                // allowed max number of *DiFX* frequencies
++#define MAX_DFRQ 200                // allowed max number of *DiFX* frequencies
  #define NVRMAX 4000000              // max # of vis records
  
  enum booleans {FALSE, TRUE};
 Index: src/fill_fblock.c
 ===================================================================
---- src/fill_fblock.c	(revision 9478)
+--- src/fill_fblock.c	(revision 9481)
 +++ src/fill_fblock.c	(working copy)
 @@ -23,6 +23,7 @@
          ibandB,
@@ -85,3 +85,19 @@ Index: src/fill_fblock.c
                          {
                          printf ("too many frequencies; redimension\n");
                          return -1;
+Index: src/normalize.c
+===================================================================
+--- src/normalize.c	(revision 9481)
++++ src/normalize.c	(working copy)
+@@ -58,6 +58,11 @@
+     nf = -1;
+     while (pfb[++nf].stn[REF].ant >= 0) // check for end-of-table marker
+         {
++        if (nf >= MAX_DFRQ)
++            {
++                printf ("too many frequencies, exceeding MAX_DFRQ; redimension\n");
++                return;
++            }
+         if (pfb[nf].stn[REF].find != pfb[nf].stn[REM].find)
+             {
+                                     // found matching channels with different freq id's
