@@ -8,6 +8,7 @@
 * tabulatedelays: add option to add clock model to delay
 * tabulatedelays: add option to simply print the clock model
 * print BW and FREQ with more significant digits
+* Fixed incorrect FITS PCal tone freq due rounding error in >1 MHz spacing cases, found by L.Petrov
 * Version for DiFX-2.6, Mar 4, 2019
 * Add --clock-merge-mode (backport from trunk)
 
