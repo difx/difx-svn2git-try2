@@ -6,8 +6,6 @@
 #
 '''
 Script to parse a joblist and a vex file and produce lists of job numbers
-
-$Id: ehtc-joblist.py 2493 2018-08-11 22:06:50Z gbc $
 '''
 
 import argparse
@@ -33,7 +31,7 @@ def parseOptions():
     epi += ' try this: '
     epi += ' ehtc-joblist.py -i *.input -o *.vex.obs -p na -s 3C279 -R'
     use = '%(prog)s [options]\n'
-    use += '  Version $Id: ehtc-joblist.py 2493 2018-08-11 22:06:50Z gbc $'
+    use += '  Version $Id: ehtc-joblist.py 2989 2020-08-06 15:44:03Z gbc $'
     parser = argparse.ArgumentParser(epilog=epi, description=des, usage=use)
     inputs = parser.add_argument_group('input options', inp)
     action = parser.add_argument_group('action options', act)
@@ -335,6 +333,8 @@ def doParseVex(o):
         if p.returncode:
             err = 'Return code %d from VEX2XML' % p.returncode
             raise RuntimeError, err
+    else:
+        raise Exception, 'no file ' + o.vexobs + ' to parse'
     o.vextree = xml.etree.ElementTree.parse(o.vxoxml)
     os.unlink(o.vxoxml)
 
@@ -971,12 +971,14 @@ def updateBLPOL(jobinput, verb):
         blf_hit = blf_re.search(line)
         if blf_hit:
             fq_peer = int(blf_hit.group(2))
-            fe_peer = ds_indices[bl_peer][3][fq_peer]
+            try: fe_peer = ds_indices[bl_peer][3][fq_peer]
+            except: fe_peer = 'nada'    ### specline error
             continue
         blg_hit = blg_re.search(line)
         if blg_hit:
             fq_this = int(blg_hit.group(2))
-            fe_this = ds_indices[bl_this][3][fq_this]
+            try: fe_this = ds_indices[bl_this][3][fq_this]
+            except: fe_this = 'nowy'    ### specline error
             if fe_peer == fe_this:
                 bl_indices[bl_index][3].append(fe_peer)
             else:
