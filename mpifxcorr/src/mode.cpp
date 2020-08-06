@@ -95,7 +95,19 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
   fractionalLoFreq = false;
   for(int i=0;i<numrecordedfreqs;i++)
   {
-    if(config->getDRecordedFreq(configindex, datastreamindex, i) - int(config->getDRecordedFreq(configindex, datastreamindex, i)) > TINY)
+    double loval = config->getDRecordedFreq(configindex, datastreamindex, i);
+    if(usedouble)
+    {
+      if (config->getDRecordedLowerSideband(configindex, datastreamindex, i))
+      {
+        loval -= config->getDRecordedBandwidth(configindex, datastreamindex, i)/2.0;
+      }
+      else
+      {
+        loval += config->getDRecordedBandwidth(configindex, datastreamindex, i)/2.0;
+      }
+    }
+    if(fabs(loval - int(loval + 0.5)) > TINY)
       fractionalLoFreq = true;
   }
 
@@ -864,10 +876,14 @@ void Mode::process(int index, int subloopindex)  //frac sample error is in micro
     lofreq = config->getDRecordedFreq(configindex, datastreamindex, i);
     if (usecomplex && usedouble) {
       if (config->getDRecordedLowerSideband(configindex, datastreamindex, i)) {
-	lofreq -= config->getDRecordedBandwidth(configindex, datastreamindex, i);
+        lofreq -= config->getDRecordedBandwidth(configindex, datastreamindex, i)/2.0;
       } else {
-	lofreq += config->getDRecordedBandwidth(configindex, datastreamindex, i);
+        lofreq += config->getDRecordedBandwidth(configindex, datastreamindex, i)/2.0;
       }
+    }
+    // For lower sideband complex data, the effective LO is at negative frequency, not positive
+    if (usecomplex && config->getDRecordedLowerSideband(configindex, datastreamindex, i)) {
+      lofreq = -lofreq;
     }
 
     switch(fringerotationorder) {
@@ -1172,7 +1188,8 @@ void Mode::process(int index, int subloopindex)  //frac sample error is in micro
 		  status = vectorFlip_cf32(fftd, fftoutputs[j][subloopindex], recordedbandchannels/2+1);
 		  status = vectorFlip_cf32(&fftd[recordedbandchannels/2]+1, &fftoutputs[j][subloopindex][recordedbandchannels/2]+1, recordedbandchannels/2-1);
 		} else {
-              status = vectorCopy_cf32(fftd, fftoutputs[j][subloopindex], recordedbandchannels);
+              status = vectorConjFlip_cf32(fftd+1, fftoutputs[j][subloopindex]+1, recordedbandchannels-1);
+              fftoutputs[j][subloopindex][0] = fftd[0];
               }
 	      } else {
 		status = vectorCopy_cf32(&(fftd[recordedbandchannels]), fftoutputs[j][subloopindex], recordedbandchannels);
