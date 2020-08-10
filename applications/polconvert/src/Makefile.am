@@ -12,6 +12,7 @@ PolConvertSources = \
 	Weighter.cpp Weighter.h \
 	_PolConvert.cpp polconvert.xml \
 	_getAntInfo.cpp _PolGainSolve.cpp \
+	_XPCal.cpp \
 	setup.py task_polconvert.py
 PostPolScripts = PP/prepolconvert.py PP/runpolconvert.py PP/README.POLCONVERT \
 	PP/Estimate_DPFU.py PP/DPFU_scanner.py
@@ -23,7 +24,7 @@ BuiltSources = $(PolConvertSources) $(PostPolScripts)
 
 bin_SCRIPTS = PP/prepolconvert.py PP/drivepolconvert.py
 pkgdata_DATA = _PolConvert.so \
-	_getAntInfo.so _PolGainSolve.so \
+	_getAntInfo.so _PolGainSolve.so _XPCal.so \
 	PP/runpolconvert.py task_polconvert.py polconvert.xml \
 	PP/README.POLCONVERT PP/Estimate_DPFU.py PP/DPFU_scanner.py
 
@@ -31,9 +32,11 @@ pkgdata_DATA = _PolConvert.so \
 install-data-am: install-pkgdataDATA install-data-local
 
 # runs the CASA local build in the install directory
+# buildmytasks is a PERL(!) script living in $DIFXCASAPATH
 install-data-local: install-pkgdataDATA
 	cd $(pkgdatadir) ;\
 	export PATH=@DIFXCASAPATH@${PATH_SEPARATOR}${PATH} ;\
+	export CASALD_LIBRARY_PATH=@DIFXCASALIBPATH@${PATH_SEPARATOR}${LD_LIBRARY_PATH} ;\
 	buildmytasks
 
 # things created in pkgdata by buildmytasks
@@ -54,9 +57,12 @@ copy.them:
 $(BuiltSources): copy.them
 
 # python does an inplace build in the directory
+# note that all .so files are build with this
 _PolConvert.so: copy.them
-	export PATH=${PATH}${PATH_SEPARATOR}@DIFXCASAPATH@ ;\
-	python setup.py build_ext --inplace
+	export PATH=@DIFXCASAPATH@${PATH_SEPARATOR}${PATH} ;\
+	export LD_LIBRARY_PATH=@DIFXCASALIBPATH@${PATH_SEPARATOR}${LD_LIBRARY_PATH} ;\
+	[ -n "${DIFXCASAVENV}" ] && source ${DIFXCASAVENV} ;\
+	@DIFXCASAPATH@/python setup.py build_ext --inplace
 
 # use copy.them to distinguish build and source dirs
 clean-local:

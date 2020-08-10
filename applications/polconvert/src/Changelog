@@ -1,3 +1,14 @@
+v1.7.8
+
+- fixes for calibration table flexibility (getcol replaced by getcell)
+
+v1.7.6
+
+- New options to estimate cross-gains from station metadata (pcals).
+- New configuration keywords to fine-tune non-ALMA cases (VGOS).
+- Synchronized with DiFX 2.5.3 PP scripting for 2018
+- Updated build to respect numpy includes
+
 v1.7.5
 
 - set zero weight on unphased APP subscans (phases not updated)
@@ -67,3 +78,12 @@ TODO:
 
 - Fitting of XY-phase with a simple delay model (per subband).
 - BETTER LEAST-SQUARES MINIMIZER FOR THE CROSS-POLARIZATION GAIN ESTIMATES.
+
+Version numbers are captured (and should be sync'd in):
+    TOP/Changelog
+    Changelog
+    polconvert.xml
+    task_polconvert.py
+    PP/runpolconvert.py
+    (and the single dish files...)
+
