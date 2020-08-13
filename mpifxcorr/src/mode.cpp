@@ -402,6 +402,7 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
     kscratch = 0;
   }
   // Phase cal stuff
+  PCal::setMinFrequencyResolution(1e6);
   if(config->getDPhaseCalIntervalMHz(configindex, datastreamindex))
   {
     pcalresults = new cf32*[numrecordedbands];
@@ -409,29 +410,18 @@ Mode::Mode(Configuration * conf, int confindex, int dsindex, int recordedbandcha
     pcalnbins = new int[numrecordedbands];
     for(int i=0;i<numrecordedbands;i++)
     {
-      int pcalOffset,
-          lsb;
-      
       localfreqindex = conf->getDLocalRecordedFreqIndex(confindex, dsindex, i);
-
       pcalresults[i] = new cf32[conf->getDRecordedFreqNumPCalTones(configindex, dsindex, localfreqindex)];
-
-      pcalOffset = config->getDRecordedFreqPCalOffsetsHz(configindex, dsindex, localfreqindex);
-
-      lsb = config->getDRecordedLowerSideband(configindex, datastreamindex, localfreqindex);
-
-      PCal::setMinFrequencyResolution(1e6);
-      extractor[i] = PCal::getNew(1e6*recordedbandwidth, 
+      extractor[i] = PCal::getNew(1e6*recordedbandwidth,
                                   1e6*config->getDPhaseCalIntervalMHz(configindex, datastreamindex),
-                                      pcalOffset, 0, usecomplex, lsb);
-
-      estimatedbytes += extractor[i]->getEstimatedBytes();
-
+                                  config->getDRecordedFreqPCalOffsetsHz(configindex, dsindex, localfreqindex), 0,
+                                  sampling, tcomplex);
       if (extractor[i]->getLength() != conf->getDRecordedFreqNumPCalTones(configindex, dsindex, localfreqindex))
         csevere << startl << "Developer Error: configuration.cpp and pcal.cpp do not agree on the number of tones: " << extractor[i]->getLength() << " != " << conf->getDRecordedFreqNumPCalTones(configindex, dsindex, localfreqindex) << " ." << endl;
+      estimatedbytes += extractor[i]->getEstimatedBytes();
       pcalnbins[i] = extractor[i]->getNBins();
-      if (pcalOffset>=0)
-        cverbose << startl << "PCal extractor internally uses " << pcalnbins[i] << " spectral channels (" << (long)(1e3*recordedbandwidth/pcalnbins[i]) << " kHz/channel)" << endl;
+//    if (pcalOffset>=0)
+//      cverbose << startl << "PCal extractor internally uses " << pcalnbins[i] << " spectral channels (" << (long)(1e3*recordedbandwidth/pcalnbins[i]) << " kHz/channel)" << endl;
     }
   }
 
