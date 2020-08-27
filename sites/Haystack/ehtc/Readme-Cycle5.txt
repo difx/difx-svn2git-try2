@@ -297,6 +297,11 @@ rm -rf ${jobs//input/*}
 # $ehtc/ehtc-joblist.py -i $dout/$evs -o *.obs -L
 # but you must be sure to adjust these grind jobs to respect QA2_proj logic
 
+false && { # make pristine if you risk re-executing or are intending to re-execute any group
+  rm -rf $exp-$vers-${subv}_????.{calc,difx,flag,input,save,im,polc*}
+  rm -rf tb-*
+}
+
 ###
 ### log of $ers commands goes here
 ###
